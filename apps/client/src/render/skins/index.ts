@@ -16,6 +16,7 @@ export {
   type GlovesColorSlots,
   type RobotColorSlots,
   type SkeletonColorSlots,
+  type RealisticColorSlots,
   type PartialSkinSettings,
   type SkinColorSlots,
   type SkinSettings,
@@ -40,5 +41,7 @@ export {
 export { renderCartoonSkin } from "./cartoonSkin";
 export { renderGlovesSkin } from "./glovesSkin";
 export { renderRobotSkin } from "./robotSkin";
+export { renderRealisticSkin } from "./realisticSkin";
 export { renderSkeletonSkin } from "./skeletonSkin";
 export { renderHandShadow } from "./shadowRenderer";
+

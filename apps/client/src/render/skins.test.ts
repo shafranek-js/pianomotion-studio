@@ -145,7 +145,7 @@ describe("normalizeSkinSettings", () => {
   });
 
   it("preserves valid styles and falls back for invalid style strings", () => {
-    const validStyles: SkinStyle[] = ["skeleton", "cartoon", "gloves", "robot"];
+    const validStyles: SkinStyle[] = ["skeleton", "cartoon", "gloves", "robot", "realistic"];
     for (const style of validStyles) {
       expect(normalizeSkinSettings({ style }).style).toBe(style);
     }
@@ -496,17 +496,44 @@ describe("Skin renderers execution & visual rendering", () => {
     expect(Object.keys(buildHandGeometry(missingDistal, goldenLayout, DEFAULT_SKIN_SETTINGS).chains)).toHaveLength(0);
   });
 
-  it("renders all 4 skin styles without errors", () => {
+  it("renders all 5 skin styles without errors", () => {
     const pose = createMockPose("right");
     const renderer = new SingleHandRenderer();
 
-    const styles: SkinStyle[] = ["skeleton", "cartoon", "gloves", "robot"];
+    const styles: SkinStyle[] = ["skeleton", "cartoon", "gloves", "robot", "realistic"];
     for (const style of styles) {
       const settings = normalizeSkinSettings({ style });
       expect(() => {
         renderer.render(pose, layout, settings);
       }).not.toThrow();
     }
+
+    renderer.destroy();
+  });
+
+  it("renders realistic hand skin with detailed anatomy, tendons, creases, and sleeves", () => {
+    const pose = createMockPose("right");
+    const renderer = new SingleHandRenderer();
+
+    // Realistic with sleeve and details
+    const settingsFull = normalizeSkinSettings({
+      style: "realistic",
+      details: true,
+      sleeve: true,
+      shadow: true,
+    });
+    renderer.render(pose, layout, settingsFull);
+    expect(renderer.handGraphics.context.instructions.length).toBeGreaterThan(0);
+
+    // Realistic bare arm and without details
+    const settingsMinimal = normalizeSkinSettings({
+      style: "realistic",
+      details: false,
+      sleeve: false,
+      shadow: false,
+    });
+    renderer.render(pose, layout, settingsMinimal);
+    expect(renderer.handGraphics.context.instructions.length).toBeGreaterThan(0);
 
     renderer.destroy();
   });

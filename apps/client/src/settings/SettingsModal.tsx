@@ -208,7 +208,7 @@ export function SettingsModal({ isOpen, onClose, onSettingsChanged }: SettingsMo
                 <select
                   id="settings-skin-style"
                   value={settings.skinStyle}
-                  onChange={(e) => handleChange("skinStyle", e.target.value as "cartoon" | "gloves" | "robot" | "skeleton")}
+                  onChange={(e) => handleChange("skinStyle", e.target.value as "cartoon" | "gloves" | "robot" | "skeleton" | "realistic")}
                   style={{
                     background: "#19211d",
                     color: "#edf2ed",
@@ -218,6 +218,7 @@ export function SettingsModal({ isOpen, onClose, onSettingsChanged }: SettingsMo
                     fontSize: "0.85rem",
                   }}
                 >
+                  <option value="realistic">Realistic (Human Flesh & Anatomical Shading)</option>
                   <option value="cartoon">Cartoon (Flesh & Sleeve)</option>
                   <option value="gloves">White Gloves (Animated Cartoon)</option>
                   <option value="robot">Robot (Futuristic Shell)</option>

@@ -1,4 +1,4 @@
-export type SkinStyle = "skeleton" | "cartoon" | "gloves" | "robot";
+export type SkinStyle = "skeleton" | "cartoon" | "gloves" | "robot" | "realistic";
 
 export interface CartoonColorSlots {
   skin: [number, number, number];
@@ -23,11 +23,21 @@ export interface SkeletonColorSlots {
   bone: [number, number, number];
 }
 
+export interface RealisticColorSlots {
+  skin: [number, number, number];
+  shadow: [number, number, number];
+  highlight: [number, number, number];
+  nail: [number, number, number];
+  crease: [number, number, number];
+  sleeve: [number, number, number];
+}
+
 export interface SkinColorSlots {
   cartoon: CartoonColorSlots;
   gloves: GlovesColorSlots;
   robot: RobotColorSlots;
   skeleton: SkeletonColorSlots;
+  realistic: RealisticColorSlots;
 }
 
 export interface SkinSettings {
@@ -63,6 +73,14 @@ export const DEFAULT_SKIN_COLORS: Record<SkinStyle, Record<string, [number, numb
     joint: [62, 64, 70],
     tip: [58, 58, 62],
   },
+  realistic: {
+    skin: [232, 190, 165],
+    shadow: [175, 122, 98],
+    highlight: [248, 220, 202],
+    nail: [240, 196, 188],
+    crease: [140, 95, 78],
+    sleeve: [32, 36, 44],
+  },
 };
 
 export const DEFAULT_SKIN_SETTINGS: SkinSettings = {
@@ -85,6 +103,14 @@ export const DEFAULT_SKIN_SETTINGS: SkinSettings = {
       joint: [62, 64, 70],
       tip: [58, 58, 62],
     },
+    realistic: {
+      skin: [232, 190, 165],
+      shadow: [175, 122, 98],
+      highlight: [248, 220, 202],
+      nail: [240, 196, 188],
+      crease: [140, 95, 78],
+      sleeve: [32, 36, 44],
+    },
   },
   finger_width: 0.75,
   outline: 1.0,
@@ -93,7 +119,13 @@ export const DEFAULT_SKIN_SETTINGS: SkinSettings = {
   shadow: true,
 };
 
-const VALID_STYLES: readonly SkinStyle[] = ["skeleton", "cartoon", "gloves", "robot"] as const;
+const VALID_STYLES: readonly SkinStyle[] = [
+  "skeleton",
+  "cartoon",
+  "gloves",
+  "robot",
+  "realistic",
+] as const;
 
 function isSkinStyle(val: unknown): val is SkinStyle {
   return typeof val === "string" && (VALID_STYLES as readonly string[]).includes(val);
@@ -139,6 +171,7 @@ export function normalizeSkinSettings(
       cartoon: { ...DEFAULT_SKIN_COLORS.cartoon },
       gloves: { ...DEFAULT_SKIN_COLORS.gloves },
       robot: { ...DEFAULT_SKIN_COLORS.robot },
+      realistic: { ...DEFAULT_SKIN_COLORS.realistic },
     },
     finger_width: DEFAULT_SKIN_SETTINGS.finger_width,
     outline: DEFAULT_SKIN_SETTINGS.outline,

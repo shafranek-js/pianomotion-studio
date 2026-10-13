@@ -9,6 +9,7 @@ import {
   renderCartoonSkin,
   renderGlovesSkin,
   renderHandShadow,
+  renderRealisticSkin,
   renderRobotSkin,
   renderSkeletonSkin,
   type SkinSettings,
@@ -83,6 +84,9 @@ export class SingleHandRenderer {
         break;
       case "robot":
         renderRobotSkin(this.handGraphics, geom, skinSettings, ppi);
+        break;
+      case "realistic":
+        renderRealisticSkin(this.handGraphics, geom, skinSettings, ppi);
         break;
       case "skeleton":
       default:
