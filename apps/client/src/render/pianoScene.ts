@@ -77,6 +77,7 @@ export class PianoScene {
   private readonly fallingNotesView: FallingNotesView;
   private readonly handsView: HandsView;
   private readonly backgroundGraphics = new Graphics();
+  private readonly fallingNotesMask = new Graphics();
   private readonly sceneContainer = new Container();
 
   private keyStyle: M1KeyStyle = "realistic";
@@ -112,7 +113,9 @@ export class PianoScene {
     // 2. Falling notes
     // 3. Piano keyboard
     // 4. Skeletal hands
+    this.fallingNotesView.mask = this.fallingNotesMask;
     this.sceneContainer.addChild(this.backgroundGraphics);
+    this.sceneContainer.addChild(this.fallingNotesMask);
     this.sceneContainer.addChild(this.fallingNotesView);
     this.sceneContainer.addChild(this.keyboardView);
     this.sceneContainer.addChild(this.handsView);
@@ -187,6 +190,8 @@ export class PianoScene {
       viewportBottom: bottomLayout.keyboardRect.y,
       keyboardLayout: layout,
     });
+    this.fallingNotesMask.clear();
+    this.fallingNotesMask.rect(0, 0, width, bottomLayout.keyboardRect.y).fill(0xffffff);
     this.handsView.setKeyboardLayout(layout);
 
     this.drawBackground(width, height, bottomLayout);

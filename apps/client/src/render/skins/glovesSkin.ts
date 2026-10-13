@@ -91,32 +91,15 @@ export function renderGlovesSkin(
     const inflatedPalm = inflate(geom.palm, lw);
     graphics.poly(inflatedPalm.flat()).fill(lineCol);
   }
-  for (let f = 1; f <= 5; f++) {
+  // Finger rendering helper
+  const renderGloveFinger = (f: number) => {
     const segs = geom.radius[f];
-    if (segs) {
-      for (const seg of segs) {
-        drawCapsule(graphics, seg.a, seg.b, seg.radius + lw, lineCol);
-      }
+    if (!segs) return;
+    for (const seg of segs) {
+      drawCapsule(graphics, seg.a, seg.b, seg.radius + lw, lineCol);
     }
-  }
-
-  // 4. White Glove Body Fill Pass
-  if (geom.web.length >= 3) {
-    graphics.poly(geom.web.flat()).fill(shadeCol);
-    graphics.poly(geom.web.flat()).fill({ color: gloveCol, alpha: 0.9 });
-  }
-  if (geom.palm.length >= 3) {
-    graphics.poly(geom.palm.flat()).fill(shadeCol);
-    graphics.poly(geom.palm.flat()).fill({ color: gloveCol, alpha: 0.95 });
-  }
-
-  // Finger capsules fill
-  for (let f = 1; f <= 5; f++) {
-    const segs = geom.radius[f];
-    if (!segs) continue;
     for (const seg of segs) {
       drawCapsule(graphics, seg.a, seg.b, seg.radius, shadeCol);
-      // Soft highlight capsule offset slightly
       const o = 0.22 * seg.radius;
       drawCapsule(
         graphics,
@@ -126,9 +109,32 @@ export function renderGlovesSkin(
         gloveCol,
       );
     }
+    if (skinSettings.details) {
+      for (let i = 0; i < segs.length - 1; i++) {
+        const seg = segs[i]!;
+        drawGloveCreases(graphics, seg.b, seg.u, seg.n, seg.radius, creaseCol);
+      }
+    }
+  };
+
+  // 4. Anatomical Layer 1: Thumb (Finger 1)
+  // In top-down dorsal view, the thumb articulates on the palmar side and passes UNDER
+  // the dorsum and other fingers during thumb-under movements (подкладывание 1-го пальца).
+  renderGloveFinger(1);
+
+  // 5. Anatomical Layer 2: White Glove Palm / Dorsum Fill Pass
+  if (geom.web.length >= 3) {
+    graphics.poly(geom.web.flat()).fill(shadeCol);
+    graphics.poly(geom.web.flat()).fill({ color: gloveCol, alpha: 0.9 });
+  }
+  if (geom.palm.length >= 3) {
+    const inflatedPalm = inflate(geom.palm, lw);
+    graphics.poly(inflatedPalm.flat()).fill(lineCol);
+    graphics.poly(geom.palm.flat()).fill(shadeCol);
+    graphics.poly(geom.palm.flat()).fill({ color: gloveCol, alpha: 0.95 });
   }
 
-  // 5. Back-of-Hand Stitching & Creases
+  // Back-of-Hand Stitching
   if (skinSettings.details) {
     // 3 radiating stitch lines on back of hand
     const knuckles: ScreenPoint[] = [];
@@ -154,16 +160,11 @@ export function renderGlovesSkin(
           .stroke({ width: stitchW, color: stitchCol, cap: "round" });
       }
     }
+  }
 
-    for (let f = 1; f <= 5; f++) {
-      const segs = geom.radius[f];
-      if (segs) {
-        for (let i = 0; i < segs.length - 1; i++) {
-          const seg = segs[i]!;
-          drawGloveCreases(graphics, seg.b, seg.u, seg.n, seg.radius, creaseCol);
-        }
-      }
-    }
+  // 6. Anatomical Layer 3: Fingers 2..5 (Index, Middle, Ring, Pinky)
+  for (let f = 2; f <= 5; f++) {
+    renderGloveFinger(f);
   }
 
   // 6. Puffy Rounded Wrist Cuff

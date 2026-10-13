@@ -85,62 +85,11 @@ export function renderRobotSkin(
       .stroke({ width: 1, color: edgeCol });
   }
 
-  // 2. Palm Plate
-  if (geom.web.length >= 3) {
-    graphics.poly(geom.web.flat()).fill(membraneCol);
-  }
-
-  if (geom.palm.length >= 3) {
-    const inflatedPalm = inflate(geom.palm, lw);
-    graphics.poly(inflatedPalm.flat()).fill(edgeCol);
-    graphics.poly(geom.palm.flat()).fill(shellCol);
-  }
-
-  // Palm Seam & Screws (if details)
-  if (skinSettings.details && geom.chains[1] && geom.chains[2] && geom.chains[5]) {
-    const k2 = geom.chains[2][1] ?? geom.wristCenter;
-    const k5 = geom.chains[5][1] ?? geom.wristCenter;
-    const cm = geom.chains[1][0] ?? geom.wristCenter;
-    const ptA = { x: cm.x + (k2.x - cm.x) * 0.55, y: cm.y + (k2.y - cm.y) * 0.55 };
-    const ptSide = {
-      x: geom.wristU.x + (k5.x - geom.wristU.x) * 0.55,
-      y: geom.wristU.y + (k5.y - geom.wristU.y) * 0.55,
-    };
-    const ctrl = {
-      x: (ptA.x + ptSide.x) / 2 + (geom.wristCenter.x - (ptA.x + ptSide.x) / 2) * 0.35,
-      y: (ptA.y + ptSide.y) / 2 + (geom.wristCenter.y - (ptA.y + ptSide.y) / 2) * 0.35,
-    };
-
-    const seamPts: number[] = [];
-    for (let i = 0; i <= 12; i++) {
-      const t = i / 12;
-      const oneMinusT = 1 - t;
-      const sx = oneMinusT * oneMinusT * ptA.x + 2 * oneMinusT * t * ctrl.x + t * t * ptSide.x;
-      const sy = oneMinusT * oneMinusT * ptA.y + 2 * oneMinusT * t * ctrl.y + t * t * ptSide.y;
-      seamPts.push(sx, sy);
-    }
-    if (seamPts.length >= 4) {
-      graphics.poly(seamPts, false).stroke({ width: Math.max(1, 0.03 * ppi), color: edgeCol });
-    }
-
-    // Screw heads
-    const screwR = Math.max(1.2, 0.045 * ppi);
-    for (const t of [0.25, 0.5]) {
-      const sBaseX = ptSide.x + (geom.wristU.x - ptSide.x) * t;
-      const sBaseY = ptSide.y + (geom.wristU.y - ptSide.y) * t;
-      const sx = sBaseX + (geom.wristCenter.x - sBaseX) * 0.18;
-      const sy = sBaseY + (geom.wristCenter.y - sBaseY) * 0.18;
-      graphics.circle(sx, sy, screwR).fill(screwCol);
-      graphics.circle(sx, sy, Math.max(0.5, screwR * 0.3)).fill(edgeCol);
-    }
-  }
-
-  // 3. Fingers: Joint Cylinders, Shell Plates with Gaps, and Fingertip Caps
   const gap = 0.075 * ppi;
 
-  for (let f = 1; f <= 5; f++) {
+  const renderRobotFinger = (f: number) => {
     const segs = geom.radius[f];
-    if (!segs || segs.length === 0) continue;
+    if (!segs || segs.length === 0) return;
 
     // Thumb base housing
     if (f === 1 && segs.length > 0) {
@@ -200,5 +149,63 @@ export function renderRobotSkin(
         graphics.circle(spotX, spotY, Math.max(1, rr * 0.2)).fill(tipHighlight);
       }
     }
+  };
+
+  // Layer 1: Thumb (Finger 1) underneath palm
+  renderRobotFinger(1);
+
+  // Layer 2: Palm Plate
+  if (geom.web.length >= 3) {
+    graphics.poly(geom.web.flat()).fill(membraneCol);
+  }
+
+  if (geom.palm.length >= 3) {
+    const inflatedPalm = inflate(geom.palm, lw);
+    graphics.poly(inflatedPalm.flat()).fill(edgeCol);
+    graphics.poly(geom.palm.flat()).fill(shellCol);
+  }
+
+  // Palm Seam & Screws (if details)
+  if (skinSettings.details && geom.chains[1] && geom.chains[2] && geom.chains[5]) {
+    const k2 = geom.chains[2][1] ?? geom.wristCenter;
+    const k5 = geom.chains[5][1] ?? geom.wristCenter;
+    const cm = geom.chains[1][0] ?? geom.wristCenter;
+    const ptA = { x: cm.x + (k2.x - cm.x) * 0.55, y: cm.y + (k2.y - cm.y) * 0.55 };
+    const ptSide = {
+      x: geom.wristU.x + (k5.x - geom.wristU.x) * 0.55,
+      y: geom.wristU.y + (k5.y - geom.wristU.y) * 0.55,
+    };
+    const ctrl = {
+      x: (ptA.x + ptSide.x) / 2 + (geom.wristCenter.x - (ptA.x + ptSide.x) / 2) * 0.35,
+      y: (ptA.y + ptSide.y) / 2 + (geom.wristCenter.y - (ptA.y + ptSide.y) / 2) * 0.35,
+    };
+
+    const seamPts: number[] = [];
+    for (let i = 0; i <= 12; i++) {
+      const t = i / 12;
+      const oneMinusT = 1 - t;
+      const sx = oneMinusT * oneMinusT * ptA.x + 2 * oneMinusT * t * ctrl.x + t * t * ptSide.x;
+      const sy = oneMinusT * oneMinusT * ptA.y + 2 * oneMinusT * t * ctrl.y + t * t * ptSide.y;
+      seamPts.push(sx, sy);
+    }
+    if (seamPts.length >= 4) {
+      graphics.poly(seamPts, false).stroke({ width: Math.max(1, 0.03 * ppi), color: edgeCol });
+    }
+
+    // Screw heads
+    const screwR = Math.max(1.2, 0.045 * ppi);
+    for (const t of [0.25, 0.5]) {
+      const sBaseX = ptSide.x + (geom.wristU.x - ptSide.x) * t;
+      const sBaseY = ptSide.y + (geom.wristU.y - ptSide.y) * t;
+      const sx = sBaseX + (geom.wristCenter.x - sBaseX) * 0.18;
+      const sy = sBaseY + (geom.wristCenter.y - sBaseY) * 0.18;
+      graphics.circle(sx, sy, screwR).fill(screwCol);
+      graphics.circle(sx, sy, Math.max(0.5, screwR * 0.3)).fill(edgeCol);
+    }
+  }
+
+  // Layer 3: Fingers 2..5 on top
+  for (let f = 2; f <= 5; f++) {
+    renderRobotFinger(f);
   }
 }

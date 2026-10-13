@@ -121,29 +121,9 @@ export function renderPhoto3dSkin(
     baseCol,
   );
 
-  // 2. 3D Volumetric Palm / Dorsum
-  if (geom.palm.length >= 3) {
-    const palmCenter = {
-      x: geom.palm.reduce((s, p) => s + p[0], 0) / geom.palm.length,
-      y: geom.palm.reduce((s, p) => s + p[1], 0) / geom.palm.length,
-    };
-
-    // Base palm fill with 3D top-down lighting
-    const palmCol = calculatePbrColor(baseCol, 0, 0, 0.95);
-    graphics.poly(geom.palm.flat()).fill(palmCol);
-
-    // Lateral shading on ulnar and radial borders
-    if (skinSettings.details) {
-      graphics
-        .poly(geom.palm.flat())
-        .stroke({ width: 1.5 * lw, color: calculatePbrColor(baseCol, 0.4, 0.4, 0.2), alpha: 0.6 });
-    }
-  }
-
-  // 3. Volumetric Fingers (digits 1 to 5)
-  for (let f = 1; f <= 5; f++) {
+  const render3DFinger = (f: number) => {
     const segs = geom.radius[f];
-    if (!segs || segs.length === 0) continue;
+    if (!segs || segs.length === 0) return;
 
     for (let i = 0; i < segs.length; i++) {
       const seg = segs[i]!;
@@ -165,8 +145,35 @@ export function renderPhoto3dSkin(
 
       // 3D Specular highlight dot
       graphics
-        .circle(nailCenter.x - distSeg.u.x * r * 0.1 + distSeg.n.x * r * 0.15, nailCenter.y - distSeg.u.y * r * 0.1 + distSeg.n.y * r * 0.15, r * 0.12)
+        .circle(
+          nailCenter.x - distSeg.u.x * r * 0.1 + distSeg.n.x * r * 0.15,
+          nailCenter.y - distSeg.u.y * r * 0.1 + distSeg.n.y * r * 0.15,
+          r * 0.12,
+        )
         .fill({ color: 0xffffff, alpha: 0.85 });
     }
+  };
+
+  // 2. Anatomical Layer 1: Thumb (Finger 1)
+  // Drawn first so thumb-under movements pass naturally underneath the dorsum
+  render3DFinger(1);
+
+  // 3. Anatomical Layer 2: 3D Volumetric Palm / Dorsum
+  if (geom.palm.length >= 3) {
+    // Base palm fill with 3D top-down lighting
+    const palmCol = calculatePbrColor(baseCol, 0, 0, 0.95);
+    graphics.poly(geom.palm.flat()).fill(palmCol);
+
+    // Lateral shading on ulnar and radial borders
+    if (skinSettings.details) {
+      graphics
+        .poly(geom.palm.flat())
+        .stroke({ width: 1.5 * lw, color: calculatePbrColor(baseCol, 0.4, 0.4, 0.2), alpha: 0.6 });
+    }
+  }
+
+  // 4. Anatomical Layer 3: Volumetric Fingers 2..5 (Index, Middle, Ring, Pinky)
+  for (let f = 2; f <= 5; f++) {
+    render3DFinger(f);
   }
 }

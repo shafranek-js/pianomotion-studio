@@ -5,12 +5,14 @@ export {
   KeyStyleSchema,
   SoundTimbreSchema,
   RenderCapFpsSchema,
+  SkinStyleSchema,
   sanitizeSettings,
   type Settings,
   type AppSettings,
   type KeyStyle,
   type SoundTimbre,
   type RenderCapFps,
+  type SkinStyleSetting,
   type SettingsListener,
 } from "./types.ts";
 

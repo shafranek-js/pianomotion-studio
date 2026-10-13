@@ -48,8 +48,9 @@ export class PhotoRigRenderer {
     };
 
     this.container.addChild(this.forearmSprite);
+    this.container.addChild(this.fingerSprites[1]!);
     this.container.addChild(this.dorsumSprite);
-    for (let f = 1; f <= 5; f++) {
+    for (let f = 2; f <= 5; f++) {
       this.container.addChild(this.fingerSprites[f]!);
     }
 

@@ -298,27 +298,8 @@ export function renderRealisticSkin(
       .stroke({ width: Math.max(1, hw * 0.2), color: highlightCol, alpha: 0.25, cap: "round" });
   }
 
-  // ---------------------------------------------------------------------------
-  // 2. Silhouette Outline Pass (Palm, Web, & Fingers)
-  // ---------------------------------------------------------------------------
-  if (geom.web.length >= 3) {
-    graphics.poly(geom.web.flat()).fill(contourCol);
-    for (let i = 0; i < geom.webEdge.length - 1; i++) {
-      const p = geom.webEdge[i]!;
-      const q = geom.webEdge[i + 1]!;
-      graphics
-        .moveTo(p[0], p[1])
-        .lineTo(q[0], q[1])
-        .stroke({ width: 2 * lw, color: contourCol, cap: "round" });
-    }
-  }
-
-  if (geom.palm.length >= 3) {
-    const inflatedPalm = inflate(geom.palm, lw);
-    graphics.poly(inflatedPalm.flat()).fill(contourCol);
-  }
-
-  for (let f = 1; f <= 5; f++) {
+  // Helper to draw realistic finger outline
+  const renderRealisticFingerOutline = (f: number) => {
     const segs = geom.radius[f];
     if (segs) {
       for (const seg of segs) {
@@ -332,64 +313,12 @@ export function renderRealisticSkin(
         );
       }
     }
-  }
+  };
 
-  // ---------------------------------------------------------------------------
-  // 3. Palm Fill & Dorsal Extensor Tendons
-  // ---------------------------------------------------------------------------
-  if (geom.web.length >= 3) {
-    graphics.poly(geom.web.flat()).fill(skinCol);
-  }
-
-  if (geom.palm.length >= 3) {
-    graphics.poly(geom.palm.flat()).fill(skinCol);
-
-    if (skinSettings.details) {
-      // Metacarpal extensor digitorum tendon ridges (from wrist to MCP knuckles)
-      for (const finger of [2, 3, 4, 5, 1]) {
-        const chain = geom.chains[finger];
-        if (!chain || chain.length < 2) continue;
-        const mcpPt = chain[1]!;
-        const wristPt = geom.wristCenter;
-
-        const tu = unitVector(mcpPt.x - wristPt.x, mcpPt.y - wristPt.y);
-        const tn = { x: -tu.y, y: tu.x };
-
-        // Soft lateral shadow side
-        graphics
-          .moveTo(wristPt.x + tn.x * 1.5, wristPt.y + tn.y * 1.5)
-          .lineTo(mcpPt.x + tn.x * 1.5, mcpPt.y + tn.y * 1.5)
-          .stroke({ width: Math.max(1, 0.02 * ppi), color: tendonShadowCol, alpha: 0.35, cap: "round" });
-
-        // Raised dorsal tendon ridge specular highlight
-        graphics
-          .moveTo(wristPt.x, wristPt.y)
-          .lineTo(mcpPt.x, mcpPt.y)
-          .stroke({ width: Math.max(0.8, 0.016 * ppi), color: tendonHighlightCol, alpha: 0.45, cap: "round" });
-      }
-
-      // Thenar web fold crease (between thumb and index metacarpal)
-      if (geom.webEdge.length >= 5) {
-        const midEdge = geom.webEdge[Math.floor(geom.webEdge.length / 2)]!;
-        const d = unitVector(geom.wristCenter.x - midEdge[0], geom.wristCenter.y - midEdge[1]);
-        const p1x = midEdge[0] + d.x * 0.12 * ppi;
-        const p1y = midEdge[1] + d.y * 0.12 * ppi;
-        const p2x = midEdge[0] + d.x * 0.48 * ppi;
-        const p2y = midEdge[1] + d.y * 0.48 * ppi;
-        graphics
-          .moveTo(p1x, p1y)
-          .lineTo(p2x, p2y)
-          .stroke({ width: Math.max(1, 0.025 * ppi), color: creaseCol, alpha: 0.55, cap: "round" });
-      }
-    }
-  }
-
-  // ---------------------------------------------------------------------------
-  // 4. Fill Fingers, 3D Cylindrical Highlights, Creases, and Fingernails
-  // ---------------------------------------------------------------------------
-  for (let f = 1; f <= 5; f++) {
+  // Helper to draw realistic finger phalanxes, highlights, creases, and nail
+  const renderRealisticFingerFillAndDetails = (f: number) => {
     const segs = geom.radius[f];
-    if (!segs || segs.length === 0) continue;
+    if (!segs || segs.length === 0) return;
 
     // A. Base phalanx capsules
     for (let i = 0; i < segs.length; i++) {
@@ -470,5 +399,90 @@ export function renderRealisticSkin(
         nailFreeEdgeCol,
       );
     }
+  };
+
+  // ---------------------------------------------------------------------------
+  // 2. Anatomical Layer 1: Thumb (Finger 1)
+  // In top-down dorsal view, the thumb articulates on the palmar side and passes UNDER
+  // the dorsum and other fingers during thumb-under movements (подкладывание 1-го пальца).
+  // ---------------------------------------------------------------------------
+  renderRealisticFingerOutline(1);
+  renderRealisticFingerFillAndDetails(1);
+
+  // ---------------------------------------------------------------------------
+  // 3. Anatomical Layer 2: Dorsum (Palm & Web)
+  // Drawn ON TOP of the thumb so thumb-under movements pass naturally underneath the dorsum.
+  // ---------------------------------------------------------------------------
+  if (geom.web.length >= 3) {
+    graphics.poly(geom.web.flat()).fill(contourCol);
+    for (let i = 0; i < geom.webEdge.length - 1; i++) {
+      const p = geom.webEdge[i]!;
+      const q = geom.webEdge[i + 1]!;
+      graphics
+        .moveTo(p[0], p[1])
+        .lineTo(q[0], q[1])
+        .stroke({ width: 2 * lw, color: contourCol, cap: "round" });
+    }
+  }
+
+  if (geom.palm.length >= 3) {
+    const inflatedPalm = inflate(geom.palm, lw);
+    graphics.poly(inflatedPalm.flat()).fill(contourCol);
+  }
+
+  if (geom.web.length >= 3) {
+    graphics.poly(geom.web.flat()).fill(skinCol);
+  }
+
+  if (geom.palm.length >= 3) {
+    graphics.poly(geom.palm.flat()).fill(skinCol);
+
+    if (skinSettings.details) {
+      // Metacarpal extensor digitorum tendon ridges (from wrist to MCP knuckles)
+      for (const finger of [2, 3, 4, 5, 1]) {
+        const chain = geom.chains[finger];
+        if (!chain || chain.length < 2) continue;
+        const mcpPt = chain[1]!;
+        const wristPt = geom.wristCenter;
+
+        const tu = unitVector(mcpPt.x - wristPt.x, mcpPt.y - wristPt.y);
+        const tn = { x: -tu.y, y: tu.x };
+
+        // Soft lateral shadow side
+        graphics
+          .moveTo(wristPt.x + tn.x * 1.5, wristPt.y + tn.y * 1.5)
+          .lineTo(mcpPt.x + tn.x * 1.5, mcpPt.y + tn.y * 1.5)
+          .stroke({ width: Math.max(1, 0.02 * ppi), color: tendonShadowCol, alpha: 0.35, cap: "round" });
+
+        // Raised dorsal tendon ridge specular highlight
+        graphics
+          .moveTo(wristPt.x, wristPt.y)
+          .lineTo(mcpPt.x, mcpPt.y)
+          .stroke({ width: Math.max(0.8, 0.016 * ppi), color: tendonHighlightCol, alpha: 0.45, cap: "round" });
+      }
+
+      // Thenar web fold crease (between thumb and index metacarpal)
+      if (geom.webEdge.length >= 5) {
+        const midEdge = geom.webEdge[Math.floor(geom.webEdge.length / 2)]!;
+        const d = unitVector(geom.wristCenter.x - midEdge[0], geom.wristCenter.y - midEdge[1]);
+        const p1x = midEdge[0] + d.x * 0.12 * ppi;
+        const p1y = midEdge[1] + d.y * 0.12 * ppi;
+        const p2x = midEdge[0] + d.x * 0.48 * ppi;
+        const p2y = midEdge[1] + d.y * 0.48 * ppi;
+        graphics
+          .moveTo(p1x, p1y)
+          .lineTo(p2x, p2y)
+          .stroke({ width: Math.max(1, 0.025 * ppi), color: creaseCol, alpha: 0.55, cap: "round" });
+      }
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // 4. Anatomical Layer 3: Fingers 2..5 (Index, Middle, Ring, Pinky)
+  // Fingers 2..5 lie on the dorsal-facing margin and also occlude thumb-under crossings.
+  // ---------------------------------------------------------------------------
+  for (let f = 2; f <= 5; f++) {
+    renderRealisticFingerOutline(f);
+    renderRealisticFingerFillAndDetails(f);
   }
 }

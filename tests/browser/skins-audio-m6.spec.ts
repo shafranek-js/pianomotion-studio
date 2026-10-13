@@ -59,7 +59,7 @@ test.describe("M6 Visual Hand Skins & Audio Sync (W039–W044)", () => {
 
     // 4. Test Hand Skin Style Selection
     const skinStyleSelect = page.locator("#settings-skin-style");
-    await expect(skinStyleSelect).toHaveValue("cartoon");
+    await expect(skinStyleSelect).toHaveValue("photo-segmented");
 
     await skinStyleSelect.selectOption("gloves");
     await expect(skinStyleSelect).toHaveValue("gloves");

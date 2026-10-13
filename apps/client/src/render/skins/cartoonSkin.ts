@@ -152,60 +152,19 @@ export function renderCartoonSkin(
     drawCapsule(graphics, along(0), geom.armEnd, hw, skinCol);
   }
 
-  // 2. Silhouette Outline Pass (Palm & Fingers)
-  if (geom.web.length >= 3) {
-    graphics.poly(geom.web.flat()).fill(lineCol);
-    for (let i = 0; i < geom.webEdge.length - 1; i++) {
-      const p = geom.webEdge[i]!;
-      const q = geom.webEdge[i + 1]!;
-      graphics
-        .moveTo(p[0], p[1])
-        .lineTo(q[0], q[1])
-        .stroke({ width: 2 * lw, color: lineCol, cap: "round" });
-    }
-  }
-
-  if (geom.palm.length >= 3) {
-    const inflatedPalm = inflate(geom.palm, lw);
-    graphics.poly(inflatedPalm.flat()).fill(lineCol);
-  }
-
-  for (let f = 1; f <= 5; f++) {
+  // Finger rendering helpers
+  const renderFingerOutline = (f: number) => {
     const segs = geom.radius[f];
     if (segs) {
       for (const seg of segs) {
         drawCapsule(graphics, seg.a, seg.b, seg.radius + lw, lineCol);
       }
     }
-  }
+  };
 
-  // 3. Silhouette Fill Pass (Palm & Fingers)
-  if (geom.web.length >= 3) {
-    graphics.poly(geom.web.flat()).fill(skinCol);
-  }
-
-  if (geom.palm.length >= 3) {
-    graphics.poly(geom.palm.flat()).fill(skinCol);
-
-    if (skinSettings.details && geom.webEdge.length >= 5) {
-      // Short crease where thenar web joins back of hand
-      const midEdge = geom.webEdge[Math.floor(geom.webEdge.length / 2)]!;
-      const d = unitVector(geom.wristCenter.x - midEdge[0], geom.wristCenter.y - midEdge[1]);
-      const p1x = midEdge[0] + d.x * 0.12 * ppi;
-      const p1y = midEdge[1] + d.y * 0.12 * ppi;
-      const p2x = midEdge[0] + d.x * 0.45 * ppi;
-      const p2y = midEdge[1] + d.y * 0.45 * ppi;
-      graphics
-        .moveTo(p1x, p1y)
-        .lineTo(p2x, p2y)
-        .stroke({ width: Math.max(1, 0.03 * ppi), color: webCreaseCol, cap: "round" });
-    }
-  }
-
-  // 4. Fill Fingers & Render Creases, Knuckles, Nails
-  for (let f = 1; f <= 5; f++) {
+  const renderFingerFillAndDetails = (f: number) => {
     const segs = geom.radius[f];
-    if (!segs || segs.length === 0) continue;
+    if (!segs || segs.length === 0) return;
 
     for (const seg of segs) {
       drawCapsule(graphics, seg.a, seg.b, seg.radius, skinCol);
@@ -234,5 +193,59 @@ export function renderCartoonSkin(
       }
       drawNail(graphics, distSeg.b, distSeg.u, nailNormal, distSeg.radius, nailCol, nailEdgeCol);
     }
+  };
+
+  // 2. Anatomical Layer 1: Thumb (Finger 1)
+  // In top-down dorsal view, the thumb articulates on the palmar side and passes UNDER
+  // the dorsum and other fingers during thumb-under movements (подкладывание 1-го пальца).
+  renderFingerOutline(1);
+  renderFingerFillAndDetails(1);
+
+  // 3. Anatomical Layer 2: Dorsum (Palm & Web)
+  // Drawn ON TOP of the thumb so thumb-under movements pass naturally underneath the dorsum.
+  if (geom.web.length >= 3) {
+    graphics.poly(geom.web.flat()).fill(lineCol);
+    for (let i = 0; i < geom.webEdge.length - 1; i++) {
+      const p = geom.webEdge[i]!;
+      const q = geom.webEdge[i + 1]!;
+      graphics
+        .moveTo(p[0], p[1])
+        .lineTo(q[0], q[1])
+        .stroke({ width: 2 * lw, color: lineCol, cap: "round" });
+    }
+  }
+
+  if (geom.palm.length >= 3) {
+    const inflatedPalm = inflate(geom.palm, lw);
+    graphics.poly(inflatedPalm.flat()).fill(lineCol);
+  }
+
+  if (geom.web.length >= 3) {
+    graphics.poly(geom.web.flat()).fill(skinCol);
+  }
+
+  if (geom.palm.length >= 3) {
+    graphics.poly(geom.palm.flat()).fill(skinCol);
+
+    if (skinSettings.details && geom.webEdge.length >= 5) {
+      // Short crease where thenar web joins back of hand
+      const midEdge = geom.webEdge[Math.floor(geom.webEdge.length / 2)]!;
+      const d = unitVector(geom.wristCenter.x - midEdge[0], geom.wristCenter.y - midEdge[1]);
+      const p1x = midEdge[0] + d.x * 0.12 * ppi;
+      const p1y = midEdge[1] + d.y * 0.12 * ppi;
+      const p2x = midEdge[0] + d.x * 0.45 * ppi;
+      const p2y = midEdge[1] + d.y * 0.45 * ppi;
+      graphics
+        .moveTo(p1x, p1y)
+        .lineTo(p2x, p2y)
+        .stroke({ width: Math.max(1, 0.03 * ppi), color: webCreaseCol, cap: "round" });
+    }
+  }
+
+  // 4. Anatomical Layer 3: Fingers 2..5 (Index, Middle, Ring, Pinky)
+  // Fingers 2..5 lie on the dorsal-facing margin and also occlude thumb-under crossings.
+  for (let f = 2; f <= 5; f++) {
+    renderFingerOutline(f);
+    renderFingerFillAndDetails(f);
   }
 }

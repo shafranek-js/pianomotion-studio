@@ -165,6 +165,9 @@ export class FallingNotesView extends Container {
       const bottomY = Math.round(hitY - (note.startSeconds - transportTime) * pps);
       const topY = bottomY - height;
 
+      // If note has completely entered the strike line and finished, skip
+      if (topY >= hitY) continue;
+
       // Exact pixel viewport culling
       if (bottomY < vTop || topY > vBottom) continue;
 
@@ -189,7 +192,7 @@ export class FallingNotesView extends Container {
 
       const radius = Math.min(4, Math.max(2, Math.floor(width / 4)));
 
-      // Note body
+      // Note body (clipped by fallingNotesMask at keyboard top edge in PianoScene)
       this.notesGraphics
         .roundRect(x, topY, width, height, radius)
         .fill(fillColor)
@@ -228,8 +231,9 @@ export class FallingNotesView extends Container {
         const noteName = this.showNoteNames ? this.getNoteName(note.pitch) : "";
         label.text = showFinger ? `${noteName}${noteName ? " · " : ""}${note.finger}` : noteName;
 
-        // Position near bottom of note if long, or center if short
-        const labelY = height > 24 ? bottomY - 9 : topY + height / 2;
+        // Position near bottom of note if long, or center if short (clamped above keyboard)
+        const rawLabelY = height > 24 ? bottomY - 9 : topY + height / 2;
+        const labelY = Math.min(hitY - 10, Math.max(topY + 8, rawLabelY));
         label.position.set(x + width / 2, labelY);
         label.visible = true;
         labelIndex += 1;

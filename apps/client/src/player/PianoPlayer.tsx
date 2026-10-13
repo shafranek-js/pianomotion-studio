@@ -21,7 +21,7 @@ import { postM1ReplanDocumentRequest, postM1ExportMidiRequest, postM1SampleMotio
 import { PianoScene, MotionBuffer } from "../render";
 import { downloadProjectPackage, saveProject, createAutosaveService, type SavedProject, type SessionSnapshot } from "../storage";
 import { ProfileModal, type PianistProfile } from "../profiles";
-import { SettingsModal, getSettings, type AppSettings } from "../settings";
+import { SettingsModal, getSettings, updateSettings, type AppSettings, type SkinStyleSetting } from "../settings";
 import { VideoExportModal } from "../export";
 import { runWorkerJob } from "./workerJob";
 
@@ -314,6 +314,11 @@ export function PianoPlayer({result, projectName = "Untitled Piano Piece", rawMi
     if (style === keyStyle) return;
     setRebuildStatus("Scheduling updated performance…");
     setKeyStyle(style); setDraftPlan(plan => ({...plan, inputRevision: plan.inputRevision + 1}));
+  };
+  const handleSkinStyleChange = (style: SkinStyleSetting) => {
+    const next = { ...settings, skinStyle: style };
+    setSettings(next);
+    void updateSettings({ skinStyle: style });
   };
   const togglePlay = async () => {
     try {if (isPlaying) transportRef.current?.pause(); else await transportRef.current?.play();}
@@ -647,6 +652,24 @@ export function PianoPlayer({result, projectName = "Untitled Piano Piece", rawMi
             >
               <option value="realistic">Realistic</option>
               <option value="equal">Equal</option>
+            </select>
+          </label>
+
+          <label className="extra-label">
+            <span>Hands</span>
+            <select
+              id="player-skinstyle-select"
+              value={settings.skinStyle}
+              onChange={(e) => handleSkinStyleChange(e.target.value as SkinStyleSetting)}
+            >
+              <option value="photo-segmented">Photo Rig</option>
+              <option value="photo-mesh">Photo Mesh</option>
+              <option value="photo-3d">Photo 3D</option>
+              <option value="realistic">Realistic</option>
+              <option value="cartoon">Cartoon</option>
+              <option value="gloves">Gloves</option>
+              <option value="robot">Robot</option>
+              <option value="skeleton">Skeleton</option>
             </select>
           </label>
         </div>
