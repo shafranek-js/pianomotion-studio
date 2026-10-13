@@ -42,6 +42,10 @@ export { renderCartoonSkin } from "./cartoonSkin";
 export { renderGlovesSkin } from "./glovesSkin";
 export { renderRobotSkin } from "./robotSkin";
 export { renderRealisticSkin } from "./realisticSkin";
+export { PhotoRigRenderer } from "./photoRigSkin";
+export { PhotoMeshRenderer } from "./photoMeshSkin";
+export { renderPhoto3dSkin } from "./photo3dSkin";
 export { renderSkeletonSkin } from "./skeletonSkin";
 export { renderHandShadow } from "./shadowRenderer";
+
 

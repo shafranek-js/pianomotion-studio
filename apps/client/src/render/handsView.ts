@@ -12,6 +12,9 @@ import {
   renderRealisticSkin,
   renderRobotSkin,
   renderSkeletonSkin,
+  PhotoRigRenderer,
+  PhotoMeshRenderer,
+  renderPhoto3dSkin,
   type SkinSettings,
 } from "./skins";
 
@@ -29,6 +32,8 @@ export class SingleHandRenderer {
   public readonly handGraphics = new Graphics();
   public readonly labelsContainer = new Container();
   private labelTextPool: Text[] = [];
+  private photoRigRenderer?: PhotoRigRenderer;
+  private photoMeshRenderer?: PhotoMeshRenderer;
 
   public constructor() {
     this.container.addChild(this.shadowGraphics);
@@ -39,6 +44,8 @@ export class SingleHandRenderer {
   public clear(): void {
     this.shadowGraphics.clear();
     this.handGraphics.clear();
+    if (this.photoRigRenderer) this.photoRigRenderer.container.visible = false;
+    if (this.photoMeshRenderer) this.photoMeshRenderer.container.visible = false;
     for (const text of this.labelTextPool) {
       text.visible = false;
     }
@@ -87,6 +94,31 @@ export class SingleHandRenderer {
         break;
       case "realistic":
         renderRealisticSkin(this.handGraphics, geom, skinSettings, ppi);
+        break;
+      case "photo-segmented":
+        if (!this.photoRigRenderer) {
+          this.photoRigRenderer = new PhotoRigRenderer();
+          this.container.addChildAt(
+            this.photoRigRenderer.container,
+            this.container.getChildIndex(this.handGraphics) + 1,
+          );
+        }
+        this.photoRigRenderer.container.visible = true;
+        this.photoRigRenderer.render(this.handGraphics, geom, skinSettings, ppi);
+        break;
+      case "photo-mesh":
+        if (!this.photoMeshRenderer) {
+          this.photoMeshRenderer = new PhotoMeshRenderer();
+          this.container.addChildAt(
+            this.photoMeshRenderer.container,
+            this.container.getChildIndex(this.handGraphics) + 1,
+          );
+        }
+        this.photoMeshRenderer.container.visible = true;
+        this.photoMeshRenderer.render(this.handGraphics, geom, skinSettings, ppi);
+        break;
+      case "photo-3d":
+        renderPhoto3dSkin(this.handGraphics, geom, skinSettings, ppi);
         break;
       case "skeleton":
       default:
@@ -145,6 +177,8 @@ export class SingleHandRenderer {
   public destroy(): void {
     this.shadowGraphics.destroy();
     this.handGraphics.destroy();
+    this.photoRigRenderer?.destroy();
+    this.photoMeshRenderer?.destroy();
     for (const text of this.labelTextPool) {
       text.destroy();
     }

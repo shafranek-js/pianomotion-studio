@@ -6,3 +6,4 @@ dist/
 /apps/client/dist/
 test-results/
 *.zip
+node_modules/

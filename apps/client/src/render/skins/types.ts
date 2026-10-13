@@ -1,4 +1,12 @@
-export type SkinStyle = "skeleton" | "cartoon" | "gloves" | "robot" | "realistic";
+export type SkinStyle =
+  | "skeleton"
+  | "cartoon"
+  | "gloves"
+  | "robot"
+  | "realistic"
+  | "photo-segmented"
+  | "photo-mesh"
+  | "photo-3d";
 
 export interface CartoonColorSlots {
   skin: [number, number, number];
@@ -38,6 +46,9 @@ export interface SkinColorSlots {
   robot: RobotColorSlots;
   skeleton: SkeletonColorSlots;
   realistic: RealisticColorSlots;
+  "photo-segmented": RealisticColorSlots;
+  "photo-mesh": RealisticColorSlots;
+  "photo-3d": RealisticColorSlots;
 }
 
 export interface SkinSettings {
@@ -81,6 +92,30 @@ export const DEFAULT_SKIN_COLORS: Record<SkinStyle, Record<string, [number, numb
     crease: [140, 95, 78],
     sleeve: [32, 36, 44],
   },
+  "photo-segmented": {
+    skin: [232, 190, 165],
+    shadow: [175, 122, 98],
+    highlight: [248, 220, 202],
+    nail: [240, 196, 188],
+    crease: [140, 95, 78],
+    sleeve: [32, 36, 44],
+  },
+  "photo-mesh": {
+    skin: [232, 190, 165],
+    shadow: [175, 122, 98],
+    highlight: [248, 220, 202],
+    nail: [240, 196, 188],
+    crease: [140, 95, 78],
+    sleeve: [32, 36, 44],
+  },
+  "photo-3d": {
+    skin: [232, 190, 165],
+    shadow: [175, 122, 98],
+    highlight: [248, 220, 202],
+    nail: [240, 196, 188],
+    crease: [140, 95, 78],
+    sleeve: [32, 36, 44],
+  },
 };
 
 export const DEFAULT_SKIN_SETTINGS: SkinSettings = {
@@ -111,6 +146,30 @@ export const DEFAULT_SKIN_SETTINGS: SkinSettings = {
       crease: [140, 95, 78],
       sleeve: [32, 36, 44],
     },
+    "photo-segmented": {
+      skin: [232, 190, 165],
+      shadow: [175, 122, 98],
+      highlight: [248, 220, 202],
+      nail: [240, 196, 188],
+      crease: [140, 95, 78],
+      sleeve: [32, 36, 44],
+    },
+    "photo-mesh": {
+      skin: [232, 190, 165],
+      shadow: [175, 122, 98],
+      highlight: [248, 220, 202],
+      nail: [240, 196, 188],
+      crease: [140, 95, 78],
+      sleeve: [32, 36, 44],
+    },
+    "photo-3d": {
+      skin: [232, 190, 165],
+      shadow: [175, 122, 98],
+      highlight: [248, 220, 202],
+      nail: [240, 196, 188],
+      crease: [140, 95, 78],
+      sleeve: [32, 36, 44],
+    },
   },
   finger_width: 0.75,
   outline: 1.0,
@@ -125,6 +184,9 @@ const VALID_STYLES: readonly SkinStyle[] = [
   "gloves",
   "robot",
   "realistic",
+  "photo-segmented",
+  "photo-mesh",
+  "photo-3d",
 ] as const;
 
 function isSkinStyle(val: unknown): val is SkinStyle {
@@ -172,6 +234,9 @@ export function normalizeSkinSettings(
       gloves: { ...DEFAULT_SKIN_COLORS.gloves },
       robot: { ...DEFAULT_SKIN_COLORS.robot },
       realistic: { ...DEFAULT_SKIN_COLORS.realistic },
+      "photo-segmented": { ...DEFAULT_SKIN_COLORS["photo-segmented"] },
+      "photo-mesh": { ...DEFAULT_SKIN_COLORS["photo-mesh"] },
+      "photo-3d": { ...DEFAULT_SKIN_COLORS["photo-3d"] },
     },
     finger_width: DEFAULT_SKIN_SETTINGS.finger_width,
     outline: DEFAULT_SKIN_SETTINGS.outline,

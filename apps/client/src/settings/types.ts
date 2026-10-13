@@ -17,7 +17,16 @@ export const RenderCapFpsSchema = z.union([
 ]);
 export type RenderCapFps = z.infer<typeof RenderCapFpsSchema>;
 
-export const SkinStyleSchema = z.enum(["cartoon", "gloves", "robot", "skeleton", "realistic"]);
+export const SkinStyleSchema = z.enum([
+  "cartoon",
+  "gloves",
+  "robot",
+  "skeleton",
+  "realistic",
+  "photo-segmented",
+  "photo-mesh",
+  "photo-3d",
+]);
 export type SkinStyleSetting = z.infer<typeof SkinStyleSchema>;
 
 export const SoundOutputSchema = z.enum(["synth", "soundfont", "webmidi"]);
@@ -33,7 +42,15 @@ export interface Settings {
   showNoteNames: boolean;
   soundTimbre: "acoustic" | "bright" | "warm";
   renderCapFps: number;
-  skinStyle: "cartoon" | "gloves" | "robot" | "skeleton" | "realistic";
+  skinStyle:
+    | "cartoon"
+    | "gloves"
+    | "robot"
+    | "skeleton"
+    | "realistic"
+    | "photo-segmented"
+    | "photo-mesh"
+    | "photo-3d";
   showHandShadow: boolean;
   soundOutput: "synth" | "soundfont" | "webmidi";
 }
@@ -131,13 +148,20 @@ export function sanitizeSettings(input: Partial<Settings> | unknown): Settings {
       ? raw.renderCapFps
       : DEFAULT_SETTINGS.renderCapFps;
 
-  const skinStyle: "cartoon" | "gloves" | "robot" | "skeleton" | "realistic" =
-    raw.skinStyle === "cartoon" ||
-    raw.skinStyle === "gloves" ||
-    raw.skinStyle === "robot" ||
-    raw.skinStyle === "skeleton" ||
-    raw.skinStyle === "realistic"
-      ? raw.skinStyle
+  const VALID_SKIN_STYLES = [
+    "cartoon",
+    "gloves",
+    "robot",
+    "skeleton",
+    "realistic",
+    "photo-segmented",
+    "photo-mesh",
+    "photo-3d",
+  ] as const;
+
+  const skinStyle: (typeof VALID_SKIN_STYLES)[number] =
+    typeof raw.skinStyle === "string" && (VALID_SKIN_STYLES as readonly string[]).includes(raw.skinStyle)
+      ? (raw.skinStyle as (typeof VALID_SKIN_STYLES)[number])
       : DEFAULT_SETTINGS.skinStyle;
 
   const showHandShadow =

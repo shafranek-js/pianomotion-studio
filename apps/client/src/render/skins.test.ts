@@ -145,7 +145,16 @@ describe("normalizeSkinSettings", () => {
   });
 
   it("preserves valid styles and falls back for invalid style strings", () => {
-    const validStyles: SkinStyle[] = ["skeleton", "cartoon", "gloves", "robot", "realistic"];
+    const validStyles: SkinStyle[] = [
+      "skeleton",
+      "cartoon",
+      "gloves",
+      "robot",
+      "realistic",
+      "photo-segmented",
+      "photo-mesh",
+      "photo-3d",
+    ];
     for (const style of validStyles) {
       expect(normalizeSkinSettings({ style }).style).toBe(style);
     }
@@ -496,17 +505,59 @@ describe("Skin renderers execution & visual rendering", () => {
     expect(Object.keys(buildHandGeometry(missingDistal, goldenLayout, DEFAULT_SKIN_SETTINGS).chains)).toHaveLength(0);
   });
 
-  it("renders all 5 skin styles without errors", () => {
+  it("renders all 8 skin styles without errors", () => {
     const pose = createMockPose("right");
     const renderer = new SingleHandRenderer();
 
-    const styles: SkinStyle[] = ["skeleton", "cartoon", "gloves", "robot", "realistic"];
+    const styles: SkinStyle[] = [
+      "skeleton",
+      "cartoon",
+      "gloves",
+      "robot",
+      "realistic",
+      "photo-segmented",
+      "photo-mesh",
+      "photo-3d",
+    ];
     for (const style of styles) {
       const settings = normalizeSkinSettings({ style });
       expect(() => {
         renderer.render(pose, layout, settings);
       }).not.toThrow();
     }
+
+    renderer.destroy();
+  });
+
+  it("renders photo-segmented skin with sprites container", () => {
+    const pose = createMockPose("right");
+    const renderer = new SingleHandRenderer();
+
+    const settings = normalizeSkinSettings({ style: "photo-segmented" });
+    renderer.render(pose, layout, settings);
+    expect(renderer.container.children.length).toBeGreaterThanOrEqual(4);
+
+    renderer.destroy();
+  });
+
+  it("renders photo-mesh skin with 2.5D deformable mesh container", () => {
+    const pose = createMockPose("right");
+    const renderer = new SingleHandRenderer();
+
+    const settings = normalizeSkinSettings({ style: "photo-mesh" });
+    renderer.render(pose, layout, settings);
+    expect(renderer.container.children.length).toBeGreaterThanOrEqual(4);
+
+    renderer.destroy();
+  });
+
+  it("renders photo-3d skin with 3D PBR volumetric instructions", () => {
+    const pose = createMockPose("left");
+    const renderer = new SingleHandRenderer();
+
+    const settings = normalizeSkinSettings({ style: "photo-3d" });
+    renderer.render(pose, layout, settings);
+    expect(renderer.handGraphics.context.instructions.length).toBeGreaterThan(0);
 
     renderer.destroy();
   });
