@@ -30,6 +30,7 @@ type DiagnosticStatus = {
   tone: "neutral" | "working" | "success" | "warning" | "error";
   message: string;
   stage?: M1EngineStage;
+  progress?: number;
 };
 
 const maxMidiBytes = 16 * 1024 * 1024;
@@ -279,11 +280,21 @@ export default function App() {
       if (!isCurrentM1WorkerMessage(message, request)) return;
 
       if (message.type === "progress") {
-        setStatus({ tone: "working", stage: message.stage, message: message.message ?? stageLabel(message.stage) });
+        setStatus({
+          tone: "working",
+          stage: message.stage,
+          message: message.message ?? stageLabel(message.stage),
+          progress: message.progress,
+        });
         return;
       }
       if (message.type === "engine-loaded") {
-        setStatus({ tone: "working", stage: "compute", message: `Pyodide ${message.runtimeVersion} initialized; analyzing ${fileName}.` });
+        setStatus({
+          tone: "working",
+          stage: "compute",
+          message: `Pyodide ${message.runtimeVersion} initialized; analyzing ${fileName}.`,
+          progress: 0.05,
+        });
         return;
       }
       if (message.type === "worker-error") {
@@ -483,9 +494,22 @@ export default function App() {
         <div className="results-column">
           <section className={`status-card tone-${status.tone}`} role="status" aria-live="polite" aria-atomic="true">
             <div className="status-symbol" aria-hidden="true">{status.tone === "success" ? "✓" : status.tone === "error" ? "!" : status.tone === "working" ? "…" : "·"}</div>
-            <div>
+            <div className="status-body">
               <p className="section-kicker">{status.stage ? `${status.stage} stage` : "Engine status"}</p>
               <h2>{status.message}</h2>
+              {status.tone === "working" && typeof status.progress === "number" && (
+                <div className="status-progress" data-testid="analysis-progress-bar">
+                  <div className="status-progress-track">
+                    <div
+                      className="status-progress-fill"
+                      style={{ width: `${Math.min(100, Math.max(2, Math.round(status.progress * 100)))}%` }}
+                    />
+                  </div>
+                  <div className="status-progress-meta">
+                    <span className="status-progress-percent">{Math.round(status.progress * 100)}%</span>
+                  </div>
+                </div>
+              )}
               {result && <p className="result-state">Input status: <strong>{result.status}</strong></p>}
             </div>
           </section>

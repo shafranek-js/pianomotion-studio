@@ -184,13 +184,19 @@ __export_marked_count = __res["markedCount"]
         rawBaseline: request.rawBaseline,
       };
       runtime.pyodide.globals.set("__m1_replan_options_json", JSON.stringify(options));
+      runtime.pyodide.globals.set("__m1_progress_cb", (fraction: number, message: string) => {
+        postProgress(request, "compute", message, fraction);
+      });
 
       let responseJson: string;
       try {
-        postProgress(request, "compute", "Rebuilding plans from the original MIDI and edited note identities.");
+        postProgress(request, "compute", "Rebuilding plans from the original MIDI and edited note identities.", 0.05);
         responseJson = String(await runtime.pyodide.runPythonAsync(`
 import json
+import handthesia_core.api
 from handthesia_core.api import replan_document
+
+handthesia_core.api.set_progress_callback(__m1_progress_cb)
 
 with open(__m1_replan_input_path, "rb") as __m1_replan_file:
     __m1_replan_bytes = __m1_replan_file.read()
@@ -203,6 +209,12 @@ __m1_replan_result = replan_document(
 json.dumps(__m1_replan_result, separators=(",", ":"), allow_nan=False)
 `));
       } finally {
+        try {
+          runtime.pyodide.runPython("import handthesia_core.api; handthesia_core.api.set_progress_callback(None)");
+        } catch {
+          // ignore
+        }
+        runtime.pyodide.globals.delete("__m1_progress_cb");
         runtime.pyodide.FS.unlink(inputPath);
         runtime.pyodide.globals.delete("__m1_replan_input_path");
         runtime.pyodide.globals.delete("__m1_replan_document_json");
@@ -375,7 +387,7 @@ json.dumps(__sm_result, separators=(",", ":"), allow_nan=False)
       request.engineVersion = runtime.engineVersion;
     }
 
-    postProgress(request, "compute", "Running synchronous Python analysis in the Worker.");
+    postProgress(request, "compute", "Starting Python analysis in the Worker.", 0.05);
     const inputPath = `/tmp/m1-${crypto.randomUUID()}.mid`;
     const options = {
       ...request.options,
@@ -390,12 +402,18 @@ json.dumps(__sm_result, separators=(",", ":"), allow_nan=False)
     runtime.pyodide.FS.writeFile(inputPath, new Uint8Array(request.midiBytes));
     runtime.pyodide.globals.set("__m1_request_options_json", JSON.stringify(options));
     runtime.pyodide.globals.set("__m1_input_path", inputPath);
+    runtime.pyodide.globals.set("__m1_progress_cb", (fraction: number, message: string) => {
+      postProgress(request, "compute", message, fraction);
+    });
 
     let responseJson: string;
     try {
       responseJson = String(await runtime.pyodide.runPythonAsync(`
 import json
+import handthesia_core.api
 from handthesia_core.api import analyze_midi
+
+handthesia_core.api.set_progress_callback(__m1_progress_cb)
 
 with open(__m1_input_path, "rb") as __m1_input_file:
     __m1_midi_bytes = __m1_input_file.read()
@@ -403,6 +421,12 @@ __m1_analysis_result = analyze_midi(__m1_midi_bytes, json.loads(__m1_request_opt
 json.dumps(__m1_analysis_result, separators=(",", ":"), allow_nan=False)
 `));
     } finally {
+      try {
+        runtime.pyodide.runPython("import handthesia_core.api; handthesia_core.api.set_progress_callback(None)");
+      } catch {
+        // ignore
+      }
+      runtime.pyodide.globals.delete("__m1_progress_cb");
       runtime.pyodide.FS.unlink(inputPath);
       runtime.pyodide.globals.delete("__m1_request_options_json");
       runtime.pyodide.globals.delete("__m1_input_path");
@@ -616,6 +640,7 @@ function postProgress(
   identity: { requestId: string; projectId: string; revision: number; engineVersion: string },
   stage: M1EngineStage,
   message: string,
+  progress?: number,
 ): void {
   workerScope.postMessage(M1EngineProgressSchema.parse({
     requestId: identity.requestId,
@@ -625,6 +650,7 @@ function postProgress(
     type: "progress",
     stage,
     message,
+    ...(typeof progress === "number" ? { progress: Math.max(0, Math.min(1, progress)) } : {}),
   }));
 }
 

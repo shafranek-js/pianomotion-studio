@@ -42,6 +42,23 @@ def _finite(value, label):
     return number
 
 
+_global_progress_callback = None
+
+
+def set_progress_callback(callback):
+    global _global_progress_callback
+    _global_progress_callback = callback
+
+
+def _report_progress(fraction: float, message: str):
+    cb = _global_progress_callback
+    if cb is not None:
+        try:
+            cb(float(fraction), str(message))
+        except Exception:
+            pass
+
+
 def _default_profile_dto():
     p = pianist.default_pianist()
     return {
@@ -446,6 +463,7 @@ def analyze_midi(data: bytes, options: dict) -> dict:
     song = midi_loader.load_midi(source_bytes, fixture_id=fixture_id,
                                  source_event_map=source_event_map,
                                  pianist_context=profile_context, decoded=(decoded, list(cleanup)))
+    _report_progress(0.15, f"Loaded {len(song.notes)} notes; planning fingering...")
 
     desktop_notes, unmapped_source_ids, entry_by_object = _map_desktop_notes(source_notes, song.notes, fixture_id)
     aliases_by_note = {}
@@ -600,6 +618,7 @@ def analyze_midi(data: bytes, options: dict) -> dict:
         planning_song.cleanup = list(song.cleanup)
 
     animators = hands.build_hands(planning_song, pianist=profile_context, key_style=key_style)
+    _report_progress(0.28, "Solving kinematics and scheduling rolled chords...")
     keyboard = KeyboardGeometry(keyboard_rect, style=key_style)
     _active_animator_sessions[(project_id, revision, profile_dto["profileId"])] = {
         "animators": animators,
@@ -788,6 +807,9 @@ def analyze_midi(data: bytes, options: dict) -> dict:
         sample_times_by_hand = {hand_name: shared for hand_name in animators}
 
     sampled, raw_poses, motion_poses = {}, [], []
+    total_samples = sum(len(times) for times in sample_times_by_hand.values())
+    solved_count = 0
+    report_step = max(1, total_samples // 40)
     for hand_name, animator in animators.items():
         for sample_time in sample_times_by_hand[hand_name]:
             pose = animator.pose(sample_time, keyboard)
@@ -796,6 +818,12 @@ def analyze_midi(data: bytes, options: dict) -> dict:
             else:
                 pose["hand"] = hand_name
             sampled[(hand_name, sample_time)] = pose
+            solved_count += 1
+            if solved_count % report_step == 0 or solved_count == total_samples:
+                frac = 0.38 + 0.56 * (solved_count / max(1, total_samples))
+                _report_progress(frac, f"Calculating hand poses: {solved_count}/{total_samples} ({int(frac * 100)}%)")
+
+    _report_progress(0.96, "Arranging hand crossings and finalizing motion plan...")
     if len(animators) == 2:
         for sample_time in sorted(set(t for times in sample_times_by_hand.values() for t in times)):
             paired = [sampled[(hand_name, sample_time)] for hand_name in animators
@@ -911,6 +939,7 @@ def analyze_midi(data: bytes, options: dict) -> dict:
         },
     }
 
+    _report_progress(1.0, "Analysis complete.")
     return {
         **common_result,
         "status": raw_status,

@@ -259,6 +259,48 @@ select:disabled, input:disabled { opacity: 0.58; }
 }
 
 .status-card h2 { font-size: 0.9rem; line-height: 1.45; }
+.status-body { flex: 1; min-width: 0; }
+
+.status-progress {
+  margin-top: 0.65rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.status-progress-track {
+  width: 100%;
+  height: 0.6rem;
+  border-radius: 999px;
+  background: #17211a;
+  border: 1px solid #3c4c40;
+  overflow: hidden;
+  position: relative;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+.status-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #3b82f6 0%, #10b981 100%);
+  border-radius: 999px;
+  transition: width 140ms ease-out;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.35);
+}
+
+.status-progress-meta {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #a8d8b2;
+}
+
+.status-progress-percent {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
 .tone-working .status-symbol { border-color: #806842; background: #382f20; color: #f0c789; }
 .tone-success .status-symbol { border-color: #54785d; background: #233a29; color: #a8d8b2; }
 .tone-warning .status-symbol { border-color: #806842; background: #382f20; color: #f0c789; }
