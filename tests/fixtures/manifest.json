@@ -1,0 +1,152 @@
+{
+  "desktopSourceCommit": "f8189c021d9235005fb35faa2c8cfbc09a3768a0",
+  "desktopVersion": "v26.1.20",
+  "fingeringSourceSha256": "2f6b01b3142d081d9b314952edb60de69641de4464c07abee980f5ad21981db9",
+  "fixtureSources": {
+    "synthetic-crossing-wide-chord": {
+      "fixturePath": "midi/synthetic-crossing-wide-chord.mid",
+      "fixtureSha256": "62ba063f8b6994d9d81a59582189ec2bd2bc25566fceb4e4f7852a5e2ba9824f",
+      "generator": "web/tools/generate_desktop_baseline.py",
+      "kind": "generated-from-original-material",
+      "scenarios": [
+        "alternating hand crossings",
+        "six-note wide chord"
+      ]
+    },
+    "synthetic-duplicate-identities": {
+      "fixturePath": "midi/synthetic-duplicate-identities.mid",
+      "fixtureSha256": "32ff15ffdc36447be4238f5a2624792a3f606ef8491b0aaeab9bc52c6bd8244e",
+      "generator": "web/tools/generate_desktop_baseline.py",
+      "kind": "generated-from-original-material",
+      "scenarios": [
+        "same pitch and onset on separate tracks",
+        "distinct manual fingering markers"
+      ]
+    },
+    "synthetic-invalid-empty": {
+      "fixturePath": "midi/synthetic-invalid-empty.mid",
+      "fixtureSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "generator": "web/tools/generate_desktop_baseline.py",
+      "kind": "generated-from-original-material",
+      "scenarios": [
+        "empty MIDI file"
+      ]
+    },
+    "synthetic-invalid-non-midi": {
+      "fixturePath": "midi/synthetic-invalid-non-midi.mid",
+      "fixtureSha256": "f6cc269372b52065d55bb49b1013257393ffd33b5c587f424ffa94cf9b249c5c",
+      "generator": "web/tools/generate_desktop_baseline.py",
+      "kind": "generated-from-original-material",
+      "scenarios": [
+        "non-MIDI bytes"
+      ]
+    },
+    "synthetic-invalid-truncated": {
+      "fixturePath": "midi/synthetic-invalid-truncated.mid",
+      "fixtureSha256": "3c58119b6660dd9e694c73ba48518e3610ff1f85f7a0d354afabea8ed0f9cf00",
+      "generator": "web/tools/generate_desktop_baseline.py",
+      "kind": "generated-from-original-material",
+      "scenarios": [
+        "truncated MIDI header and track"
+      ]
+    },
+    "synthetic-manual-fingering-gliss": {
+      "fixturePath": "midi/synthetic-manual-fingering-gliss.mid",
+      "fixtureSha256": "d99259cc11da4ea31391c9b68b2bbfc52eddc07ef106edcd5b34ccede381441d",
+      "generator": "web/tools/generate_desktop_baseline.py",
+      "kind": "generated-from-original-material",
+      "scenarios": [
+        "manual finger markers",
+        "explicit glissando markers"
+      ]
+    },
+    "synthetic-mismatched-track-labels": {
+      "fixturePath": "midi/synthetic-mismatched-track-labels.mid",
+      "fixtureSha256": "5f89558bf561c4351e8c6aeebd860a1e0bd8229b50acfaf2b148f5da247c5713",
+      "generator": "web/tools/generate_desktop_baseline.py",
+      "kind": "generated-from-original-material",
+      "scenarios": [
+        "contradictory hand labels and pitch registers"
+      ]
+    },
+    "synthetic-scale-chords": {
+      "fixturePath": "midi/synthetic-scale-chords.mid",
+      "fixtureSha256": "0dfa1e7310beec7a49c67bd3bdf284df06957df7af08c8519de606d4d097e91e",
+      "generator": "web/tools/generate_desktop_baseline.py",
+      "kind": "generated-from-original-material",
+      "scenarios": [
+        "diatonic scale",
+        "overlapping wide chord"
+      ]
+    },
+    "synthetic-stress-512": {
+      "fixturePath": "midi/synthetic-stress-512.mid",
+      "fixtureSha256": "72a96987c1043d6b898806f9193ad0b57774186b36a69a57f24248142e418b6c",
+      "generator": "web/tools/generate_desktop_baseline.py",
+      "kind": "generated-from-original-material",
+      "scenarios": [
+        "512-note deterministic scale material"
+      ]
+    },
+    "synthetic-tempo-pedals-overlap": {
+      "fixturePath": "midi/synthetic-tempo-pedals-overlap.mid",
+      "fixtureSha256": "6080ab8e5b5d3ed1861774f9b6a9e8e9a610059e10d9513345ba428564806d1e",
+      "generator": "web/tools/generate_desktop_baseline.py",
+      "kind": "generated-from-original-material",
+      "scenarios": [
+        "tempo map changes",
+        "overlapping notes",
+        "controllers 64/66/67",
+        "half-pedal threshold"
+      ]
+    },
+    "tracked-demo-song": {
+      "fixturePath": "midi/tracked-demo-song.mid",
+      "fixtureSha256": "e25764180f4fdb4349fb2239e50ca8cddbcb1075b838974a4af8dbd332283ec9",
+      "kind": "tracked-source-copy",
+      "sourcePath": "MIDIs/demo_song.mid",
+      "sourceSha256": "e25764180f4fdb4349fb2239e50ca8cddbcb1075b838974a4af8dbd332283ec9"
+    },
+    "tracked-right-hand": {
+      "fixturePath": "midi/tracked-right-hand.mid",
+      "fixtureSha256": "c526b261c4559ee425885537e1206d8d77ae19887e15b25b3d25dab34e7a4c77",
+      "kind": "tracked-source-copy",
+      "sourcePath": "MIDIs/right_hand_test.mid",
+      "sourceSha256": "c526b261c4559ee425885537e1206d8d77ae19887e15b25b3d25dab34e7a4c77"
+    },
+    "tracked-right-hand-octaves": {
+      "fixturePath": "midi/tracked-right-hand-octaves.mid",
+      "fixtureSha256": "2826b4591f0a9be05a43854478c714ef9c3575664edd1089fe4f32bd7d5dff2a",
+      "kind": "tracked-source-copy",
+      "sourcePath": "MIDIs/right_hand_octaves_test.mid",
+      "sourceSha256": "2826b4591f0a9be05a43854478c714ef9c3575664edd1089fe4f32bd7d5dff2a"
+    }
+  },
+  "generatorSha256": "5804f4ae8543d97e946a7f39b8fde867e6a0b25cad33b8f0e44cc17042c37e1c",
+  "learnedWeightsFileSha256": "950aeb9daa52f2862b070ba8ff5ffb74caf5482795302ee1095a009fb1a08f27",
+  "method": "Exact desktop implementation outputs from the source commit; no independent correctness claim.",
+  "packages": {
+    "imageio-ffmpeg": "0.6.0",
+    "mido": "1.3.3",
+    "numpy": "2.5.4",
+    "pretty_midi": "0.2.11.post0",
+    "pygame-ce": "2.5.8",
+    "pytest": "8.3.5"
+  },
+  "platform": "win32",
+  "purpose": "W001/W004/W005 desktop reference data",
+  "python": "3.14.0 (tags/v3.14.0:ebf955d, Oct  7 2025, 10:15:03) [MSC v.1944 64 bit (AMD64)]",
+  "runtimeLearnedWeightsSource": "fingering.py::LEARNED_W",
+  "schemaVersion": 1,
+  "sourceModuleSha256": {
+    "common.py": "04ee112250aaf8287984e81e503ee3d750bd9884cc0d0d3e831fd9530e6f1d41",
+    "figures.py": "0c89b85176c73f566528c692944e6c7192444f9c7134c13d5ec027063fb86fb9",
+    "fingering.py": "2f6b01b3142d081d9b314952edb60de69641de4464c07abee980f5ad21981db9",
+    "glissando.py": "7c1a472b3edb380d222a06ca41def651bb84078ecaddcb6180ee4b0a2b772923",
+    "hands.py": "481cd21d7a6cd897279c98a4a407d80bdc3ff0015f4ddc6d3beca0e4091787dc",
+    "midi_loader.py": "16d9cca67fd8ecd9862d575392d3a39a7a37b738e39432599e25f2c10eeaaf5a",
+    "paths.py": "111f4dc44563be46a64ed164f88a1aa23f6ce87dd95c5226f0f7d419e81e500e",
+    "pianist.py": "c7eeb5a36cb93ec7fe5238ed3a57a1f1108ab9048e32b58e5266ebb39d5511db",
+    "version.py": "238aa7481cc5dab07827a97a9a147ef7906b47bdde444c25dd28d120055dea1c"
+  }
+}

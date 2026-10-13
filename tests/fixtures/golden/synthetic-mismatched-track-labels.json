@@ -1,0 +1,7847 @@
+{
+  "assignments": [
+    {
+      "finger": 1,
+      "gliss": false,
+      "hand": "L",
+      "manualFinger": null,
+      "noteId": "synthetic-mismatched-track-labels/instrument-0/note-000000",
+      "sourceNoteIds": [
+        "synthetic-mismatched-track-labels/instrument-0/note-000000"
+      ]
+    },
+    {
+      "finger": 3,
+      "gliss": false,
+      "hand": "L",
+      "manualFinger": null,
+      "noteId": "synthetic-mismatched-track-labels/instrument-0/note-000001",
+      "sourceNoteIds": [
+        "synthetic-mismatched-track-labels/instrument-0/note-000001"
+      ]
+    },
+    {
+      "finger": 4,
+      "gliss": false,
+      "hand": "L",
+      "manualFinger": null,
+      "noteId": "synthetic-mismatched-track-labels/instrument-0/note-000002",
+      "sourceNoteIds": [
+        "synthetic-mismatched-track-labels/instrument-0/note-000002"
+      ]
+    },
+    {
+      "finger": 1,
+      "gliss": false,
+      "hand": "R",
+      "manualFinger": null,
+      "noteId": "synthetic-mismatched-track-labels/instrument-1/note-000000",
+      "sourceNoteIds": [
+        "synthetic-mismatched-track-labels/instrument-1/note-000000"
+      ]
+    },
+    {
+      "finger": 3,
+      "gliss": false,
+      "hand": "R",
+      "manualFinger": null,
+      "noteId": "synthetic-mismatched-track-labels/instrument-1/note-000001",
+      "sourceNoteIds": [
+        "synthetic-mismatched-track-labels/instrument-1/note-000001"
+      ]
+    },
+    {
+      "finger": 5,
+      "gliss": false,
+      "hand": "R",
+      "manualFinger": null,
+      "noteId": "synthetic-mismatched-track-labels/instrument-1/note-000002",
+      "sourceNoteIds": [
+        "synthetic-mismatched-track-labels/instrument-1/note-000002"
+      ]
+    }
+  ],
+  "cleanup": [],
+  "crossingEpisodes": [
+    {
+      "end": 2.3,
+      "lead": 0.4,
+      "start": 0.0,
+      "strength": 1.0,
+      "topHand": "R"
+    }
+  ],
+  "desktopNotes": [
+    {
+      "end": 0.3,
+      "gliss": false,
+      "hand": "R",
+      "manualFinger": null,
+      "noteId": "synthetic-mismatched-track-labels/instrument-1/note-000000",
+      "pitch": 36,
+      "sourceNoteIds": [
+        "synthetic-mismatched-track-labels/instrument-1/note-000000"
+      ],
+      "start": 0.0,
+      "track": 1,
+      "velocity": 88
+    },
+    {
+      "end": 0.3,
+      "gliss": false,
+      "hand": "L",
+      "manualFinger": null,
+      "noteId": "synthetic-mismatched-track-labels/instrument-0/note-000000",
+      "pitch": 84,
+      "sourceNoteIds": [
+        "synthetic-mismatched-track-labels/instrument-0/note-000000"
+      ],
+      "start": 0.0,
+      "track": 0,
+      "velocity": 88
+    },
+    {
+      "end": 1.3,
+      "gliss": false,
+      "hand": "R",
+      "manualFinger": null,
+      "noteId": "synthetic-mismatched-track-labels/instrument-1/note-000001",
+      "pitch": 39,
+      "sourceNoteIds": [
+        "synthetic-mismatched-track-labels/instrument-1/note-000001"
+      ],
+      "start": 1.0,
+      "track": 1,
+      "velocity": 88
+    },
+    {
+      "end": 1.3,
+      "gliss": false,
+      "hand": "L",
+      "manualFinger": null,
+      "noteId": "synthetic-mismatched-track-labels/instrument-0/note-000001",
+      "pitch": 81,
+      "sourceNoteIds": [
+        "synthetic-mismatched-track-labels/instrument-0/note-000001"
+      ],
+      "start": 1.0,
+      "track": 0,
+      "velocity": 88
+    },
+    {
+      "end": 2.3,
+      "gliss": false,
+      "hand": "R",
+      "manualFinger": null,
+      "noteId": "synthetic-mismatched-track-labels/instrument-1/note-000002",
+      "pitch": 43,
+      "sourceNoteIds": [
+        "synthetic-mismatched-track-labels/instrument-1/note-000002"
+      ],
+      "start": 2.0,
+      "track": 1,
+      "velocity": 88
+    },
+    {
+      "end": 2.3,
+      "gliss": false,
+      "hand": "L",
+      "manualFinger": null,
+      "noteId": "synthetic-mismatched-track-labels/instrument-0/note-000002",
+      "pitch": 78,
+      "sourceNoteIds": [
+        "synthetic-mismatched-track-labels/instrument-0/note-000002"
+      ],
+      "start": 2.0,
+      "track": 0,
+      "velocity": 88
+    }
+  ],
+  "duration": 2.3,
+  "fixtureId": "synthetic-mismatched-track-labels",
+  "goldenTrust": "desktop-observation; note IDs use instrument and note ordinals after PrettyMIDI decode, not raw SMF event IDs; raw-event mapping is unavailable; this is not an independent correctness oracle",
+  "hands": [
+    {
+      "assignedCount": 3,
+      "glissRuns": [],
+      "hand": "R",
+      "rolledChords": 0
+    },
+    {
+      "assignedCount": 3,
+      "glissRuns": [],
+      "hand": "L",
+      "rolledChords": 0
+    }
+  ],
+  "identityLosses": [],
+  "inputSha256": "5f89558bf561c4351e8c6aeebd860a1e0bd8229b50acfaf2b148f5da247c5713",
+  "loadSemantics": "midi_loader.load_midi returned a Song; this does not assert UI readiness or playability",
+  "pedals": [],
+  "performanceEvents": [
+    {
+      "hand": "L",
+      "noteId": "synthetic-mismatched-track-labels/instrument-0/note-000000",
+      "press": 0.0,
+      "release": 0.3,
+      "sourceNoteIds": [
+        "synthetic-mismatched-track-labels/instrument-0/note-000000"
+      ]
+    },
+    {
+      "hand": "R",
+      "noteId": "synthetic-mismatched-track-labels/instrument-1/note-000000",
+      "press": 0.0,
+      "release": 0.3,
+      "sourceNoteIds": [
+        "synthetic-mismatched-track-labels/instrument-1/note-000000"
+      ]
+    },
+    {
+      "hand": "L",
+      "noteId": "synthetic-mismatched-track-labels/instrument-0/note-000001",
+      "press": 1.0,
+      "release": 1.3,
+      "sourceNoteIds": [
+        "synthetic-mismatched-track-labels/instrument-0/note-000001"
+      ]
+    },
+    {
+      "hand": "R",
+      "noteId": "synthetic-mismatched-track-labels/instrument-1/note-000001",
+      "press": 1.0,
+      "release": 1.3,
+      "sourceNoteIds": [
+        "synthetic-mismatched-track-labels/instrument-1/note-000001"
+      ]
+    },
+    {
+      "hand": "L",
+      "noteId": "synthetic-mismatched-track-labels/instrument-0/note-000002",
+      "press": 2.0,
+      "release": 2.3,
+      "sourceNoteIds": [
+        "synthetic-mismatched-track-labels/instrument-0/note-000002"
+      ]
+    },
+    {
+      "hand": "R",
+      "noteId": "synthetic-mismatched-track-labels/instrument-1/note-000002",
+      "press": 2.0,
+      "release": 2.3,
+      "sourceNoteIds": [
+        "synthetic-mismatched-track-labels/instrument-1/note-000002"
+      ]
+    }
+  ],
+  "provenance": {
+    "boldFontSha256": "2efc3a95d076f2d04c5928c0ad698b7c61cc302d6f6e79e9643cd3722f7becc2",
+    "desktopTrackCount": 2,
+    "displayInitialized": false,
+    "fingeringSourceSha256": "2f6b01b3142d081d9b314952edb60de69641de4464c07abee980f5ad21981db9",
+    "font": "bundled Source Sans Pro from assets/fonts",
+    "fontChoice": null,
+    "isolatedAppDataRoot": "ephemeral temporary directory, removed at process exit",
+    "isolatedProfileStore": true,
+    "keyStyle": "realistic",
+    "learnedWeightsFileIsRuntimeInput": false,
+    "learnedWeightsFileSha256": "950aeb9daa52f2862b070ba8ff5ffb74caf5482795302ee1095a009fb1a08f27",
+    "learnedWeightsSource": "fingering.py::LEARNED_W (the desktop runtime mapping)",
+    "profile": "pianist.default_pianist() explicitly activated in an isolated temp folder",
+    "profileSha256": "1f170e23b76d2db95b0aa50fac8e2b9f0ce51b0bd35c870301ecb8c3fd33dc5f",
+    "regularFontSha256": "b77f3a700edd0fc0dec73258f882d5c3926c77f5caf6800a201d2166568d2309",
+    "resourceRoot": "repository source tree (read-only bundled assets)",
+    "sdlAudioDriver": "dummy",
+    "sdlVideoDriver": "dummy"
+  },
+  "rawPedals": [],
+  "selectedPoses": [
+    {
+      "armEnd": [
+        821.91642504,
+        -418.37364029,
+        34.9153291
+      ],
+      "boneCount": 28,
+      "bones": [
+        {
+          "end": [
+            843.3891693,
+            -419.35036269,
+            34.9153291
+          ],
+          "start": [
+            960.01108988,
+            -91.54872669,
+            30.03011394
+          ],
+          "type": "forearm"
+        },
+        {
+          "end": [
+            800.44368077,
+            -417.39691789,
+            34.9153291
+          ],
+          "start": [
+            917.06560135,
+            -89.59528189,
+            30.03011394
+          ],
+          "type": "forearm"
+        },
+        {
+          "end": [
+            963.64953493,
+            -76.06537483,
+            23.19081272
+          ],
+          "start": [
+            960.01108988,
+            -91.54872669,
+            30.03011394
+          ],
+          "type": "carpal"
+        },
+        {
+          "end": [
+            953.04635222,
+            -72.64891213,
+            34.9153291
+          ],
+          "start": [
+            963.64953493,
+            -76.06537483,
+            23.19081272
+          ],
+          "type": "carpal"
+        },
+        {
+          "end": [
+            942.35437656,
+            -71.1845171,
+            35.89237213
+          ],
+          "start": [
+            953.04635222,
+            -72.64891213,
+            34.9153291
+          ],
+          "type": "carpal"
+        },
+        {
+          "end": [
+            930.55317765,
+            -72.60382709,
+            34.9153291
+          ],
+          "start": [
+            942.35437656,
+            -71.1845171,
+            35.89237213
+          ],
+          "type": "carpal"
+        },
+        {
+          "end": [
+            920.61525346,
+            -76.06399769,
+            32.96124303
+          ],
+          "start": [
+            930.55317765,
+            -72.60382709,
+            34.9153291
+          ],
+          "type": "carpal"
+        },
+        {
+          "end": [
+            917.06560135,
+            -89.59528189,
+            30.03011394
+          ],
+          "start": [
+            920.61525346,
+            -76.06399769,
+            32.96124303
+          ],
+          "type": "carpal"
+        },
+        {
+          "end": [
+            917.06560135,
+            -89.59528189,
+            30.03011394
+          ],
+          "start": [
+            960.01108988,
+            -91.54872669,
+            30.03011394
+          ],
+          "type": "carpal"
+        },
+        {
+          "end": [
+            970.57574137,
+            -9.86151727,
+            38.82419493
+          ],
+          "start": [
+            953.04635222,
+            -72.64891213,
+            34.9153291
+          ],
+          "type": "metacarpal"
+        },
+        {
+          "end": [
+            978.27852353,
+            27.27111963,
+            48.26958313
+          ],
+          "start": [
+            970.57574137,
+            -9.86151727,
+            38.82419493
+          ],
+          "type": "proximal"
+        },
+        {
+          "end": [
+            981.6047784,
+            43.30592519,
+            32.88090674
+          ],
+          "start": [
+            978.27852353,
+            27.27111963,
+            48.26958313
+          ],
+          "type": "middle"
+        },
+        {
+          "end": [
+            982.37534249,
+            47.020567,
+            15.70818691
+          ],
+          "start": [
+            981.6047784,
+            43.30592519,
+            32.88090674
+          ],
+          "type": "distal"
+        },
+        {
+          "end": [
+            949.18353829,
+            -6.99219232,
+            40.7739126
+          ],
+          "start": [
+            942.35437656,
+            -71.1845171,
+            35.89237213
+          ],
+          "type": "metacarpal"
+        },
+        {
+          "end": [
+            953.00423591,
+            35.16941741,
+            52.64372432
+          ],
+          "start": [
+            949.18353829,
+            -6.99219232,
+            40.7739126
+          ],
+          "type": "proximal"
+        },
+        {
+          "end": [
+            954.69302262,
+            53.80527224,
+            34.04894407
+          ],
+          "start": [
+            953.00423591,
+            35.16941741,
+            52.64372432
+          ],
+          "type": "middle"
+        },
+        {
+          "end": [
+            954.95196448,
+            56.6627101,
+            15.70818832
+          ],
+          "start": [
+            954.69302262,
+            53.80527224,
+            34.04894407
+          ],
+          "type": "distal"
+        },
+        {
+          "end": [
+            928.47013632,
+            -10.89615809,
+            38.82321974
+          ],
+          "start": [
+            930.55317765,
+            -72.60382709,
+            34.9153291
+          ],
+          "type": "metacarpal"
+        },
+        {
+          "end": [
+            927.76194612,
+            28.75498056,
+            49.36945847
+          ],
+          "start": [
+            928.47013632,
+            -10.89615809,
+            38.82321974
+          ],
+          "type": "proximal"
+        },
+        {
+          "end": [
+            927.41025516,
+            48.44594356,
+            33.32387544
+          ],
+          "start": [
+            927.76194612,
+            28.75498056,
+            49.36945847
+          ],
+          "type": "middle"
+        },
+        {
+          "end": [
+            927.30566516,
+            54.30187409,
+            15.70818749
+          ],
+          "start": [
+            927.41025516,
+            48.44594356,
+            33.32387544
+          ],
+          "type": "distal"
+        },
+        {
+          "end": [
+            909.51820501,
+            -18.79341575,
+            34.91666306
+          ],
+          "start": [
+            920.61525346,
+            -76.06399769,
+            32.96124303
+          ],
+          "type": "metacarpal"
+        },
+        {
+          "end": [
+            902.79373909,
+            11.75219424,
+            42.74743041
+          ],
+          "start": [
+            909.51820501,
+            -18.79341575,
+            34.91666306
+          ],
+          "type": "proximal"
+        },
+        {
+          "end": [
+            899.88597561,
+            24.96059029,
+            31.50564119
+          ],
+          "start": [
+            902.79373909,
+            11.75219424,
+            42.74743041
+          ],
+          "type": "middle"
+        },
+        {
+          "end": [
+            898.78289862,
+            29.97127219,
+            15.70818983
+          ],
+          "start": [
+            899.88597561,
+            24.96059029,
+            31.50564119
+          ],
+          "type": "distal"
+        },
+        {
+          "end": [
+            996.05933004,
+            -43.53634567,
+            22.73501998
+          ],
+          "start": [
+            963.64953493,
+            -76.06537483,
+            23.19081272
+          ],
+          "type": "metacarpal"
+        },
+        {
+          "end": [
+            1008.20417637,
+            -15.20248199,
+            13.28681773
+          ],
+          "start": [
+            996.05933004,
+            -43.53634567,
+            22.73501998
+          ],
+          "type": "proximal"
+        },
+        {
+          "end": [
+            1009.0000001,
+            8.69822503,
+            -5e-08
+          ],
+          "start": [
+            1008.20417637,
+            -15.20248199,
+            13.28681773
+          ],
+          "type": "distal"
+        }
+      ],
+      "coordinateFrame": {
+        "axes": {
+          "x": "right",
+          "y": "down",
+          "z": "up toward viewer"
+        },
+        "frontY": 150.0,
+        "keyboardRect": [
+          0,
+          0,
+          1400,
+          150
+        ],
+        "origin": "top-left of keyboardRect",
+        "pixelsPerInch": 28.99408284,
+        "units": "screen pixels"
+      },
+      "fingerChains": {
+        "1": [
+          [
+            963.64953493,
+            -76.06537483,
+            23.19081272
+          ],
+          [
+            996.05933004,
+            -43.53634567,
+            22.73501998
+          ],
+          [
+            1008.20417637,
+            -15.20248199,
+            13.28681773
+          ],
+          [
+            1009.0000001,
+            8.69822503,
+            -5e-08
+          ]
+        ],
+        "2": [
+          [
+            953.04635222,
+            -72.64891213,
+            34.9153291
+          ],
+          [
+            970.57574137,
+            -9.86151727,
+            38.82419493
+          ],
+          [
+            978.27852353,
+            27.27111963,
+            48.26958313
+          ],
+          [
+            981.6047784,
+            43.30592519,
+            32.88090674
+          ],
+          [
+            982.37534249,
+            47.020567,
+            15.70818691
+          ]
+        ],
+        "3": [
+          [
+            942.35437656,
+            -71.1845171,
+            35.89237213
+          ],
+          [
+            949.18353829,
+            -6.99219232,
+            40.7739126
+          ],
+          [
+            953.00423591,
+            35.16941741,
+            52.64372432
+          ],
+          [
+            954.69302262,
+            53.80527224,
+            34.04894407
+          ],
+          [
+            954.95196448,
+            56.6627101,
+            15.70818832
+          ]
+        ],
+        "4": [
+          [
+            930.55317765,
+            -72.60382709,
+            34.9153291
+          ],
+          [
+            928.47013632,
+            -10.89615809,
+            38.82321974
+          ],
+          [
+            927.76194612,
+            28.75498056,
+            49.36945847
+          ],
+          [
+            927.41025516,
+            48.44594356,
+            33.32387544
+          ],
+          [
+            927.30566516,
+            54.30187409,
+            15.70818749
+          ]
+        ],
+        "5": [
+          [
+            920.61525346,
+            -76.06399769,
+            32.96124303
+          ],
+          [
+            909.51820501,
+            -18.79341575,
+            34.91666306
+          ],
+          [
+            902.79373909,
+            11.75219424,
+            42.74743041
+          ],
+          [
+            899.88597561,
+            24.96059029,
+            31.50564119
+          ],
+          [
+            898.78289862,
+            29.97127219,
+            15.70818983
+          ]
+        ]
+      },
+      "fingerTips": {
+        "1": [
+          1009.0000001,
+          8.69822503,
+          -5e-08
+        ],
+        "2": [
+          982.37534249,
+          47.020567,
+          15.70818691
+        ],
+        "3": [
+          954.95196448,
+          56.6627101,
+          15.70818832
+        ],
+        "4": [
+          927.30566516,
+          54.30187409,
+          15.70818749
+        ],
+        "5": [
+          898.78289862,
+          29.97127219,
+          15.70818983
+        ]
+      },
+      "hand": "L",
+      "jointCount": 22,
+      "joints": [
+        {
+          "position": [
+            970.57574137,
+            -9.86151727,
+            38.82419493
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            978.27852353,
+            27.27111963,
+            48.26958313
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            981.6047784,
+            43.30592519,
+            32.88090674
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            982.37534249,
+            47.020567,
+            15.70818691
+          ],
+          "type": "tip"
+        },
+        {
+          "position": [
+            949.18353829,
+            -6.99219232,
+            40.7739126
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            953.00423591,
+            35.16941741,
+            52.64372432
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            954.69302262,
+            53.80527224,
+            34.04894407
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            954.95196448,
+            56.6627101,
+            15.70818832
+          ],
+          "type": "tip"
+        },
+        {
+          "position": [
+            928.47013632,
+            -10.89615809,
+            38.82321974
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            927.76194612,
+            28.75498056,
+            49.36945847
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            927.41025516,
+            48.44594356,
+            33.32387544
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            927.30566516,
+            54.30187409,
+            15.70818749
+          ],
+          "type": "tip"
+        },
+        {
+          "position": [
+            909.51820501,
+            -18.79341575,
+            34.91666306
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            902.79373909,
+            11.75219424,
+            42.74743041
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            899.88597561,
+            24.96059029,
+            31.50564119
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            898.78289862,
+            29.97127219,
+            15.70818983
+          ],
+          "type": "tip"
+        },
+        {
+          "position": [
+            963.64953493,
+            -76.06537483,
+            23.19081272
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            996.05933004,
+            -43.53634567,
+            22.73501998
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            1008.20417637,
+            -15.20248199,
+            13.28681773
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            1009.0000001,
+            8.69822503,
+            -5e-08
+          ],
+          "type": "tip"
+        },
+        {
+          "position": [
+            960.01108988,
+            -91.54872669,
+            30.03011394
+          ],
+          "type": "wrist"
+        },
+        {
+          "position": [
+            917.06560135,
+            -89.59528189,
+            30.03011394
+          ],
+          "type": "wrist"
+        }
+      ],
+      "layer": 0,
+      "time": 0.0,
+      "wristJoints": [
+        [
+          960.01108988,
+          -91.54872669,
+          30.03011394
+        ],
+        [
+          917.06560135,
+          -89.59528189,
+          30.03011394
+        ]
+      ],
+      "wristPose": {
+        "headingRadians": 0.04545528,
+        "positionPx": [
+          379.46165438,
+          -90.57200429
+        ]
+      }
+    },
+    {
+      "armEnd": [
+        449.53349016,
+        -414.04885133,
+        58.11059537
+      ],
+      "boneCount": 28,
+      "bones": [
+        {
+          "end": [
+            428.12625643,
+            -415.98871651,
+            58.11059537
+          ],
+          "start": [
+            302.67115358,
+            -91.46506238,
+            53.22538021
+          ],
+          "type": "forearm"
+        },
+        {
+          "end": [
+            470.94072389,
+            -412.10898616,
+            58.11059537
+          ],
+          "start": [
+            345.48562104,
+            -87.58533202,
+            52.98131087
+          ],
+          "type": "forearm"
+        },
+        {
+          "end": [
+            298.34117431,
+            -76.16069219,
+            44.6910294
+          ],
+          "start": [
+            302.67115358,
+            -91.46506238,
+            53.22538021
+          ],
+          "type": "carpal"
+        },
+        {
+          "end": [
+            308.7802641,
+            -72.27159136,
+            55.91605514
+          ],
+          "start": [
+            298.34117431,
+            -76.16069219,
+            44.6910294
+          ],
+          "type": "carpal"
+        },
+        {
+          "end": [
+            319.39570528,
+            -70.3286027,
+            56.6424408
+          ],
+          "start": [
+            308.7802641,
+            -72.27159136,
+            55.91605514
+          ],
+          "type": "carpal"
+        },
+        {
+          "end": [
+            331.2487296,
+            -71.21660657,
+            55.78004906
+          ],
+          "start": [
+            319.39570528,
+            -70.3286027,
+            56.6424408
+          ],
+          "type": "carpal"
+        },
+        {
+          "end": [
+            341.33199315,
+            -74.22707399,
+            54.21348533
+          ],
+          "start": [
+            331.2487296,
+            -71.21660657,
+            55.78004906
+          ],
+          "type": "carpal"
+        },
+        {
+          "end": [
+            345.48562104,
+            -87.58533202,
+            52.98131087
+          ],
+          "start": [
+            341.33199315,
+            -74.22707399,
+            54.21348533
+          ],
+          "type": "carpal"
+        },
+        {
+          "end": [
+            345.48562104,
+            -87.58533202,
+            52.98131087
+          ],
+          "start": [
+            302.67115358,
+            -91.46506238,
+            53.22538021
+          ],
+          "type": "carpal"
+        },
+        {
+          "end": [
+            288.44939493,
+            -10.33458953,
+            51.36830413
+          ],
+          "start": [
+            308.7802641,
+            -72.27159136,
+            55.91605514
+          ],
+          "type": "metacarpal"
+        },
+        {
+          "end": [
+            281.91114487,
+            27.15990657,
+            54.3531427
+          ],
+          "start": [
+            288.44939493,
+            -10.33458953,
+            51.36830413
+          ],
+          "type": "proximal"
+        },
+        {
+          "end": [
+            279.03826756,
+            43.63481746,
+            36.31705093
+          ],
+          "start": [
+            281.91114487,
+            27.15990657,
+            54.3531427
+          ],
+          "type": "middle"
+        },
+        {
+          "end": [
+            278.25292116,
+            48.13849461,
+            18.40281323
+          ],
+          "start": [
+            279.03826756,
+            43.63481746,
+            36.31705093
+          ],
+          "type": "distal"
+        },
+        {
+          "end": [
+            309.69119071,
+            -6.50764682,
+            52.75407776
+          ],
+          "start": [
+            319.39570528,
+            -70.3286027,
+            56.6424408
+          ],
+          "type": "metacarpal"
+        },
+        {
+          "end": [
+            306.07997552,
+            35.78356138,
+            57.36640079
+          ],
+          "start": [
+            309.69119071,
+            -6.50764682,
+            52.75407776
+          ],
+          "type": "proximal"
+        },
+        {
+          "end": [
+            304.46272688,
+            54.72327988,
+            35.09346566
+          ],
+          "start": [
+            306.07997552,
+            35.78356138,
+            57.36640079
+          ],
+          "type": "middle"
+        },
+        {
+          "end": [
+            304.16973802,
+            58.15449402,
+            15.70818728
+          ],
+          "start": [
+            304.46272688,
+            54.72327988,
+            35.09346566
+          ],
+          "type": "distal"
+        },
+        {
+          "end": [
+            330.55899121,
+            -9.47764209,
+            51.24160776
+          ],
+          "start": [
+            331.2487296,
+            -71.21660657,
+            55.78004906
+          ],
+          "type": "metacarpal"
+        },
+        {
+          "end": [
+            330.96151657,
+            30.28051829,
+            55.08612418
+          ],
+          "start": [
+            330.55899121,
+            -9.47764209,
+            51.24160776
+          ],
+          "type": "proximal"
+        },
+        {
+          "end": [
+            331.16285156,
+            50.16673989,
+            35.41814499
+          ],
+          "start": [
+            330.96151657,
+            30.28051829,
+            55.08612418
+          ],
+          "type": "middle"
+        },
+        {
+          "end": [
+            331.22664852,
+            56.46808196,
+            16.35609708
+          ],
+          "start": [
+            331.16285156,
+            50.16673989,
+            35.41814499
+          ],
+          "type": "distal"
+        },
+        {
+          "end": [
+            349.84639664,
+            -16.5159921,
+            48.3586022
+          ],
+          "start": [
+            341.33199315,
+            -74.22707399,
+            54.21348533
+          ],
+          "type": "metacarpal"
+        },
+        {
+          "end": [
+            356.31796736,
+            14.17183203,
+            51.19835591
+          ],
+          "start": [
+            349.84639664,
+            -16.5159921,
+            48.3586022
+          ],
+          "type": "proximal"
+        },
+        {
+          "end": [
+            359.14135639,
+            27.56018395,
+            37.9313418
+          ],
+          "start": [
+            356.31796736,
+            14.17183203,
+            51.19835591
+          ],
+          "type": "middle"
+        },
+        {
+          "end": [
+            360.2954845,
+            33.03299447,
+            21.33133177
+          ],
+          "start": [
+            359.14135639,
+            27.56018395,
+            37.9313418
+          ],
+          "type": "distal"
+        },
+        {
+          "end": [
+            266.92816695,
+            -42.68259997,
+            39.19806706
+          ],
+          "start": [
+            298.34117431,
+            -76.16069219,
+            44.6910294
+          ],
+          "type": "metacarpal"
+        },
+        {
+          "end": [
+            255.45730007,
+            -14.01634453,
+            25.89850965
+          ],
+          "start": [
+            266.92816695,
+            -42.68259997,
+            39.19806706
+          ],
+          "type": "proximal"
+        },
+        {
+          "end": [
+            254.99999937,
+            10.14793025,
+            9.44024408
+          ],
+          "start": [
+            255.45730007,
+            -14.01634453,
+            25.89850965
+          ],
+          "type": "distal"
+        }
+      ],
+      "coordinateFrame": {
+        "axes": {
+          "x": "right",
+          "y": "down",
+          "z": "up toward viewer"
+        },
+        "frontY": 150.0,
+        "keyboardRect": [
+          0,
+          0,
+          1400,
+          150
+        ],
+        "origin": "top-left of keyboardRect",
+        "pixelsPerInch": 28.99408284,
+        "units": "screen pixels"
+      },
+      "fingerChains": {
+        "1": [
+          [
+            298.34117431,
+            -76.16069219,
+            44.6910294
+          ],
+          [
+            266.92816695,
+            -42.68259997,
+            39.19806706
+          ],
+          [
+            255.45730007,
+            -14.01634453,
+            25.89850965
+          ],
+          [
+            254.99999937,
+            10.14793025,
+            9.44024408
+          ]
+        ],
+        "2": [
+          [
+            308.7802641,
+            -72.27159136,
+            55.91605514
+          ],
+          [
+            288.44939493,
+            -10.33458953,
+            51.36830413
+          ],
+          [
+            281.91114487,
+            27.15990657,
+            54.3531427
+          ],
+          [
+            279.03826756,
+            43.63481746,
+            36.31705093
+          ],
+          [
+            278.25292116,
+            48.13849461,
+            18.40281323
+          ]
+        ],
+        "3": [
+          [
+            319.39570528,
+            -70.3286027,
+            56.6424408
+          ],
+          [
+            309.69119071,
+            -6.50764682,
+            52.75407776
+          ],
+          [
+            306.07997552,
+            35.78356138,
+            57.36640079
+          ],
+          [
+            304.46272688,
+            54.72327988,
+            35.09346566
+          ],
+          [
+            304.16973802,
+            58.15449402,
+            15.70818728
+          ]
+        ],
+        "4": [
+          [
+            331.2487296,
+            -71.21660657,
+            55.78004906
+          ],
+          [
+            330.55899121,
+            -9.47764209,
+            51.24160776
+          ],
+          [
+            330.96151657,
+            30.28051829,
+            55.08612418
+          ],
+          [
+            331.16285156,
+            50.16673989,
+            35.41814499
+          ],
+          [
+            331.22664852,
+            56.46808196,
+            16.35609708
+          ]
+        ],
+        "5": [
+          [
+            341.33199315,
+            -74.22707399,
+            54.21348533
+          ],
+          [
+            349.84639664,
+            -16.5159921,
+            48.3586022
+          ],
+          [
+            356.31796736,
+            14.17183203,
+            51.19835591
+          ],
+          [
+            359.14135639,
+            27.56018395,
+            37.9313418
+          ],
+          [
+            360.2954845,
+            33.03299447,
+            21.33133177
+          ]
+        ]
+      },
+      "fingerTips": {
+        "1": [
+          254.99999937,
+          10.14793025,
+          9.44024408
+        ],
+        "2": [
+          278.25292116,
+          48.13849461,
+          18.40281323
+        ],
+        "3": [
+          304.16973802,
+          58.15449402,
+          15.70818728
+        ],
+        "4": [
+          331.22664852,
+          56.46808196,
+          16.35609708
+        ],
+        "5": [
+          360.2954845,
+          33.03299447,
+          21.33133177
+        ]
+      },
+      "hand": "R",
+      "jointCount": 22,
+      "joints": [
+        {
+          "position": [
+            288.44939493,
+            -10.33458953,
+            51.36830413
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            281.91114487,
+            27.15990657,
+            54.3531427
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            279.03826756,
+            43.63481746,
+            36.31705093
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            278.25292116,
+            48.13849461,
+            18.40281323
+          ],
+          "type": "tip"
+        },
+        {
+          "position": [
+            309.69119071,
+            -6.50764682,
+            52.75407776
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            306.07997552,
+            35.78356138,
+            57.36640079
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            304.46272688,
+            54.72327988,
+            35.09346566
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            304.16973802,
+            58.15449402,
+            15.70818728
+          ],
+          "type": "tip"
+        },
+        {
+          "position": [
+            330.55899121,
+            -9.47764209,
+            51.24160776
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            330.96151657,
+            30.28051829,
+            55.08612418
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            331.16285156,
+            50.16673989,
+            35.41814499
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            331.22664852,
+            56.46808196,
+            16.35609708
+          ],
+          "type": "tip"
+        },
+        {
+          "position": [
+            349.84639664,
+            -16.5159921,
+            48.3586022
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            356.31796736,
+            14.17183203,
+            51.19835591
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            359.14135639,
+            27.56018395,
+            37.9313418
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            360.2954845,
+            33.03299447,
+            21.33133177
+          ],
+          "type": "tip"
+        },
+        {
+          "position": [
+            298.34117431,
+            -76.16069219,
+            44.6910294
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            266.92816695,
+            -42.68259997,
+            39.19806706
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            255.45730007,
+            -14.01634453,
+            25.89850965
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            254.99999937,
+            10.14793025,
+            9.44024408
+          ],
+          "type": "tip"
+        },
+        {
+          "position": [
+            302.67115358,
+            -91.46506238,
+            53.22538021
+          ],
+          "type": "wrist"
+        },
+        {
+          "position": [
+            345.48562104,
+            -87.58533202,
+            52.98131087
+          ],
+          "type": "wrist"
+        }
+      ],
+      "layer": 1,
+      "time": 0.0,
+      "wristJoints": [
+        [
+          302.67115358,
+          -91.46506238,
+          53.22538021
+        ],
+        [
+          345.48562104,
+          -87.58533202,
+          52.98131087
+        ]
+      ],
+      "wristPose": {
+        "headingRadians": 0.09037046,
+        "positionPx": [
+          324.07838731,
+          -89.5251972
+        ]
+      }
+    },
+    {
+      "armEnd": [
+        818.86113858,
+        -420.30330668,
+        34.9153291
+      ],
+      "boneCount": 28,
+      "bones": [
+        {
+          "end": [
+            840.29539464,
+            -421.91743187,
+            34.9153291
+          ],
+          "start": [
+            956.30075247,
+            -93.89709427,
+            30.03011394
+          ],
+          "type": "forearm"
+        },
+        {
+          "end": [
+            797.42688253,
+            -418.68918149,
+            34.9153291
+          ],
+          "start": [
+            913.43224036,
+            -90.66884389,
+            30.03011394
+          ],
+          "type": "forearm"
+        },
+        {
+          "end": [
+            960.3975148,
+            -78.52865239,
+            23.19081272
+          ],
+          "start": [
+            956.30075247,
+            -93.89709427,
+            30.03011394
+          ],
+          "type": "carpal"
+        },
+        {
+          "end": [
+            949.90049475,
+            -74.7987367,
+            34.9153291
+          ],
+          "start": [
+            960.3975148,
+            -78.52865239,
+            23.19081272
+          ],
+          "type": "carpal"
+        },
+        {
+          "end": [
+            939.25673605,
+            -73.01738974,
+            35.89237213
+          ],
+          "start": [
+            949.90049475,
+            -74.7987367,
+            34.9153291
+          ],
+          "type": "carpal"
+        },
+        {
+          "end": [
+            927.418585,
+            -74.08552655,
+            34.9153291
+          ],
+          "start": [
+            939.25673605,
+            -73.01738974,
+            35.89237213
+          ],
+          "type": "carpal"
+        },
+        {
+          "end": [
+            917.38226403,
+            -77.24897075,
+            32.96124303
+          ],
+          "start": [
+            927.418585,
+            -74.08552655,
+            34.9153291
+          ],
+          "type": "carpal"
+        },
+        {
+          "end": [
+            913.43224036,
+            -90.66884389,
+            30.03011394
+          ],
+          "start": [
+            917.38226403,
+            -77.24897075,
+            32.96124303
+          ],
+          "type": "carpal"
+        },
+        {
+          "end": [
+            913.43224036,
+            -90.66884389,
+            30.03011394
+          ],
+          "start": [
+            956.30075247,
+            -93.89709427,
+            30.03011394
+          ],
+          "type": "carpal"
+        },
+        {
+          "end": [
+            969.28720708,
+            -12.55974713,
+            38.82419493
+          ],
+          "start": [
+            949.90049475,
+            -74.7987367,
+            34.9153291
+          ],
+          "type": "metacarpal"
+        },
+        {
+          "end": [
+            977.08852067,
+            24.59239369,
+            48.11068372
+          ],
+          "start": [
+            969.28720708,
+            -12.55974713,
+            38.82419493
+          ],
+          "type": "proximal"
+        },
+        {
+          "end": [
+            980.47456232,
+            40.71771599,
+            32.83000885
+          ],
+          "start": [
+            977.08852067,
+            24.59239369,
+            48.11068372
+          ],
+          "type": "middle"
+        },
+        {
+          "end": [
+            981.30010076,
+            44.64917192,
+            15.70818711
+          ],
+          "start": [
+            980.47456232,
+            40.71771599,
+            32.83000885
+          ],
+          "type": "distal"
+        },
+        {
+          "end": [
+            947.98967518,
+            -9.05624696,
+            40.7739126
+          ],
+          "start": [
+            939.25673605,
+            -73.01738974,
+            35.89237213
+          ],
+          "type": "metacarpal"
+        },
+        {
+          "end": [
+            952.23356335,
+            30.69845423,
+            59.06720761
+          ],
+          "start": [
+            947.98967518,
+            -9.05624696,
+            40.7739126
+          ],
+          "type": "proximal"
+        },
+        {
+          "end": [
+            954.4607812,
+            51.56195874,
+            43.07762916
+          ],
+          "start": [
+            952.23356335,
+            30.69845423,
+            59.06720761
+          ],
+          "type": "middle"
+        },
+        {
+          "end": [
+            954.98912681,
+            56.51124602,
+            25.19353763
+          ],
+          "start": [
+            954.4607812,
+            51.56195874,
+            43.07762916
+          ],
+          "type": "distal"
+        },
+        {
+          "end": [
+            927.1694487,
+            -12.343212,
+            38.82321974
+          ],
+          "start": [
+            927.418585,
+            -74.08552655,
+            34.9153291
+          ],
+          "type": "metacarpal"
+        },
+        {
+          "end": [
+            926.94918912,
+            27.16121497,
+            49.92678747
+          ],
+          "start": [
+            927.1694487,
+            -12.343212,
+            38.82321974
+          ],
+          "type": "proximal"
+        },
+        {
+          "end": [
+            926.8410116,
+            46.56328056,
+            33.52963547
+          ],
+          "start": [
+            926.94918912,
+            27.16121497,
+            49.92678747
+          ],
+          "type": "middle"
+        },
+        {
+          "end": [
+            926.81203443,
+            51.76045043,
+            15.70819026
+          ],
+          "start": [
+            926.8410116,
+            46.56328056,
+            33.52963547
+          ],
+          "type": "distal"
+        },
+        {
+          "end": [
+            907.99129747,
+            -19.67403013,
+            34.91666306
+          ],
+          "start": [
+            917.38226403,
+            -77.24897075,
+            32.96124303
+          ],
+          "type": "metacarpal"
+        },
+        {
+          "end": [
+            901.44098871,
+            10.8466157,
+            42.98866914
+          ],
+          "start": [
+            907.99129747,
+            -19.67403013,
+            34.91666306
+          ],
+          "type": "proximal"
+        },
+        {
+          "end": [
+            898.62715541,
+            23.95744951,
+            31.60960861
+          ],
+          "start": [
+            901.44098871,
+            10.8466157,
+            42.98866914
+          ],
+          "type": "middle"
+        },
+        {
+          "end": [
+            897.62018379,
+            28.64935417,
+            15.70818666
+          ],
+          "start": [
+            898.62715541,
+            23.95744951,
+            31.60960861
+          ],
+          "type": "distal"
+        },
+        {
+          "end": [
+            992.82870063,
+            -46.18422686,
+            26.47663471
+          ],
+          "start": [
+            960.3975148,
+            -78.52865239,
+            23.19081272
+          ],
+          "type": "metacarpal"
+        },
+        {
+          "end": [
+            1005.53671746,
+            -17.19570356,
+            20.33290016
+          ],
+          "start": [
+            992.82870063,
+            -46.18422686,
+            26.47663471
+          ],
+          "type": "proximal"
+        },
+        {
+          "end": [
+            1007.24835376,
+            7.99789159,
+            9.80818056
+          ],
+          "start": [
+            1005.53671746,
+            -17.19570356,
+            20.33290016
+          ],
+          "type": "distal"
+        }
+      ],
+      "coordinateFrame": {
+        "axes": {
+          "x": "right",
+          "y": "down",
+          "z": "up toward viewer"
+        },
+        "frontY": 150.0,
+        "keyboardRect": [
+          0,
+          0,
+          1400,
+          150
+        ],
+        "origin": "top-left of keyboardRect",
+        "pixelsPerInch": 28.99408284,
+        "units": "screen pixels"
+      },
+      "fingerChains": {
+        "1": [
+          [
+            960.3975148,
+            -78.52865239,
+            23.19081272
+          ],
+          [
+            992.82870063,
+            -46.18422686,
+            26.47663471
+          ],
+          [
+            1005.53671746,
+            -17.19570356,
+            20.33290016
+          ],
+          [
+            1007.24835376,
+            7.99789159,
+            9.80818056
+          ]
+        ],
+        "2": [
+          [
+            949.90049475,
+            -74.7987367,
+            34.9153291
+          ],
+          [
+            969.28720708,
+            -12.55974713,
+            38.82419493
+          ],
+          [
+            977.08852067,
+            24.59239369,
+            48.11068372
+          ],
+          [
+            980.47456232,
+            40.71771599,
+            32.83000885
+          ],
+          [
+            981.30010076,
+            44.64917192,
+            15.70818711
+          ]
+        ],
+        "3": [
+          [
+            939.25673605,
+            -73.01738974,
+            35.89237213
+          ],
+          [
+            947.98967518,
+            -9.05624696,
+            40.7739126
+          ],
+          [
+            952.23356335,
+            30.69845423,
+            59.06720761
+          ],
+          [
+            954.4607812,
+            51.56195874,
+            43.07762916
+          ],
+          [
+            954.98912681,
+            56.51124602,
+            25.19353763
+          ]
+        ],
+        "4": [
+          [
+            927.418585,
+            -74.08552655,
+            34.9153291
+          ],
+          [
+            927.1694487,
+            -12.343212,
+            38.82321974
+          ],
+          [
+            926.94918912,
+            27.16121497,
+            49.92678747
+          ],
+          [
+            926.8410116,
+            46.56328056,
+            33.52963547
+          ],
+          [
+            926.81203443,
+            51.76045043,
+            15.70819026
+          ]
+        ],
+        "5": [
+          [
+            917.38226403,
+            -77.24897075,
+            32.96124303
+          ],
+          [
+            907.99129747,
+            -19.67403013,
+            34.91666306
+          ],
+          [
+            901.44098871,
+            10.8466157,
+            42.98866914
+          ],
+          [
+            898.62715541,
+            23.95744951,
+            31.60960861
+          ],
+          [
+            897.62018379,
+            28.64935417,
+            15.70818666
+          ]
+        ]
+      },
+      "fingerTips": {
+        "1": [
+          1007.24835376,
+          7.99789159,
+          9.80818056
+        ],
+        "2": [
+          981.30010076,
+          44.64917192,
+          15.70818711
+        ],
+        "3": [
+          954.98912681,
+          56.51124602,
+          25.19353763
+        ],
+        "4": [
+          926.81203443,
+          51.76045043,
+          15.70819026
+        ],
+        "5": [
+          897.62018379,
+          28.64935417,
+          15.70818666
+        ]
+      },
+      "hand": "L",
+      "jointCount": 22,
+      "joints": [
+        {
+          "position": [
+            969.28720708,
+            -12.55974713,
+            38.82419493
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            977.08852067,
+            24.59239369,
+            48.11068372
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            980.47456232,
+            40.71771599,
+            32.83000885
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            981.30010076,
+            44.64917192,
+            15.70818711
+          ],
+          "type": "tip"
+        },
+        {
+          "position": [
+            947.98967518,
+            -9.05624696,
+            40.7739126
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            952.23356335,
+            30.69845423,
+            59.06720761
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            954.4607812,
+            51.56195874,
+            43.07762916
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            954.98912681,
+            56.51124602,
+            25.19353763
+          ],
+          "type": "tip"
+        },
+        {
+          "position": [
+            927.1694487,
+            -12.343212,
+            38.82321974
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            926.94918912,
+            27.16121497,
+            49.92678747
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            926.8410116,
+            46.56328056,
+            33.52963547
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            926.81203443,
+            51.76045043,
+            15.70819026
+          ],
+          "type": "tip"
+        },
+        {
+          "position": [
+            907.99129747,
+            -19.67403013,
+            34.91666306
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            901.44098871,
+            10.8466157,
+            42.98866914
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            898.62715541,
+            23.95744951,
+            31.60960861
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            897.62018379,
+            28.64935417,
+            15.70818666
+          ],
+          "type": "tip"
+        },
+        {
+          "position": [
+            960.3975148,
+            -78.52865239,
+            23.19081272
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            992.82870063,
+            -46.18422686,
+            26.47663471
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            1005.53671746,
+            -17.19570356,
+            20.33290016
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            1007.24835376,
+            7.99789159,
+            9.80818056
+          ],
+          "type": "tip"
+        },
+        {
+          "position": [
+            956.30075247,
+            -93.89709427,
+            30.03011394
+          ],
+          "type": "wrist"
+        },
+        {
+          "position": [
+            913.43224036,
+            -90.66884389,
+            30.03011394
+          ],
+          "type": "wrist"
+        }
+      ],
+      "layer": 0,
+      "time": 0.5,
+      "wristJoints": [
+        [
+          956.30075247,
+          -93.89709427,
+          30.03011394
+        ],
+        [
+          913.43224036,
+          -90.66884389,
+          30.03011394
+        ]
+      ],
+      "wristPose": {
+        "headingRadians": 0.07516399,
+        "positionPx": [
+          383.13350359,
+          -92.28296908
+        ]
+      }
+    },
+    {
+      "armEnd": [
+        445.77914644,
+        -416.77540253,
+        58.11059537
+      ],
+      "boneCount": 28,
+      "bones": [
+        {
+          "end": [
+            424.32532294,
+            -418.10438335,
+            58.11059537
+          ],
+          "start": [
+            298.22916225,
+            -93.82927918,
+            53.22538021
+          ],
+          "type": "forearm"
+        },
+        {
+          "end": [
+            467.23296994,
+            -415.44642171,
+            58.11059537
+          ],
+          "start": [
+            341.13680926,
+            -91.17131754,
+            53.06666373
+          ],
+          "type": "forearm"
+        },
+        {
+          "end": [
+            294.33710936,
+            -78.40772311,
+            44.68866342
+          ],
+          "start": [
+            298.22916225,
+            -93.82927918,
+            53.22538021
+          ],
+          "type": "carpal"
+        },
+        {
+          "end": [
+            304.88279646,
+            -74.81771131,
+            55.97546579
+          ],
+          "start": [
+            294.33710936,
+            -78.40772311,
+            44.68866342
+          ],
+          "type": "carpal"
+        },
+        {
+          "end": [
+            315.54929999,
+            -73.17804711,
+            56.75183563
+          ],
+          "start": [
+            304.88279646,
+            -74.81771131,
+            55.97546579
+          ],
+          "type": "carpal"
+        },
+        {
+          "end": [
+            327.37220197,
+            -74.40349607,
+            55.92481662
+          ],
+          "start": [
+            315.54929999,
+            -73.17804711,
+            56.75183563
+          ],
+          "type": "carpal"
+        },
+        {
+          "end": [
+            337.3655728,
+            -77.70010906,
+            54.37299509
+          ],
+          "start": [
+            327.37220197,
+            -74.40349607,
+            55.92481662
+          ],
+          "type": "carpal"
+        },
+        {
+          "end": [
+            341.13680926,
+            -91.17131754,
+            53.06666373
+          ],
+          "start": [
+            337.3655728,
+            -77.70010906,
+            54.37299509
+          ],
+          "type": "carpal"
+        },
+        {
+          "end": [
+            341.13680926,
+            -91.17131754,
+            53.06666373
+          ],
+          "start": [
+            298.22916225,
+            -93.82927918,
+            53.22538021
+          ],
+          "type": "carpal"
+        },
+        {
+          "end": [
+            286.32536186,
+            -12.32644745,
+            51.81378399
+          ],
+          "start": [
+            304.88279646,
+            -74.81771131,
+            55.97546579
+          ],
+          "type": "metacarpal"
+        },
+        {
+          "end": [
+            279.42763318,
+            25.33836339,
+            54.10603168
+          ],
+          "start": [
+            286.32536186,
+            -12.32644745,
+            51.81378399
+          ],
+          "type": "proximal"
+        },
+        {
+          "end": [
+            276.31400379,
+            42.34022982,
+            36.90006607
+          ],
+          "start": [
+            279.42763318,
+            25.33836339,
+            54.10603168
+          ],
+          "type": "middle"
+        },
+        {
+          "end": [
+            275.25544637,
+            48.12044631,
+            19.25869824
+          ],
+          "start": [
+            276.31400379,
+            42.34022982,
+            36.90006607
+          ],
+          "type": "distal"
+        },
+        {
+          "end": [
+            307.66759547,
+            -9.10644072,
+            53.31741063
+          ],
+          "start": [
+            315.54929999,
+            -73.17804711,
+            56.75183563
+          ],
+          "type": "metacarpal"
+        },
+        {
+          "end": [
+            302.27239007,
+            32.00000603,
+            61.7964013
+          ],
+          "start": [
+            307.66759547,
+            -9.10644072,
+            53.31741063
+          ],
+          "type": "proximal"
+        },
+        {
+          "end": [
+            299.34143089,
+            54.33118876,
+            43.98172338
+          ],
+          "start": [
+            302.27239007,
+            32.00000603,
+            61.7964013
+          ],
+          "type": "middle"
+        },
+        {
+          "end": [
+            298.20238089,
+            63.00969032,
+            25.30556017
+          ],
+          "start": [
+            299.34143089,
+            54.33118876,
+            43.98172338
+          ],
+          "type": "distal"
+        },
+        {
+          "end": [
+            328.44227608,
+            -12.66995238,
+            51.86016942
+          ],
+          "start": [
+            327.37220197,
+            -74.40349607,
+            55.92481662
+          ],
+          "type": "metacarpal"
+        },
+        {
+          "end": [
+            328.04236831,
+            27.35710113,
+            54.99664947
+          ],
+          "start": [
+            328.44227608,
+            -12.66995238,
+            51.86016942
+          ],
+          "type": "proximal"
+        },
+        {
+          "end": [
+            327.83871199,
+            47.74120831,
+            36.32185522
+          ],
+          "start": [
+            328.04236831,
+            27.35710113,
+            54.99664947
+          ],
+          "type": "middle"
+        },
+        {
+          "end": [
+            327.76400278,
+            55.21890603,
+            17.82293211
+          ],
+          "start": [
+            327.83871199,
+            47.74120831,
+            36.32185522
+          ],
+          "type": "distal"
+        },
+        {
+          "end": [
+            347.5212573,
+            -20.25512571,
+            48.98886154
+          ],
+          "start": [
+            337.3655728,
+            -77.70010906,
+            54.37299509
+          ],
+          "type": "metacarpal"
+        },
+        {
+          "end": [
+            353.60576704,
+            10.61566006,
+            51.67007344
+          ],
+          "start": [
+            347.5212573,
+            -20.25512571,
+            48.98886154
+          ],
+          "type": "proximal"
+        },
+        {
+          "end": [
+            356.28742621,
+            24.22150985,
+            38.77721933
+          ],
+          "start": [
+            353.60576704,
+            10.61566006,
+            51.67007344
+          ],
+          "type": "middle"
+        },
+        {
+          "end": [
+            357.47557268,
+            30.24977125,
+            22.38035766
+          ],
+          "start": [
+            356.28742621,
+            24.22150985,
+            38.77721933
+          ],
+          "type": "distal"
+        },
+        {
+          "end": [
+            262.68683994,
+            -45.39780964,
+            44.73532582
+          ],
+          "start": [
+            294.33710936,
+            -78.40772311,
+            44.68866342
+          ],
+          "type": "metacarpal"
+        },
+        {
+          "end": [
+            252.1564273,
+            -15.60473605,
+            34.38800254
+          ],
+          "start": [
+            262.68683994,
+            -45.39780964,
+            44.73532582
+          ],
+          "type": "proximal"
+        },
+        {
+          "end": [
+            253.58417281,
+            9.34079059,
+            19.71127413
+          ],
+          "start": [
+            252.1564273,
+            -15.60473605,
+            34.38800254
+          ],
+          "type": "distal"
+        }
+      ],
+      "coordinateFrame": {
+        "axes": {
+          "x": "right",
+          "y": "down",
+          "z": "up toward viewer"
+        },
+        "frontY": 150.0,
+        "keyboardRect": [
+          0,
+          0,
+          1400,
+          150
+        ],
+        "origin": "top-left of keyboardRect",
+        "pixelsPerInch": 28.99408284,
+        "units": "screen pixels"
+      },
+      "fingerChains": {
+        "1": [
+          [
+            294.33710936,
+            -78.40772311,
+            44.68866342
+          ],
+          [
+            262.68683994,
+            -45.39780964,
+            44.73532582
+          ],
+          [
+            252.1564273,
+            -15.60473605,
+            34.38800254
+          ],
+          [
+            253.58417281,
+            9.34079059,
+            19.71127413
+          ]
+        ],
+        "2": [
+          [
+            304.88279646,
+            -74.81771131,
+            55.97546579
+          ],
+          [
+            286.32536186,
+            -12.32644745,
+            51.81378399
+          ],
+          [
+            279.42763318,
+            25.33836339,
+            54.10603168
+          ],
+          [
+            276.31400379,
+            42.34022982,
+            36.90006607
+          ],
+          [
+            275.25544637,
+            48.12044631,
+            19.25869824
+          ]
+        ],
+        "3": [
+          [
+            315.54929999,
+            -73.17804711,
+            56.75183563
+          ],
+          [
+            307.66759547,
+            -9.10644072,
+            53.31741063
+          ],
+          [
+            302.27239007,
+            32.00000603,
+            61.7964013
+          ],
+          [
+            299.34143089,
+            54.33118876,
+            43.98172338
+          ],
+          [
+            298.20238089,
+            63.00969032,
+            25.30556017
+          ]
+        ],
+        "4": [
+          [
+            327.37220197,
+            -74.40349607,
+            55.92481662
+          ],
+          [
+            328.44227608,
+            -12.66995238,
+            51.86016942
+          ],
+          [
+            328.04236831,
+            27.35710113,
+            54.99664947
+          ],
+          [
+            327.83871199,
+            47.74120831,
+            36.32185522
+          ],
+          [
+            327.76400278,
+            55.21890603,
+            17.82293211
+          ]
+        ],
+        "5": [
+          [
+            337.3655728,
+            -77.70010906,
+            54.37299509
+          ],
+          [
+            347.5212573,
+            -20.25512571,
+            48.98886154
+          ],
+          [
+            353.60576704,
+            10.61566006,
+            51.67007344
+          ],
+          [
+            356.28742621,
+            24.22150985,
+            38.77721933
+          ],
+          [
+            357.47557268,
+            30.24977125,
+            22.38035766
+          ]
+        ]
+      },
+      "fingerTips": {
+        "1": [
+          253.58417281,
+          9.34079059,
+          19.71127413
+        ],
+        "2": [
+          275.25544637,
+          48.12044631,
+          19.25869824
+        ],
+        "3": [
+          298.20238089,
+          63.00969032,
+          25.30556017
+        ],
+        "4": [
+          327.76400278,
+          55.21890603,
+          17.82293211
+        ],
+        "5": [
+          357.47557268,
+          30.24977125,
+          22.38035766
+        ]
+      },
+      "hand": "R",
+      "jointCount": 22,
+      "joints": [
+        {
+          "position": [
+            286.32536186,
+            -12.32644745,
+            51.81378399
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            279.42763318,
+            25.33836339,
+            54.10603168
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            276.31400379,
+            42.34022982,
+            36.90006607
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            275.25544637,
+            48.12044631,
+            19.25869824
+          ],
+          "type": "tip"
+        },
+        {
+          "position": [
+            307.66759547,
+            -9.10644072,
+            53.31741063
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            302.27239007,
+            32.00000603,
+            61.7964013
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            299.34143089,
+            54.33118876,
+            43.98172338
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            298.20238089,
+            63.00969032,
+            25.30556017
+          ],
+          "type": "tip"
+        },
+        {
+          "position": [
+            328.44227608,
+            -12.66995238,
+            51.86016942
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            328.04236831,
+            27.35710113,
+            54.99664947
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            327.83871199,
+            47.74120831,
+            36.32185522
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            327.76400278,
+            55.21890603,
+            17.82293211
+          ],
+          "type": "tip"
+        },
+        {
+          "position": [
+            347.5212573,
+            -20.25512571,
+            48.98886154
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            353.60576704,
+            10.61566006,
+            51.67007344
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            356.28742621,
+            24.22150985,
+            38.77721933
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            357.47557268,
+            30.24977125,
+            22.38035766
+          ],
+          "type": "tip"
+        },
+        {
+          "position": [
+            294.33710936,
+            -78.40772311,
+            44.68866342
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            262.68683994,
+            -45.39780964,
+            44.73532582
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            252.1564273,
+            -15.60473605,
+            34.38800254
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            253.58417281,
+            9.34079059,
+            19.71127413
+          ],
+          "type": "tip"
+        },
+        {
+          "position": [
+            298.22916225,
+            -93.82927918,
+            53.22538021
+          ],
+          "type": "wrist"
+        },
+        {
+          "position": [
+            341.13680926,
+            -91.17131754,
+            53.06666373
+          ],
+          "type": "wrist"
+        }
+      ],
+      "layer": 1,
+      "time": 0.5,
+      "wristJoints": [
+        [
+          298.22916225,
+          -93.82927918,
+          53.22538021
+        ],
+        [
+          341.13680926,
+          -91.17131754,
+          53.06666373
+        ]
+      ],
+      "wristPose": {
+        "headingRadians": 0.06186705,
+        "positionPx": [
+          319.68298576,
+          -92.50029836
+        ]
+      }
+    },
+    {
+      "armEnd": [
+        803.44344108,
+        -421.58233815,
+        34.9153291
+      ],
+      "boneCount": 28,
+      "bones": [
+        {
+          "end": [
+            824.52835722,
+            -425.7607403,
+            34.9153291
+          ],
+          "start": [
+            937.32306324,
+            -96.62256382,
+            30.03011394
+          ],
+          "type": "forearm"
+        },
+        {
+          "end": [
+            782.35852495,
+            -417.403936,
+            34.9153291
+          ],
+          "start": [
+            895.15323097,
+            -88.26575952,
+            30.03011394
+          ],
+          "type": "forearm"
+        },
+        {
+          "end": [
+            943.237117,
+            -81.85786147,
+            23.19081272
+          ],
+          "start": [
+            937.32306324,
+            -96.62256382,
+            30.03011394
+          ],
+          "type": "carpal"
+        },
+        {
+          "end": [
+            933.26444105,
+            -76.89344456,
+            34.9153291
+          ],
+          "start": [
+            943.237117,
+            -81.85786147,
+            23.19081272
+          ],
+          "type": "carpal"
+        },
+        {
+          "end": [
+            922.91191035,
+            -73.8458382,
+            35.89237213
+          ],
+          "start": [
+            933.26444105,
+            -76.89344456,
+            34.9153291
+          ],
+          "type": "carpal"
+        },
+        {
+          "end": [
+            911.03119226,
+            -73.48352031,
+            34.9153291
+          ],
+          "start": [
+            922.91191035,
+            -73.8458382,
+            35.89237213
+          ],
+          "type": "carpal"
+        },
+        {
+          "end": [
+            900.68743,
+            -75.41786772,
+            32.96124303
+          ],
+          "start": [
+            911.03119226,
+            -73.48352031,
+            34.9153291
+          ],
+          "type": "carpal"
+        },
+        {
+          "end": [
+            895.15323097,
+            -88.26575952,
+            30.03011394
+          ],
+          "start": [
+            900.68743,
+            -75.41786772,
+            32.96124303
+          ],
+          "type": "carpal"
+        },
+        {
+          "end": [
+            895.15323097,
+            -88.26575952,
+            30.03011394
+          ],
+          "start": [
+            937.32306324,
+            -96.62256382,
+            30.03011394
+          ],
+          "type": "carpal"
+        },
+        {
+          "end": [
+            959.99054244,
+            -17.43545988,
+            38.82419493
+          ],
+          "start": [
+            933.26444105,
+            -76.89344456,
+            34.9153291
+          ],
+          "type": "metacarpal"
+        },
+        {
+          "end": [
+            971.85693369,
+            18.73684152,
+            47.66355607
+          ],
+          "start": [
+            959.99054244,
+            -17.43545988,
+            38.82419493
+          ],
+          "type": "proximal"
+        },
+        {
+          "end": [
+            977.07649657,
+            34.64762664,
+            32.67711548
+          ],
+          "start": [
+            971.85693369,
+            18.73684152,
+            47.66355607
+          ],
+          "type": "middle"
+        },
+        {
+          "end": [
+            978.51677886,
+            39.03803685,
+            15.70818727
+          ],
+          "start": [
+            977.07649657,
+            34.64762664,
+            32.67711548
+          ],
+          "type": "distal"
+        },
+        {
+          "end": [
+            939.26842521,
+            -11.39780835,
+            40.7739126
+          ],
+          "start": [
+            922.91191035,
+            -73.8458382,
+            35.89237213
+          ],
+          "type": "metacarpal"
+        },
+        {
+          "end": [
+            949.53685228,
+            31.19973363,
+            37.15447633
+          ],
+          "start": [
+            939.26842521,
+            -11.39780835,
+            40.7739126
+          ],
+          "type": "proximal"
+        },
+        {
+          "end": [
+            953.72427137,
+            48.57082266,
+            17.74768047
+          ],
+          "start": [
+            949.53685228,
+            31.19973363,
+            37.15447633
+          ],
+          "type": "middle"
+        },
+        {
+          "end": [
+            954.99999966,
+            53.86305378,
+            8.8e-07
+          ],
+          "start": [
+            953.72427137,
+            48.57082266,
+            17.74768047
+          ],
+          "type": "distal"
+        },
+        {
+          "end": [
+            918.20407357,
+            -12.15876798,
+            38.82321974
+          ],
+          "start": [
+            911.03119226,
+            -73.48352031,
+            34.9153291
+          ],
+          "type": "metacarpal"
+        },
+        {
+          "end": [
+            923.25281206,
+            28.25928716,
+            43.80604414
+          ],
+          "start": [
+            918.20407357,
+            -12.15876798,
+            38.82321974
+          ],
+          "type": "proximal"
+        },
+        {
+          "end": [
+            925.56832394,
+            46.79629144,
+            26.59162222
+          ],
+          "start": [
+            923.25281206,
+            28.25928716,
+            43.80604414
+          ],
+          "type": "middle"
+        },
+        {
+          "end": [
+            926.2624977,
+            52.3535516,
+            8.89274356
+          ],
+          "start": [
+            925.56832394,
+            46.79629144,
+            26.59162222
+          ],
+          "type": "distal"
+        },
+        {
+          "end": [
+            898.28390393,
+            -17.13161632,
+            34.91666306
+          ],
+          "start": [
+            900.68743,
+            -75.41786772,
+            32.96124303
+          ],
+          "type": "metacarpal"
+        },
+        {
+          "end": [
+            895.82568313,
+            14.04221787,
+            42.77305289
+          ],
+          "start": [
+            898.28390393,
+            -17.13161632,
+            34.91666306
+          ],
+          "type": "proximal"
+        },
+        {
+          "end": [
+            894.76343362,
+            27.51309492,
+            31.51686628
+          ],
+          "start": [
+            895.82568313,
+            14.04221787,
+            42.77305289
+          ],
+          "type": "middle"
+        },
+        {
+          "end": [
+            894.36283338,
+            32.59329174,
+            15.70818825
+          ],
+          "start": [
+            894.76343362,
+            27.51309492,
+            31.51686628
+          ],
+          "type": "distal"
+        },
+        {
+          "end": [
+            979.86068515,
+            -54.5173787,
+            27.6576417
+          ],
+          "start": [
+            943.237117,
+            -81.85786147,
+            23.19081272
+          ],
+          "type": "metacarpal"
+        },
+        {
+          "end": [
+            994.95964962,
+            -26.77706692,
+            21.17150083
+          ],
+          "start": [
+            979.86068515,
+            -54.5173787,
+            27.6576417
+          ],
+          "type": "proximal"
+        },
+        {
+          "end": [
+            997.29261945,
+            -2.00109367,
+            9.80818004
+          ],
+          "start": [
+            994.95964962,
+            -26.77706692,
+            21.17150083
+          ],
+          "type": "distal"
+        }
+      ],
+      "coordinateFrame": {
+        "axes": {
+          "x": "right",
+          "y": "down",
+          "z": "up toward viewer"
+        },
+        "frontY": 150.0,
+        "keyboardRect": [
+          0,
+          0,
+          1400,
+          150
+        ],
+        "origin": "top-left of keyboardRect",
+        "pixelsPerInch": 28.99408284,
+        "units": "screen pixels"
+      },
+      "fingerChains": {
+        "1": [
+          [
+            943.237117,
+            -81.85786147,
+            23.19081272
+          ],
+          [
+            979.86068515,
+            -54.5173787,
+            27.6576417
+          ],
+          [
+            994.95964962,
+            -26.77706692,
+            21.17150083
+          ],
+          [
+            997.29261945,
+            -2.00109367,
+            9.80818004
+          ]
+        ],
+        "2": [
+          [
+            933.26444105,
+            -76.89344456,
+            34.9153291
+          ],
+          [
+            959.99054244,
+            -17.43545988,
+            38.82419493
+          ],
+          [
+            971.85693369,
+            18.73684152,
+            47.66355607
+          ],
+          [
+            977.07649657,
+            34.64762664,
+            32.67711548
+          ],
+          [
+            978.51677886,
+            39.03803685,
+            15.70818727
+          ]
+        ],
+        "3": [
+          [
+            922.91191035,
+            -73.8458382,
+            35.89237213
+          ],
+          [
+            939.26842521,
+            -11.39780835,
+            40.7739126
+          ],
+          [
+            949.53685228,
+            31.19973363,
+            37.15447633
+          ],
+          [
+            953.72427137,
+            48.57082266,
+            17.74768047
+          ],
+          [
+            954.99999966,
+            53.86305378,
+            8.8e-07
+          ]
+        ],
+        "4": [
+          [
+            911.03119226,
+            -73.48352031,
+            34.9153291
+          ],
+          [
+            918.20407357,
+            -12.15876798,
+            38.82321974
+          ],
+          [
+            923.25281206,
+            28.25928716,
+            43.80604414
+          ],
+          [
+            925.56832394,
+            46.79629144,
+            26.59162222
+          ],
+          [
+            926.2624977,
+            52.3535516,
+            8.89274356
+          ]
+        ],
+        "5": [
+          [
+            900.68743,
+            -75.41786772,
+            32.96124303
+          ],
+          [
+            898.28390393,
+            -17.13161632,
+            34.91666306
+          ],
+          [
+            895.82568313,
+            14.04221787,
+            42.77305289
+          ],
+          [
+            894.76343362,
+            27.51309492,
+            31.51686628
+          ],
+          [
+            894.36283338,
+            32.59329174,
+            15.70818825
+          ]
+        ]
+      },
+      "fingerTips": {
+        "1": [
+          997.29261945,
+          -2.00109367,
+          9.80818004
+        ],
+        "2": [
+          978.51677886,
+          39.03803685,
+          15.70818727
+        ],
+        "3": [
+          954.99999966,
+          53.86305378,
+          8.8e-07
+        ],
+        "4": [
+          926.2624977,
+          52.3535516,
+          8.89274356
+        ],
+        "5": [
+          894.36283338,
+          32.59329174,
+          15.70818825
+        ]
+      },
+      "hand": "L",
+      "jointCount": 22,
+      "joints": [
+        {
+          "position": [
+            959.99054244,
+            -17.43545988,
+            38.82419493
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            971.85693369,
+            18.73684152,
+            47.66355607
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            977.07649657,
+            34.64762664,
+            32.67711548
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            978.51677886,
+            39.03803685,
+            15.70818727
+          ],
+          "type": "tip"
+        },
+        {
+          "position": [
+            939.26842521,
+            -11.39780835,
+            40.7739126
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            949.53685228,
+            31.19973363,
+            37.15447633
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            953.72427137,
+            48.57082266,
+            17.74768047
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            954.99999966,
+            53.86305378,
+            8.8e-07
+          ],
+          "type": "tip"
+        },
+        {
+          "position": [
+            918.20407357,
+            -12.15876798,
+            38.82321974
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            923.25281206,
+            28.25928716,
+            43.80604414
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            925.56832394,
+            46.79629144,
+            26.59162222
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            926.2624977,
+            52.3535516,
+            8.89274356
+          ],
+          "type": "tip"
+        },
+        {
+          "position": [
+            898.28390393,
+            -17.13161632,
+            34.91666306
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            895.82568313,
+            14.04221787,
+            42.77305289
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            894.76343362,
+            27.51309492,
+            31.51686628
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            894.36283338,
+            32.59329174,
+            15.70818825
+          ],
+          "type": "tip"
+        },
+        {
+          "position": [
+            943.237117,
+            -81.85786147,
+            23.19081272
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            979.86068515,
+            -54.5173787,
+            27.6576417
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            994.95964962,
+            -26.77706692,
+            21.17150083
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            997.29261945,
+            -2.00109367,
+            9.80818004
+          ],
+          "type": "tip"
+        },
+        {
+          "position": [
+            937.32306324,
+            -96.62256382,
+            30.03011394
+          ],
+          "type": "wrist"
+        },
+        {
+          "position": [
+            895.15323097,
+            -88.26575952,
+            30.03011394
+          ],
+          "type": "wrist"
+        }
+      ],
+      "layer": 0,
+      "time": 1.0,
+      "wristJoints": [
+        [
+          937.32306324,
+          -96.62256382,
+          30.03011394
+        ],
+        [
+          895.15323097,
+          -88.26575952,
+          30.03011394
+        ]
+      ],
+      "wristPose": {
+        "headingRadians": 0.19563552,
+        "positionPx": [
+          401.7618529,
+          -92.44416167
+        ]
+      }
+    },
+    {
+      "armEnd": [
+        450.75667216,
+        -410.37712559,
+        58.11059537
+      ],
+      "boneCount": 28,
+      "bones": [
+        {
+          "end": [
+            429.43245194,
+            -413.0808942,
+            58.11059537
+          ],
+          "start": [
+            304.18787197,
+            -88.47593412,
+            53.22538021
+          ],
+          "type": "forearm"
+        },
+        {
+          "end": [
+            472.08089239,
+            -407.67335698,
+            58.11059537
+          ],
+          "start": [
+            346.83631242,
+            -83.0683969,
+            52.88812278
+          ],
+          "type": "forearm"
+        },
+        {
+          "end": [
+            299.31364659,
+            -73.33610604,
+            44.82431112
+          ],
+          "start": [
+            304.18787197,
+            -88.47593412,
+            53.22538021
+          ],
+          "type": "carpal"
+        },
+        {
+          "end": [
+            309.60706098,
+            -69.07637352,
+            56.0074267
+          ],
+          "start": [
+            299.31364659,
+            -73.33610604,
+            44.82431112
+          ],
+          "type": "carpal"
+        },
+        {
+          "end": [
+            320.14627252,
+            -66.75520648,
+            56.68799218
+          ],
+          "start": [
+            309.60706098,
+            -69.07637352,
+            56.0074267
+          ],
+          "type": "carpal"
+        },
+        {
+          "end": [
+            332.02346251,
+            -67.21898908,
+            55.77027113
+          ],
+          "start": [
+            320.14627252,
+            -66.75520648,
+            56.68799218
+          ],
+          "type": "carpal"
+        },
+        {
+          "end": [
+            342.20788418,
+            -69.86713429,
+            54.15410457
+          ],
+          "start": [
+            332.02346251,
+            -67.21898908,
+            55.77027113
+          ],
+          "type": "carpal"
+        },
+        {
+          "end": [
+            346.83631242,
+            -83.0683969,
+            52.88812278
+          ],
+          "start": [
+            342.20788418,
+            -69.86713429,
+            54.15410457
+          ],
+          "type": "carpal"
+        },
+        {
+          "end": [
+            346.83631242,
+            -83.0683969,
+            52.88812278
+          ],
+          "start": [
+            304.18787197,
+            -88.47593412,
+            53.22538021
+          ],
+          "type": "carpal"
+        },
+        {
+          "end": [
+            287.07541393,
+            -7.9056181,
+            51.6652444
+          ],
+          "start": [
+            309.60706098,
+            -69.07637352,
+            56.0074267
+          ],
+          "type": "metacarpal"
+        },
+        {
+          "end": [
+            278.13637206,
+            29.07894091,
+            54.8892123
+          ],
+          "start": [
+            287.07541393,
+            -7.9056181,
+            51.6652444
+          ],
+          "type": "proximal"
+        },
+        {
+          "end": [
+            274.2137945,
+            45.30828665,
+            36.97365018
+          ],
+          "start": [
+            278.13637206,
+            29.07894091,
+            54.8892123
+          ],
+          "type": "middle"
+        },
+        {
+          "end": [
+            273.15409549,
+            49.69270516,
+            19.11895524
+          ],
+          "start": [
+            274.2137945,
+            45.30828665,
+            36.97365018
+          ],
+          "type": "distal"
+        },
+        {
+          "end": [
+            308.1668535,
+            -3.32189085,
+            52.9489533
+          ],
+          "start": [
+            320.14627252,
+            -66.75520648,
+            56.68799218
+          ],
+          "type": "metacarpal"
+        },
+        {
+          "end": [
+            301.55462138,
+            39.98336735,
+            42.28135981
+          ],
+          "start": [
+            308.1668535,
+            -3.32189085,
+            52.9489533
+          ],
+          "type": "proximal"
+        },
+        {
+          "end": [
+            298.84485251,
+            57.73036087,
+            19.36384945
+          ],
+          "start": [
+            301.55462138,
+            39.98336735,
+            42.28135981
+          ],
+          "type": "middle"
+        },
+        {
+          "end": [
+            298.00000012,
+            63.26352274,
+            5e-07
+          ],
+          "start": [
+            298.84485251,
+            57.73036087,
+            19.36384945
+          ],
+          "type": "distal"
+        },
+        {
+          "end": [
+            329.12747469,
+            -5.54412605,
+            51.32225562
+          ],
+          "start": [
+            332.02346251,
+            -67.21898908,
+            55.77027113
+          ],
+          "type": "metacarpal"
+        },
+        {
+          "end": [
+            327.29757814,
+            35.1422789,
+            49.95306548
+          ],
+          "start": [
+            329.12747469,
+            -5.54412605,
+            51.32225562
+          ],
+          "type": "proximal"
+        },
+        {
+          "end": [
+            326.45920401,
+            53.78291149,
+            29.16587819
+          ],
+          "start": [
+            327.29757814,
+            35.1422789,
+            49.95306548
+          ],
+          "type": "middle"
+        },
+        {
+          "end": [
+            326.20961133,
+            59.33242139,
+            10.15858148
+          ],
+          "start": [
+            326.45920401,
+            53.78291149,
+            29.16587819
+          ],
+          "type": "distal"
+        },
+        {
+          "end": [
+            348.6541228,
+            -11.88860337,
+            48.32948495
+          ],
+          "start": [
+            342.20788418,
+            -69.86713429,
+            54.15410457
+          ],
+          "type": "metacarpal"
+        },
+        {
+          "end": [
+            353.54821973,
+            18.99917987,
+            51.54542552
+          ],
+          "start": [
+            348.6541228,
+            -11.88860337,
+            48.32948495
+          ],
+          "type": "proximal"
+        },
+        {
+          "end": [
+            355.6636244,
+            32.34999041,
+            38.10251242
+          ],
+          "start": [
+            353.54821973,
+            18.99917987,
+            51.54542552
+          ],
+          "type": "middle"
+        },
+        {
+          "end": [
+            356.4632346,
+            37.39651618,
+            21.42250123
+          ],
+          "start": [
+            355.6636244,
+            32.34999041,
+            38.10251242
+          ],
+          "type": "distal"
+        },
+        {
+          "end": [
+            264.65124915,
+            -43.56706408,
+            45.5517003
+          ],
+          "start": [
+            299.31364659,
+            -73.33610604,
+            44.82431112
+          ],
+          "type": "metacarpal"
+        },
+        {
+          "end": [
+            251.67351192,
+            -14.78183222,
+            35.08058364
+          ],
+          "start": [
+            264.65124915,
+            -43.56706408,
+            45.5517003
+          ],
+          "type": "proximal"
+        },
+        {
+          "end": [
+            251.37189396,
+            10.06304258,
+            19.98236394
+          ],
+          "start": [
+            251.67351192,
+            -14.78183222,
+            35.08058364
+          ],
+          "type": "distal"
+        }
+      ],
+      "coordinateFrame": {
+        "axes": {
+          "x": "right",
+          "y": "down",
+          "z": "up toward viewer"
+        },
+        "frontY": 150.0,
+        "keyboardRect": [
+          0,
+          0,
+          1400,
+          150
+        ],
+        "origin": "top-left of keyboardRect",
+        "pixelsPerInch": 28.99408284,
+        "units": "screen pixels"
+      },
+      "fingerChains": {
+        "1": [
+          [
+            299.31364659,
+            -73.33610604,
+            44.82431112
+          ],
+          [
+            264.65124915,
+            -43.56706408,
+            45.5517003
+          ],
+          [
+            251.67351192,
+            -14.78183222,
+            35.08058364
+          ],
+          [
+            251.37189396,
+            10.06304258,
+            19.98236394
+          ]
+        ],
+        "2": [
+          [
+            309.60706098,
+            -69.07637352,
+            56.0074267
+          ],
+          [
+            287.07541393,
+            -7.9056181,
+            51.6652444
+          ],
+          [
+            278.13637206,
+            29.07894091,
+            54.8892123
+          ],
+          [
+            274.2137945,
+            45.30828665,
+            36.97365018
+          ],
+          [
+            273.15409549,
+            49.69270516,
+            19.11895524
+          ]
+        ],
+        "3": [
+          [
+            320.14627252,
+            -66.75520648,
+            56.68799218
+          ],
+          [
+            308.1668535,
+            -3.32189085,
+            52.9489533
+          ],
+          [
+            301.55462138,
+            39.98336735,
+            42.28135981
+          ],
+          [
+            298.84485251,
+            57.73036087,
+            19.36384945
+          ],
+          [
+            298.00000012,
+            63.26352274,
+            5e-07
+          ]
+        ],
+        "4": [
+          [
+            332.02346251,
+            -67.21898908,
+            55.77027113
+          ],
+          [
+            329.12747469,
+            -5.54412605,
+            51.32225562
+          ],
+          [
+            327.29757814,
+            35.1422789,
+            49.95306548
+          ],
+          [
+            326.45920401,
+            53.78291149,
+            29.16587819
+          ],
+          [
+            326.20961133,
+            59.33242139,
+            10.15858148
+          ]
+        ],
+        "5": [
+          [
+            342.20788418,
+            -69.86713429,
+            54.15410457
+          ],
+          [
+            348.6541228,
+            -11.88860337,
+            48.32948495
+          ],
+          [
+            353.54821973,
+            18.99917987,
+            51.54542552
+          ],
+          [
+            355.6636244,
+            32.34999041,
+            38.10251242
+          ],
+          [
+            356.4632346,
+            37.39651618,
+            21.42250123
+          ]
+        ]
+      },
+      "fingerTips": {
+        "1": [
+          251.37189396,
+          10.06304258,
+          19.98236394
+        ],
+        "2": [
+          273.15409549,
+          49.69270516,
+          19.11895524
+        ],
+        "3": [
+          298.00000012,
+          63.26352274,
+          5e-07
+        ],
+        "4": [
+          326.20961133,
+          59.33242139,
+          10.15858148
+        ],
+        "5": [
+          356.4632346,
+          37.39651618,
+          21.42250123
+        ]
+      },
+      "hand": "R",
+      "jointCount": 22,
+      "joints": [
+        {
+          "position": [
+            287.07541393,
+            -7.9056181,
+            51.6652444
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            278.13637206,
+            29.07894091,
+            54.8892123
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            274.2137945,
+            45.30828665,
+            36.97365018
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            273.15409549,
+            49.69270516,
+            19.11895524
+          ],
+          "type": "tip"
+        },
+        {
+          "position": [
+            308.1668535,
+            -3.32189085,
+            52.9489533
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            301.55462138,
+            39.98336735,
+            42.28135981
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            298.84485251,
+            57.73036087,
+            19.36384945
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            298.00000012,
+            63.26352274,
+            5e-07
+          ],
+          "type": "tip"
+        },
+        {
+          "position": [
+            329.12747469,
+            -5.54412605,
+            51.32225562
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            327.29757814,
+            35.1422789,
+            49.95306548
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            326.45920401,
+            53.78291149,
+            29.16587819
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            326.20961133,
+            59.33242139,
+            10.15858148
+          ],
+          "type": "tip"
+        },
+        {
+          "position": [
+            348.6541228,
+            -11.88860337,
+            48.32948495
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            353.54821973,
+            18.99917987,
+            51.54542552
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            355.6636244,
+            32.34999041,
+            38.10251242
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            356.4632346,
+            37.39651618,
+            21.42250123
+          ],
+          "type": "tip"
+        },
+        {
+          "position": [
+            299.31364659,
+            -73.33610604,
+            44.82431112
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            264.65124915,
+            -43.56706408,
+            45.5517003
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            251.67351192,
+            -14.78183222,
+            35.08058364
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            251.37189396,
+            10.06304258,
+            19.98236394
+          ],
+          "type": "tip"
+        },
+        {
+          "position": [
+            304.18787197,
+            -88.47593412,
+            53.22538021
+          ],
+          "type": "wrist"
+        },
+        {
+          "position": [
+            346.83631242,
+            -83.0683969,
+            52.88812278
+          ],
+          "type": "wrist"
+        }
+      ],
+      "layer": 1,
+      "time": 1.0,
+      "wristJoints": [
+        [
+          304.18787197,
+          -88.47593412,
+          53.22538021
+        ],
+        [
+          346.83631242,
+          -83.0683969,
+          52.88812278
+        ]
+      ],
+      "wristPose": {
+        "headingRadians": 0.12612033,
+        "positionPx": [
+          325.51209219,
+          -85.77216551
+        ]
+      }
+    },
+    {
+      "armEnd": [
+        803.9674044,
+        -421.34353324,
+        34.9153291
+      ],
+      "boneCount": 28,
+      "bones": [
+        {
+          "end": [
+            825.02834103,
+            -425.64116991,
+            34.9153291
+          ],
+          "start": [
+            937.93495383,
+            -96.54136482,
+            30.03011394
+          ],
+          "type": "forearm"
+        },
+        {
+          "end": [
+            782.90646776,
+            -417.04589658,
+            34.9153291
+          ],
+          "start": [
+            895.81308056,
+            -87.94609149,
+            30.03011394
+          ],
+          "type": "forearm"
+        },
+        {
+          "end": [
+            943.93245367,
+            -81.81036136,
+            23.19081272
+          ],
+          "start": [
+            937.93495383,
+            -96.54136482,
+            30.03011394
+          ],
+          "type": "carpal"
+        },
+        {
+          "end": [
+            933.98802672,
+            -76.78959712,
+            34.9153291
+          ],
+          "start": [
+            943.93245367,
+            -81.81036136,
+            23.19081272
+          ],
+          "type": "carpal"
+        },
+        {
+          "end": [
+            923.65290552,
+            -73.68346349,
+            35.89237213
+          ],
+          "start": [
+            933.98802672,
+            -76.78959712,
+            34.9153291
+          ],
+          "type": "carpal"
+        },
+        {
+          "end": [
+            911.77442766,
+            -73.25392863,
+            34.9153291
+          ],
+          "start": [
+            923.65290552,
+            -73.68346349,
+            35.89237213
+          ],
+          "type": "carpal"
+        },
+        {
+          "end": [
+            901.41988616,
+            -75.12971863,
+            32.96124303
+          ],
+          "start": [
+            911.77442766,
+            -73.25392863,
+            34.9153291
+          ],
+          "type": "carpal"
+        },
+        {
+          "end": [
+            895.81308056,
+            -87.94609149,
+            30.03011394
+          ],
+          "start": [
+            901.41988616,
+            -75.12971863,
+            32.96124303
+          ],
+          "type": "carpal"
+        },
+        {
+          "end": [
+            895.81308056,
+            -87.94609149,
+            30.03011394
+          ],
+          "start": [
+            937.93495383,
+            -96.54136482,
+            30.03011394
+          ],
+          "type": "carpal"
+        },
+        {
+          "end": [
+            961.05012188,
+            -17.48378423,
+            38.82419493
+          ],
+          "start": [
+            933.98802672,
+            -76.78959712,
+            34.9153291
+          ],
+          "type": "metacarpal"
+        },
+        {
+          "end": [
+            972.32893587,
+            18.94982644,
+            47.35421858
+          ],
+          "start": [
+            961.05012188,
+            -17.48378423,
+            38.82419493
+          ],
+          "type": "proximal"
+        },
+        {
+          "end": [
+            977.33215757,
+            35.11158171,
+            32.56382436
+          ],
+          "start": [
+            972.32893587,
+            18.94982644,
+            47.35421858
+          ],
+          "type": "middle"
+        },
+        {
+          "end": [
+            978.81616286,
+            39.905319,
+            15.70818879
+          ],
+          "start": [
+            977.33215757,
+            35.11158171,
+            32.56382436
+          ],
+          "type": "distal"
+        },
+        {
+          "end": [
+            940.36249824,
+            -11.32898071,
+            40.7739126
+          ],
+          "start": [
+            923.65290552,
+            -73.68346349,
+            35.89237213
+          ],
+          "type": "metacarpal"
+        },
+        {
+          "end": [
+            948.72632316,
+            27.45027371,
+            21.81850822
+          ],
+          "start": [
+            940.36249824,
+            -11.32898071,
+            40.7739126
+          ],
+          "type": "proximal"
+        },
+        {
+          "end": [
+            952.74097314,
+            46.06438081,
+            3.56171384
+          ],
+          "start": [
+            948.72632316,
+            27.45027371,
+            21.81850822
+          ],
+          "type": "middle"
+        },
+        {
+          "end": [
+            954.99999978,
+            56.53846051,
+            -11.59763234
+          ],
+          "start": [
+            952.74097314,
+            46.06438081,
+            3.56171384
+          ],
+          "type": "distal"
+        },
+        {
+          "end": [
+            919.29417816,
+            -11.97074312,
+            38.82321974
+          ],
+          "start": [
+            911.77442766,
+            -73.25392863,
+            34.9153291
+          ],
+          "type": "metacarpal"
+        },
+        {
+          "end": [
+            923.68309623,
+            28.5729586,
+            43.3930261
+          ],
+          "start": [
+            919.29417816,
+            -11.97074312,
+            38.82321974
+          ],
+          "type": "proximal"
+        },
+        {
+          "end": [
+            925.72868494,
+            47.46958356,
+            26.53919636
+          ],
+          "start": [
+            923.68309623,
+            28.5729586,
+            43.3930261
+          ],
+          "type": "middle"
+        },
+        {
+          "end": [
+            926.40089849,
+            53.67932032,
+            9.05770266
+          ],
+          "start": [
+            925.72868494,
+            47.46958356,
+            26.53919636
+          ],
+          "type": "distal"
+        },
+        {
+          "end": [
+            899.34619032,
+            -16.83080075,
+            34.91666306
+          ],
+          "start": [
+            901.41988616,
+            -75.12971863,
+            32.96124303
+          ],
+          "type": "metacarpal"
+        },
+        {
+          "end": [
+            896.43793101,
+            14.39588313,
+            42.40063862
+          ],
+          "start": [
+            899.34619032,
+            -16.83080075,
+            34.91666306
+          ],
+          "type": "proximal"
+        },
+        {
+          "end": [
+            895.16925161,
+            28.01800089,
+            31.34971107
+          ],
+          "start": [
+            896.43793101,
+            14.39588313,
+            42.40063862
+          ],
+          "type": "middle"
+        },
+        {
+          "end": [
+            894.65106068,
+            33.58194218,
+            15.70818887
+          ],
+          "start": [
+            895.16925161,
+            28.01800089,
+            31.34971107
+          ],
+          "type": "distal"
+        },
+        {
+          "end": [
+            980.41691942,
+            -54.27336208,
+            27.58828167
+          ],
+          "start": [
+            943.93245367,
+            -81.81036136,
+            23.19081272
+          ],
+          "type": "metacarpal"
+        },
+        {
+          "end": [
+            995.37455318,
+            -26.45281829,
+            21.11833695
+          ],
+          "start": [
+            980.41691942,
+            -54.27336208,
+            27.58828167
+          ],
+          "type": "proximal"
+        },
+        {
+          "end": [
+            997.59440654,
+            -1.64214999,
+            9.80818011
+          ],
+          "start": [
+            995.37455318,
+            -26.45281829,
+            21.11833695
+          ],
+          "type": "distal"
+        }
+      ],
+      "coordinateFrame": {
+        "axes": {
+          "x": "right",
+          "y": "down",
+          "z": "up toward viewer"
+        },
+        "frontY": 150.0,
+        "keyboardRect": [
+          0,
+          0,
+          1400,
+          150
+        ],
+        "origin": "top-left of keyboardRect",
+        "pixelsPerInch": 28.99408284,
+        "units": "screen pixels"
+      },
+      "fingerChains": {
+        "1": [
+          [
+            943.93245367,
+            -81.81036136,
+            23.19081272
+          ],
+          [
+            980.41691942,
+            -54.27336208,
+            27.58828167
+          ],
+          [
+            995.37455318,
+            -26.45281829,
+            21.11833695
+          ],
+          [
+            997.59440654,
+            -1.64214999,
+            9.80818011
+          ]
+        ],
+        "2": [
+          [
+            933.98802672,
+            -76.78959712,
+            34.9153291
+          ],
+          [
+            961.05012188,
+            -17.48378423,
+            38.82419493
+          ],
+          [
+            972.32893587,
+            18.94982644,
+            47.35421858
+          ],
+          [
+            977.33215757,
+            35.11158171,
+            32.56382436
+          ],
+          [
+            978.81616286,
+            39.905319,
+            15.70818879
+          ]
+        ],
+        "3": [
+          [
+            923.65290552,
+            -73.68346349,
+            35.89237213
+          ],
+          [
+            940.36249824,
+            -11.32898071,
+            40.7739126
+          ],
+          [
+            948.72632316,
+            27.45027371,
+            21.81850822
+          ],
+          [
+            952.74097314,
+            46.06438081,
+            3.56171384
+          ],
+          [
+            954.99999978,
+            56.53846051,
+            -11.59763234
+          ]
+        ],
+        "4": [
+          [
+            911.77442766,
+            -73.25392863,
+            34.9153291
+          ],
+          [
+            919.29417816,
+            -11.97074312,
+            38.82321974
+          ],
+          [
+            923.68309623,
+            28.5729586,
+            43.3930261
+          ],
+          [
+            925.72868494,
+            47.46958356,
+            26.53919636
+          ],
+          [
+            926.40089849,
+            53.67932032,
+            9.05770266
+          ]
+        ],
+        "5": [
+          [
+            901.41988616,
+            -75.12971863,
+            32.96124303
+          ],
+          [
+            899.34619032,
+            -16.83080075,
+            34.91666306
+          ],
+          [
+            896.43793101,
+            14.39588313,
+            42.40063862
+          ],
+          [
+            895.16925161,
+            28.01800089,
+            31.34971107
+          ],
+          [
+            894.65106068,
+            33.58194218,
+            15.70818887
+          ]
+        ]
+      },
+      "fingerTips": {
+        "1": [
+          997.59440654,
+          -1.64214999,
+          9.80818011
+        ],
+        "2": [
+          978.81616286,
+          39.905319,
+          15.70818879
+        ],
+        "3": [
+          954.99999978,
+          56.53846051,
+          -11.59763234
+        ],
+        "4": [
+          926.40089849,
+          53.67932032,
+          9.05770266
+        ],
+        "5": [
+          894.65106068,
+          33.58194218,
+          15.70818887
+        ]
+      },
+      "hand": "L",
+      "jointCount": 22,
+      "joints": [
+        {
+          "position": [
+            961.05012188,
+            -17.48378423,
+            38.82419493
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            972.32893587,
+            18.94982644,
+            47.35421858
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            977.33215757,
+            35.11158171,
+            32.56382436
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            978.81616286,
+            39.905319,
+            15.70818879
+          ],
+          "type": "tip"
+        },
+        {
+          "position": [
+            940.36249824,
+            -11.32898071,
+            40.7739126
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            948.72632316,
+            27.45027371,
+            21.81850822
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            952.74097314,
+            46.06438081,
+            3.56171384
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            954.99999978,
+            56.53846051,
+            -11.59763234
+          ],
+          "type": "tip"
+        },
+        {
+          "position": [
+            919.29417816,
+            -11.97074312,
+            38.82321974
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            923.68309623,
+            28.5729586,
+            43.3930261
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            925.72868494,
+            47.46958356,
+            26.53919636
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            926.40089849,
+            53.67932032,
+            9.05770266
+          ],
+          "type": "tip"
+        },
+        {
+          "position": [
+            899.34619032,
+            -16.83080075,
+            34.91666306
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            896.43793101,
+            14.39588313,
+            42.40063862
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            895.16925161,
+            28.01800089,
+            31.34971107
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            894.65106068,
+            33.58194218,
+            15.70818887
+          ],
+          "type": "tip"
+        },
+        {
+          "position": [
+            943.93245367,
+            -81.81036136,
+            23.19081272
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            980.41691942,
+            -54.27336208,
+            27.58828167
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            995.37455318,
+            -26.45281829,
+            21.11833695
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            997.59440654,
+            -1.64214999,
+            9.80818011
+          ],
+          "type": "tip"
+        },
+        {
+          "position": [
+            937.93495383,
+            -96.54136482,
+            30.03011394
+          ],
+          "type": "wrist"
+        },
+        {
+          "position": [
+            895.81308056,
+            -87.94609149,
+            30.03011394
+          ],
+          "type": "wrist"
+        }
+      ],
+      "layer": 0,
+      "time": 1.15,
+      "wristJoints": [
+        [
+          937.93495383,
+          -96.54136482,
+          30.03011394
+        ],
+        [
+          895.81308056,
+          -87.94609149,
+          30.03011394
+        ]
+      ],
+      "wristPose": {
+        "headingRadians": 0.20129369,
+        "positionPx": [
+          401.12598281,
+          -92.24372815
+        ]
+      }
+    },
+    {
+      "armEnd": [
+        448.90614546,
+        -410.47592132,
+        58.11059537
+      ],
+      "boneCount": 28,
+      "bones": [
+        {
+          "end": [
+            427.562645,
+            -413.02302186,
+            58.11059537
+          ],
+          "start": [
+            301.99988794,
+            -88.54100547,
+            53.22538021
+          ],
+          "type": "forearm"
+        },
+        {
+          "end": [
+            470.24964591,
+            -407.92882078,
+            58.11059537
+          ],
+          "start": [
+            344.68688885,
+            -83.44680439,
+            52.90855797
+          ],
+          "type": "forearm"
+        },
+        {
+          "end": [
+            297.23697385,
+            -73.36579158,
+            44.80429597
+          ],
+          "start": [
+            301.99988794,
+            -88.54100547,
+            53.22538021
+          ],
+          "type": "carpal"
+        },
+        {
+          "end": [
+            307.56139218,
+            -69.18176397,
+            55.99837913
+          ],
+          "start": [
+            297.23697385,
+            -73.36579158,
+            44.80429597
+          ],
+          "type": "carpal"
+        },
+        {
+          "end": [
+            318.11736511,
+            -66.93805459,
+            56.68959922
+          ],
+          "start": [
+            307.56139218,
+            -69.18176397,
+            55.99837913
+          ],
+          "type": "carpal"
+        },
+        {
+          "end": [
+            329.99082905,
+            -67.48904524,
+            55.78283661
+          ],
+          "start": [
+            318.11736511,
+            -66.93805459,
+            56.68959922
+          ],
+          "type": "carpal"
+        },
+        {
+          "end": [
+            340.15552935,
+            -70.21190872,
+            54.17519715
+          ],
+          "start": [
+            329.99082905,
+            -67.48904524,
+            55.78283661
+          ],
+          "type": "carpal"
+        },
+        {
+          "end": [
+            344.68688885,
+            -83.44680439,
+            52.90855797
+          ],
+          "start": [
+            340.15552935,
+            -70.21190872,
+            54.17519715
+          ],
+          "type": "carpal"
+        },
+        {
+          "end": [
+            344.68688885,
+            -83.44680439,
+            52.90855797
+          ],
+          "start": [
+            301.99988794,
+            -88.54100547,
+            53.22538021
+          ],
+          "type": "carpal"
+        },
+        {
+          "end": [
+            285.47956228,
+            -7.84719602,
+            51.65525987
+          ],
+          "start": [
+            307.56139218,
+            -69.18176397,
+            55.99837913
+          ],
+          "type": "metacarpal"
+        },
+        {
+          "end": [
+            277.30402943,
+            29.30073491,
+            54.92050967
+          ],
+          "start": [
+            285.47956228,
+            -7.84719602,
+            51.65525987
+          ],
+          "type": "proximal"
+        },
+        {
+          "end": [
+            273.72204429,
+            45.57653478,
+            36.966689
+          ],
+          "start": [
+            277.30402943,
+            29.30073491,
+            54.92050967
+          ],
+          "type": "middle"
+        },
+        {
+          "end": [
+            272.767795,
+            49.91244627,
+            19.10395804
+          ],
+          "start": [
+            273.72204429,
+            45.57653478,
+            36.966689
+          ],
+          "type": "distal"
+        },
+        {
+          "end": [
+            306.6040939,
+            -3.4184781,
+            52.96325754
+          ],
+          "start": [
+            318.11736511,
+            -66.93805459,
+            56.68959922
+          ],
+          "type": "metacarpal"
+        },
+        {
+          "end": [
+            301.41346954,
+            36.918668,
+            29.88670862
+          ],
+          "start": [
+            306.6040939,
+            -3.4184781,
+            52.96325754
+          ],
+          "type": "proximal"
+        },
+        {
+          "end": [
+            299.11823569,
+            54.75528584,
+            7.15101567
+          ],
+          "start": [
+            301.41346954,
+            36.918668,
+            29.88670862
+          ],
+          "type": "middle"
+        },
+        {
+          "end": [
+            297.99999984,
+            63.44526983,
+            -11.59763409
+          ],
+          "start": [
+            299.11823569,
+            54.75528584,
+            7.15101567
+          ],
+          "type": "distal"
+        },
+        {
+          "end": [
+            327.54783084,
+            -5.79457844,
+            51.35788325
+          ],
+          "start": [
+            329.99082905,
+            -67.48904524,
+            55.78283661
+          ],
+          "type": "metacarpal"
+        },
+        {
+          "end": [
+            326.53398775,
+            34.93254022,
+            49.90767481
+          ],
+          "start": [
+            327.54783084,
+            -5.79457844,
+            51.35788325
+          ],
+          "type": "proximal"
+        },
+        {
+          "end": [
+            326.06821147,
+            53.64325167,
+            29.19134577
+          ],
+          "start": [
+            326.53398775,
+            34.93254022,
+            49.90767481
+          ],
+          "type": "middle"
+        },
+        {
+          "end": [
+            325.92698387,
+            59.31650983,
+            10.20640245
+          ],
+          "start": [
+            326.06821147,
+            53.64325167,
+            29.19134577
+          ],
+          "type": "distal"
+        },
+        {
+          "end": [
+            347.02736154,
+            -12.28227932,
+            48.38242446
+          ],
+          "start": [
+            340.15552935,
+            -70.21190872,
+            54.17519715
+          ],
+          "type": "metacarpal"
+        },
+        {
+          "end": [
+            352.60690027,
+            18.45687675,
+            51.76613794
+          ],
+          "start": [
+            347.02736154,
+            -12.28227932,
+            48.38242446
+          ],
+          "type": "proximal"
+        },
+        {
+          "end": [
+            355.0244636,
+            31.77587322,
+            38.36497373
+          ],
+          "start": [
+            352.60690027,
+            18.45687675,
+            51.76613794
+          ],
+          "type": "middle"
+        },
+        {
+          "end": [
+            355.93794534,
+            36.80848594,
+            21.69562302
+          ],
+          "start": [
+            355.0244636,
+            31.77587322,
+            38.36497373
+          ],
+          "type": "distal"
+        },
+        {
+          "end": [
+            262.80078695,
+            -43.35634091,
+            45.64468757
+          ],
+          "start": [
+            297.23697385,
+            -73.36579158,
+            44.80429597
+          ],
+          "type": "metacarpal"
+        },
+        {
+          "end": [
+            250.25887838,
+            -14.38824408,
+            35.11312006
+          ],
+          "start": [
+            262.80078695,
+            -43.35634091,
+            45.64468757
+          ],
+          "type": "proximal"
+        },
+        {
+          "end": [
+            250.52887455,
+            10.41422568,
+            19.93450749
+          ],
+          "start": [
+            250.25887838,
+            -14.38824408,
+            35.11312006
+          ],
+          "type": "distal"
+        }
+      ],
+      "coordinateFrame": {
+        "axes": {
+          "x": "right",
+          "y": "down",
+          "z": "up toward viewer"
+        },
+        "frontY": 150.0,
+        "keyboardRect": [
+          0,
+          0,
+          1400,
+          150
+        ],
+        "origin": "top-left of keyboardRect",
+        "pixelsPerInch": 28.99408284,
+        "units": "screen pixels"
+      },
+      "fingerChains": {
+        "1": [
+          [
+            297.23697385,
+            -73.36579158,
+            44.80429597
+          ],
+          [
+            262.80078695,
+            -43.35634091,
+            45.64468757
+          ],
+          [
+            250.25887838,
+            -14.38824408,
+            35.11312006
+          ],
+          [
+            250.52887455,
+            10.41422568,
+            19.93450749
+          ]
+        ],
+        "2": [
+          [
+            307.56139218,
+            -69.18176397,
+            55.99837913
+          ],
+          [
+            285.47956228,
+            -7.84719602,
+            51.65525987
+          ],
+          [
+            277.30402943,
+            29.30073491,
+            54.92050967
+          ],
+          [
+            273.72204429,
+            45.57653478,
+            36.966689
+          ],
+          [
+            272.767795,
+            49.91244627,
+            19.10395804
+          ]
+        ],
+        "3": [
+          [
+            318.11736511,
+            -66.93805459,
+            56.68959922
+          ],
+          [
+            306.6040939,
+            -3.4184781,
+            52.96325754
+          ],
+          [
+            301.41346954,
+            36.918668,
+            29.88670862
+          ],
+          [
+            299.11823569,
+            54.75528584,
+            7.15101567
+          ],
+          [
+            297.99999984,
+            63.44526983,
+            -11.59763409
+          ]
+        ],
+        "4": [
+          [
+            329.99082905,
+            -67.48904524,
+            55.78283661
+          ],
+          [
+            327.54783084,
+            -5.79457844,
+            51.35788325
+          ],
+          [
+            326.53398775,
+            34.93254022,
+            49.90767481
+          ],
+          [
+            326.06821147,
+            53.64325167,
+            29.19134577
+          ],
+          [
+            325.92698387,
+            59.31650983,
+            10.20640245
+          ]
+        ],
+        "5": [
+          [
+            340.15552935,
+            -70.21190872,
+            54.17519715
+          ],
+          [
+            347.02736154,
+            -12.28227932,
+            48.38242446
+          ],
+          [
+            352.60690027,
+            18.45687675,
+            51.76613794
+          ],
+          [
+            355.0244636,
+            31.77587322,
+            38.36497373
+          ],
+          [
+            355.93794534,
+            36.80848594,
+            21.69562302
+          ]
+        ]
+      },
+      "fingerTips": {
+        "1": [
+          250.52887455,
+          10.41422568,
+          19.93450749
+        ],
+        "2": [
+          272.767795,
+          49.91244627,
+          19.10395804
+        ],
+        "3": [
+          297.99999984,
+          63.44526983,
+          -11.59763409
+        ],
+        "4": [
+          325.92698387,
+          59.31650983,
+          10.20640245
+        ],
+        "5": [
+          355.93794534,
+          36.80848594,
+          21.69562302
+        ]
+      },
+      "hand": "R",
+      "jointCount": 22,
+      "joints": [
+        {
+          "position": [
+            285.47956228,
+            -7.84719602,
+            51.65525987
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            277.30402943,
+            29.30073491,
+            54.92050967
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            273.72204429,
+            45.57653478,
+            36.966689
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            272.767795,
+            49.91244627,
+            19.10395804
+          ],
+          "type": "tip"
+        },
+        {
+          "position": [
+            306.6040939,
+            -3.4184781,
+            52.96325754
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            301.41346954,
+            36.918668,
+            29.88670862
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            299.11823569,
+            54.75528584,
+            7.15101567
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            297.99999984,
+            63.44526983,
+            -11.59763409
+          ],
+          "type": "tip"
+        },
+        {
+          "position": [
+            327.54783084,
+            -5.79457844,
+            51.35788325
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            326.53398775,
+            34.93254022,
+            49.90767481
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            326.06821147,
+            53.64325167,
+            29.19134577
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            325.92698387,
+            59.31650983,
+            10.20640245
+          ],
+          "type": "tip"
+        },
+        {
+          "position": [
+            347.02736154,
+            -12.28227932,
+            48.38242446
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            352.60690027,
+            18.45687675,
+            51.76613794
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            355.0244636,
+            31.77587322,
+            38.36497373
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            355.93794534,
+            36.80848594,
+            21.69562302
+          ],
+          "type": "tip"
+        },
+        {
+          "position": [
+            297.23697385,
+            -73.36579158,
+            44.80429597
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            262.80078695,
+            -43.35634091,
+            45.64468757
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            250.25887838,
+            -14.38824408,
+            35.11312006
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            250.52887455,
+            10.41422568,
+            19.93450749
+          ],
+          "type": "tip"
+        },
+        {
+          "position": [
+            301.99988794,
+            -88.54100547,
+            53.22538021
+          ],
+          "type": "wrist"
+        },
+        {
+          "position": [
+            344.68688885,
+            -83.44680439,
+            52.90855797
+          ],
+          "type": "wrist"
+        }
+      ],
+      "layer": 1,
+      "time": 1.15,
+      "wristJoints": [
+        [
+          301.99988794,
+          -88.54100547,
+          53.22538021
+        ],
+        [
+          344.68688885,
+          -83.44680439,
+          52.90855797
+        ]
+      ],
+      "wristPose": {
+        "headingRadians": 0.11877673,
+        "positionPx": [
+          323.34338839,
+          -85.99390493
+        ]
+      }
+    },
+    {
+      "armEnd": [
+        795.60755333,
+        -411.87793858,
+        34.9153291
+      ],
+      "boneCount": 28,
+      "bones": [
+        {
+          "end": [
+            816.73569045,
+            -415.8319941,
+            34.9153291
+          ],
+          "start": [
+            927.83255955,
+            -86.11685856,
+            30.03011394
+          ],
+          "type": "forearm"
+        },
+        {
+          "end": [
+            774.47941622,
+            -407.92388306,
+            34.9153291
+          ],
+          "start": [
+            885.57628532,
+            -78.20874753,
+            30.03011394
+          ],
+          "type": "forearm"
+        },
+        {
+          "end": [
+            933.58934589,
+            -71.29013005,
+            23.19081272
+          ],
+          "start": [
+            927.83255955,
+            -86.11685856,
+            30.03011394
+          ],
+          "type": "carpal"
+        },
+        {
+          "end": [
+            923.56446673,
+            -66.43199269,
+            34.9153291
+          ],
+          "start": [
+            933.58934589,
+            -71.29013005,
+            23.19081272
+          ],
+          "type": "carpal"
+        },
+        {
+          "end": [
+            913.18012797,
+            -63.49459506,
+            35.89237213
+          ],
+          "start": [
+            923.56446673,
+            -66.43199269,
+            34.9153291
+          ],
+          "type": "carpal"
+        },
+        {
+          "end": [
+            901.29622995,
+            -63.25857724,
+            34.9153291
+          ],
+          "start": [
+            913.18012797,
+            -63.49459506,
+            35.89237213
+          ],
+          "type": "carpal"
+        },
+        {
+          "end": [
+            890.97361208,
+            -65.30275876,
+            32.96124303
+          ],
+          "start": [
+            901.29622995,
+            -63.25857724,
+            34.9153291
+          ],
+          "type": "carpal"
+        },
+        {
+          "end": [
+            885.57628532,
+            -78.20874753,
+            30.03011394
+          ],
+          "start": [
+            890.97361208,
+            -65.30275876,
+            32.96124303
+          ],
+          "type": "carpal"
+        },
+        {
+          "end": [
+            885.57628532,
+            -78.20874753,
+            30.03011394
+          ],
+          "start": [
+            927.83255955,
+            -86.11685856,
+            30.03011394
+          ],
+          "type": "carpal"
+        },
+        {
+          "end": [
+            949.65708221,
+            -6.69329623,
+            38.82419493
+          ],
+          "start": [
+            923.56446673,
+            -66.43199269,
+            34.9153291
+          ],
+          "type": "metacarpal"
+        },
+        {
+          "end": [
+            959.94265046,
+            29.84977674,
+            48.10815093
+          ],
+          "start": [
+            949.65708221,
+            -6.69329623,
+            38.82419493
+          ],
+          "type": "proximal"
+        },
+        {
+          "end": [
+            964.40730078,
+            45.71200607,
+            32.82918174
+          ],
+          "start": [
+            959.94265046,
+            29.84977674,
+            48.10815093
+          ],
+          "type": "middle"
+        },
+        {
+          "end": [
+            965.49666037,
+            49.58233642,
+            15.7081865
+          ],
+          "start": [
+            964.40730078,
+            45.71200607,
+            32.82918174
+          ],
+          "type": "distal"
+        },
+        {
+          "end": [
+            928.87196163,
+            -0.87624018,
+            40.7739126
+          ],
+          "start": [
+            913.18012797,
+            -63.49459506,
+            35.89237213
+          ],
+          "type": "metacarpal"
+        },
+        {
+          "end": [
+            936.66192419,
+            41.88056432,
+            47.4270057
+          ],
+          "start": [
+            928.87196163,
+            -0.87624018,
+            40.7739126
+          ],
+          "type": "proximal"
+        },
+        {
+          "end": [
+            939.73302292,
+            58.73691856,
+            27.36847603
+          ],
+          "start": [
+            936.66192419,
+            41.88056432,
+            47.4270057
+          ],
+          "type": "middle"
+        },
+        {
+          "end": [
+            940.05678673,
+            60.51396251,
+            8.89274559
+          ],
+          "start": [
+            939.73302292,
+            58.73691856,
+            27.36847603
+          ],
+          "type": "distal"
+        },
+        {
+          "end": [
+            907.8168881,
+            -1.86104886,
+            38.82321974
+          ],
+          "start": [
+            901.29622995,
+            -63.25857724,
+            34.9153291
+          ],
+          "type": "metacarpal"
+        },
+        {
+          "end": [
+            911.06195782,
+            38.9030899,
+            35.40386388
+          ],
+          "start": [
+            907.8168881,
+            -1.86104886,
+            38.82321974
+          ],
+          "type": "proximal"
+        },
+        {
+          "end": [
+            912.48261711,
+            56.74922494,
+            17.38122156
+          ],
+          "start": [
+            911.06195782,
+            38.9030899,
+            35.40386388
+          ],
+          "type": "middle"
+        },
+        {
+          "end": [
+            912.99999984,
+            63.24851864,
+            1.23e-06
+          ],
+          "start": [
+            912.48261711,
+            56.74922494,
+            17.38122156
+          ],
+          "type": "distal"
+        },
+        {
+          "end": [
+            887.95069991,
+            -7.04534685,
+            34.91666306
+          ],
+          "start": [
+            890.97361208,
+            -65.30275876,
+            32.96124303
+          ],
+          "type": "metacarpal"
+        },
+        {
+          "end": [
+            883.78237028,
+            23.72776579,
+            43.58927601
+          ],
+          "start": [
+            887.95069991,
+            -7.04534685,
+            34.91666306
+          ],
+          "type": "proximal"
+        },
+        {
+          "end": [
+            882.02466332,
+            36.70421417,
+            31.84973202
+          ],
+          "start": [
+            883.78237028,
+            23.72776579,
+            43.58927601
+          ],
+          "type": "middle"
+        },
+        {
+          "end": [
+            881.49904971,
+            40.58460949,
+            15.70818799
+          ],
+          "start": [
+            882.02466332,
+            36.70421417,
+            31.84973202
+          ],
+          "type": "distal"
+        },
+        {
+          "end": [
+            970.16923527,
+            -43.99126709,
+            28.23304212
+          ],
+          "start": [
+            933.58934589,
+            -71.29013005,
+            23.19081272
+          ],
+          "type": "metacarpal"
+        },
+        {
+          "end": [
+            984.43484032,
+            -15.85492587,
+            21.56877438
+          ],
+          "start": [
+            970.16923527,
+            -43.99126709,
+            28.23304212
+          ],
+          "type": "proximal"
+        },
+        {
+          "end": [
+            985.26675583,
+            8.83136607,
+            9.80818065
+          ],
+          "start": [
+            984.43484032,
+            -15.85492587,
+            21.56877438
+          ],
+          "type": "distal"
+        }
+      ],
+      "coordinateFrame": {
+        "axes": {
+          "x": "right",
+          "y": "down",
+          "z": "up toward viewer"
+        },
+        "frontY": 150.0,
+        "keyboardRect": [
+          0,
+          0,
+          1400,
+          150
+        ],
+        "origin": "top-left of keyboardRect",
+        "pixelsPerInch": 28.99408284,
+        "units": "screen pixels"
+      },
+      "fingerChains": {
+        "1": [
+          [
+            933.58934589,
+            -71.29013005,
+            23.19081272
+          ],
+          [
+            970.16923527,
+            -43.99126709,
+            28.23304212
+          ],
+          [
+            984.43484032,
+            -15.85492587,
+            21.56877438
+          ],
+          [
+            985.26675583,
+            8.83136607,
+            9.80818065
+          ]
+        ],
+        "2": [
+          [
+            923.56446673,
+            -66.43199269,
+            34.9153291
+          ],
+          [
+            949.65708221,
+            -6.69329623,
+            38.82419493
+          ],
+          [
+            959.94265046,
+            29.84977674,
+            48.10815093
+          ],
+          [
+            964.40730078,
+            45.71200607,
+            32.82918174
+          ],
+          [
+            965.49666037,
+            49.58233642,
+            15.7081865
+          ]
+        ],
+        "3": [
+          [
+            913.18012797,
+            -63.49459506,
+            35.89237213
+          ],
+          [
+            928.87196163,
+            -0.87624018,
+            40.7739126
+          ],
+          [
+            936.66192419,
+            41.88056432,
+            47.4270057
+          ],
+          [
+            939.73302292,
+            58.73691856,
+            27.36847603
+          ],
+          [
+            940.05678673,
+            60.51396251,
+            8.89274559
+          ]
+        ],
+        "4": [
+          [
+            901.29622995,
+            -63.25857724,
+            34.9153291
+          ],
+          [
+            907.8168881,
+            -1.86104886,
+            38.82321974
+          ],
+          [
+            911.06195782,
+            38.9030899,
+            35.40386388
+          ],
+          [
+            912.48261711,
+            56.74922494,
+            17.38122156
+          ],
+          [
+            912.99999984,
+            63.24851864,
+            1.23e-06
+          ]
+        ],
+        "5": [
+          [
+            890.97361208,
+            -65.30275876,
+            32.96124303
+          ],
+          [
+            887.95069991,
+            -7.04534685,
+            34.91666306
+          ],
+          [
+            883.78237028,
+            23.72776579,
+            43.58927601
+          ],
+          [
+            882.02466332,
+            36.70421417,
+            31.84973202
+          ],
+          [
+            881.49904971,
+            40.58460949,
+            15.70818799
+          ]
+        ]
+      },
+      "fingerTips": {
+        "1": [
+          985.26675583,
+          8.83136607,
+          9.80818065
+        ],
+        "2": [
+          965.49666037,
+          49.58233642,
+          15.7081865
+        ],
+        "3": [
+          940.05678673,
+          60.51396251,
+          8.89274559
+        ],
+        "4": [
+          912.99999984,
+          63.24851864,
+          1.23e-06
+        ],
+        "5": [
+          881.49904971,
+          40.58460949,
+          15.70818799
+        ]
+      },
+      "hand": "L",
+      "jointCount": 22,
+      "joints": [
+        {
+          "position": [
+            949.65708221,
+            -6.69329623,
+            38.82419493
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            959.94265046,
+            29.84977674,
+            48.10815093
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            964.40730078,
+            45.71200607,
+            32.82918174
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            965.49666037,
+            49.58233642,
+            15.7081865
+          ],
+          "type": "tip"
+        },
+        {
+          "position": [
+            928.87196163,
+            -0.87624018,
+            40.7739126
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            936.66192419,
+            41.88056432,
+            47.4270057
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            939.73302292,
+            58.73691856,
+            27.36847603
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            940.05678673,
+            60.51396251,
+            8.89274559
+          ],
+          "type": "tip"
+        },
+        {
+          "position": [
+            907.8168881,
+            -1.86104886,
+            38.82321974
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            911.06195782,
+            38.9030899,
+            35.40386388
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            912.48261711,
+            56.74922494,
+            17.38122156
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            912.99999984,
+            63.24851864,
+            1.23e-06
+          ],
+          "type": "tip"
+        },
+        {
+          "position": [
+            887.95069991,
+            -7.04534685,
+            34.91666306
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            883.78237028,
+            23.72776579,
+            43.58927601
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            882.02466332,
+            36.70421417,
+            31.84973202
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            881.49904971,
+            40.58460949,
+            15.70818799
+          ],
+          "type": "tip"
+        },
+        {
+          "position": [
+            933.58934589,
+            -71.29013005,
+            23.19081272
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            970.16923527,
+            -43.99126709,
+            28.23304212
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            984.43484032,
+            -15.85492587,
+            21.56877438
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            985.26675583,
+            8.83136607,
+            9.80818065
+          ],
+          "type": "tip"
+        },
+        {
+          "position": [
+            927.83255955,
+            -86.11685856,
+            30.03011394
+          ],
+          "type": "wrist"
+        },
+        {
+          "position": [
+            885.57628532,
+            -78.20874753,
+            30.03011394
+          ],
+          "type": "wrist"
+        }
+      ],
+      "layer": 0,
+      "time": 2.0,
+      "wristJoints": [
+        [
+          927.83255955,
+          -86.11685856,
+          30.03011394
+        ],
+        [
+          885.57628532,
+          -78.20874753,
+          30.03011394
+        ]
+      ],
+      "wristPose": {
+        "headingRadians": 0.18500637,
+        "positionPx": [
+          411.29557756,
+          -82.16280305
+        ]
+      }
+    },
+    {
+      "armEnd": [
+        465.70149581,
+        -422.18120132,
+        58.11059537
+      ],
+      "boneCount": 28,
+      "bones": [
+        {
+          "end": [
+            444.69937077,
+            -426.75760569,
+            58.11059537
+          ],
+          "start": [
+            322.09491562,
+            -101.14628448,
+            53.22538021
+          ],
+          "type": "forearm"
+        },
+        {
+          "end": [
+            486.70362084,
+            -417.60479695,
+            58.11059537
+          ],
+          "start": [
+            364.09916569,
+            -91.99347574,
+            52.620057
+          ],
+          "type": "forearm"
+        },
+        {
+          "end": [
+            315.9026954,
+            -86.49606687,
+            45.0481975
+          ],
+          "start": [
+            322.09491562,
+            -101.14628448,
+            53.22538021
+          ],
+          "type": "carpal"
+        },
+        {
+          "end": [
+            325.77970277,
+            -81.34393854,
+            56.08055169
+          ],
+          "start": [
+            315.9026954,
+            -86.49606687,
+            45.0481975
+          ],
+          "type": "carpal"
+        },
+        {
+          "end": [
+            336.07274691,
+            -78.10109431,
+            56.61902667
+          ],
+          "start": [
+            325.77970277,
+            -81.34393854,
+            56.08055169
+          ],
+          "type": "carpal"
+        },
+        {
+          "end": [
+            347.94448823,
+            -77.51415784,
+            55.56235817
+          ],
+          "start": [
+            336.07274691,
+            -78.10109431,
+            56.61902667
+          ],
+          "type": "carpal"
+        },
+        {
+          "end": [
+            358.32298222,
+            -79.25254222,
+            53.8438847
+          ],
+          "start": [
+            347.94448823,
+            -77.51415784,
+            55.56235817
+          ],
+          "type": "carpal"
+        },
+        {
+          "end": [
+            364.09916569,
+            -91.99347574,
+            52.620057
+          ],
+          "start": [
+            358.32298222,
+            -79.25254222,
+            53.8438847
+          ],
+          "type": "carpal"
+        },
+        {
+          "end": [
+            364.09916569,
+            -91.99347574,
+            52.620057
+          ],
+          "start": [
+            322.09491562,
+            -101.14628448,
+            53.22538021
+          ],
+          "type": "carpal"
+        },
+        {
+          "end": [
+            297.9339355,
+            -22.40202067,
+            51.56898132
+          ],
+          "start": [
+            325.77970277,
+            -81.34393854,
+            56.08055169
+          ],
+          "type": "metacarpal"
+        },
+        {
+          "end": [
+            286.33819804,
+            13.72383558,
+            55.01373546
+          ],
+          "start": [
+            297.9339355,
+            -22.40202067,
+            51.56898132
+          ],
+          "type": "proximal"
+        },
+        {
+          "end": [
+            281.31898769,
+            29.3608981,
+            36.6890606
+          ],
+          "start": [
+            286.33819804,
+            13.72383558,
+            55.01373546
+          ],
+          "type": "middle"
+        },
+        {
+          "end": [
+            280.12798378,
+            33.07140262,
+            18.75069602
+          ],
+          "start": [
+            281.31898769,
+            29.3608981,
+            36.6890606
+          ],
+          "type": "distal"
+        },
+        {
+          "end": [
+            318.53816513,
+            -15.97356053,
+            52.52443788
+          ],
+          "start": [
+            336.07274691,
+            -78.10109431,
+            56.61902667
+          ],
+          "type": "metacarpal"
+        },
+        {
+          "end": [
+            308.95753581,
+            26.37795739,
+            52.11359418
+          ],
+          "start": [
+            318.53816513,
+            -15.97356053,
+            52.52443788
+          ],
+          "type": "proximal"
+        },
+        {
+          "end": [
+            305.23272955,
+            42.843598,
+            27.96545749
+          ],
+          "start": [
+            308.95753581,
+            26.37795739,
+            52.11359418
+          ],
+          "type": "middle"
+        },
+        {
+          "end": [
+            304.92991523,
+            44.18219964,
+            8.89273954
+          ],
+          "start": [
+            305.23272955,
+            42.843598,
+            27.96545749
+          ],
+          "type": "distal"
+        },
+        {
+          "end": [
+            339.61314059,
+            -16.3360235,
+            50.63035234
+          ],
+          "start": [
+            347.94448823,
+            -77.51415784,
+            55.56235817
+          ],
+          "type": "metacarpal"
+        },
+        {
+          "end": [
+            334.55555333,
+            23.71908495,
+            51.12726777
+          ],
+          "start": [
+            339.61314059,
+            -16.3360235,
+            50.63035234
+          ],
+          "type": "proximal"
+        },
+        {
+          "end": [
+            332.42301658,
+            40.60836163,
+            28.54057852
+          ],
+          "start": [
+            334.55555333,
+            23.71908495,
+            51.12726777
+          ],
+          "type": "middle"
+        },
+        {
+          "end": [
+            332.13409537,
+            42.89656155,
+            9.43465924
+          ],
+          "start": [
+            332.42301658,
+            40.60836163,
+            28.54057852
+          ],
+          "type": "distal"
+        },
+        {
+          "end": [
+            359.62379221,
+            -20.93126023,
+            47.43573468
+          ],
+          "start": [
+            358.32298222,
+            -79.25254222,
+            53.8438847
+          ],
+          "type": "metacarpal"
+        },
+        {
+          "end": [
+            362.03497602,
+            10.9347993,
+            37.94925865
+          ],
+          "start": [
+            359.62379221,
+            -20.93126023,
+            47.43573468
+          ],
+          "type": "proximal"
+        },
+        {
+          "end": [
+            362.81732677,
+            21.27429952,
+            21.86013135
+          ],
+          "start": [
+            362.03497602,
+            10.9347993,
+            37.94925865
+          ],
+          "type": "middle"
+        },
+        {
+          "end": [
+            362.99999976,
+            23.68849463,
+            4.96514701
+          ],
+          "start": [
+            362.81732677,
+            21.27429952,
+            21.86013135
+          ],
+          "type": "distal"
+        },
+        {
+          "end": [
+            278.58142912,
+            -60.19621882,
+            46.36924909
+          ],
+          "start": [
+            315.9026954,
+            -86.49606687,
+            45.0481975
+          ],
+          "type": "metacarpal"
+        },
+        {
+          "end": [
+            263.37136816,
+            -32.54955094,
+            35.75965553
+          ],
+          "start": [
+            278.58142912,
+            -60.19621882,
+            46.36924909
+          ],
+          "type": "proximal"
+        },
+        {
+          "end": [
+            261.53549158,
+            -7.87696596,
+            20.27544683
+          ],
+          "start": [
+            263.37136816,
+            -32.54955094,
+            35.75965553
+          ],
+          "type": "distal"
+        }
+      ],
+      "coordinateFrame": {
+        "axes": {
+          "x": "right",
+          "y": "down",
+          "z": "up toward viewer"
+        },
+        "frontY": 150.0,
+        "keyboardRect": [
+          0,
+          0,
+          1400,
+          150
+        ],
+        "origin": "top-left of keyboardRect",
+        "pixelsPerInch": 28.99408284,
+        "units": "screen pixels"
+      },
+      "fingerChains": {
+        "1": [
+          [
+            315.9026954,
+            -86.49606687,
+            45.0481975
+          ],
+          [
+            278.58142912,
+            -60.19621882,
+            46.36924909
+          ],
+          [
+            263.37136816,
+            -32.54955094,
+            35.75965553
+          ],
+          [
+            261.53549158,
+            -7.87696596,
+            20.27544683
+          ]
+        ],
+        "2": [
+          [
+            325.77970277,
+            -81.34393854,
+            56.08055169
+          ],
+          [
+            297.9339355,
+            -22.40202067,
+            51.56898132
+          ],
+          [
+            286.33819804,
+            13.72383558,
+            55.01373546
+          ],
+          [
+            281.31898769,
+            29.3608981,
+            36.6890606
+          ],
+          [
+            280.12798378,
+            33.07140262,
+            18.75069602
+          ]
+        ],
+        "3": [
+          [
+            336.07274691,
+            -78.10109431,
+            56.61902667
+          ],
+          [
+            318.53816513,
+            -15.97356053,
+            52.52443788
+          ],
+          [
+            308.95753581,
+            26.37795739,
+            52.11359418
+          ],
+          [
+            305.23272955,
+            42.843598,
+            27.96545749
+          ],
+          [
+            304.92991523,
+            44.18219964,
+            8.89273954
+          ]
+        ],
+        "4": [
+          [
+            347.94448823,
+            -77.51415784,
+            55.56235817
+          ],
+          [
+            339.61314059,
+            -16.3360235,
+            50.63035234
+          ],
+          [
+            334.55555333,
+            23.71908495,
+            51.12726777
+          ],
+          [
+            332.42301658,
+            40.60836163,
+            28.54057852
+          ],
+          [
+            332.13409537,
+            42.89656155,
+            9.43465924
+          ]
+        ],
+        "5": [
+          [
+            358.32298222,
+            -79.25254222,
+            53.8438847
+          ],
+          [
+            359.62379221,
+            -20.93126023,
+            47.43573468
+          ],
+          [
+            362.03497602,
+            10.9347993,
+            37.94925865
+          ],
+          [
+            362.81732677,
+            21.27429952,
+            21.86013135
+          ],
+          [
+            362.99999976,
+            23.68849463,
+            4.96514701
+          ]
+        ]
+      },
+      "fingerTips": {
+        "1": [
+          261.53549158,
+          -7.87696596,
+          20.27544683
+        ],
+        "2": [
+          280.12798378,
+          33.07140262,
+          18.75069602
+        ],
+        "3": [
+          304.92991523,
+          44.18219964,
+          8.89273954
+        ],
+        "4": [
+          332.13409537,
+          42.89656155,
+          9.43465924
+        ],
+        "5": [
+          362.99999976,
+          23.68849463,
+          4.96514701
+        ]
+      },
+      "hand": "R",
+      "jointCount": 22,
+      "joints": [
+        {
+          "position": [
+            297.9339355,
+            -22.40202067,
+            51.56898132
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            286.33819804,
+            13.72383558,
+            55.01373546
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            281.31898769,
+            29.3608981,
+            36.6890606
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            280.12798378,
+            33.07140262,
+            18.75069602
+          ],
+          "type": "tip"
+        },
+        {
+          "position": [
+            318.53816513,
+            -15.97356053,
+            52.52443788
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            308.95753581,
+            26.37795739,
+            52.11359418
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            305.23272955,
+            42.843598,
+            27.96545749
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            304.92991523,
+            44.18219964,
+            8.89273954
+          ],
+          "type": "tip"
+        },
+        {
+          "position": [
+            339.61314059,
+            -16.3360235,
+            50.63035234
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            334.55555333,
+            23.71908495,
+            51.12726777
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            332.42301658,
+            40.60836163,
+            28.54057852
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            332.13409537,
+            42.89656155,
+            9.43465924
+          ],
+          "type": "tip"
+        },
+        {
+          "position": [
+            359.62379221,
+            -20.93126023,
+            47.43573468
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            362.03497602,
+            10.9347993,
+            37.94925865
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            362.81732677,
+            21.27429952,
+            21.86013135
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            362.99999976,
+            23.68849463,
+            4.96514701
+          ],
+          "type": "tip"
+        },
+        {
+          "position": [
+            315.9026954,
+            -86.49606687,
+            45.0481975
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            278.58142912,
+            -60.19621882,
+            46.36924909
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            263.37136816,
+            -32.54955094,
+            35.75965553
+          ],
+          "type": "knuckle"
+        },
+        {
+          "position": [
+            261.53549158,
+            -7.87696596,
+            20.27544683
+          ],
+          "type": "tip"
+        },
+        {
+          "position": [
+            322.09491562,
+            -101.14628448,
+            53.22538021
+          ],
+          "type": "wrist"
+        },
+        {
+          "position": [
+            364.09916569,
+            -91.99347574,
+            52.620057
+          ],
+          "type": "wrist"
+        }
+      ],
+      "layer": 1,
+      "time": 2.0,
+      "wristJoints": [
+        [
+          322.09491562,
+          -101.14628448,
+          53.22538021
+        ],
+        [
+          364.09916569,
+          -91.99347574,
+          52.620057
+        ]
+      ],
+      "wristPose": {
+        "headingRadians": 0.21454825,
+        "positionPx": [
+          343.09704066,
+          -96.56988011
+        ]
+      }
+    }
+  ],
+  "sourceNoteIdentitySemantics": "IDs use instrument and note ordinals after PrettyMIDI decode; they are not raw SMF event IDs. A source-note-to-raw-SMF-event mapping is unavailable and must be designed by the M1 identity adapter.",
+  "sourceNotes": [
+    {
+      "end": 0.3,
+      "noteId": "synthetic-mismatched-track-labels/instrument-0/note-000000",
+      "pitch": 84,
+      "sourceInstrument": 0,
+      "sourceOrdinal": 0,
+      "start": 0.0,
+      "velocity": 88
+    },
+    {
+      "end": 1.3,
+      "noteId": "synthetic-mismatched-track-labels/instrument-0/note-000001",
+      "pitch": 81,
+      "sourceInstrument": 0,
+      "sourceOrdinal": 1,
+      "start": 1.0,
+      "velocity": 88
+    },
+    {
+      "end": 2.3,
+      "noteId": "synthetic-mismatched-track-labels/instrument-0/note-000002",
+      "pitch": 78,
+      "sourceInstrument": 0,
+      "sourceOrdinal": 2,
+      "start": 2.0,
+      "velocity": 88
+    },
+    {
+      "end": 0.3,
+      "noteId": "synthetic-mismatched-track-labels/instrument-1/note-000000",
+      "pitch": 36,
+      "sourceInstrument": 1,
+      "sourceOrdinal": 0,
+      "start": 0.0,
+      "velocity": 88
+    },
+    {
+      "end": 1.3,
+      "noteId": "synthetic-mismatched-track-labels/instrument-1/note-000001",
+      "pitch": 39,
+      "sourceInstrument": 1,
+      "sourceOrdinal": 1,
+      "start": 1.0,
+      "velocity": 88
+    },
+    {
+      "end": 2.3,
+      "noteId": "synthetic-mismatched-track-labels/instrument-1/note-000002",
+      "pitch": 43,
+      "sourceInstrument": 1,
+      "sourceOrdinal": 2,
+      "start": 2.0,
+      "velocity": 88
+    }
+  ],
+  "sourceParseErrors": [],
+  "sourcePedals": [],
+  "status": "loaded",
+  "tracks": [
+    {
+      "declaredHand": "L",
+      "index": 0,
+      "name": "Left Hand",
+      "noteCount": 3,
+      "program": 0
+    },
+    {
+      "declaredHand": "R",
+      "index": 1,
+      "name": "Right Hand",
+      "noteCount": 3,
+      "program": 0
+    }
+  ],
+  "unmappedSourceNoteIds": []
+}

@@ -1,0 +1,130 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <!-- Background Gradient -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#161c1e" />
+      <stop offset="100%" stop-color="#0d1011" />
+    </linearGradient>
+
+    <!-- Vibrant Blue to Green Accent Gradient -->
+    <linearGradient id="primaryGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3b82f6" />
+      <stop offset="50%" stop-color="#06b6d4" />
+      <stop offset="100%" stop-color="#10b981" />
+    </linearGradient>
+
+    <!-- Cyan-Blue Note Gradient -->
+    <linearGradient id="noteGrad1" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.3" />
+      <stop offset="100%" stop-color="#3b82f6" stop-opacity="0.95" />
+    </linearGradient>
+
+    <!-- Cyan-Teal Note Gradient -->
+    <linearGradient id="noteGrad2" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#06b6d4" stop-opacity="0.3" />
+      <stop offset="100%" stop-color="#06b6d4" stop-opacity="0.95" />
+    </linearGradient>
+
+    <!-- Emerald Note Gradient -->
+    <linearGradient id="noteGrad3" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#10b981" stop-opacity="0.3" />
+      <stop offset="100%" stop-color="#10b981" stop-opacity="0.95" />
+    </linearGradient>
+
+    <!-- Horizontal Strike Line Glow -->
+    <linearGradient id="strikeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#3b82f6" />
+      <stop offset="50%" stop-color="#06b6d4" />
+      <stop offset="100%" stop-color="#10b981" />
+    </linearGradient>
+
+    <!-- Black Key Gradient -->
+    <linearGradient id="blackKeyGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#222b2e" />
+      <stop offset="85%" stop-color="#111516" />
+      <stop offset="100%" stop-color="#090c0d" />
+    </linearGradient>
+
+    <!-- White Key Gradient -->
+    <linearGradient id="whiteKeyGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#f8fafc" />
+      <stop offset="92%" stop-color="#ffffff" />
+      <stop offset="100%" stop-color="#cbd5e1" />
+    </linearGradient>
+
+    <!-- Subtle Outer Border Gradient -->
+    <linearGradient id="borderGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.4" />
+      <stop offset="100%" stop-color="#10b981" stop-opacity="0.4" />
+    </linearGradient>
+
+    <!-- Subtle Drop Shadow -->
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#000000" flood-opacity="0.5" />
+    </filter>
+  </defs>
+
+  <!-- Base Icon Background -->
+  <rect width="512" height="512" rx="104" fill="url(#bgGrad)" />
+  <rect width="508" height="508" x="2" y="2" rx="102" fill="none" stroke="url(#borderGrad)" stroke-width="2" />
+
+  <!-- Piano Roll Note Trails (Falling Notes) -->
+  <rect x="72" y="100" width="36" height="152" rx="6" fill="url(#noteGrad1)" />
+  <rect x="180" y="140" width="36" height="112" rx="6" fill="url(#noteGrad2)" />
+  <rect x="288" y="70" width="36" height="182" rx="6" fill="url(#noteGrad2)" />
+  <rect x="396" y="120" width="36" height="132" rx="6" fill="url(#noteGrad3)" />
+
+  <!-- Note Highlight Caps -->
+  <rect x="72" y="246" width="36" height="6" rx="3" fill="#60a5fa" />
+  <rect x="180" y="246" width="36" height="6" rx="3" fill="#22d3ee" />
+  <rect x="288" y="246" width="36" height="6" rx="3" fill="#34d399" />
+  <rect x="396" y="246" width="36" height="6" rx="3" fill="#10b981" />
+
+  <!-- Laser Strike Line -->
+  <rect x="64" y="254" width="384" height="4" rx="2" fill="url(#strikeGrad)" />
+
+  <!-- Piano Bed / Keyboard Shadow -->
+  <rect x="62" y="260" width="388" height="184" rx="10" fill="#090c0d" opacity="0.6" />
+
+  <!-- White Keys -->
+  <g id="white-keys">
+    <rect x="64" y="262" width="52" height="180" rx="6" fill="url(#whiteKeyGrad)" filter="url(#shadow)" />
+    <rect x="118" y="262" width="52" height="180" rx="6" fill="url(#whiteKeyGrad)" filter="url(#shadow)" />
+    <rect x="172" y="262" width="52" height="180" rx="6" fill="url(#whiteKeyGrad)" filter="url(#shadow)" />
+    <rect x="226" y="262" width="52" height="180" rx="6" fill="url(#whiteKeyGrad)" filter="url(#shadow)" />
+    <rect x="280" y="262" width="52" height="180" rx="6" fill="url(#whiteKeyGrad)" filter="url(#shadow)" />
+    <rect x="334" y="262" width="52" height="180" rx="6" fill="url(#whiteKeyGrad)" filter="url(#shadow)" />
+    <rect x="388" y="262" width="52" height="180" rx="6" fill="url(#whiteKeyGrad)" filter="url(#shadow)" />
+  </g>
+
+  <!-- Key Separator Slits -->
+  <line x1="117" y1="262" x2="117" y2="442" stroke="#cbd5e1" stroke-width="1.5" />
+  <line x1="171" y1="262" x2="171" y2="442" stroke="#cbd5e1" stroke-width="1.5" />
+  <line x1="225" y1="262" x2="225" y2="442" stroke="#cbd5e1" stroke-width="1.5" />
+  <line x1="279" y1="262" x2="279" y2="442" stroke="#cbd5e1" stroke-width="1.5" />
+  <line x1="333" y1="262" x2="333" y2="442" stroke="#cbd5e1" stroke-width="1.5" />
+  <line x1="387" y1="262" x2="387" y2="442" stroke="#cbd5e1" stroke-width="1.5" />
+
+  <!-- Black Keys -->
+  <g id="black-keys">
+    <!-- C# -->
+    <rect x="101" y="262" width="32" height="112" rx="4" fill="url(#blackKeyGrad)" filter="url(#shadow)" />
+    <rect x="103" y="263" width="28" height="106" rx="3" fill="none" stroke="#334155" stroke-width="1" stroke-opacity="0.5" />
+
+    <!-- D# -->
+    <rect x="155" y="262" width="32" height="112" rx="4" fill="url(#blackKeyGrad)" filter="url(#shadow)" />
+    <rect x="157" y="263" width="28" height="106" rx="3" fill="none" stroke="#334155" stroke-width="1" stroke-opacity="0.5" />
+
+    <!-- F# -->
+    <rect x="263" y="262" width="32" height="112" rx="4" fill="url(#blackKeyGrad)" filter="url(#shadow)" />
+    <rect x="265" y="263" width="28" height="106" rx="3" fill="none" stroke="#334155" stroke-width="1" stroke-opacity="0.5" />
+
+    <!-- G# -->
+    <rect x="317" y="262" width="32" height="112" rx="4" fill="url(#blackKeyGrad)" filter="url(#shadow)" />
+    <rect x="319" y="263" width="28" height="106" rx="3" fill="none" stroke="#334155" stroke-width="1" stroke-opacity="0.5" />
+
+    <!-- A# -->
+    <rect x="371" y="262" width="32" height="112" rx="4" fill="url(#blackKeyGrad)" filter="url(#shadow)" />
+    <rect x="373" y="263" width="28" height="106" rx="3" fill="none" stroke="#334155" stroke-width="1" stroke-opacity="0.5" />
+  </g>
+</svg>

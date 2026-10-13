@@ -1,0 +1,21 @@
+============================= test session starts =============================
+platform win32 -- Python 3.14.0, pytest-8.3.5, pluggy-1.6.0
+rootdir: C:\Projects\pygame-piano-animator
+collected 148 items
+
+tests\test_audio_sync.py .......                                         [  4%]
+tests\test_core.py ..................................................... [ 40%]
+.......                                                                  [ 45%]
+tests\test_edge_cases.py ......                                          [ 49%]
+tests\test_figures.py ..........                                         [ 56%]
+tests\test_finetune.py ......                                            [ 60%]
+tests\test_fonts.py ...                                                  [ 62%]
+tests\test_glissando.py ...........                                      [ 69%]
+tests\test_loading.py ....                                               [ 72%]
+tests\test_paths.py ......                                               [ 76%]
+tests\test_recent.py ....                                                [ 79%]
+tests\test_soundfont.py .........                                        [ 85%]
+tests\test_ui.py ..................                                      [ 97%]
+tests\test_video_export.py ....                                          [100%]
+
+============================ 148 passed in 40.64s =============================

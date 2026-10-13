@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+
+# Production build output
+apps/client/dist/
+
+# Generated runtime and fixture assets (reproduced via npm run prepare:m1:assets)
+/apps/client/public/pyodide/
+/apps/client/public/python-core/
+/apps/client/public/m1-fixtures/
+
+# Test results and reports
+test-results/
+playwright-report/
+coverage/
+
+# Python bytecode and caches
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Vite temporary files
+.vite/
+.vite-temp/
+
+# OS metadata
+.DS_Store
+Thumbs.db

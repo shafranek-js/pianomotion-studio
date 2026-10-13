@@ -1,0 +1,26 @@
+{
+  "fixtureId": "synthetic-invalid-non-midi",
+  "goldenTrust": "observed-error; expected-invalid-fixture",
+  "inputSha256": "f6cc269372b52065d55bb49b1013257393ffd33b5c587f424ffa94cf9b249c5c",
+  "loadError": {
+    "message": "MThd not found. Probably not a MIDI file",
+    "type": "OSError"
+  },
+  "loadSemantics": "midi_loader.load_midi rejected the fixture before returning a Song",
+  "sourceNoteIdentitySemantics": "When present, IDs use instrument and note ordinals after PrettyMIDI decode; they are not raw SMF event IDs.",
+  "sourceNotes": [],
+  "sourceParseErrors": [
+    {
+      "message": "MThd not found. Probably not a MIDI file",
+      "phase": "pretty_midi source inventory",
+      "type": "OSError"
+    },
+    {
+      "message": "MThd not found. Probably not a MIDI file",
+      "phase": "mido source inventory",
+      "type": "OSError"
+    }
+  ],
+  "sourcePedals": [],
+  "status": "invalid-or-rejected"
+}

@@ -1,0 +1,7 @@
+? docs/WEB_MIGRATION_ROADMAP.md
+? web/AGENTS.md
+? web/README.md
+? web/docs/ORCHESTRATION.md
+? web/docs/evidence/baseline-2026-10-13/desktop-venv.lock.txt
+? web/docs/evidence/baseline-2026-10-13/source-sha.txt
+? web/docs/evidence/baseline-2026-10-13/test-environment.lock.txt

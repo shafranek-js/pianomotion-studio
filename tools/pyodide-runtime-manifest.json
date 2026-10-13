@@ -1,0 +1,96 @@
+{
+  "schemaVersion": 1,
+  "runtime": {
+    "package": "pyodide",
+    "version": "314.0.7",
+    "license": "MPL-2.0",
+    "pythonVersion": "3.14.2",
+    "abiVersion": "2026_0",
+    "platform": "emscripten_5_0_3",
+    "licenseSource": "https://github.com/pyodide/pyodide/blob/main/LICENSE"
+  },
+  "catalogPackages": [
+    {
+      "name": "micropip",
+      "version": "0.11.1",
+      "file": "micropip-0.11.1-py3-none-any.whl",
+      "sha256": "e2d52886594fd4cd0d0847110a1c34ae0134d3a970eb4496d3b5eb31ee2d8af6",
+      "license": "MPL-2.0"
+    },
+    {
+      "name": "numpy",
+      "version": "2.4.6",
+      "file": "numpy-2.4.6-cp314-cp314-pyemscripten_2026_0_wasm32.whl",
+      "sha256": "a292c1f5d7d8a2208cd5e94fc467604c131cabcd2fc14fed6eefde121e7fabdf",
+      "license": "BSD-3-Clause"
+    },
+    {
+      "name": "packaging",
+      "version": "26.1",
+      "file": "packaging-26.1-py3-none-any.whl",
+      "sha256": "565acbbea54da30348b6d68b6a54373e6f777987db9f1db6966b4b3a5060d303",
+      "license": "Apache-2.0 OR BSD-2-Clause"
+    },
+    {
+      "name": "six",
+      "version": "1.17.0",
+      "file": "six-1.17.0-py2.py3-none-any.whl",
+      "sha256": "228c50f73aa7addf2c2ccf2979c256802a59ab69cad8152b31b9443cc8140f42",
+      "license": "MIT"
+    }
+  ],
+  "purePythonWheels": [
+    {
+      "name": "pretty-midi",
+      "version": "0.2.11.post0",
+      "file": "pretty_midi-0.2.11.post0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/db/4f/fae82739ec54708915e90772938ac2745f2084550223f94cbee175a24910/pretty_midi-0.2.11.post0-py3-none-any.whl",
+      "sha256": "a3e2321736245a9c92259716d85a4762f16b7bde2f591fb0dba95bdb6e793d8a",
+      "license": "MIT",
+      "bundledAssets": [
+        {
+          "file": "pretty_midi/TimGM6mb.sf2",
+          "sizeBytes": 5994284,
+          "usedByM1": false,
+          "license": "Unresolved; sources conflict between GPL-2.0 and public domain",
+          "source": "https://github.com/craffel/pretty-midi/blob/main/pretty_midi/TimGM6mb.sf2"
+        }
+      ]
+    },
+    {
+      "name": "mido",
+      "version": "1.3.3",
+      "file": "mido-1.3.3-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/fd/28/45deb15c11859d2f10702b32e71de9328a9fa494f989626916db39a9617f/mido-1.3.3-py3-none-any.whl",
+      "sha256": "01033c9b10b049e4436fca2762194ca839b09a4334091dd3c34e7f4ae674fd8a",
+      "license": "MIT"
+    },
+    {
+      "name": "importlib-resources",
+      "version": "7.1.0",
+      "file": "importlib_resources-7.1.0-py3-none-any.whl",
+      "url": "https://files.pythonhosted.org/packages/8a/db/55a262f3606bebcae07cc14095338471ad7c0bbcaa37707e6f0ee49725b7/importlib_resources-7.1.0-py3-none-any.whl",
+      "sha256": "1bd7b48b4088eddb2cd16382150bb515af0bd2c70128194392725f82ad2c96a1",
+      "license": "Apache-2.0"
+    }
+  ],
+  "expectedOnlyLocalRequests": [
+    "pyodide.mjs",
+    "pyodide.asm.mjs",
+    "pyodide.asm.wasm",
+    "python_stdlib.zip",
+    "pyodide-lock.json",
+    "micropip-0.11.1-py3-none-any.whl",
+    "numpy-2.4.6-cp314-cp314-pyemscripten_2026_0_wasm32.whl",
+    "packaging-26.1-py3-none-any.whl",
+    "six-1.17.0-py2.py3-none-any.whl",
+    "pretty_midi-0.2.11.post0-py3-none-any.whl",
+    "mido-1.3.3-py3-none-any.whl",
+    "importlib_resources-7.1.0-py3-none-any.whl"
+  ],
+  "notes": [
+    "Pyodide 314.0.7 bundles NumPy 2.4.6; the desktop baseline used NumPy 2.5.4.",
+    "All Python wheels are pinned by filename and SHA-256 and staged locally before dev/build.",
+    "The unused TimGM6mb.sf2 is present inside the pretty-midi wheel. Its redistribution license is unresolved; no synthesis is performed in M1."
+  ]
+}

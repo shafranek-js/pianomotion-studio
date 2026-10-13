@@ -1,0 +1,72 @@
+export {
+  type PianistProfile,
+  PianistProfileSchema,
+  SCHEMA_VERSION,
+  type BoneId,
+  type AnatomyKey,
+  type MetacarpalBoneId,
+  type ProximalBoneId,
+  type MiddleBoneId,
+  type DistalBoneId,
+  type FingerNumber,
+  type BoneKind,
+  type AnatomyBoneDefinition,
+  type AnatomyWristDefinition,
+  DEFAULT_ANATOMY,
+  BONE_SCALE_MIN,
+  BONE_SCALE_MAX,
+  WRIST_SCALE_MIN,
+  WRIST_SCALE_MAX,
+  DEFAULT_WRIST_SCALE,
+  ANATOMY_BONES,
+  WRIST_DEFINITION,
+  type BehaviorSliderKey,
+  type BehaviorSliderDefinition,
+  BEHAVIOR_SLIDERS,
+  type GlissandoOption,
+  type FingeringModelOption,
+  type ChromaticOption,
+  type RepeatedOption,
+  type TrillOption,
+  type OctavesOption,
+  type BehaviorOptionKey,
+  type BehaviorOptionChoice,
+  type BehaviorOptionDefinition,
+  BEHAVIOR_OPTIONS,
+  DEFAULT_BEHAVIOR,
+  type ProfileDraft,
+} from "./types.ts";
+
+export {
+  DEFAULT_PROFILE,
+  SMALL_HANDS_PROFILE,
+  VIRTUOSO_PROFILE,
+  LEFT_DOMINANT_PROFILE,
+  getDefaultProfiles,
+  getDefaultProfile,
+} from "./defaultProfiles.ts";
+
+export {
+  importLegacyPianistJson,
+  exportProfileToJson,
+} from "./legacyImporter.ts";
+
+export {
+  PROFILES_STORAGE_KEY,
+  ACTIVE_PROFILE_STORAGE_KEY,
+  ACTIVE_PROFILE_DB_KEY,
+  initializeProfiles,
+  setProfileStorage,
+  resetProfileStore,
+  getActiveProfile,
+  setActiveProfile,
+  listProfiles,
+  saveProfile,
+  deleteProfile,
+  cloneProfile,
+  isCanonicalProfile,
+  subscribe,
+  subscribeProfiles,
+} from "./profileStore.ts";
+
+export { ProfileModal, type ProfileModalProps } from "./ProfileModal.tsx";

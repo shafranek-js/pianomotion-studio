@@ -1,0 +1,20 @@
+{
+  "command": "python -m pytest -ra",
+  "environment": {
+    "python": "3.14.0",
+    "baseInterpreter": "C:/Python314/python.exe",
+    "venv": "C:/Users/pavel/AppData/Local/Temp/handthesia-m0-20261013-codex",
+    "sdlVideoDriver": "dummy",
+    "sdlAudioDriver": "dummy",
+    "profileStore": "pytest tmp_path fixture"
+  },
+  "collected": 148,
+  "passed": 148,
+  "failed": 0,
+  "skipped": 0,
+  "xfailed": 0,
+  "xpassed": 0,
+  "durationSeconds": 40.64,
+  "failureDetails": [],
+  "log": "pytest.log"
+}

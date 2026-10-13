@@ -1,0 +1,26 @@
+{
+  "fixtureId": "synthetic-invalid-empty",
+  "goldenTrust": "observed-error; expected-invalid-fixture",
+  "inputSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "loadError": {
+    "message": "",
+    "type": "EOFError"
+  },
+  "loadSemantics": "midi_loader.load_midi rejected the fixture before returning a Song",
+  "sourceNoteIdentitySemantics": "When present, IDs use instrument and note ordinals after PrettyMIDI decode; they are not raw SMF event IDs.",
+  "sourceNotes": [],
+  "sourceParseErrors": [
+    {
+      "message": "",
+      "phase": "pretty_midi source inventory",
+      "type": "EOFError"
+    },
+    {
+      "message": "",
+      "phase": "mido source inventory",
+      "type": "EOFError"
+    }
+  ],
+  "sourcePedals": [],
+  "status": "invalid-or-rejected"
+}

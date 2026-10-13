@@ -1,0 +1,57 @@
+{
+  "assignments": [],
+  "cleanup": [
+    "repaired the file after:  (1 event(s) dropped or fixed)"
+  ],
+  "crossingEpisodes": [],
+  "desktopNotes": [],
+  "duration": 0.0,
+  "fixtureId": "synthetic-invalid-truncated",
+  "goldenTrust": "observed salvage; source was deliberately truncated and desktop repair dropped or fixed an event",
+  "hands": [],
+  "identityLosses": [],
+  "inputSha256": "3c58119b6660dd9e694c73ba48518e3610ff1f85f7a0d354afabea8ed0f9cf00",
+  "loadSemantics": "midi_loader.load_midi returned a Song; this does not assert UI readiness or playability",
+  "pedals": [],
+  "performanceEvents": [],
+  "provenance": {
+    "boldFontSha256": "2efc3a95d076f2d04c5928c0ad698b7c61cc302d6f6e79e9643cd3722f7becc2",
+    "desktopTrackCount": 0,
+    "displayInitialized": false,
+    "fingeringSourceSha256": "2f6b01b3142d081d9b314952edb60de69641de4464c07abee980f5ad21981db9",
+    "font": "bundled Source Sans Pro from assets/fonts",
+    "fontChoice": null,
+    "isolatedAppDataRoot": "ephemeral temporary directory, removed at process exit",
+    "isolatedProfileStore": true,
+    "keyStyle": "realistic",
+    "learnedWeightsFileIsRuntimeInput": false,
+    "learnedWeightsFileSha256": "950aeb9daa52f2862b070ba8ff5ffb74caf5482795302ee1095a009fb1a08f27",
+    "learnedWeightsSource": "fingering.py::LEARNED_W (the desktop runtime mapping)",
+    "profile": "pianist.default_pianist() explicitly activated in an isolated temp folder",
+    "profileSha256": "1f170e23b76d2db95b0aa50fac8e2b9f0ce51b0bd35c870301ecb8c3fd33dc5f",
+    "regularFontSha256": "b77f3a700edd0fc0dec73258f882d5c3926c77f5caf6800a201d2166568d2309",
+    "resourceRoot": "repository source tree (read-only bundled assets)",
+    "sdlAudioDriver": "dummy",
+    "sdlVideoDriver": "dummy"
+  },
+  "rawPedals": [],
+  "selectedPoses": [],
+  "sourceNoteIdentitySemantics": "IDs use instrument and note ordinals after PrettyMIDI decode; they are not raw SMF event IDs. A source-note-to-raw-SMF-event mapping is unavailable and must be designed by the M1 identity adapter.",
+  "sourceNotes": [],
+  "sourceParseErrors": [
+    {
+      "message": "",
+      "phase": "pretty_midi source inventory",
+      "type": "EOFError"
+    },
+    {
+      "message": "",
+      "phase": "mido source inventory",
+      "type": "EOFError"
+    }
+  ],
+  "sourcePedals": [],
+  "status": "repaired",
+  "tracks": [],
+  "unmappedSourceNoteIds": []
+}
