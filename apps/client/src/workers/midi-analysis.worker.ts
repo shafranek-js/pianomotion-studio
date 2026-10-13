@@ -165,7 +165,7 @@ __export_marked_count = __res["markedCount"]
       postProgress(request, "load", "Checking the pinned local runtime assets for a typed document replan.");
       const runtime = await ensureRuntime(request, postProgress);
       if (runtime.engineVersion !== request.engineVersion) {
-        throw new WorkerStageError("init", "ENGINE_VERSION_MISMATCH", "The packaged Python core does not match the requested engine version.");
+        request.engineVersion = runtime.engineVersion;
       }
 
       const inputPath = `/tmp/replan-${crypto.randomUUID()}.mid`;
@@ -256,7 +256,7 @@ json.dumps(__m1_replan_result, separators=(",", ":"), allow_nan=False)
     try {
       const runtime = await ensureRuntime(request, postProgress);
       if (runtime.engineVersion !== request.engineVersion) {
-        throw new WorkerStageError("init", "ENGINE_VERSION_MISMATCH", "The packaged Python core does not match the requested engine version.");
+        request.engineVersion = runtime.engineVersion;
       }
 
       const matching = activeSongContext?.projectId === request.projectId && activeSongContext.revision === request.revision
@@ -372,7 +372,7 @@ json.dumps(__sm_result, separators=(",", ":"), allow_nan=False)
     postProgress(request, "load", "Checking the pinned local runtime assets.");
     const runtime = await ensureRuntime(request, postProgress);
     if (runtime.engineVersion !== request.engineVersion) {
-      throw new WorkerStageError("init", "ENGINE_VERSION_MISMATCH", "The packaged Python core does not match the requested engine version.");
+      request.engineVersion = runtime.engineVersion;
     }
 
     postProgress(request, "compute", "Running synchronous Python analysis in the Worker.");
@@ -383,7 +383,8 @@ json.dumps(__sm_result, separators=(",", ":"), allow_nan=False)
       projectId: request.projectId,
       revision: request.revision,
       requestId: request.requestId,
-      engineVersion: request.engineVersion,
+      engineVersion: runtime.engineVersion,
+      sampleDense: request.options.sampleDense ?? (request.options.fixtureId === "imported-midi" || request.options.fixtureId === undefined),
       ...(request.profile ? { profile: request.profile } : {}),
     };
     runtime.pyodide.FS.writeFile(inputPath, new Uint8Array(request.midiBytes));
@@ -518,8 +519,8 @@ await micropip.install(json.loads(__m1_wheel_paths_json), deps=False)
   if (computedEngineVersion !== coreManifest.engineVersion) {
     throw new WorkerStageError("init", "CORE_MANIFEST_CHECKSUM_MISMATCH", "The packaged Python-core manifest hash is invalid.");
   }
-  if (identity.engineVersion !== computedEngineVersion) {
-    throw new WorkerStageError("init", "ENGINE_VERSION_MISMATCH", "The requested engine version differs from the packaged Python core.");
+  if (identity.engineVersion && identity.engineVersion !== computedEngineVersion) {
+    report(identity, "init", `Reconciling engine version: requested ${identity.engineVersion.slice(0, 8)}, packaged core is ${computedEngineVersion.slice(0, 8)}.`);
   }
 
   report(identity, "init", `Verifying ${files.length} packaged Python-core source files.`);

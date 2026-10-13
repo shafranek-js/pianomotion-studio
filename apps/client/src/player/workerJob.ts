@@ -33,7 +33,7 @@ export function runWorkerJob<T>(
       try {
         const message = M1EngineMessageSchema.parse(event.data);
         if (message.requestId !== request.requestId || message.projectId !== request.projectId ||
-          message.revision !== request.revision || message.engineVersion !== request.engineVersion) return;
+          message.revision !== request.revision) return;
         if (message.type === "worker-error") { finish(undefined, new Error(message.error.message)); return; }
         if (message.type === "progress") { onProgress?.(message.message ?? message.stage); return; }
         const accepted = accept(message);

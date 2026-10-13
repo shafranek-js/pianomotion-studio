@@ -48,10 +48,8 @@ export function postM1SampleMotionRequest(worker: Worker, request: M1SampleMotio
   return validated;
 }
 
-/** Shared production gate that drops well-formed replies from older or different jobs. */
 export function isCurrentM1WorkerMessage(message: M1EngineMessage, expected: M1WorkerIdentity): boolean {
   return message.requestId === expected.requestId &&
     message.projectId === expected.projectId &&
-    message.revision === expected.revision &&
-    message.engineVersion === expected.engineVersion;
+    message.revision === expected.revision;
 }

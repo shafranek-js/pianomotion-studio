@@ -1,8 +1,8 @@
 /// <reference lib="webworker" />
 /* global self, caches */
 
-const SHELL_CACHE = "pianomotion-shell-v1";
-const PYODIDE_CACHE = "pianomotion-pyodide-v1";
+const SHELL_CACHE = "pianomotion-shell-v2";
+const PYODIDE_CACHE = "pianomotion-pyodide-v2";
 
 const PRECACHE_ASSETS = [
   "/",
@@ -81,8 +81,8 @@ self.addEventListener("fetch", (event) => {
   }
 
   // Hashed static assets & Pyodide runtime files: Cache-first with network fallback
-  const isPyodideAsset =
-    url.pathname.startsWith("/pyodide/") || url.pathname.startsWith("/python-core/");
+  // Note: /python-core/ is intentionally excluded from cache-first so code and manifests update reliably via network-first.
+  const isPyodideAsset = url.pathname.startsWith("/pyodide/");
   const isHashedAsset = url.pathname.startsWith("/assets/");
 
   if (isPyodideAsset || isHashedAsset) {

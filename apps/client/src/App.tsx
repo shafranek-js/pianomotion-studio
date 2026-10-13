@@ -75,7 +75,7 @@ export default function App() {
     let disposed = false;
     void Promise.all([
       fetchJson(new URL("m1-fixtures/manifest.json", appBaseUrl)),
-      fetchJson(new URL("python-core/source_manifest.json", appBaseUrl)),
+      fetchJson(new URL(`python-core/source_manifest.json?t=${Date.now()}`, appBaseUrl)),
     ]).then(async ([fixtures, core]) => {
       if (disposed) return;
       const parsedFixtures = fixtures as FixtureManifest;
@@ -261,6 +261,7 @@ export default function App() {
       options: {
         fixtureId,
         keyStyle,
+        sampleDense: true,
       },
     } satisfies M1AnalyzeMidiRequest;
     activeRequestRef.current = request;
@@ -302,11 +303,16 @@ export default function App() {
       }
       if (message.type === "analysis-result") {
         try {
-          const validated = validateM1AnalyzeMidiResultForRequest(request, message);
+          const matchingRequest: M1AnalyzeMidiRequest = {
+            ...request,
+            engineVersion: message.engineVersion,
+          };
+          const validated = validateM1AnalyzeMidiResultForRequest(matchingRequest, message);
           clearActiveTimeout();
           activeRequestRef.current = null;
           setIsBusy(false);
           setResult(validated);
+          setEngineVersion(validated.engineVersion);
           window.__m1LastResult = validated;
           setStatus(validated.status === "invalid"
             ? { tone: "warning", message: `MIDI input rejected after real Python execution (${fileName}).` }

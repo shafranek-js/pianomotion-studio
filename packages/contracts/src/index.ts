@@ -795,6 +795,7 @@ export const M1AnalysisOptionsSchema = object({
   keyStyle: M1KeyStyleSchema.optional(),
   // [x, y, width, height], matching pygame.Rect and the immutable M0 baseline.
   keyboardRect: M1KeyboardRectSchema.optional(),
+  sampleDense: z.boolean().optional(),
   sampleTimes: z.array(TransportTimeSchema).max(1_000).optional().superRefine((times, ctx) => {
     if (!times) return;
     for (let index = 1; index < times.length; index += 1) {

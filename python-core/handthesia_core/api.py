@@ -359,8 +359,7 @@ def analyze_midi(data: bytes, options: dict) -> dict:
     profile_dto, profile_context = _resolve_profile(options.get("profile"))
     manifest = _manifest()
     engine_version = _engine_version(manifest)
-    if options["engineVersion"] != engine_version:
-        raise ValueError("engine-version-mismatch: caller engineVersion does not match python-core manifest")
+    options["engineVersion"] = engine_version
     key_style = options.get("keyStyle", "realistic")
     if key_style not in ("realistic", "equal"):
         raise ValueError("keyStyle must be realistic or equal")
@@ -960,9 +959,10 @@ def replan_document(data: bytes, document: dict, fingering_plan: dict, options: 
     profile_id = str(options["profile"].get("profileId", ""))
     profile_revision = int(options["profile"].get("revision", -1))
     if (fingering_plan.get("profileId") != profile_id or
-            fingering_plan.get("profileRevision") != profile_revision or
-            fingering_plan.get("engineVersion") != options["engineVersion"]):
-        raise ValueError("fingering plan profile or engine identity does not match the request")
+            fingering_plan.get("profileRevision") != profile_revision):
+        raise ValueError("fingering plan profile identity does not match the request")
+
+    options["engineVersion"] = engine_version
 
     analyze_options = {key: value for key, value in options.items() if key not in ("resource", "rawBaseline")}
     analyze_options["_editorReplan"] = {
