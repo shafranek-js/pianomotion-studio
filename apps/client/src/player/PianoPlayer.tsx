@@ -1,6 +1,7 @@
 import {
   M1AnalyzeMidiResultSchema,
   M1ReplanDocumentRequestSchema,
+  M1SampleMotionResultSchema,
   validateM1ReplanDocumentResultForRequest,
   type FingeringPlan,
   type M1AnalyzeMidiResult,
@@ -16,7 +17,7 @@ import {
   type DecodedAudioRecording,
 } from "../audio";
 import { FingeringEditor, materializeEditedDocument, WaveformCanvas } from "../editor";
-import { postM1ReplanDocumentRequest, postM1ExportMidiRequest } from "../m1WorkerClient";
+import { postM1ReplanDocumentRequest, postM1ExportMidiRequest, postM1SampleMotionRequest } from "../m1WorkerClient";
 import { PianoScene, MotionBuffer } from "../render";
 import { downloadProjectPackage, saveProject, createAutosaveService, type SavedProject, type SessionSnapshot } from "../storage";
 import { ProfileModal, type PianistProfile } from "../profiles";
@@ -31,6 +32,7 @@ export interface PianoPlayerProps {
   engineVersion?: string;
   initialSession?: SessionSnapshot | null;
   onProjectSaved?: (projectId: string) => void;
+  analysisWorker?: Worker | null;
 }
 
 declare global {
@@ -54,7 +56,7 @@ function displayDocument(result: M1AnalyzeMidiResult) {
   })};
 }
 
-export function PianoPlayer({result, projectName = "Untitled Piano Piece", rawMidiBytes, engineVersion, initialSession, onProjectSaved}: PianoPlayerProps) {
+export function PianoPlayer({result, projectName = "Untitled Piano Piece", rawMidiBytes, engineVersion, initialSession, onProjectSaved, analysisWorker}: PianoPlayerProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const sceneRef = useRef<PianoScene | null>(null);
   const transportRef = useRef<Transport | null>(null);
@@ -210,6 +212,42 @@ export function PianoPlayer({result, projectName = "Untitled Piano Piece", rawMi
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const workerRef = useRef<Worker | null>(analysisWorker ?? null);
+  useEffect(() => {
+    workerRef.current = analysisWorker ?? null;
+  }, [analysisWorker]);
+
+  const isFetchingMotionRef = useRef(false);
+  const lastRequestedWindowRef = useRef<{ start: number; end: number } | null>(null);
+
+  useEffect(() => {
+    const worker = workerRef.current;
+    if (!worker) return;
+
+    const onMessage = (event: MessageEvent<unknown>) => {
+      const data = event.data as Record<string, unknown> | undefined;
+      if (data && data.type === "sample-motion-result") {
+        try {
+          const validated = M1SampleMotionResultSchema.parse(data);
+          if (validated.projectId === analysis.projectId && validated.revision === draftPlan.inputRevision) {
+            motionBufferRef.current?.addSampleMotionResult(validated);
+          }
+        } catch {
+          // ignore invalid motion payload
+        } finally {
+          isFetchingMotionRef.current = false;
+        }
+      } else if (data && data.type === "worker-error") {
+        isFetchingMotionRef.current = false;
+      }
+    };
+
+    worker.addEventListener("message", onMessage);
+    return () => {
+      worker.removeEventListener("message", onMessage);
+    };
+  }, [analysis.projectId, draftPlan.inputRevision]);
+
   useEffect(() => {
     sceneRef.current?.setDisplaySettings(settings);
     transportRef.current?.setLeadInSeconds(Math.abs(settings.leadInSeconds));
@@ -223,14 +261,43 @@ export function PianoPlayer({result, projectName = "Untitled Piano Piece", rawMi
       if (cap === 0 || now - lastRender >= 1000 / cap - 0.5) {
         lastRender = now;
         const t = transportRef.current?.getCurrentTime() ?? settingsRef.current.leadInSeconds;
-        setCurrentTime(t); sceneRef.current?.update(t); frames++;
+        setCurrentTime(t);
+        sceneRef.current?.update(t);
+        frames++;
         if (now - fpsStart >= 1000) {setFps(Math.round(frames * 1000 / (now - fpsStart))); fpsStart = now; frames = 0;}
+
+        const buffer = motionBufferRef.current;
+        const worker = workerRef.current;
+        if (buffer && worker && !isFetchingMotionRef.current && t >= 0 && t < duration) {
+          if (buffer.needsMorePoses(t)) {
+            const missing = buffer.getMissingWindow(t);
+            const start = Math.max(0, missing.start);
+            const end = Math.min(duration + 0.5, missing.end);
+            if (end > start) {
+              const prev = lastRequestedWindowRef.current;
+              if (!prev || Math.abs(prev.start - start) > 0.5 || Math.abs(prev.end - end) > 0.5) {
+                lastRequestedWindowRef.current = { start, end };
+                isFetchingMotionRef.current = true;
+                postM1SampleMotionRequest(worker, {
+                  type: "sample-motion",
+                  requestId: crypto.randomUUID(),
+                  projectId: analysis.projectId,
+                  revision: draftPlan.inputRevision,
+                  engineVersion: engineVersion ?? analysis.engineVersion,
+                  startTimeSeconds: start,
+                  endTimeSeconds: end,
+                  maxPoses: 200,
+                });
+              }
+            }
+          }
+        }
       }
       raf = requestAnimationFrame(render);
     };
     raf = requestAnimationFrame(render);
     return () => cancelAnimationFrame(raf);
-  }, []);
+  }, [analysis.projectId, analysis.engineVersion, draftPlan.inputRevision, duration, engineVersion]);
 
   const onFingeringPlanChange = (plan: FingeringPlan) => {setDraftPlan(plan); setRebuildStatus("Scheduling updated performance…");};
   const handleProfileChanged = (profile: PianistProfile) => {
@@ -268,6 +335,28 @@ export function PianoPlayer({result, projectName = "Untitled Piano Piece", rawMi
     }
     setCurrentTime(transportRef.current?.getCurrentTime() ?? time);
     sceneRef.current?.update(time);
+
+    const buffer = motionBufferRef.current;
+    const worker = workerRef.current;
+    if (buffer && worker && time >= 0 && time < duration) {
+      const missing = buffer.getMissingWindow(time);
+      const start = Math.max(0, missing.start);
+      const end = Math.min(duration + 0.5, missing.end);
+      if (end > start) {
+        lastRequestedWindowRef.current = { start, end };
+        isFetchingMotionRef.current = true;
+        postM1SampleMotionRequest(worker, {
+          type: "sample-motion",
+          requestId: crypto.randomUUID(),
+          projectId: analysis.projectId,
+          revision: draftPlan.inputRevision,
+          engineVersion: engineVersion ?? analysis.engineVersion,
+          startTimeSeconds: start,
+          endTimeSeconds: end,
+          maxPoses: 200,
+        });
+      }
+    }
   };
   const handleSpeedChange = (value: number) => {setSpeed(value); transportRef.current?.setSpeed(value);};
   const handleVolumeChange = (value: number) => {

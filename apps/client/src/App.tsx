@@ -534,6 +534,7 @@ export default function App() {
           rawMidiBytes={rawMidiBytes}
           engineVersion={engineVersion}
           initialSession={restoredSession}
+          analysisWorker={workerRef.current}
         />
       )}
 

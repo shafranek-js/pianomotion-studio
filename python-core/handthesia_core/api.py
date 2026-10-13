@@ -734,18 +734,56 @@ def analyze_midi(data: bytes, options: dict) -> dict:
     }
 
     if requested_times is None:
-        common_sample_times = set()
-        if len(animators) == 2:
+        if fixture_id == "imported-midi" or options.get("sampleDense", False):
+            dense_times = set()
+            strike_dt = 1.0 / 60.0
             for animator in animators.values():
-                common_sample_times.update(_selected_times(animator))
+                for t, _notes in getattr(animator, "groups", []):
+                    tf = float(t)
+                    dense_times.add(tf)
+                    if tf - strike_dt >= 0.0:
+                        dense_times.add(tf - strike_dt)
+                    dense_times.add(tf + strike_dt)
+                for press, release, _n in getattr(animator, "performance", []):
+                    pf = float(press)
+                    dense_times.add(pf)
+                    if pf - strike_dt >= 0.0:
+                        dense_times.add(pf - strike_dt)
+                    dense_times.add(pf + strike_dt)
+                    dense_times.add(float(release))
             for start, end, _top, _strength, _lead in crossing_episodes:
-                common_sample_times.add(float(start))
-                if end > start:
-                    common_sample_times.add(float((start + end) / 2))
-        sample_times_by_hand = {
-            hand_name: sorted(common_sample_times) if common_sample_times else _selected_times(animator)
-            for hand_name, animator in animators.items()
-        }
+                dense_times.add(float(start))
+                dense_times.add(float(end))
+                mid = (start + end) / 2.0
+                dense_times.add(float(mid))
+            grid_step = 0.25
+            curr_t = 0.0
+            max_t = float(song.duration)
+            while curr_t <= max_t:
+                dense_times.add(curr_t)
+                curr_t += grid_step
+            dense_times.add(max_t)
+
+            sorted_dense = sorted({_rounded(t) for t in dense_times if 0.0 <= t <= max_t + 1.0})
+            max_points = int(options.get("maxInitialPoses", 2500))
+            if len(sorted_dense) > max_points:
+                step = len(sorted_dense) / max_points
+                sorted_dense = [sorted_dense[int(i * step)] for i in range(max_points)]
+
+            sample_times_by_hand = {hand_name: sorted_dense for hand_name in animators}
+        else:
+            common_sample_times = set()
+            if len(animators) == 2:
+                for animator in animators.values():
+                    common_sample_times.update(_selected_times(animator))
+                for start, end, _top, _strength, _lead in crossing_episodes:
+                    common_sample_times.add(float(start))
+                    if end > start:
+                        common_sample_times.add(float((start + end) / 2))
+            sample_times_by_hand = {
+                hand_name: sorted(common_sample_times) if common_sample_times else _selected_times(animator)
+                for hand_name, animator in animators.items()
+            }
     else:
         shared = sorted(set(requested_times))
         sample_times_by_hand = {hand_name: shared for hand_name in animators}
@@ -786,6 +824,12 @@ def analyze_midi(data: bytes, options: dict) -> dict:
             "coordinateFrame": "keyboard-local-inches-v1",
             "poses": motion_poses,
         }
+    _active_animator_sessions[(project_id, revision, profile_dto["profileId"])] = {
+        "animators": animators,
+        "planning_song": planning_song,
+        "keyboard": keyboard,
+        "song": song,
+    }
 
     raw_pedals = [{"time": _rounded(t), "controller": int(c), "value": int(v)}
                   for t, c, v in song.raw_controls]
