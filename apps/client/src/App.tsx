@@ -391,7 +391,7 @@ export default function App() {
           <p className="eyebrow">PianoMotion Studio · Browser workspace</p>
           <h1 id="page-title">MIDI analysis diagnostics</h1>
         </div>
-        <span className="milestone-badge">M6 · skins & audio sync</span>
+        <span className="milestone-badge">v1.0 · Full Studio</span>
       </header>
 
       <section className="workspace-grid" aria-labelledby="page-title">
@@ -518,8 +518,8 @@ export default function App() {
           </section>
 
           <aside className="milestone-note">
-            <span className="note-mark" aria-hidden="true">M6</span>
-            <p><strong>Visual Skins, Audio Sync & SoundFont.</strong> 4 procedural hand skins (Cartoon, White Gloves, Robot, Skeleton) with drop shadows and bounded lookahead buffer, external audio recording synchronization with drag-adjustable waveform, SoundFont SF2 polyphonic synthesizer, and Web MIDI output.</p>
+            <span className="note-mark" aria-hidden="true">v1.0</span>
+            <p><strong>PianoMotion Studio v1.0.</strong> Complete studio release (M1–M8): procedural 3D/2D hand kinematics with dense strike sampling, 4 procedural hand skins (Cartoon, Gloves, Robot, Skeleton) with drop shadows, interactive piano roll fingering editor, custom pianist profiles, audio recording sync, SoundFont synthesizer, WebM/MP4 video export, and offline PWA.</p>
           </aside>
         </div>
       </section>
