@@ -1,5 +1,11 @@
 import { Container, MeshSimple, Texture, type Graphics } from "pixi.js";
 import type { HandGeometry } from "./geometry";
+import {
+  PHOTO_MESH_URLS,
+  getLoadedTexture,
+  isPhotoMeshReady,
+  preloadAllPhotoAssets,
+} from "./photoAssets";
 import { renderRealisticSkin } from "./realisticSkin";
 import { depthScale, type SkinSettings } from "./types";
 
@@ -12,12 +18,11 @@ export class PhotoMeshRenderer {
   private mesh: MeshSimple | null = null;
   private restUvs: Float32Array;
   private vertices: Float32Array;
-  private currentHand: "left" | "right" = "right";
-  private textureR: Texture;
-  private textureL: Texture;
+  private currentHand: "left" | "right" | null = null;
 
   constructor() {
     this.container = new Container();
+    this.container.visible = false;
 
     this.restUvs = new Float32Array(NUM_VERTICES * 2);
     this.vertices = new Float32Array(NUM_VERTICES * 2);
@@ -34,19 +39,7 @@ export class PhotoMeshRenderer {
       }
     }
 
-    this.textureR = Texture.from("/textures/photo-hand-right.png");
-    this.textureL = Texture.from("/textures/photo-hand-left.png");
-
-    try {
-      this.mesh = new MeshSimple({
-        texture: this.textureR,
-        vertices: this.vertices,
-        uvs: this.restUvs,
-      });
-      this.container.addChild(this.mesh);
-    } catch {
-      this.mesh = null;
-    }
+    preloadAllPhotoAssets().catch(() => {});
   }
 
   public render(
@@ -55,18 +48,49 @@ export class PhotoMeshRenderer {
     skinSettings: SkinSettings,
     ppi: number,
   ): void {
-    // Render base realistic skin only as fallback if mesh is unavailable
-    if (!this.mesh) {
+    const hand = geom.hand;
+
+    // Check if texture is fully loaded and ready
+    if (!isPhotoMeshReady(hand)) {
+      preloadAllPhotoAssets().catch(() => {});
+      this.container.visible = false;
       renderRealisticSkin(graphics, geom, skinSettings, ppi);
       return;
     }
 
-    if (geom.hand !== this.currentHand) {
-      this.currentHand = geom.hand;
-      this.mesh.texture = this.currentHand === "left" ? this.textureL : this.textureR;
+    const texUrl = hand === "left" ? PHOTO_MESH_URLS.left : PHOTO_MESH_URLS.right;
+    const tex = getLoadedTexture(texUrl);
+    if (!tex) {
+      this.container.visible = false;
+      renderRealisticSkin(graphics, geom, skinSettings, ppi);
+      return;
     }
 
-    const isLeft = geom.hand === "left";
+    if (!this.mesh) {
+      try {
+        this.mesh = new MeshSimple({
+          texture: tex,
+          vertices: this.vertices,
+          uvs: this.restUvs,
+        });
+        this.container.addChild(this.mesh);
+      } catch {
+        this.mesh = null;
+        this.container.visible = false;
+        renderRealisticSkin(graphics, geom, skinSettings, ppi);
+        return;
+      }
+    }
+
+    if (this.currentHand !== hand) {
+      this.currentHand = hand;
+      this.mesh.texture = tex;
+    }
+
+    this.container.visible = true;
+    this.mesh.visible = true;
+
+    const isLeft = hand === "left";
     const widthScale = skinSettings.finger_width * depthScale(geom.palmZIn);
 
     // Key screen anchor landmarks

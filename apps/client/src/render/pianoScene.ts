@@ -4,7 +4,7 @@ import { FallingNotesView } from "./fallingNotesView";
 import { HandsView } from "./handsView";
 import { KeyboardView, type KeyPressInfo } from "./keyboardView";
 import type { MotionBuffer } from "./motionBuffer";
-import type { SkinStyle } from "./skins";
+import { preloadAllPhotoAssets, type SkinStyle } from "./skins";
 
 export interface PianoSceneDisplaySettings {
   showFingerLabels?: boolean;
@@ -155,6 +155,8 @@ export class PianoScene {
     if (!isCanvas) {
       options.target.appendChild(app.canvas);
     }
+
+    preloadAllPhotoAssets().catch(() => {});
 
     const scene = new PianoScene(app, options);
     scene.setupResizeObserver();

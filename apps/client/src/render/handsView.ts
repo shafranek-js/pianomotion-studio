@@ -15,6 +15,7 @@ import {
   PhotoRigRenderer,
   PhotoMeshRenderer,
   renderPhoto3dSkin,
+  onPhotoAssetsLoaded,
   type SkinSettings,
 } from "./skins";
 
@@ -194,6 +195,7 @@ export class HandsView extends Container {
   private skinSettings: SkinSettings;
   private showFingerLabels = true;
   private lastTransportTime = 0;
+  private unsubscribePhotoAssets?: () => void;
 
   private leftPoses: MotionPose[] = [];
   private rightPoses: MotionPose[] = [];
@@ -213,6 +215,10 @@ export class HandsView extends Container {
     if (options?.motionPlan) this.setMotionPlan(options.motionPlan);
     if (options?.keyboardLayout) this.setKeyboardLayout(options.keyboardLayout);
     if (options?.motionBuffer !== undefined) this.setMotionBuffer(options.motionBuffer);
+
+    this.unsubscribePhotoAssets = onPhotoAssetsLoaded(() => {
+      this.update(this.lastTransportTime);
+    });
   }
 
   public setMotionBuffer(buffer: MotionBuffer | null): void {
@@ -340,6 +346,10 @@ export class HandsView extends Container {
   }
 
   public override destroy(options?: Parameters<Container["destroy"]>[0]): void {
+    if (this.unsubscribePhotoAssets) {
+      this.unsubscribePhotoAssets();
+      this.unsubscribePhotoAssets = undefined;
+    }
     this.leftRenderer.destroy();
     this.rightRenderer.destroy();
     super.destroy(options);

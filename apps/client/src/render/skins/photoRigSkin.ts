@@ -1,5 +1,12 @@
 import { Container, Sprite, Texture, type Graphics } from "pixi.js";
-import type { HandGeometry, ScreenPoint } from "./geometry";
+import type { HandGeometry } from "./geometry";
+import {
+  PHOTO_RIG_LEFT_URLS,
+  PHOTO_RIG_RIGHT_URLS,
+  getLoadedTexture,
+  isPhotoRigReady,
+  preloadAllPhotoAssets,
+} from "./photoAssets";
 import { renderRealisticSkin } from "./realisticSkin";
 import { depthScale, type SkinSettings } from "./types";
 
@@ -31,11 +38,11 @@ export class PhotoRigRenderer {
   private forearmSprite: Sprite;
   private dorsumSprite: Sprite;
   private fingerSprites: Record<number, Sprite>;
-  private isLoaded = false;
-  private currentHand: "left" | "right" = "right";
+  private currentHand: "left" | "right" | null = null;
 
   constructor() {
     this.container = new Container();
+    this.container.visible = false;
 
     this.forearmSprite = new Sprite(Texture.EMPTY);
     this.dorsumSprite = new Sprite(Texture.EMPTY);
@@ -47,6 +54,8 @@ export class PhotoRigRenderer {
       5: new Sprite(Texture.EMPTY),
     };
 
+    // Correct anatomical layering:
+    // Forearm -> Thumb (finger 1, under palm) -> Dorsum -> Fingers 2..5 (on top of palm)
     this.container.addChild(this.forearmSprite);
     this.container.addChild(this.fingerSprites[1]!);
     this.container.addChild(this.dorsumSprite);
@@ -54,24 +63,29 @@ export class PhotoRigRenderer {
       this.container.addChild(this.fingerSprites[f]!);
     }
 
-    this.loadTextures("right");
+    preloadAllPhotoAssets().catch(() => {});
   }
 
-  private loadTextures(hand: "left" | "right"): void {
-    try {
-      const suffix = hand === "left" ? "_left" : "";
-      this.currentHand = hand;
+  private applyTextures(hand: "left" | "right"): boolean {
+    const map = hand === "left" ? PHOTO_RIG_LEFT_URLS : PHOTO_RIG_RIGHT_URLS;
+    const forearmTex = getLoadedTexture(map.forearm);
+    const dorsumTex = getLoadedTexture(map.dorsum);
+    if (!forearmTex || !dorsumTex) return false;
 
-      this.forearmSprite.texture = Texture.from(`/textures/photo-rig/forearm${suffix}.png`);
-      this.dorsumSprite.texture = Texture.from(`/textures/photo-rig/dorsum${suffix}.png`);
-
-      for (let f = 1; f <= 5; f++) {
-        this.fingerSprites[f]!.texture = Texture.from(`/textures/photo-rig/finger_${f}${suffix}.png`);
-      }
-      this.isLoaded = true;
-    } catch {
-      this.isLoaded = false;
+    const fingerTexs: Record<number, Texture> = {};
+    for (let f = 1; f <= 5; f++) {
+      const tex = getLoadedTexture(map[f as keyof typeof map]);
+      if (!tex) return false;
+      fingerTexs[f] = tex;
     }
+
+    this.currentHand = hand;
+    this.forearmSprite.texture = forearmTex;
+    this.dorsumSprite.texture = dorsumTex;
+    for (let f = 1; f <= 5; f++) {
+      this.fingerSprites[f]!.texture = fingerTexs[f]!;
+    }
+    return true;
   }
 
   public render(
@@ -80,20 +94,31 @@ export class PhotoRigRenderer {
     skinSettings: SkinSettings,
     ppi: number,
   ): void {
-    if (geom.hand !== this.currentHand) {
-      this.loadTextures(geom.hand);
-    }
+    const hand = geom.hand;
 
-    // Only draw base vector skin if photo textures are not ready/loaded
-    if (!this.isLoaded) {
+    // Check if textures are fully loaded and ready
+    if (!isPhotoRigReady(hand)) {
+      preloadAllPhotoAssets().catch(() => {});
+      this.container.visible = false;
       renderRealisticSkin(graphics, geom, skinSettings, ppi);
       return;
     }
 
-    const isLeft = geom.hand === "left";
+    if (this.currentHand !== hand) {
+      const ok = this.applyTextures(hand);
+      if (!ok) {
+        this.container.visible = false;
+        renderRealisticSkin(graphics, geom, skinSettings, ppi);
+        return;
+      }
+    }
+
+    this.container.visible = true;
+
+    const isLeft = hand === "left";
     const widthScale = skinSettings.finger_width * depthScale(geom.palmZIn);
 
-    // 2. Forearm Sprite
+    // 1. Forearm Sprite
     const armLen = Math.hypot(
       geom.armEnd.x - geom.wristCenter.x,
       geom.armEnd.y - geom.wristCenter.y,
@@ -111,7 +136,7 @@ export class PhotoRigRenderer {
     this.forearmSprite.visible = true;
     this.forearmSprite.alpha = 1.0;
 
-    // 3. Dorsum (Palm) Sprite
+    // 2. Dorsum (Palm) Sprite
     const midMcp = geom.chains[3]?.[1] ?? geom.wristCenter;
     const palmDx = midMcp.x - geom.wristCenter.x;
     const palmDy = midMcp.y - geom.wristCenter.y;
@@ -128,7 +153,7 @@ export class PhotoRigRenderer {
     );
     this.dorsumSprite.alpha = 1.0;
 
-    // 4. Fingers 1..5 Sprites
+    // 3. Fingers 1..5 Sprites
     for (let f = 1; f <= 5; f++) {
       const sprite = this.fingerSprites[f]!;
       const chain = geom.chains[f];

@@ -47,5 +47,16 @@ export { PhotoMeshRenderer } from "./photoMeshSkin";
 export { renderPhoto3dSkin } from "./photo3dSkin";
 export { renderSkeletonSkin } from "./skeletonSkin";
 export { renderHandShadow } from "./shadowRenderer";
+export {
+  preloadAllPhotoAssets,
+  onPhotoAssetsLoaded,
+  isPhotoRigReady,
+  isPhotoMeshReady,
+  getLoadedTexture,
+  PHOTO_RIG_RIGHT_URLS,
+  PHOTO_RIG_LEFT_URLS,
+  PHOTO_MESH_URLS,
+  ALL_PHOTO_URLS,
+} from "./photoAssets";
 
 
