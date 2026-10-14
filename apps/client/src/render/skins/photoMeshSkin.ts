@@ -55,10 +55,11 @@ export class PhotoMeshRenderer {
     skinSettings: SkinSettings,
     ppi: number,
   ): void {
-    // Render base realistic skin for solid fallback
-    renderRealisticSkin(graphics, geom, skinSettings, ppi);
-
-    if (!this.mesh) return;
+    // Render base realistic skin only as fallback if mesh is unavailable
+    if (!this.mesh) {
+      renderRealisticSkin(graphics, geom, skinSettings, ppi);
+      return;
+    }
 
     if (geom.hand !== this.currentHand) {
       this.currentHand = geom.hand;

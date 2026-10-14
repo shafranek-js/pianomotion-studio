@@ -80,11 +80,14 @@ export class PhotoRigRenderer {
     skinSettings: SkinSettings,
     ppi: number,
   ): void {
-    // 1. Draw base anatomical render underneath
-    renderRealisticSkin(graphics, geom, skinSettings, ppi);
-
     if (geom.hand !== this.currentHand) {
       this.loadTextures(geom.hand);
+    }
+
+    // Only draw base vector skin if photo textures are not ready/loaded
+    if (!this.isLoaded) {
+      renderRealisticSkin(graphics, geom, skinSettings, ppi);
+      return;
     }
 
     const isLeft = geom.hand === "left";
@@ -105,7 +108,8 @@ export class PhotoRigRenderer {
       (geom.wristWidth / 120.0) * (isLeft ? -1 : 1),
       armLen / FOREARM_META.restLength,
     );
-    this.forearmSprite.visible = !skinSettings.sleeve;
+    this.forearmSprite.visible = true;
+    this.forearmSprite.alpha = 1.0;
 
     // 3. Dorsum (Palm) Sprite
     const midMcp = geom.chains[3]?.[1] ?? geom.wristCenter;
@@ -122,7 +126,7 @@ export class PhotoRigRenderer {
       (geom.wristWidth / 110.0) * widthScale * (isLeft ? -1 : 1),
       (palmLen / DORSUM_META.restLength) * 2.3,
     );
-    this.dorsumSprite.alpha = 0.96;
+    this.dorsumSprite.alpha = 1.0;
 
     // 4. Fingers 1..5 Sprites
     for (let f = 1; f <= 5; f++) {
@@ -151,7 +155,7 @@ export class PhotoRigRenderer {
       const fLenScale = fLen / meta.restLength;
 
       sprite.scale.set(fWidthScale, fLenScale);
-      sprite.alpha = 0.98;
+      sprite.alpha = 1.0;
       sprite.visible = true;
     }
   }
