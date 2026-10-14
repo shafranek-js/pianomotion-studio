@@ -71,7 +71,7 @@ export const SettingsSchema = z.object({
       message: "renderCapFps must be 0, 30, 60, or 120",
     })
     .default(60),
-  skinStyle: SkinStyleSchema.default("photo-segmented"),
+  skinStyle: SkinStyleSchema.default("realistic"),
   showHandShadow: z.boolean().default(true),
   soundOutput: SoundOutputSchema.default("synth"),
 });
@@ -86,7 +86,7 @@ export const DEFAULT_SETTINGS: Settings = {
   showNoteNames: false,
   soundTimbre: "acoustic",
   renderCapFps: 60,
-  skinStyle: "photo-segmented",
+  skinStyle: "realistic",
   showHandShadow: true,
   soundOutput: "synth",
 };
