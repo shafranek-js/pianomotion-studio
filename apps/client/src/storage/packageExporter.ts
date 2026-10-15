@@ -1,6 +1,11 @@
 import {
   PACKAGE_VERSION,
   ProjectPackageSchema,
+  ProjectPackageV1Schema,
+  inferProjectFixtureId,
+  inferProjectSourceContext,
+  migrateProjectPackageV1,
+  type ProjectSourceContext,
   type ProjectPackage,
   type PianistProfile,
   type ResourceDescriptor,
@@ -20,6 +25,7 @@ export interface ExportProjectPackageOptions {
   resources?: ResourceDescriptor[];
   resourcePayloads?: Record<string, ArrayBuffer>;
   filename?: string;
+  sourceContext?: ProjectSourceContext;
 }
 
 const base64Alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -239,9 +245,12 @@ export async function buildProjectPackage(
   const encodedPayloads = Object.fromEntries(
     Array.from(resourcePayloads, ([path, bytes]) => [path, encodeBase64(new Uint8Array(bytes))]),
   );
+  const sourceContext = validated.sourceContext ?? options?.sourceContext ?? inferProjectSourceContext(validated.document);
+  if (!sourceContext) throw new Error("Project source context cannot be recovered safely; save the source context before exporting.");
   const pkg: ProjectPackage = {
     packageVersion: PACKAGE_VERSION,
     projectId: validated.projectId,
+    sourceContext,
     document: validated.document,
     profiles,
     resources,
@@ -286,9 +295,12 @@ export function buildProjectPackageSync(
   const encodedPayloads = Object.fromEntries(
     Array.from(resourcePayloads, ([path, bytes]) => [path, encodeBase64(new Uint8Array(bytes))]),
   );
+  const sourceContext = validated.sourceContext ?? options?.sourceContext ?? inferProjectSourceContext(validated.document);
+  if (!sourceContext) throw new Error("Project source context cannot be recovered safely; save the source context before exporting.");
   const pkg: ProjectPackage = {
     packageVersion: PACKAGE_VERSION,
     projectId: validated.projectId,
+    sourceContext,
     document: validated.document,
     profiles,
     resources,
@@ -368,9 +380,12 @@ export function assertNoPrototypePollution(data: unknown): void {
  * Validates unknown data against `ProjectPackageSchema`.
  * Throws ZodError on failure.
  */
-export function validateProjectPackage(data: unknown): ProjectPackage {
+export function validateProjectPackage(data: unknown, legacySourceContext?: ProjectSourceContext): ProjectPackage {
   assertNoPrototypePollution(data);
-  const pkg = ProjectPackageSchema.parse(data);
+  const version = data && typeof data === "object" ? (data as { packageVersion?: unknown }).packageVersion : undefined;
+  const pkg = version === 1
+    ? migrateProjectPackageV1(ProjectPackageV1Schema.parse(data), legacySourceContext)
+    : ProjectPackageSchema.parse(data);
   verifyPackagePayloads(pkg);
   return pkg;
 }
@@ -378,9 +393,9 @@ export function validateProjectPackage(data: unknown): ProjectPackage {
 /**
  * Safely validates unknown data against `ProjectPackageSchema`.
  */
-export function safeValidateProjectPackage(data: unknown) {
+export function safeValidateProjectPackage(data: unknown, legacySourceContext?: ProjectSourceContext) {
   try {
-    return { success: true as const, data: validateProjectPackage(data) };
+    return { success: true as const, data: validateProjectPackage(data, legacySourceContext) };
   } catch (error) {
     return { success: false as const, error };
   }
@@ -391,7 +406,7 @@ export const MAX_PACKAGE_JSON_LENGTH_CHARS = 64 * 1024 * 1024; // 64 MiB
 /**
  * Parses and validates a JSON string as a `ProjectPackage`.
  */
-export function parseProjectPackageJson(jsonText: string): ProjectPackage {
+export function parseProjectPackageJson(jsonText: string, legacySourceContext?: ProjectSourceContext): ProjectPackage {
   if (jsonText.length > MAX_PACKAGE_JSON_LENGTH_CHARS) {
     throw new Error(
       `Package JSON text length (${jsonText.length} characters) exceeds the maximum allowed length of 64 MiB.`,
@@ -414,19 +429,41 @@ export function parseProjectPackageJson(jsonText: string): ProjectPackage {
       { cause: err },
     );
   }
-  return validateProjectPackage(data);
+  return validateProjectPackage(data, legacySourceContext);
 }
 
 /**
  * Reads a File or Blob, parses its JSON content, and validates it conforming to `ProjectPackageSchema`.
  */
-export async function importProjectPackageFile(file: Blob): Promise<ProjectPackage> {
+export async function importProjectPackageFile(file: Blob, legacySourceContext?: ProjectSourceContext): Promise<ProjectPackage> {
   if (file.size > MAX_PACKAGE_FILE_SIZE_BYTES) {
     const sizeMiB = (file.size / (1024 * 1024)).toFixed(2);
     throw new Error(`Package file size (${sizeMiB} MiB) exceeds the maximum allowed size of 32 MiB.`);
   }
   const text = await file.text();
-  return parseProjectPackageJson(text);
+  return parseProjectPackageJson(text, legacySourceContext);
+}
+
+/** Returns the canonical fixture namespace in a legacy package without guessing its old key geometry. */
+export async function inspectLegacyProjectPackageFile(file: Blob): Promise<string | null | undefined> {
+  if (file.size > MAX_PACKAGE_FILE_SIZE_BYTES) {
+    const sizeMiB = (file.size / (1024 * 1024)).toFixed(2);
+    throw new Error(`Package file size (${sizeMiB} MiB) exceeds the maximum allowed size of 32 MiB.`);
+  }
+  let data: unknown;
+  try {
+    data = JSON.parse(await file.text(), (key, value) => {
+      if (key === "__proto__" || key === "constructor" || key === "prototype") {
+        throw new Error("Prototype pollution attempt detected: forbidden property '${key}'.");
+      }
+      return value;
+    });
+  } catch (error) {
+    throw new Error(`Failed to parse project package JSON: ${error instanceof Error ? error.message : String(error)}`, { cause: error });
+  }
+  if (!data || typeof data !== "object" || (data as { packageVersion?: unknown }).packageVersion !== 1) return undefined;
+  const legacy = ProjectPackageV1Schema.parse(data);
+  return inferProjectFixtureId(legacy.document);
 }
 
 /**
@@ -464,6 +501,7 @@ export function projectPackageToSavedProject(
     profile: actualProfile,
     resources: pkg.resources,
     resourcePayloads: payloads,
+    sourceContext: pkg.sourceContext,
   };
 }
 

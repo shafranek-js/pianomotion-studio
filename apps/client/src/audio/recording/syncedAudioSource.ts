@@ -1,9 +1,15 @@
 import type { DecodedAudioRecording } from "./audioDecoder.ts";
+import { makeChannelsAtSampleRate, mapSongTimeToRecordingPosition } from "./timeStretch.ts";
+import { createSignalsmithStretchNode, type StretchNode } from "../signalsmithStretch.ts";
+
+export type StretchNodeFactory = (context: AudioContext | OfflineAudioContext) => Promise<StretchNode>;
 
 /**
  * Synchronized audio playback source driven by Web Audio clock.
- * Timing formula matches desktop audio_sync.py:
- * audioTime = recordingOffsetSeconds + (songTime / speed)
+ * Timing formula:
+ * recordingPosition = songTime + recordingOffsetSeconds
+ * Uses the locally bundled Signalsmith Stretch 1.3.2 WASM AudioWorklet with
+ * semitones = 0. Playback fails visibly when that engine is unavailable.
  */
 export class SyncedAudioSource {
   public recordingOffsetSeconds = 0;
@@ -14,118 +20,194 @@ export class SyncedAudioSource {
   private audioContext: AudioContext | null = null;
   private destinationNode: AudioNode | null = null;
   private gainNode: GainNode | null = null;
-  private activeSourceNode: AudioBufferSourceNode | null = null;
+  private stretchNode: StretchNode | null = null;
   private isAudioPlaying = false;
   private lastSongTime = 0;
   private lastSpeed = 1.0;
+  private intentGeneration = 0;
+  private lastError: Error | null = null;
+  private errorReported = false;
+  private readonly errorListeners = new Set<(error: Error) => void>();
 
-  constructor(initialOffsetSeconds = 0, initialVolume = 1.0) {
+  constructor(
+    initialOffsetSeconds = 0,
+    initialVolume = 1.0,
+    private readonly stretchNodeFactory: StretchNodeFactory = createSignalsmithStretchNode,
+  ) {
     this.recordingOffsetSeconds = initialOffsetSeconds;
     this.volume = Math.max(0, Math.min(1, initialVolume));
   }
 
   /**
    * Attaches a decoded recording to an AudioContext and destination node.
+   * Initializes SignalsmithStretch in buffer mode if AudioWorklet is supported.
    */
-  public attach(
+  public async attach(
     recording: DecodedAudioRecording,
     audioContext: AudioContext,
     destinationNode: AudioNode,
-  ): void {
+  ): Promise<void> {
     if (this.isAudioPlaying) {
       this.pause();
     }
 
+    if (this.stretchNode) {
+      try {
+        this.stretchNode.disconnect();
+      } catch {
+        // Safe ignore
+      }
+      this.stretchNode = null;
+    }
+
     if (this.gainNode) {
-      this.gainNode.disconnect();
+      this.gainNode?.disconnect();
       this.gainNode = null;
     }
 
     this.recording = recording;
     this.audioContext = audioContext;
     this.destinationNode = destinationNode;
+    this.lastError = null;
+    this.errorReported = false;
 
     this.gainNode = audioContext.createGain();
     const effectiveGain = this.muted ? 0 : this.volume;
     this.gainNode.gain.setValueAtTime(effectiveGain, audioContext.currentTime);
     this.gainNode.connect(destinationNode);
+
+    let stretch: StretchNode;
+    try {
+      stretch = await this.stretchNodeFactory(audioContext);
+    } catch (error) {
+      this.lastError = error instanceof Error ? error : new Error(String(error));
+      this.gainNode.disconnect();
+      this.gainNode = null;
+      throw this.lastError;
+    }
+    try {
+      const channels = makeChannelsAtSampleRate(recording.buffer, audioContext.sampleRate);
+      await stretch.dropBuffers();
+      await stretch.addBuffers(channels);
+      stretch.connect(this.gainNode);
+      this.stretchNode = stretch;
+    } catch (error) {
+      try {
+        stretch.disconnect();
+      } catch {
+        // Ignore cleanup errors while reporting the preparation failure.
+      }
+      this.lastError = error instanceof Error ? error : new Error(String(error));
+      throw this.lastError;
+    }
   }
 
   /**
-   * Computes the playback position in the recording for a given song time and playback speed.
-   * Timing formula: audioTime = recordingOffsetSeconds + (songTime / speed)
+   * Computes the playback position in the recording for a given song time.
+   * Unified timing formula (A14): recordingPosition = songTime + offset
    */
-  public calculateAudioTime(songTime: number, speed: number): number {
-    const s = Math.max(1e-6, speed);
-    return this.recordingOffsetSeconds + songTime / s;
+  public calculateAudioTime(songTime: number): number {
+    return mapSongTimeToRecordingPosition(songTime, this.recordingOffsetSeconds);
   }
 
   /**
    * Starts or resumes synchronized audio playback at songTime and speed.
    */
   public play(songTime: number, speed: number): void {
+    const intentGeneration = ++this.intentGeneration;
     this.lastSongTime = songTime;
     this.lastSpeed = speed;
 
-    this.stopActiveSource();
-
-    if (!this.recording || !this.audioContext || !this.gainNode) {
+    if (!this.recording || !this.audioContext || !this.gainNode || !this.stretchNode) {
       this.isAudioPlaying = false;
-      return;
-    }
-
-    const audioTime = this.calculateAudioTime(songTime, speed);
-
-    // If already past the end of the recording, nothing to play
-    if (audioTime >= this.recording.durationSeconds) {
-      this.isAudioPlaying = false;
-      return;
-    }
-
-    const source = this.audioContext.createBufferSource();
-    source.buffer = this.recording.buffer;
-    source.connect(this.gainNode);
-
-    source.onended = () => {
-      if (this.activeSourceNode === source) {
-        this.activeSourceNode = null;
-        this.isAudioPlaying = false;
+      if (this.recording && !this.stretchNode) {
+        this.reportPlaybackError(new Error("Pitch-preserving playback is not prepared."));
       }
-    };
+      return;
+    }
 
-    this.activeSourceNode = source;
+    const recordingPosition = this.calculateAudioTime(songTime);
+    const duration = this.recording.durationSeconds;
+
+    // If already past the end of the recording, nothing to play (silence)
+    if (recordingPosition >= duration) {
+      this.isAudioPlaying = false;
+      void this.scheduleStretch({ output: this.audioContext.currentTime, active: false }, intentGeneration);
+      return;
+    }
+
     this.isAudioPlaying = true;
-
     const ctxNow = this.audioContext.currentTime;
 
-    if (audioTime >= 0) {
-      // Audio begins immediately at the computed offset
-      const remainingSeconds = this.recording.durationSeconds - audioTime;
-      source.start(ctxNow, audioTime, remainingSeconds);
-    } else {
-      // audioTime < 0 means recording starts in the future when song reaches the recording offset
-      const startDelaySeconds = -audioTime;
-      source.start(ctxNow + startDelaySeconds, 0, this.recording.durationSeconds);
-    }
+    const outputStart = Math.max(ctxNow, ctxNow + Math.max(0, -recordingPosition / Math.max(1e-6, speed)));
+    const inputStart = Math.max(0, recordingPosition);
+    void this.scheduleStretch({ output: ctxNow, active: false }, intentGeneration).then((stopped) => {
+      if (!stopped || intentGeneration !== this.intentGeneration || !this.isAudioPlaying) return false;
+      return this.scheduleStretch({
+        output: outputStart,
+        input: inputStart,
+        rate: speed,
+        semitones: 0,
+        active: true,
+      }, intentGeneration);
+    }).then((started) => {
+      if (!started && intentGeneration === this.intentGeneration) this.isAudioPlaying = false;
+    });
   }
 
   /**
    * Pauses audio playback and cancels active buffer source.
    */
   public pause(): void {
+    const intentGeneration = ++this.intentGeneration;
     this.isAudioPlaying = false;
-    this.stopActiveSource();
+    if (this.stretchNode && this.audioContext) {
+      void this.scheduleStretch({ output: this.audioContext.currentTime, active: false }, intentGeneration);
+    }
   }
 
   /**
    * Seeks to a specific transport position. If playing, instantly re-anchors playback.
    */
   public seek(songTime: number, speed: number): void {
+    this.intentGeneration += 1;
     this.lastSongTime = songTime;
     this.lastSpeed = speed;
 
     if (this.isAudioPlaying) {
       this.play(songTime, speed);
+    }
+  }
+
+  /**
+   * Seamlessly updates playback speed preserving pitch (A15).
+   */
+  public setSpeed(speed: number, currentSongTime?: number): void {
+    const intentGeneration = ++this.intentGeneration;
+    this.lastSpeed = speed;
+    if (!this.isAudioPlaying || !this.recording || !this.audioContext) {
+      return;
+    }
+
+    const songTime = currentSongTime ?? this.lastSongTime;
+    this.lastSongTime = songTime;
+    const recordingPosition = this.calculateAudioTime(songTime);
+    const duration = this.recording.durationSeconds;
+    const ctxNow = this.audioContext.currentTime;
+
+    if (recordingPosition < 0 || recordingPosition >= duration) {
+      this.play(songTime, speed);
+      return;
+    }
+
+    if (this.stretchNode) {
+      void this.scheduleStretch({
+        output: ctxNow,
+        input: recordingPosition,
+        rate: speed,
+        semitones: 0,
+        active: true,
+      }, intentGeneration);
     }
   }
 
@@ -146,7 +228,7 @@ export class SyncedAudioSource {
   }
 
   /**
-   * Sets recording volume [0, 1].
+   * Sets recording track trim volume [0, 1].
    */
   public setVolume(volume: number): void {
     const clamped = Math.max(0, Math.min(1, volume));
@@ -205,22 +287,54 @@ export class SyncedAudioSource {
     return this.recording;
   }
 
-  /**
-   * Internal helper to safely stop and disconnect active source node.
-   */
-  private stopActiveSource(): void {
-    if (this.activeSourceNode) {
+  public getError(): Error | null {
+    return this.lastError;
+  }
+
+  /** Called only by the explicit Transport Play action to retry a failed DSP schedule. */
+  public clearPlaybackErrorForUserRetry(): void {
+    this.lastError = null;
+    this.errorReported = false;
+  }
+
+  public subscribeError(listener: (error: Error) => void): () => void {
+    this.errorListeners.add(listener);
+    return () => this.errorListeners.delete(listener);
+  }
+
+  public getStretchLatencySeconds(): number {
+    return this.stretchNode?.latency() ?? 0;
+  }
+
+  private scheduleStretch(
+    options: Parameters<StretchNode["schedule"]>[0],
+    intentGeneration = this.intentGeneration,
+  ): Promise<boolean> {
+    const stretchNode = this.stretchNode;
+    if (!stretchNode) return Promise.resolve(false);
+    return stretchNode.schedule(options).then(
+      () => true,
+      (error: unknown) => {
+        if (intentGeneration === this.intentGeneration) {
+          this.reportPlaybackError(error instanceof Error ? error : new Error(String(error)));
+        }
+        return false;
+      },
+    );
+  }
+
+  private reportPlaybackError(error: Error): void {
+    this.intentGeneration += 1;
+    this.lastError = error;
+    this.isAudioPlaying = false;
+    if (this.errorReported) return;
+    this.errorReported = true;
+    for (const listener of this.errorListeners) {
       try {
-        this.activeSourceNode.stop();
+        listener(error);
       } catch {
-        // Node may already be stopped or ended
+        // One observer must not prevent other playback error notifications.
       }
-      try {
-        this.activeSourceNode.disconnect();
-      } catch {
-        // Safe ignore
-      }
-      this.activeSourceNode = null;
     }
   }
 
@@ -229,6 +343,15 @@ export class SyncedAudioSource {
    */
   public dispose(): void {
     this.pause();
+
+    if (this.stretchNode) {
+      try {
+        this.stretchNode.disconnect();
+      } catch {
+        // Safe ignore
+      }
+      this.stretchNode = null;
+    }
 
     if (this.gainNode) {
       try {
@@ -242,5 +365,6 @@ export class SyncedAudioSource {
     this.recording = null;
     this.audioContext = null;
     this.destinationNode = null;
+    this.errorListeners.clear();
   }
 }

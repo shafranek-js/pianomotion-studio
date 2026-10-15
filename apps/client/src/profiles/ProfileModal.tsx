@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { Check, UserRound, X } from "lucide-react";
 import type { PianistProfile } from "@handthesia/contracts";
 import {
   ANATOMY_BONES,
@@ -13,37 +14,47 @@ import {
   listProfiles,
   saveProfile,
   deleteProfile,
-  cloneProfile,
   subscribeProfiles,
   isCanonicalProfile,
 } from "./profileStore";
 import { importLegacyPianistJson, exportProfileToJson } from "./legacyImporter";
 
 export interface ProfileModalProps {
+  presentation?: "dialog" | "workspace";
+  initialProfile?: PianistProfile;
   isOpen: boolean;
   onClose: () => void;
   onProfileChanged?: (profile: PianistProfile) => void;
 }
 
-export function ProfileModal({ isOpen, onClose, onProfileChanged }: ProfileModalProps) {
-  const [profiles, setProfiles] = useState<PianistProfile[]>(listProfiles());
+function projectProfileChoices(profile?: PianistProfile): PianistProfile[] {
+  const stored = listProfiles();
+  if (!profile) return stored;
+  return stored.some(candidate => candidate.profileId === profile.profileId)
+    ? stored.map(candidate => candidate.profileId === profile.profileId ? profile : candidate)
+    : [...stored, profile];
+}
+
+export function ProfileModal({ isOpen, onClose, onProfileChanged, presentation = "dialog", initialProfile }: ProfileModalProps) {
+  const [profiles, setProfiles] = useState<PianistProfile[]>(() => projectProfileChoices(initialProfile));
   const [selectedProfileId, setSelectedProfileId] = useState<string>(
-    getActiveProfile().profileId,
+    (initialProfile ?? getActiveProfile()).profileId,
   );
   const [activeTab, setActiveTab] = useState<"anatomy" | "behavior" | "manage">("anatomy");
-  const [editingProfile, setEditingProfile] = useState<PianistProfile>(getActiveProfile());
+  const [editingProfile, setEditingProfile] = useState<PianistProfile>(() => initialProfile ?? getActiveProfile());
   const [importError, setImportError] = useState<string | null>(null);
   const [saveFeedback, setSaveFeedback] = useState<string | null>(null);
   const [operationError, setOperationError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [conflictProfile, setConflictProfile] = useState<PianistProfile | null>(null);
 
   // Sync profiles on external changes
   useEffect(() => {
     const unsubscribe = subscribeProfiles(() => {
-      setProfiles(listProfiles());
+      setProfiles(projectProfileChoices(initialProfile));
     });
     return unsubscribe;
-  }, []);
+  }, [initialProfile]);
 
   // Sync draft when selected profile changes
   const [prevSelectedId, setPrevSelectedId] = useState(selectedProfileId);
@@ -89,10 +100,11 @@ export function ProfileModal({ isOpen, onClose, onProfileChanged }: ProfileModal
   };
 
   const handleSave = async () => {
+    if (isDefaultProfile) return;
     setIsSaving(true);
     setOperationError(null);
     try {
-      const saved = await saveProfile(editingProfile);
+      const saved = await saveProfile({ ...editingProfile, revision: editingProfile.revision + 1 });
       const active = await setActiveProfile(saved.profileId);
       setEditingProfile(active);
       setSelectedProfileId(active.profileId);
@@ -110,7 +122,17 @@ export function ProfileModal({ isOpen, onClose, onProfileChanged }: ProfileModal
     setIsSaving(true);
     setOperationError(null);
     try {
-      const cloned = await cloneProfile(editingProfile.profileId, `${editingProfile.name} (Copy)`);
+      // A package's profile may not exist in the global profile library yet.
+      // Copy the actual session profile, including its imported anatomy.
+      const now = Date.now() / 1000;
+      const cloned = await saveProfile({
+        ...structuredClone(editingProfile),
+        profileId: crypto.randomUUID(),
+        name: `${editingProfile.name} (Copy)`,
+        revision: 0,
+        createdAtUnixSeconds: now,
+        modifiedAtUnixSeconds: now,
+      });
       const active = await setActiveProfile(cloned.profileId);
       setSelectedProfileId(active.profileId);
       setSaveFeedback(`Created copy "${active.name}"`);
@@ -155,22 +177,36 @@ export function ProfileModal({ isOpen, onClose, onProfileChanged }: ProfileModal
     URL.revokeObjectURL(url);
   };
 
-  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    e.target.value = "";
-    if (!file) return;
-    setImportError(null);
+  const commitImport = async (imported: PianistProfile, resolution: "replace" | "copy") => {
     setIsSaving(true);
     setOperationError(null);
+    setImportError(null);
     try {
-      const imported = importLegacyPianistJson(await file.text());
-      const saved = await saveProfile(imported);
+      let toSave = imported;
+      const isCanonical = isCanonicalProfile(imported.profileId);
+      if (resolution === "copy" || isCanonical) {
+        const now = Date.now() / 1000;
+        toSave = {
+          ...structuredClone(imported),
+          profileId: crypto.randomUUID(),
+          name: `${imported.name} (Copy)`,
+          revision: 0,
+          createdAtUnixSeconds: now,
+          modifiedAtUnixSeconds: now,
+        };
+      }
+      const saved = await saveProfile(toSave);
       const active = await setActiveProfile(saved.profileId);
       setSelectedProfileId(active.profileId);
       setEditingProfile(active);
       onProfileChanged?.(active);
-      setSaveFeedback(`Imported "${active.name}" successfully!`);
+      setSaveFeedback(
+        resolution === "copy" || isCanonical
+          ? `Created copy "${active.name}"`
+          : `Replaced profile "${active.name}"`,
+      );
       setTimeout(() => setSaveFeedback(null), 3000);
+      setConflictProfile(null);
     } catch (error) {
       setImportError(String(error instanceof Error ? error.message : error));
     } finally {
@@ -178,12 +214,31 @@ export function ProfileModal({ isOpen, onClose, onProfileChanged }: ProfileModal
     }
   };
 
+  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setImportError(null);
+    setOperationError(null);
+    try {
+      const imported = importLegacyPianistJson(await file.text());
+      const existing = profiles.find((p) => p.profileId === imported.profileId);
+      if (existing) {
+        setConflictProfile(imported);
+        return;
+      }
+      await commitImport(imported, "replace");
+    } catch (error) {
+      setImportError(String(error instanceof Error ? error.message : error));
+    }
+  };
+
   return (
     <div
       className="modal-backdrop"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="profile-modal-title"
+      role={presentation === "dialog" ? "dialog" : undefined}
+      aria-modal={presentation === "dialog" ? true : undefined}
+      aria-labelledby={presentation === "dialog" ? "profile-modal-title" : undefined}
       style={{
         position: "fixed",
         inset: 0,
@@ -221,7 +276,7 @@ export function ProfileModal({ isOpen, onClose, onProfileChanged }: ProfileModal
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
-            <span style={{ fontSize: "1.2rem" }}>👤</span>
+            <UserRound size={20} aria-hidden="true" />
             <h2 id="profile-modal-title" style={{ margin: 0, fontSize: "1.15rem", fontWeight: 700 }}>
               Pianist Profiles
             </h2>
@@ -239,7 +294,7 @@ export function ProfileModal({ isOpen, onClose, onProfileChanged }: ProfileModal
               padding: "0.2rem 0.5rem",
             }}
           >
-            ✕
+            <X size={18} aria-hidden="true" />
           </button>
         </div>
 
@@ -348,7 +403,7 @@ export function ProfileModal({ isOpen, onClose, onProfileChanged }: ProfileModal
               cursor: "pointer",
             }}
           >
-            ✋ Hand Anatomy (19 Bones)
+            Hand Anatomy (19 Bones)
           </button>
           <button
             type="button"
@@ -366,7 +421,7 @@ export function ProfileModal({ isOpen, onClose, onProfileChanged }: ProfileModal
               cursor: "pointer",
             }}
           >
-            ⚡ Motion & Technique
+            Motion & Technique
           </button>
           <button
             type="button"
@@ -384,7 +439,7 @@ export function ProfileModal({ isOpen, onClose, onProfileChanged }: ProfileModal
               cursor: "pointer",
             }}
           >
-            📁 Import / Export
+            Import / Export
           </button>
         </div>
 
@@ -403,7 +458,7 @@ export function ProfileModal({ isOpen, onClose, onProfileChanged }: ProfileModal
                 marginBottom: "1rem",
               }}
             >
-              ✓ {saveFeedback}
+              <Check size={14} aria-hidden="true" /> {saveFeedback}
             </div>
           )}
 
@@ -420,7 +475,7 @@ export function ProfileModal({ isOpen, onClose, onProfileChanged }: ProfileModal
                 marginBottom: "1rem",
               }}
             >
-              ✕ {importError}
+              {importError}
             </div>
           )}
 
@@ -472,6 +527,7 @@ export function ProfileModal({ isOpen, onClose, onProfileChanged }: ProfileModal
                       </div>
                       <input
                         type="range"
+                        aria-label={bone.name}
                         min={bone.min}
                         max={bone.max}
                         step={0.05}
@@ -527,6 +583,7 @@ export function ProfileModal({ isOpen, onClose, onProfileChanged }: ProfileModal
                         </div>
                         <input
                           type="range"
+                          aria-label={slider.label}
                           min={slider.min}
                           max={slider.max}
                           step={slider.step ?? 0.01}
@@ -661,7 +718,7 @@ export function ProfileModal({ isOpen, onClose, onProfileChanged }: ProfileModal
                     cursor: "pointer",
                   }}
                 >
-                  ⬇ Export as {editingProfile.name}.json
+                  Export as {editingProfile.name}.json
                 </button>
               </div>
             </div>
@@ -700,7 +757,8 @@ export function ProfileModal({ isOpen, onClose, onProfileChanged }: ProfileModal
             <button
               type="button"
               onClick={handleSave}
-              disabled={isSaving}
+              disabled={isSaving || isDefaultProfile}
+              title={isDefaultProfile ? "Duplicate this preset before editing and saving it" : undefined}
               style={{
                 padding: "0.45rem 1rem",
                 borderRadius: "0.4rem",
@@ -716,6 +774,110 @@ export function ProfileModal({ isOpen, onClose, onProfileChanged }: ProfileModal
             </button>
           </div>
         </div>
+
+        {conflictProfile && (
+          <div
+            className="conflict-dialog"
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="conflict-dialog-title"
+            style={{
+              position: "absolute",
+              inset: 0,
+              background: "rgba(0,0,0,0.85)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 1100,
+              padding: "1rem",
+              borderRadius: "0.85rem",
+            }}
+          >
+            <div
+              style={{
+                background: "var(--panel, #19211d)",
+                border: "1px solid var(--border, #33423a)",
+                borderRadius: "0.6rem",
+                padding: "1.25rem",
+                maxWidth: "460px",
+                width: "100%",
+                display: "flex",
+                flexDirection: "column",
+                gap: "1rem",
+                color: "#edf2ed",
+                boxShadow: "0 20px 40px rgba(0,0,0,0.7)",
+              }}
+            >
+              <h3 id="conflict-dialog-title" style={{ margin: 0, fontSize: "1.05rem", color: "#f59e0b" }}>
+                ⚠️ Profile ID Conflict
+              </h3>
+              <p style={{ margin: 0, fontSize: "0.88rem", color: "#d1d5db", lineHeight: 1.4 }}>
+                A profile with ID <code>{conflictProfile.profileId}</code> already exists in your library
+                {isCanonicalProfile(conflictProfile.profileId) ? " and is a protected built-in canonical profile." : "."}
+              </p>
+              <p style={{ margin: 0, fontSize: "0.82rem", color: "var(--muted, #9fac9f)" }}>
+                {isCanonicalProfile(conflictProfile.profileId)
+                  ? "Built-in profiles cannot be overwritten. A copy will be created."
+                  : "Would you like to create a new copy or replace the existing profile?"}
+              </p>
+              <div style={{ display: "flex", gap: "0.5rem", justifyContent: "flex-end", marginTop: "0.5rem" }}>
+                <button
+                  type="button"
+                  id="conflict-cancel-btn"
+                  onClick={() => setConflictProfile(null)}
+                  style={{
+                    padding: "0.45rem 0.85rem",
+                    borderRadius: "0.35rem",
+                    border: "1px solid var(--border, #33423a)",
+                    background: "transparent",
+                    color: "#edf2ed",
+                    fontSize: "0.82rem",
+                    cursor: "pointer",
+                  }}
+                >
+                  Cancel
+                </button>
+                {!isCanonicalProfile(conflictProfile.profileId) && (
+                  <button
+                    type="button"
+                    id="conflict-replace-btn"
+                    onClick={() => void commitImport(conflictProfile, "replace")}
+                    style={{
+                      padding: "0.45rem 0.85rem",
+                      borderRadius: "0.35rem",
+                      border: "1px solid #ef4444",
+                      background: "rgba(239, 68, 68, 0.15)",
+                      color: "#ef4444",
+                      fontSize: "0.82rem",
+                      cursor: "pointer",
+                      fontWeight: 600,
+                    }}
+                  >
+                    Replace
+                  </button>
+                )}
+                <button
+                  type="button"
+                  id="conflict-copy-btn"
+                  autoFocus
+                  onClick={() => void commitImport(conflictProfile, "copy")}
+                  style={{
+                    padding: "0.45rem 0.95rem",
+                    borderRadius: "0.35rem",
+                    border: "none",
+                    background: "var(--accent, #3b82f6)",
+                    color: "#ffffff",
+                    fontSize: "0.82rem",
+                    cursor: "pointer",
+                    fontWeight: 600,
+                  }}
+                >
+                  Create Copy (Default)
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

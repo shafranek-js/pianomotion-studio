@@ -47,6 +47,8 @@ import {
   MAX_MIDI_FILE_SIZE_BYTES,
 } from "./fileValidator.ts";
 
+const testSourceContext = { fixtureId: "test-fixture", keyStyle: "realistic" } as const;
+
 function createValidSongDocument(projectId = "proj_test_1"): SongDocument {
   return {
     schemaVersion: SCHEMA_VERSION,
@@ -239,6 +241,7 @@ describe("packageExporter.ts", () => {
       name: "Sonata 1",
       updatedAt: 1700000000,
       document,
+      sourceContext: testSourceContext,
     };
 
     const pkg = await buildProjectPackage(project);
@@ -252,6 +255,31 @@ describe("packageExporter.ts", () => {
     expect(validated.projectId).toBe("proj_export_1");
   });
 
+  it("migrates v1 packages only after source namespace and missing geometry are resolved", async () => {
+    const document = createValidSongDocument("proj_legacy_geometry");
+    document.notes[0]!.sourceNoteIds = ["test-fixture/instrument-0/note-000000"];
+    const project: SavedProject = {
+      projectId: document.projectId,
+      name: "Legacy geometry",
+      updatedAt: 1700000000,
+      document,
+      sourceContext: testSourceContext,
+    };
+    const current = await buildProjectPackage(project);
+    expect(current.sourceContext).toEqual(testSourceContext);
+    const { sourceContext: _sourceContext, ...legacyFields } = current;
+    expect(_sourceContext).toEqual(testSourceContext);
+    const legacy = { ...legacyFields, packageVersion: 1 };
+
+    expect(() => validateProjectPackage(legacy)).toThrow(/keyboard geometry.*choose realistic or equal/i);
+    const migrated = validateProjectPackage(legacy, { fixtureId: "test-fixture", keyStyle: "equal" });
+    expect(migrated.packageVersion).toBe(PACKAGE_VERSION);
+    expect(migrated.sourceContext).toEqual({ fixtureId: "test-fixture", keyStyle: "equal" });
+
+    const ambiguous = { ...legacy, document: { ...document, notes: [{ ...document.notes[0]!, sourceNoteIds: undefined }] } };
+    expect(() => validateProjectPackage(ambiguous)).toThrow(/source identity is ambiguous/i);
+  });
+
   it("auto-synthesizes source-midi resource if document references it and rawMidiBytes are provided", async () => {
     const document = createValidSongDocument("proj_midi_res");
     document.sourceMidiResourceId = "res_midi_1";
@@ -263,6 +291,7 @@ describe("packageExporter.ts", () => {
       updatedAt: 1700000000,
       document,
       rawMidiBytes: midiBuffer,
+      sourceContext: testSourceContext,
     };
 
     const pkg = await buildProjectPackage(project);
@@ -301,6 +330,7 @@ describe("packageExporter.ts", () => {
       rawMidiBytes,
       profile,
       resources: [source],
+      sourceContext: testSourceContext,
     };
 
     const checked = validateSavedProject(project);
@@ -349,7 +379,7 @@ describe("packageExporter.ts", () => {
       document,
     };
 
-    const json = await exportProjectPackageJson(project, { profiles: [profile] });
+    const json = await exportProjectPackageJson(project, { profiles: [profile], sourceContext: testSourceContext });
     expect(typeof json).toBe("string");
 
     const imported = parseProjectPackageJson(json);
@@ -370,6 +400,7 @@ describe("packageExporter.ts", () => {
       name: "Flex Song",
       updatedAt: 1234567,
       document: doc,
+      sourceContext: testSourceContext,
     };
 
     const resFromSaved = importProjectOrPackage(savedProj);
@@ -496,8 +527,20 @@ describe("projectDb.ts in-memory mock integration", () => {
     onsuccess: ((ev: { target: MockReq }) => void) | null;
   }
 
+  interface MockTransaction {
+    oncomplete: ((event: Event) => void) | null;
+    onerror: ((event: Event) => void) | null;
+    onabort: ((event: Event) => void) | null;
+    error: DOMException | null;
+  }
+
   class MockIDBStore {
     data = new Map<string, SavedProject>();
+    private transaction: MockTransaction | null = null;
+
+    setTransaction(transaction: MockTransaction): void {
+      this.transaction = transaction;
+    }
 
     put(val: SavedProject): MockReq {
       this.data.set(val.projectId, val);
@@ -521,6 +564,7 @@ describe("projectDb.ts in-memory mock integration", () => {
       const req: MockReq = { result, onsuccess: null };
       setTimeout(() => {
         if (req.onsuccess) req.onsuccess({ target: req });
+        if (this.transaction?.oncomplete) this.transaction.oncomplete(new Event("complete"));
       }, 0);
       return req;
     }
@@ -531,9 +575,17 @@ describe("projectDb.ts in-memory mock integration", () => {
   const mockDb = {
     objectStoreNames: { contains: () => true },
     createObjectStore: () => ({ createIndex: () => {} }),
-    transaction: () => ({
-      objectStore: () => store,
-    }),
+    transaction: () => {
+      const tx: MockTransaction & { objectStore: () => MockIDBStore } = {
+        oncomplete: null,
+        onerror: null,
+        onabort: null,
+        error: null,
+        objectStore: () => store,
+      };
+      store.setTransaction(tx);
+      return tx;
+    },
     close: () => {},
   } as unknown as IDBDatabase;
 

@@ -1,28 +1,29 @@
 import { Assets, Texture } from "pixi.js";
+import { releaseAssetUrl } from "../../pwa/urls";
 
 export const PHOTO_RIG_RIGHT_URLS = {
-  forearm: "/textures/photo-rig/forearm.png",
-  dorsum: "/textures/photo-rig/dorsum.png",
-  1: "/textures/photo-rig/finger_1.png",
-  2: "/textures/photo-rig/finger_2.png",
-  3: "/textures/photo-rig/finger_3.png",
-  4: "/textures/photo-rig/finger_4.png",
-  5: "/textures/photo-rig/finger_5.png",
+  forearm: releaseAssetUrl("textures/photo-rig/forearm.png").href,
+  dorsum: releaseAssetUrl("textures/photo-rig/dorsum.png").href,
+  1: releaseAssetUrl("textures/photo-rig/finger_1.png").href,
+  2: releaseAssetUrl("textures/photo-rig/finger_2.png").href,
+  3: releaseAssetUrl("textures/photo-rig/finger_3.png").href,
+  4: releaseAssetUrl("textures/photo-rig/finger_4.png").href,
+  5: releaseAssetUrl("textures/photo-rig/finger_5.png").href,
 } as const;
 
 export const PHOTO_RIG_LEFT_URLS = {
-  forearm: "/textures/photo-rig/forearm_left.png",
-  dorsum: "/textures/photo-rig/dorsum_left.png",
-  1: "/textures/photo-rig/finger_1_left.png",
-  2: "/textures/photo-rig/finger_2_left.png",
-  3: "/textures/photo-rig/finger_3_left.png",
-  4: "/textures/photo-rig/finger_4_left.png",
-  5: "/textures/photo-rig/finger_5_left.png",
+  forearm: releaseAssetUrl("textures/photo-rig/forearm_left.png").href,
+  dorsum: releaseAssetUrl("textures/photo-rig/dorsum_left.png").href,
+  1: releaseAssetUrl("textures/photo-rig/finger_1_left.png").href,
+  2: releaseAssetUrl("textures/photo-rig/finger_2_left.png").href,
+  3: releaseAssetUrl("textures/photo-rig/finger_3_left.png").href,
+  4: releaseAssetUrl("textures/photo-rig/finger_4_left.png").href,
+  5: releaseAssetUrl("textures/photo-rig/finger_5_left.png").href,
 } as const;
 
 export const PHOTO_MESH_URLS = {
-  right: "/textures/photo-hand-right.png",
-  left: "/textures/photo-hand-left.png",
+  right: releaseAssetUrl("textures/photo-hand-right.png").href,
+  left: releaseAssetUrl("textures/photo-hand-left.png").href,
 } as const;
 
 export const ALL_PHOTO_URLS: string[] = [

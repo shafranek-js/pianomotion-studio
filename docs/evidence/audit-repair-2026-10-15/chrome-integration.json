@@ -1,0 +1,25 @@
+{
+  "capturedAt": "2026-10-15T06:43:50.490Z",
+  "channel": "chrome",
+  "installedVersion": "154.0.8037.98",
+  "tests": [
+    "selection does not calculate; edits preserve IDs/history and exported MIDI markers",
+    "latest profile/equal geometry survive package bytes and session recovery",
+    "autosaved pending intent is recovered and replanned after reload",
+    "update never activates after real project transaction abort; edited session survives",
+    "edits made during worker activation prevent the final reload"
+  ],
+  "result": "5 scenario passes across initial run and focused retry",
+  "initial": {
+    "passed": 3,
+    "failed": 2,
+    "reason": "save helper compared whole footer with anchored status regex"
+  },
+  "correction": "scope exact saved message to footer role=status",
+  "retry": {
+    "passed": 2,
+    "durationSeconds": 33.9
+  },
+  "scope": "real application, real Pyodide Worker, real IndexedDB abort; SW waiting notification injected for save-barrier cases; actual two-release SW install tested separately",
+  "finalAcceptance": false
+}

@@ -456,18 +456,16 @@ describe("Profile Store", () => {
   });
 
   it("saves existing profile, increments revision, and updates modified timestamp", async () => {
-    const profile = getActiveProfile();
-    const originalRevision = profile.revision;
+    const custom = await cloneProfile("default", "Editable Pianist");
+    const originalRevision = custom.revision;
 
-    profile.behavior.max_speed = 3.8;
-    const committed = await saveProfile(profile);
+    custom.behavior.max_speed = 3.8;
+    const committed = await saveProfile(custom);
 
-    const updated = getActiveProfile();
-    expect(updated.behavior.max_speed).toBe(3.8);
-    expect(updated.revision).toBeGreaterThan(originalRevision);
-    expect(committed.revision).toBe(updated.revision);
-    expect(updated.modifiedAtUnixSeconds).toBeGreaterThanOrEqual(
-      profile.createdAtUnixSeconds
+    expect(committed.behavior.max_speed).toBe(3.8);
+    expect(committed.revision).toBeGreaterThan(originalRevision);
+    expect(committed.modifiedAtUnixSeconds).toBeGreaterThanOrEqual(
+      custom.createdAtUnixSeconds,
     );
   });
 
@@ -532,5 +530,38 @@ describe("Profile Store", () => {
 
     const profiles = listProfiles();
     expect(profiles.some((p) => p.name === "Persisted Profile")).toBe(true);
+  });
+
+  it("protects canonical profiles from overwrite and supports copy on conflict", async () => {
+    // Import JSON attempting to overwrite canonical 'default'
+    const imported = importLegacyPianistJson(DESKTOP_DEFAULT_COPY_JSON);
+    imported.profileId = "default";
+    imported.name = "Malicious Overwrite";
+
+    // Direct save of canonical profile throws error
+    await expect(saveProfile(imported)).rejects.toThrow(
+      /Canonical built-in profile 'default' cannot be modified/,
+    );
+
+    const canonical = getDefaultProfile();
+    expect(canonical.profileId).toBe("default");
+
+    // When conflict resolution chooses copy:
+    const copyId = crypto.randomUUID();
+    const copyProfile = {
+      ...imported,
+      profileId: copyId,
+      name: `${imported.name} (Copy)`,
+      revision: 0,
+    };
+    const savedCopy = await saveProfile(copyProfile);
+    expect(savedCopy.profileId).toBe(copyId);
+    expect(savedCopy.name).toContain("(Copy)");
+
+    // Canonical default profile remains intact in store
+    const list = listProfiles();
+    const defaultProfileInStore = list.find((p) => p.profileId === "default");
+    expect(defaultProfileInStore).toBeDefined();
+    expect(defaultProfileInStore?.name).toBe("Default copy");
   });
 });

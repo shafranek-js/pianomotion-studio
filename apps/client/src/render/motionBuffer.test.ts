@@ -71,6 +71,23 @@ function createSyntheticPose(options: {
   };
 }
 
+function sampleResult(
+  poses: MotionPose[],
+  coverage: M1SampleMotionResult["coverage"],
+): M1SampleMotionResult {
+  return {
+    type: "sample-motion-result",
+    requestId: "motion-test",
+    projectId: "motion-project",
+    revision: 1,
+    engineVersion: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    startTimeSeconds: poses[0]?.transportTimeSeconds ?? 0,
+    endTimeSeconds: poses[poses.length - 1]?.transportTimeSeconds ?? 0,
+    poses,
+    coverage,
+  };
+}
+
 describe("MotionBuffer", () => {
   describe("Sliding lookahead buffer", () => {
     it("inserts poses and maintains sort order by time and hand", () => {
@@ -210,11 +227,18 @@ describe("MotionBuffer", () => {
       expect(buffer.needsMorePoses(10.0)).toBe(true);
       expect(buffer.getMissingWindow(10.0)).toEqual({ start: 10.0, end: 14.0 });
 
-      // Buffer loaded with [10.0, 14.0]
-      const poses = [10, 11, 12, 13, 14].map((t) =>
+      // Buffer loaded with [10.0, 14.0] with dense steps <= 250ms
+      const denseTimes: number[] = [];
+      for (let t = 10.0; t <= 14.001; t += 0.2) {
+        denseTimes.push(Math.round(t * 10) / 10);
+      }
+      const poses = denseTimes.map((t) =>
         createSyntheticPose({ hand: "right", time: t }),
       );
-      buffer.addPoses(poses, 10.0);
+      buffer.setExpectedHands(["right"]);
+      buffer.addSampleMotionResult(sampleResult(poses, {
+        right: { coveredStartTimeSeconds: 10, coveredEndTimeSeconds: 14, isComplete: true, poseCount: poses.length },
+      }), 10.0);
 
       // Frame at t = 10.0: 10.0 + 1.5 = 11.5 <= 14.0 -> false (NO RPC)
       expect(buffer.needsMorePoses(10.0)).toBe(false);
@@ -231,18 +255,169 @@ describe("MotionBuffer", () => {
       // Frame at t = 12.6: 12.6 + 1.5 = 14.1 > 14.0 -> true (APPROACHING BOUNDARY)
       expect(buffer.needsMorePoses(12.6)).toBe(true);
 
-      // Missing window calculates next slice from buffer end
+      // Missing window calculates next slice with 250ms boundary overlap
       const nextWindow = buffer.getMissingWindow(12.6);
-      expect(nextWindow.start).toBe(14.0);
-      expect(nextWindow.end).toBeCloseTo(16.6);
+      expect(nextWindow.start).toBe(13.75);
+      expect(nextWindow.end).toBe(17.75);
 
-      // Once next slice is added, needsMorePoses goes back to false
-      const extensionPoses = [15, 16, 16.6].map((t) =>
+      // Once next slice is added densely, needsMorePoses goes back to false
+      const extTimes: number[] = [];
+      for (let t = 13.8; t <= 17.8; t += 0.2) {
+        extTimes.push(Math.round(t * 10) / 10);
+      }
+      const extensionPoses = extTimes.map((t) =>
         createSyntheticPose({ hand: "right", time: t }),
       );
-      buffer.addPoses(extensionPoses, 12.6);
-      expect(buffer.bufferedRange?.end).toBeCloseTo(16.6);
+      buffer.addSampleMotionResult(sampleResult(extensionPoses, {
+        right: { coveredStartTimeSeconds: 13.8, coveredEndTimeSeconds: 17.8, isComplete: true, poseCount: extensionPoses.length },
+      }), 12.6);
       expect(buffer.needsMorePoses(12.6)).toBe(false);
+    });
+
+    it("A10: rejects sparse gap coverage and triggers needsMorePoses when gap exceeds 250ms (0s and 30s)", () => {
+      const buffer = new MotionBuffer({ windowAheadSeconds: 4.0 });
+
+      // Two poses at 0.0s and 30.0s (30s gap > 250ms)
+      const sparsePoses = [
+        createSyntheticPose({ hand: "right", time: 0.0 }),
+        createSyntheticPose({ hand: "right", time: 30.0 }),
+      ];
+      buffer.addPoses(sparsePoses);
+
+      // At t = 2.0s, range coverage alone would say false, but continuous coverage MUST return true
+      expect(buffer.needsMorePoses(2.0)).toBe(true);
+
+      // Missing window asks for the missing segment around t = 2.0s
+      const missing = buffer.getMissingWindow(2.0);
+      expect(missing.start).toBe(1.75);
+      expect(missing.end).toBe(6.0);
+    });
+
+    it("requires separate continuous coverage for each active hand", () => {
+      const buffer = new MotionBuffer({ windowAheadSeconds: 4.0, expectedHands: ["left", "right"] });
+
+      // Right hand has dense coverage [0.0, 4.0]
+      const rhTimes: number[] = [];
+      for (let t = 0.0; t <= 4.001; t += 0.2) rhTimes.push(Math.round(t * 10) / 10);
+      const rhPoses = rhTimes.map((t) => createSyntheticPose({ hand: "right", time: t }));
+
+      // Left hand only has a pose at 0.0s (missing remaining window)
+      const lhPoses = [createSyntheticPose({ hand: "left", time: 0.0 })];
+      buffer.addSampleMotionResult(sampleResult([...rhPoses, ...lhPoses], {
+        left: { coveredStartTimeSeconds: 0, coveredEndTimeSeconds: 0, isComplete: false, poseCount: 1 },
+        right: { coveredStartTimeSeconds: 0, coveredEndTimeSeconds: 4, isComplete: true, poseCount: rhPoses.length },
+      }));
+
+      // Because left hand is active but missing coverage at [1.0, 2.5], needsMorePoses must be true
+      expect(buffer.needsMorePoses(1.0)).toBe(true);
+    });
+
+    it("uses expected hands and metadata-backed coverage instead of the hands present in sparse poses", () => {
+      const rightOnly = [
+        createSyntheticPose({ hand: "right", time: 0 }),
+        createSyntheticPose({ hand: "right", time: 1 }),
+      ];
+      const buffer = new MotionBuffer({ expectedHands: ["left", "right"] });
+      buffer.addSampleMotionResult(sampleResult(rightOnly, {
+        right: { coveredStartTimeSeconds: 0, coveredEndTimeSeconds: 1, isComplete: true, poseCount: 2 },
+      }));
+
+      expect(buffer.getActiveHands()).toEqual(["left", "right"]);
+      expect(buffer.hasCoverage(0, 1)).toBe(false);
+      expect(buffer.needsMorePoses(0)).toBe(true);
+    });
+
+    it("does not treat sparse legacy poses as continuous and requires event anchors to be present", () => {
+      const buffer = new MotionBuffer({
+        expectedHands: ["right"],
+        requiredAnchors: [{ hand: "right", timeSeconds: 0.5 }],
+      });
+      buffer.addPoses([
+        createSyntheticPose({ hand: "right", time: 0 }),
+        createSyntheticPose({ hand: "right", time: 1 }),
+      ]);
+      expect(buffer.hasCoverage(0, 1)).toBe(false);
+
+      const completeRangeWithoutAnchor = sampleResult([
+        ...[0, 0.2, 0.4, 0.6, 0.8, 1].map(time => createSyntheticPose({ hand: "right", time })),
+      ], {
+        right: { coveredStartTimeSeconds: 0, coveredEndTimeSeconds: 1, isComplete: true, poseCount: 6 },
+      });
+      buffer.invalidate();
+      buffer.addSampleMotionResult(completeRangeWithoutAnchor);
+      expect(buffer.isHandCovered("right", 0, 1)).toBe(true);
+      expect(buffer.hasCoverage(0, 1)).toBe(false);
+
+      buffer.addSampleMotionResult(sampleResult([
+        createSyntheticPose({ hand: "right", time: 0.5 }),
+      ], {
+        right: { coveredStartTimeSeconds: 0.5, coveredEndTimeSeconds: 0.5, isComplete: false, poseCount: 1 },
+      }));
+      expect(buffer.hasCoverage(0, 1)).toBe(true);
+    });
+
+    it("intersects declared coverage with actual continuous poses and rejects missing hands", () => {
+      const buffer = new MotionBuffer({ expectedHands: ["left", "right"] });
+      buffer.addSampleMotionResult(sampleResult([
+        createSyntheticPose({ hand: "right", time: 0 }),
+        createSyntheticPose({ hand: "right", time: 30 }),
+      ], {
+        left: { coveredStartTimeSeconds: 0, coveredEndTimeSeconds: 30, isComplete: true, poseCount: 2 },
+        right: { coveredStartTimeSeconds: 0, coveredEndTimeSeconds: 30, isComplete: true, poseCount: 2 },
+      }));
+
+      expect(buffer.getHandCoverageIntervals("left")).toEqual([]);
+      expect(buffer.getHandCoverageIntervals("right")).toEqual([]);
+      expect(buffer.isHandCovered("right", 10, 11)).toBe(false);
+      expect(buffer.hasCoverage(10, 11)).toBe(false);
+    });
+
+    it("bridges a small response-chunk gap only when adjacent rendered poses prove interpolation", () => {
+      const buffer = new MotionBuffer({ expectedHands: ["right"] });
+      const firstPoses = Array.from({ length: 11 }, (_, index) => createSyntheticPose({
+        hand: "right",
+        time: index / 10,
+      }));
+      const secondPoses = Array.from({ length: 11 }, (_, index) => createSyntheticPose({
+        hand: "right",
+        time: 1.02 + index / 10,
+      }));
+
+      buffer.addSampleMotionResult(sampleResult(firstPoses, {
+        right: { coveredStartTimeSeconds: 0, coveredEndTimeSeconds: 1, isComplete: false, poseCount: firstPoses.length },
+      }));
+      buffer.addSampleMotionResult(sampleResult(secondPoses, {
+        right: { coveredStartTimeSeconds: 1.02, coveredEndTimeSeconds: 2.02, isComplete: true, poseCount: secondPoses.length },
+      }));
+
+      expect(buffer.getHandCoverageIntervals("right")).toEqual([{ start: 0, end: 2.02 }]);
+      expect(buffer.hasCoverage(0, 2.02)).toBe(true);
+      expect(buffer.samplePose(1.01, "right")).not.toBeNull();
+
+      const unverifiedEndpoint = new MotionBuffer({ expectedHands: ["right"] });
+      unverifiedEndpoint.addSampleMotionResult(sampleResult(firstPoses, {
+        right: { coveredStartTimeSeconds: 0, coveredEndTimeSeconds: 1, isComplete: false, poseCount: firstPoses.length },
+      }));
+      unverifiedEndpoint.addSampleMotionResult(sampleResult(secondPoses, {
+        right: { coveredStartTimeSeconds: 1.04, coveredEndTimeSeconds: 2.02, isComplete: true, poseCount: secondPoses.length },
+      }));
+      expect(unverifiedEndpoint.hasCoverage(0.99, 1.05)).toBe(false);
+    });
+
+    it("uses the sorted anchor index to check only the active time range", () => {
+      const requiredAnchors = Array.from({ length: 50_000 }, (_, index) => ({
+        hand: "right" as const,
+        timeSeconds: index * 2,
+      }));
+      const buffer = new MotionBuffer({ expectedHands: ["right"], requiredAnchors });
+      const poses = [99_998, 99_998.2, 99_998.4, 99_998.6, 99_998.8, 99_999]
+        .map(time => createSyntheticPose({ hand: "right", time }));
+      buffer.addSampleMotionResult(sampleResult(poses, {
+        right: { coveredStartTimeSeconds: 99_998, coveredEndTimeSeconds: 99_999, isComplete: true, poseCount: poses.length },
+      }));
+
+      expect(buffer.hasCoverage(99_998, 99_999)).toBe(true);
+      expect(buffer.getMissingWindow(99_998)).toEqual({ start: 99_998.75, end: 100_002.75 });
     });
   });
 

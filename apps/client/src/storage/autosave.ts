@@ -5,6 +5,8 @@ import {
   type M1KeyStyle,
   type PianistProfile,
   type ResourceDescriptor,
+  ProjectSourceContextSchema,
+  type ProjectSourceContext,
   M1AnalyzeMidiResultSchema,
   PianistProfileSchema,
   ResourceDescriptorSchema,
@@ -41,6 +43,7 @@ export interface SessionSnapshot {
   plansState?: "valid" | "recompute-required";
   keyStyle?: M1KeyStyle;
   sourceDescriptor?: ResourceDescriptor;
+  sourceContext?: ProjectSourceContext;
   /** Legacy v1 fields retained until those snapshots can be migrated or reviewed. */
   document?: SongDocument;
   fingeringPlan?: FingeringPlan | null;
@@ -66,6 +69,7 @@ const SessionSnapshotBaseSchema = z.object({
   plansState: z.enum(["valid", "recompute-required"]).optional(),
   keyStyle: z.enum(["realistic", "equal"]).optional(),
   sourceDescriptor: ResourceDescriptorSchema.optional(),
+  sourceContext: ProjectSourceContextSchema.optional(),
   document: SongDocumentSchema.optional(),
   fingeringPlan: FingeringPlanSchema.nullable().optional(),
   activeProfileId: z.string().optional(),
@@ -82,7 +86,19 @@ interface PersistedSessionRecord extends SessionSnapshot {
 /**
  * Persists an autosave recovery snapshot into IndexedDB.
  */
-export async function saveSessionSnapshot(snapshot: SessionSnapshot): Promise<void> {
+let sessionWriteQueue: Promise<void> = Promise.resolve();
+
+/**
+ * Serializes complete snapshots so a late write from the previous project can
+ * never finish after and replace a newer current-session record.
+ */
+export function saveSessionSnapshot(snapshot: SessionSnapshot): Promise<void> {
+  const write = sessionWriteQueue.then(() => writeSessionSnapshot(snapshot));
+  sessionWriteQueue = write.catch(() => undefined);
+  return write;
+}
+
+async function writeSessionSnapshot(snapshot: SessionSnapshot): Promise<void> {
   const validated = SessionSnapshotBaseSchema.parse(snapshot);
   const result = validated.result ?? null;
   const document = validated.document ?? result?.document;
@@ -186,9 +202,7 @@ export async function saveSessionSnapshot(snapshot: SessionSnapshot): Promise<vo
       return;
     }
 
-    request.onsuccess = () => {
-      safeResolve();
-    };
+    request.onsuccess = () => undefined;
 
     request.onerror = () => {
       safeReject(request.error, "Failed to save session snapshot");
@@ -201,6 +215,7 @@ export async function saveSessionSnapshot(snapshot: SessionSnapshot): Promise<vo
     tx.onabort = () => {
       safeReject(tx.error, "Transaction aborted while saving session snapshot");
     };
+    tx.oncomplete = safeResolve;
   });
 }
 
@@ -348,9 +363,7 @@ export async function clearSessionSnapshot(): Promise<void> {
     const store = tx.objectStore(SESSION_STORE);
     const request = store.delete(AUTOSAVE_SESSION_ID);
 
-    request.onsuccess = () => {
-      resolve();
-    };
+    request.onsuccess = () => undefined;
 
     request.onerror = () => {
       reject(request.error ?? new Error("Failed to clear session snapshot"));
@@ -359,6 +372,8 @@ export async function clearSessionSnapshot(): Promise<void> {
     tx.onerror = () => {
       reject(tx.error ?? new Error("Transaction failed while clearing session snapshot"));
     };
+    tx.onabort = () => reject(tx.error ?? new Error("Transaction aborted while clearing session snapshot"));
+    tx.oncomplete = () => resolve();
   });
 }
 
@@ -410,6 +425,7 @@ export class AutosaveService {
   private pendingSnapshot: SessionSnapshot | null = null;
   private isSaving = false;
   private savingPromise: Promise<void> | null = null;
+  private lastSaveError: Error | null = null;
   private readonly delayMs: number;
   private readonly onError?: (error: Error) => void;
   private readonly onSaved?: (snapshot: SessionSnapshot) => void;
@@ -436,7 +452,7 @@ export class AutosaveService {
   /**
    * Immediately flushes any pending autosave snapshot.
    */
-  async flush(): Promise<void> {
+  async flush(options: { throwOnError?: boolean } = {}): Promise<void> {
     if (this.timer !== null) {
       clearTimeout(this.timer);
       this.timer = null;
@@ -454,14 +470,17 @@ export class AutosaveService {
         this.savingPromise = this.saveAndNotify(snapshotToSave);
       }
     }
+    if (options.throwOnError && this.lastSaveError) throw this.lastSaveError;
   }
 
   private async saveAndNotify(snapshot: SessionSnapshot): Promise<void> {
     try {
       await saveSessionSnapshot(snapshot);
+      this.lastSaveError = null;
       this.onSaved?.(snapshot);
     } catch (err) {
       const error = err instanceof Error ? err : new Error(String(err));
+      this.lastSaveError = error;
       if (this.onError) {
         this.onError(error);
       } else {

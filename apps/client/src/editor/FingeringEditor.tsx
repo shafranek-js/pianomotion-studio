@@ -5,7 +5,22 @@ import { DiagnosticsPanel } from "./DiagnosticsPanel";
 import { EditorStateManager } from "./editorState";
 import { FingeringToolbar } from "./FingeringToolbar";
 import { PianoRollView } from "./pianoRollView";
-import { DEFAULT_PIANO_ROLL_THEME, type PianoRollTheme } from "./types";
+import { DEFAULT_PIANO_ROLL_THEME, type DifficultyReport, type PianoRollTheme } from "./types";
+
+export interface FingeringEditorDiagnosticsReport {
+  difficulty: DifficultyReport;
+  diagnostics: FingeringPlan["diagnostics"];
+}
+
+/** Selection and plan bridge for the single shared PianoScene canvas. */
+export interface FingeringEditorSceneBridge {
+  plan: FingeringPlan;
+  selectedNoteIds: ReadonlySet<string>;
+  selectNote(noteId: string, toggle?: boolean): void;
+  setSelection(noteIds: Iterable<string>): void;
+  clearSelection(): void;
+  selectAll(): void;
+}
 
 export interface FingeringEditorProps {
   document: SongDocument;
@@ -14,6 +29,12 @@ export interface FingeringEditorProps {
   transportTime?: number;
   onFingeringPlanChange?: (plan: FingeringPlan) => void;
   onSeek?: (timeSeconds: number) => void;
+  showDiagnostics?: boolean;
+  onDiagnosticsChange?: (report: FingeringEditorDiagnosticsReport) => void;
+  assignmentControlsHost?: HTMLElement | null;
+  /** Reuse the host PianoScene for notes and selection instead of creating PianoRollView. */
+  externalScene?: boolean;
+  onSceneBridgeChange?: (bridge: FingeringEditorSceneBridge | null) => void;
   theme?: Partial<PianoRollTheme>;
 }
 
@@ -35,12 +56,19 @@ function FingeringEditorSession({
   transportTime = -2.0,
   onFingeringPlanChange,
   onSeek,
+  showDiagnostics = true,
+  onDiagnosticsChange,
+  assignmentControlsHost,
+  externalScene = false,
+  onSceneBridgeChange,
   theme,
 }: FingeringEditorProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const pianoRollViewRef = useRef<PianoRollView | null>(null);
   const onSeekRef = useRef(onSeek);
   const onPlanChangeRef = useRef(onFingeringPlanChange);
+  const onDiagnosticsChangeRef = useRef(onDiagnosticsChange);
+  const onSceneBridgeChangeRef = useRef(onSceneBridgeChange);
 
   // The wrapper keys this session by stable project/source/note identity, so
   // reference or revision refreshes keep this history manager alive.
@@ -61,6 +89,14 @@ function FingeringEditorSession({
   useEffect(() => {
     onPlanChangeRef.current = onFingeringPlanChange;
   }, [onFingeringPlanChange]);
+
+  useEffect(() => {
+    onDiagnosticsChangeRef.current = onDiagnosticsChange;
+  }, [onDiagnosticsChange]);
+
+  useEffect(() => {
+    onSceneBridgeChangeRef.current = onSceneBridgeChange;
+  }, [onSceneBridgeChange]);
 
   useEffect(() => {
     const unsubscribe = stateManager.subscribe((plan, kind) => {
@@ -84,7 +120,7 @@ function FingeringEditorSession({
 
   useEffect(() => {
     const container = containerRef.current;
-    if (!container) return;
+    if (!container || externalScene) return;
 
     container.replaceChildren();
     const mergedTheme = { ...DEFAULT_PIANO_ROLL_THEME, ...theme };
@@ -105,7 +141,7 @@ function FingeringEditorSession({
       view.destroy();
       pianoRollViewRef.current = null;
     };
-  }, [theme, stateManager]);
+  }, [externalScene, theme, stateManager]);
 
   useEffect(() => {
     const view = pianoRollViewRef.current;
@@ -116,25 +152,68 @@ function FingeringEditorSession({
   }, [currentPlan, selectedNoteIds, document.notes]);
 
   useEffect(() => {
+    pianoRollViewRef.current?.setActive(active);
+  }, [active]);
+
+  useEffect(() => {
     pianoRollViewRef.current?.setPlayheadTime(transportTime);
   }, [transportTime]);
 
   useEffect(() => {
     if (!active) return;
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement ||
-          event.target instanceof HTMLSelectElement ||
-          (event.target instanceof HTMLElement && event.target.isContentEditable)) return;
+      if (isKeyboardShortcutSuppressed(event.target, event)) return;
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "a") {
+        event.preventDefault();
+        stateManager.setSelection(document.notes.map((note) => note.noteId));
+        return;
+      }
+      if (event.key === "Escape") {
+        if (stateManager.selectedNoteIds.size > 0) {
+          event.preventDefault();
+          stateManager.clearSelection();
+        }
+        return;
+      }
       stateManager.handleKeyDown(event);
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [active, stateManager]);
+  }, [active, document.notes, stateManager]);
 
   const difficultyReport = useMemo(
     () => calculateDifficulty(document, currentPlan),
     [document, currentPlan],
   );
+
+  useEffect(() => {
+    onDiagnosticsChangeRef.current?.({
+      difficulty: difficultyReport,
+      diagnostics: currentPlan.diagnostics,
+    });
+  }, [currentPlan.diagnostics, difficultyReport]);
+
+  const sceneBridge = useMemo<FingeringEditorSceneBridge>(() => ({
+    plan: currentPlan,
+    selectedNoteIds,
+    selectNote: (noteId, toggle = false) => {
+      if (!document.notes.some((note) => note.noteId === noteId)) return;
+      if (toggle) stateManager.toggleNoteSelection(noteId);
+      else stateManager.selectNote(noteId);
+    },
+    setSelection: (noteIds) => {
+      const validIds = new Set(document.notes.map((note) => note.noteId));
+      stateManager.setSelection([...noteIds].filter((noteId) => validIds.has(noteId)));
+    },
+    clearSelection: () => stateManager.clearSelection(),
+    selectAll: () => stateManager.setSelection(document.notes.map((note) => note.noteId)),
+  }), [currentPlan, document.notes, selectedNoteIds, stateManager]);
+
+  useEffect(() => {
+    if (externalScene) onSceneBridgeChangeRef.current?.(sceneBridge);
+  }, [externalScene, sceneBridge]);
+
+  useEffect(() => () => onSceneBridgeChangeRef.current?.(null), []);
 
   const activeAssignment = useMemo(() => {
     const firstId = selectedNoteIds.values().next().value as string | undefined;
@@ -151,7 +230,7 @@ function FingeringEditorSession({
   }, [stateManager, document.notes]);
 
   return (
-    <div className="fingering-editor-container" data-testid="fingering-editor">
+    <div className={`fingering-editor-container${externalScene ? " fingering-editor-container--external-scene" : ""}`} data-testid="fingering-editor">
       <FingeringToolbar
         selectedHand={activeAssignment?.hand ?? null}
         selectedFinger={activeAssignment?.finger ?? null}
@@ -166,18 +245,40 @@ function FingeringEditorSession({
         onUndo={() => stateManager.undo()}
         onRedo={() => stateManager.redo()}
         onToggleStepEntry={() => stateManager.toggleStepEntryMode()}
+        assignmentControlsHost={assignmentControlsHost}
+        active={active}
       />
 
-      <div className="editor-workspace">
-        <div ref={containerRef} className="piano-roll-viewport" data-testid="piano-roll-viewport" />
-        <div className="editor-sidebar">
-          <DiagnosticsPanel
-            difficulty={difficultyReport}
-            diagnostics={currentPlan.diagnostics}
-            onSelectNote={handleSelectNoteFromDiagnostic}
-          />
+      {!externalScene && (
+        <div className="editor-workspace">
+          <div ref={containerRef} className="piano-roll-viewport" data-testid="piano-roll-viewport" />
+          {showDiagnostics && (
+            <div className="editor-sidebar">
+              <DiagnosticsPanel
+                difficulty={difficultyReport}
+                diagnostics={currentPlan.diagnostics}
+                onSelectNote={handleSelectNoteFromDiagnostic}
+              />
+            </div>
+          )}
         </div>
-      </div>
+      )}
     </div>
   );
+}
+
+function isKeyboardShortcutSuppressed(target: EventTarget | null, event: KeyboardEvent): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  if (
+    target.isContentEditable ||
+    target.closest("input, textarea, select, [role='dialog'], [aria-modal='true'], dialog[open]")
+  ) {
+    return true;
+  }
+  // History shortcuts remain useful after clicking an assignment button;
+  // ordinary button keys (especially Space) keep their native behavior.
+  if (target.closest("button")) {
+    return !((event.ctrlKey || event.metaKey) && ["z", "y"].includes(event.key.toLowerCase()));
+  }
+  return false;
 }

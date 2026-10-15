@@ -1,4 +1,4 @@
-import type { Note, PerformancePlan } from "@handthesia/contracts";
+import type { FingeringAssignment, FingeringPlan, Note, PerformancePlan } from "@handthesia/contracts";
 import { Container, Graphics, Text } from "pixi.js";
 import { isBlackKey, type KeyboardLayout } from "./keyboardView";
 
@@ -17,12 +17,75 @@ export interface RenderedNoteTiming {
   hand: "left" | "right";
   finger: number | null;
   sourceNote: Note | null;
+  assignment?: FingeringAssignment;
+}
+
+export interface PaintedNoteGeometry {
+  noteId: string;
+  pitch: number;
+  hand: "left" | "right";
+  finger: number | null;
+  startSeconds: number;
+  endSeconds: number;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  visibleRect: { x: number; y: number; width: number; height: number };
+  glissando: boolean;
+  unplayable: boolean;
+}
+
+export interface FallingNotesProjectionOptions {
+  pixelsPerSecond: number;
+  hitLineY: number;
+  viewportTop: number;
+  viewportBottom: number;
+}
+
+/** Shared by drawing, point hit testing, marquee selection, and scene snapshots. */
+export function projectFallingNoteGeometry(
+  note: RenderedNoteTiming,
+  layout: KeyboardLayout,
+  options: FallingNotesProjectionOptions,
+  viewTime: number,
+): PaintedNoteGeometry | null {
+  const pps = Math.max(10, options.pixelsPerSecond);
+  const duration = Math.max(0.01, note.endSeconds - note.startSeconds);
+  const height = Math.max(4, Math.round(duration * pps));
+  const bottomY = Math.round(options.hitLineY - (note.startSeconds - viewTime) * pps);
+  const topY = bottomY - height;
+  if (topY >= options.hitLineY || bottomY < options.viewportTop || topY > options.viewportBottom) return null;
+  const lane = layout.getLane(note.pitch);
+  if (lane.width <= 0) return null;
+  const visibleTop = Math.max(topY, options.viewportTop);
+  const visibleBottom = Math.min(bottomY, options.viewportBottom, options.hitLineY);
+  if (visibleBottom <= visibleTop) return null;
+
+  return {
+    noteId: note.noteId,
+    pitch: note.pitch,
+    hand: note.hand,
+    finger: note.finger,
+    startSeconds: note.startSeconds,
+    endSeconds: note.endSeconds,
+    x: lane.x,
+    y: topY,
+    width: lane.width,
+    height,
+    visibleRect: { x: lane.x, y: visibleTop, width: lane.width, height: visibleBottom - visibleTop },
+    glissando: note.assignment?.disposition === "glissando" || note.sourceNote?.glissando === true,
+    unplayable: note.assignment?.disposition === "unplayable",
+  };
 }
 
 export class FallingNotesView extends Container {
   private sourceNotes: Note[] = [];
   private performancePlan: PerformancePlan | null = null;
   private renderedNotes: RenderedNoteTiming[] = [];
+  private currentViewTime = 0;
+  private selectedNoteIds = new Set<string>();
+  private selectionMarquee: { x: number; y: number; width: number; height: number } | null = null;
   private pixelsPerSecond = 200;
   private hitLineY = 0;
   private viewportTop = 0;
@@ -58,6 +121,27 @@ export class FallingNotesView extends Container {
     this.rebuildRenderedNotes();
   }
 
+  /** Uses source note times plus the draft fingering assignments for editor view. */
+  public setFingeringPlan(plan: FingeringPlan | null): void {
+    const assignments = new Map((plan?.assignments ?? []).map((item) => [item.noteId, item]));
+    this.renderedNotes = this.sourceNotes
+      .map((note) => {
+        const assignment = assignments.get(note.noteId);
+        return {
+          noteId: note.noteId,
+          pitch: note.pitch,
+          startSeconds: note.startSeconds,
+          endSeconds: note.endSeconds,
+          hand: assignment?.hand ?? note.hand,
+          finger: assignment ? assignment.finger : note.finger,
+          sourceNote: note,
+          assignment,
+        };
+      })
+      .sort(compareRenderedNotes);
+    this.update(this.currentViewTime);
+  }
+
   public setDisplaySettings(settings: { showFingerLabels?: boolean; showNoteNames?: boolean }): void {
     if (settings.showFingerLabels !== undefined) this.showFingerLabels = settings.showFingerLabels;
     if (settings.showNoteNames !== undefined) this.showNoteNames = settings.showNoteNames;
@@ -65,6 +149,47 @@ export class FallingNotesView extends Container {
 
   public getRenderedNoteTimings(): readonly RenderedNoteTiming[] {
     return this.renderedNotes;
+  }
+
+  public setSelectedNoteIds(noteIds: Iterable<string>): void {
+    this.selectedNoteIds = new Set(noteIds);
+    this.update(this.currentViewTime);
+  }
+
+  public setSelectionMarquee(rect: { x: number; y: number; width: number; height: number } | null): void {
+    this.selectionMarquee = rect;
+    this.update(this.currentViewTime);
+  }
+
+  public getPaintedNoteGeometries(viewTime = this.currentViewTime): PaintedNoteGeometry[] {
+    if (!this.keyboardLayout) return [];
+    const options = this.getProjectionOptions();
+    return this.renderedNotes.flatMap((note) => {
+      const geometry = projectFallingNoteGeometry(note, this.keyboardLayout!, options, viewTime);
+      return geometry ? [geometry] : [];
+    });
+  }
+
+  public getNoteAtPoint(x: number, y: number, viewTime = this.currentViewTime): string | null {
+    const geometries = this.getPaintedNoteGeometries(viewTime);
+    for (let index = geometries.length - 1; index >= 0; index -= 1) {
+      const geometry = geometries[index]!;
+      const rect = geometry.visibleRect;
+      if (x >= rect.x && x <= rect.x + rect.width && y >= rect.y && y <= rect.y + rect.height) {
+        return geometry.noteId;
+      }
+    }
+    return null;
+  }
+
+  public getNoteIdsInRect(rect: { x: number; y: number; width: number; height: number }, viewTime = this.currentViewTime): string[] {
+    const left = Math.min(rect.x, rect.x + rect.width);
+    const right = Math.max(rect.x, rect.x + rect.width);
+    const top = Math.min(rect.y, rect.y + rect.height);
+    const bottom = Math.max(rect.y, rect.y + rect.height);
+    return this.getPaintedNoteGeometries(viewTime)
+      .filter((note) => note.visibleRect.x <= right && note.visibleRect.x + note.visibleRect.width >= left && note.visibleRect.y <= bottom && note.visibleRect.y + note.visibleRect.height >= top)
+      .map((note) => note.noteId);
   }
 
   private rebuildRenderedNotes(): void {
@@ -137,6 +262,7 @@ export class FallingNotesView extends Container {
   }
 
   public update(transportTime: number): void {
+    this.currentViewTime = transportTime;
     this.notesGraphics.clear();
 
     for (const text of this.labelTextPool) {
@@ -146,41 +272,24 @@ export class FallingNotesView extends Container {
 
     if (!this.keyboardLayout || this.renderedNotes.length === 0) return;
 
-    const pps = this.pixelsPerSecond;
     const hitY = this.hitLineY;
-    const vTop = this.viewportTop;
-    const vBottom = this.viewportBottom;
-
-    // Fast time-based bounds for viewport culling
-    const minStartSeconds = transportTime - (vBottom - hitY) / pps;
-    const maxEndSeconds = transportTime + (hitY - vTop) / pps;
-
+    const geometryById = new Map(this.getPaintedNoteGeometries(transportTime).map((geometry) => [geometry.noteId, geometry]));
     for (const note of this.renderedNotes) {
-      // If note finished before reaching viewport top or hasn't entered viewport bottom
-      if (note.endSeconds < minStartSeconds) continue;
-      if (note.startSeconds > maxEndSeconds) continue;
-
-      const duration = Math.max(0.01, note.endSeconds - note.startSeconds);
-      const height = Math.max(4, Math.round(duration * pps));
-      const bottomY = Math.round(hitY - (note.startSeconds - transportTime) * pps);
-      const topY = bottomY - height;
-
-      // If note has completely entered the strike line and finished, skip
-      if (topY >= hitY) continue;
-
-      // Exact pixel viewport culling
-      if (bottomY < vTop || topY > vBottom) continue;
-
-      const lane = this.keyboardLayout.getLane(note.pitch);
-      const x = lane.x;
-      const width = lane.width;
+      const geometry = geometryById.get(note.noteId);
+      if (!geometry) continue;
+      const { x, y: topY, width, height } = geometry;
+      const bottomY = topY + height;
       const black = isBlackKey(note.pitch);
 
       let fillColor: number;
       let strokeColor: number;
       let highlightColor: number;
 
-      if (note.hand === "left") {
+      if (geometry.unplayable) {
+        fillColor = 0x7f1d1d;
+        strokeColor = 0xef4444;
+        highlightColor = 0xf87171;
+      } else if (note.hand === "left") {
         fillColor = black ? 0x2563eb : 0x3b82f6; // LH blue tone
         strokeColor = 0x1d4ed8;
         highlightColor = 0x60a5fa;
@@ -197,6 +306,13 @@ export class FallingNotesView extends Container {
         .roundRect(x, topY, width, height, radius)
         .fill(fillColor)
         .stroke({ width: 1, color: strokeColor });
+
+      if (geometry.glissando) {
+        this.notesGraphics.roundRect(x - 1, topY - 1, width + 2, height + 2, radius).stroke({ width: 1, color: 0xfbbf24 });
+      }
+      if (this.selectedNoteIds.has(note.noteId)) {
+        this.notesGraphics.roundRect(x - 2, topY - 2, width + 4, height + 4, radius + 1).stroke({ width: 2, color: 0xf8fafc });
+      }
 
       // Top edge highlight sheen if tall enough
       if (height > 6 && width > 4) {
@@ -239,6 +355,22 @@ export class FallingNotesView extends Container {
         labelIndex += 1;
       }
     }
+
+    if (this.selectionMarquee) {
+      const rect = this.selectionMarquee;
+      this.notesGraphics.rect(rect.x, rect.y, rect.width, rect.height)
+        .fill({ color: 0x60a5fa, alpha: 0.16 })
+        .stroke({ width: 1, color: 0x93c5fd });
+    }
+  }
+
+  private getProjectionOptions(): FallingNotesProjectionOptions {
+    return {
+      pixelsPerSecond: this.pixelsPerSecond,
+      hitLineY: this.hitLineY,
+      viewportTop: this.viewportTop,
+      viewportBottom: this.viewportBottom,
+    };
   }
 
   public override destroy(options?: Parameters<Container["destroy"]>[0]): void {

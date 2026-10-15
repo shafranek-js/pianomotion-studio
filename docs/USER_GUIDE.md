@@ -16,6 +16,8 @@ This guide covers navigating, editing, and using **PianoMotion Studio**.
 
 ## 2. Keyboard Shortcuts & Controls
 
+Select **Fingering** in the top header to show hand and finger assignments, **Clear**, **Unplayable**, and **Gliss** next to the mode switch. On smaller windows these controls wrap into extra header rows. **Undo/Redo**, **Step Entry**, and **Shortcuts** remain above the scene. Switching back to **Performance** hides editing controls and keeps your selection and undo history.
+
 | Action | Shortcut | Mode / Scope |
 |---|---|---|
 | **Play / Pause** | `Spacebar` | Global |

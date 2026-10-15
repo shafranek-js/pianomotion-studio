@@ -1,28 +1,64 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import { Check, Settings2, Trash2, Upload, X } from "lucide-react";
 import {
   getSettings,
   updateSettingsPersisted,
   resetToDefaultsPersisted,
   subscribeSettings,
 } from "./settingsStore";
-import type { AppSettings } from "./types";
+import type { AppSettings, SkinStyleSetting } from "./types";
 import { getStorageQuota, clearSessionSnapshot } from "../storage";
+import {
+  listSoundFontAssets,
+  saveSoundFontAsset,
+  deleteSoundFontAsset,
+  type SoundFontAssetMetadata,
+} from "../audio/soundfont/index.ts";
+import { WebMidiOutputManager, getSharedWebMidiOutputManager } from "../midi/webMidiOutput.ts";
+import type { WebMidiStatus } from "../midi/types.ts";
 
 export interface SettingsModalProps {
+  presentation?: "dialog" | "workspace";
   isOpen: boolean;
   onClose: () => void;
   onSettingsChanged?: (settings: AppSettings) => void;
 }
 
-export function SettingsModal({ isOpen, onClose, onSettingsChanged }: SettingsModalProps) {
+export function SettingsModal({ isOpen, onClose, onSettingsChanged, presentation = "dialog" }: SettingsModalProps) {
   const [settings, setSettings] = useState<AppSettings>(getSettings());
   const [quotaInfo, setQuotaInfo] = useState<{ usageBytes: number; quotaBytes: number; percentUsed: number } | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [storageError, setStorageError] = useState<string | null>(null);
+  const [soundfonts, setSoundfonts] = useState<SoundFontAssetMetadata[]>([]);
+  const [sfUploading, setSfUploading] = useState(false);
+  const [sfError, setSfError] = useState<string | null>(null);
+  const [midiStatus, setMidiStatus] = useState<WebMidiStatus | null>(null);
+  const midiManagerRef = useRef<WebMidiOutputManager | null>(null);
+  const pendingValues = useRef<Partial<AppSettings>>({});
+  const changeVersions = useRef<Partial<Record<keyof AppSettings, number>>>({});
+
+  const handleChange = useCallback(async <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => {
+    setStorageError(null);
+    const version = (changeVersions.current[key] ?? 0) + 1;
+    changeVersions.current[key] = version;
+    pendingValues.current[key] = value;
+    // Reflect an input gesture immediately. The committed store stays unchanged
+    // until IndexedDB completes; a failed write rolls this field back.
+    setSettings((current) => ({ ...current, [key]: value }));
+    try {
+      const updated = await updateSettingsPersisted({ [key]: value });
+      if (changeVersions.current[key] === version) delete pendingValues.current[key];
+      setSettings({ ...updated, ...pendingValues.current });
+    } catch (error) {
+      if (changeVersions.current[key] === version) delete pendingValues.current[key];
+      setSettings({ ...getSettings(), ...pendingValues.current });
+      setStorageError(error instanceof Error ? error.message : String(error));
+    }
+  }, []);
 
   useEffect(() => {
     const unsubscribe = subscribeSettings((updated) => {
-      setSettings(updated);
+      setSettings({ ...updated, ...pendingValues.current });
       onSettingsChanged?.(updated);
     });
     return unsubscribe;
@@ -31,26 +67,90 @@ export function SettingsModal({ isOpen, onClose, onSettingsChanged }: SettingsMo
   useEffect(() => {
     if (isOpen) {
       void getStorageQuota().then((q) => setQuotaInfo(q));
+      void listSoundFontAssets().then((list) => {
+        setSoundfonts(list);
+        if (list.length > 0 && !settings.soundfontAssetId) {
+          void handleChange("soundfontAssetId", list[0]!.id);
+        }
+      });
     }
-  }, [isOpen]);
+  }, [isOpen, settings.soundfontAssetId, handleChange]);
 
-  if (!isOpen) return null;
+  useEffect(() => {
+    if (isOpen && settings.soundOutput === "webmidi") {
+      if (!midiManagerRef.current) {
+        midiManagerRef.current = getSharedWebMidiOutputManager();
+      }
+      const manager = midiManagerRef.current;
+      const unsubscribe = manager.subscribe((status) => {
+        setMidiStatus(status);
+        if (status.devices.length > 0 && !settings.webMidiDeviceId) {
+          const firstDevice = status.devices[0]!;
+          manager.selectDevice(firstDevice.id);
+          void handleChange("webMidiDeviceId", firstDevice.id);
+        }
+      });
+      void manager.init().then(() => {
+        if (settings.webMidiDeviceId) {
+          manager.selectDevice(settings.webMidiDeviceId);
+        }
+      });
+      return () => {
+        unsubscribe();
+      };
+    } else if (midiManagerRef.current) {
+      midiManagerRef.current = null;
+    }
+  }, [isOpen, settings.soundOutput, settings.webMidiDeviceId, handleChange]);
 
-  const handleChange = async <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => {
-    setStorageError(null);
+  const handleSoundFontUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 128 * 1024 * 1024) {
+      setSfError("SoundFont exceeds the 128 MiB limit.");
+      e.target.value = "";
+      return;
+    }
+    setSfUploading(true);
+    setSfError(null);
     try {
-      const updated = await updateSettingsPersisted({ [key]: value });
-      setSettings(updated);
-    } catch (error) {
-      setStorageError(error instanceof Error ? error.message : String(error));
+      const buffer = await file.arrayBuffer();
+      const meta = await saveSoundFontAsset(file.name, buffer);
+      const list = await listSoundFontAssets();
+      setSoundfonts(list);
+      await handleChange("soundfontAssetId", meta.id);
+      setFeedback(`SoundFont "${meta.name}" loaded successfully.`);
+      setTimeout(() => setFeedback(null), 3000);
+    } catch (err: unknown) {
+      setSfError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSfUploading(false);
+      e.target.value = "";
     }
   };
+
+  const handleSoundFontDelete = async (id: string) => {
+    try {
+      await deleteSoundFontAsset(id);
+      const list = await listSoundFontAssets();
+      setSoundfonts(list);
+      if (settings.soundfontAssetId === id) {
+        await handleChange("soundfontAssetId", list.length > 0 ? list[0]!.id : null);
+      }
+      setFeedback("SoundFont removed.");
+      setTimeout(() => setFeedback(null), 2500);
+    } catch (err: unknown) {
+      setSfError(err instanceof Error ? err.message : String(err));
+    }
+  };
+
+  if (!isOpen) return null;
 
   const handleReset = async () => {
     setStorageError(null);
     try {
       const defs = await resetToDefaultsPersisted();
-      setSettings(defs);
+      setSettings({...defs, ...pendingValues.current});
       setFeedback("Settings reset to defaults.");
       setTimeout(() => setFeedback(null), 2500);
     } catch (error) {
@@ -80,9 +180,9 @@ export function SettingsModal({ isOpen, onClose, onSettingsChanged }: SettingsMo
   return (
     <div
       className="modal-backdrop"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="settings-modal-title"
+      role={presentation === "dialog" ? "dialog" : undefined}
+      aria-modal={presentation === "dialog" ? true : undefined}
+      aria-labelledby={presentation === "dialog" ? "settings-modal-title" : undefined}
       style={{
         position: "fixed",
         inset: 0,
@@ -120,7 +220,7 @@ export function SettingsModal({ isOpen, onClose, onSettingsChanged }: SettingsMo
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
-            <span style={{ fontSize: "1.2rem" }}>⚙</span>
+            <Settings2 size={20} aria-hidden="true" />
             <h2 id="settings-modal-title" style={{ margin: 0, fontSize: "1.15rem", fontWeight: 700 }}>
               Settings & Preferences
             </h2>
@@ -138,7 +238,7 @@ export function SettingsModal({ isOpen, onClose, onSettingsChanged }: SettingsMo
               padding: "0.2rem 0.5rem",
             }}
           >
-            ✕
+            <X size={18} aria-hidden="true" />
           </button>
         </div>
 
@@ -156,7 +256,7 @@ export function SettingsModal({ isOpen, onClose, onSettingsChanged }: SettingsMo
                 fontSize: "0.82rem",
               }}
             >
-              ✓ {feedback}
+              <Check size={14} aria-hidden="true" /> {feedback}
             </div>
           )}
           {storageError && (
@@ -208,7 +308,7 @@ export function SettingsModal({ isOpen, onClose, onSettingsChanged }: SettingsMo
                 <select
                   id="settings-skin-style"
                   value={settings.skinStyle}
-                  onChange={(e) => handleChange("skinStyle", e.target.value as any)}
+                  onChange={(e) => handleChange("skinStyle", e.target.value as SkinStyleSetting)}
                   style={{
                     background: "#19211d",
                     color: "#edf2ed",
@@ -218,9 +318,6 @@ export function SettingsModal({ isOpen, onClose, onSettingsChanged }: SettingsMo
                     fontSize: "0.85rem",
                   }}
                 >
-                  <option value="photo-segmented">Photo-Rig (Photographic Hand Sprites)</option>
-                  <option value="photo-mesh">2.5D Mesh (Deformable Photo Skin)</option>
-                  <option value="photo-3d">3D WebGL (Photorealistic 3D PBR Hands)</option>
                   <option value="realistic">Vector Anatomical (Shaded Flesh & Tendons)</option>
                   <option value="cartoon">Cartoon (Flesh & Sleeve)</option>
                   <option value="gloves">White Gloves (Animated Cartoon)</option>
@@ -284,6 +381,7 @@ export function SettingsModal({ isOpen, onClose, onSettingsChanged }: SettingsMo
                 </label>
                 <select
                   id="settings-sound-output"
+                  aria-describedby="settings-sound-output-note"
                   value={settings.soundOutput}
                   onChange={(e) => handleChange("soundOutput", e.target.value as "synth" | "soundfont" | "webmidi")}
                   style={{
@@ -297,34 +395,188 @@ export function SettingsModal({ isOpen, onClose, onSettingsChanged }: SettingsMo
                   }}
                 >
                   <option value="synth">Web Audio Synth (Built-in Polyphonic Sampler)</option>
-                  <option value="soundfont">SoundFont SF2 Synth (Realistic Instrument Samples)</option>
-                  <option value="webmidi">Web MIDI Output (External Hardware Synth / DAW)</option>
+                  <option value="soundfont">SoundFont 2 (Acoustic SF2 Instrument Bank)</option>
+                  <option value="webmidi">Web MIDI Output (Hardware Synthesizer / Piano)</option>
                 </select>
+                <p id="settings-sound-output-note" style={{ margin: "0.35rem 0 0", color: "var(--muted, #9fac9f)", fontSize: "0.74rem" }}>
+                  {settings.soundOutput === "synth" && "Built-in polyphonic synthesis running directly in the browser via Web Audio."}
+                  {settings.soundOutput === "soundfont" && "Plays acoustic multi-sampled audio from a local user SoundFont (.sf2). Stored safely in local IndexedDB."}
+                  {settings.soundOutput === "webmidi" && "Sends sub-millisecond hardware MIDI events to connected digital pianos and synthesizers."}
+                </p>
               </div>
 
-              <div>
-                <label htmlFor="settings-timbre" style={{ display: "block", fontSize: "0.8rem", color: "var(--muted, #9fac9f)", marginBottom: "0.3rem" }}>
-                  Piano Synth Timbre:
-                </label>
-                <select
-                  id="settings-timbre"
-                  value={settings.soundTimbre}
-                  onChange={(e) => handleChange("soundTimbre", e.target.value as "acoustic" | "bright" | "warm")}
-                  style={{
-                    width: "100%",
-                    background: "#19211d",
-                    color: "#edf2ed",
-                    border: "1px solid var(--border, #33423a)",
-                    borderRadius: "0.35rem",
-                    padding: "0.4rem 0.6rem",
-                    fontSize: "0.85rem",
-                  }}
-                >
-                  <option value="acoustic">Acoustic Grand (Balanced)</option>
-                  <option value="bright">Bright Concert (Crisp Attack)</option>
-                  <option value="warm">Warm Upright (Mellow)</option>
-                </select>
-              </div>
+              {settings.soundOutput === "synth" && (
+                <div>
+                  <label htmlFor="settings-timbre" style={{ display: "block", fontSize: "0.8rem", color: "var(--muted, #9fac9f)", marginBottom: "0.3rem" }}>
+                    Piano Synth Timbre:
+                  </label>
+                  <select
+                    id="settings-timbre"
+                    value={settings.soundTimbre}
+                    onChange={(e) => handleChange("soundTimbre", e.target.value as "acoustic" | "bright" | "warm")}
+                    style={{
+                      width: "100%",
+                      background: "#19211d",
+                      color: "#edf2ed",
+                      border: "1px solid var(--border, #33423a)",
+                      borderRadius: "0.35rem",
+                      padding: "0.4rem 0.6rem",
+                      fontSize: "0.85rem",
+                    }}
+                  >
+                    <option value="acoustic">Acoustic Grand (Balanced)</option>
+                    <option value="bright">Bright Concert (Crisp Attack)</option>
+                    <option value="warm">Warm Upright (Mellow)</option>
+                  </select>
+                </div>
+              )}
+
+              {settings.soundOutput === "soundfont" && (
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+                  <label htmlFor="settings-soundfont-select" style={{ display: "block", fontSize: "0.8rem", color: "var(--muted, #9fac9f)" }}>
+                    Select User SoundFont:
+                  </label>
+                  {soundfonts.length > 0 ? (
+                    <div style={{ display: "flex", gap: "0.4rem", alignItems: "center" }}>
+                      <select
+                        id="settings-soundfont-select"
+                        value={settings.soundfontAssetId ?? soundfonts[0]?.id ?? ""}
+                        onChange={(e) => handleChange("soundfontAssetId", e.target.value)}
+                        style={{
+                          flex: 1,
+                          background: "#19211d",
+                          color: "#edf2ed",
+                          border: "1px solid var(--border, #33423a)",
+                          borderRadius: "0.35rem",
+                          padding: "0.4rem 0.6rem",
+                          fontSize: "0.85rem",
+                        }}
+                      >
+                        {soundfonts.map((sf) => (
+                          <option key={sf.id} value={sf.id}>
+                            {sf.name} ({(sf.byteLength / (1024 * 1024)).toFixed(1)} MB)
+                          </option>
+                        ))}
+                      </select>
+                      {settings.soundfontAssetId && (
+                        <button
+                          type="button"
+                          onClick={() => handleSoundFontDelete(settings.soundfontAssetId!)}
+                          title="Delete SoundFont"
+                          aria-label="Delete SoundFont"
+                          style={{
+                            background: "rgba(239, 68, 68, 0.15)",
+                            border: "1px solid rgba(239, 68, 68, 0.4)",
+                            color: "#f87171",
+                            padding: "0.4rem 0.6rem",
+                            borderRadius: "0.35rem",
+                            cursor: "pointer",
+                          }}
+                        >
+                          <Trash2 size={14} aria-hidden="true" />
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <p style={{ margin: "0.2rem 0", color: "#facc15", fontSize: "0.78rem" }}>
+                      No SoundFonts installed. Please upload an SF2 file to enable SoundFont playback.
+                    </p>
+                  )}
+
+                  <div style={{ marginTop: "0.3rem" }}>
+                    <label
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "0.4rem",
+                        background: "var(--panel, #19211d)",
+                        border: "1px solid var(--border, #33423a)",
+                        borderRadius: "0.35rem",
+                        padding: "0.35rem 0.7rem",
+                        color: "var(--mint, #a9d3bb)",
+                        fontSize: "0.8rem",
+                        cursor: sfUploading ? "wait" : "pointer",
+                      }}
+                    >
+                      <Upload size={13} aria-hidden="true" />
+                      {sfUploading ? "Importing SoundFont..." : "Upload SoundFont (.sf2)"}
+                      <input
+                        type="file"
+                        accept=".sf2"
+                        disabled={sfUploading}
+                        onChange={handleSoundFontUpload}
+                        style={{ display: "none" }}
+                      />
+                    </label>
+                  </div>
+                  {sfError && (
+                    <p role="alert" style={{ margin: "0.2rem 0 0", color: "#f87171", fontSize: "0.75rem" }}>
+                      {sfError}
+                    </p>
+                  )}
+                  <p className="settings-help">
+                    Up to 128 MiB. Supports mono PCM SF2 samples and loop modes 0, 1 and 3.
+                    Compressed SF3, ROM and linked stereo samples are currently unsupported.
+                  </p>
+                </div>
+              )}
+
+              {settings.soundOutput === "webmidi" && (
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
+                  <button type="button" onClick={() => {
+                    const manager = getSharedWebMidiOutputManager();
+                    midiManagerRef.current = manager;
+                    void manager.requestPermissionFromUserGesture().then(status => {
+                      setMidiStatus(status);
+                      if (status.permission !== "granted") setFeedback(status.errorMessage ?? "MIDI access is not available.");
+                      else setFeedback("MIDI access connected. Select an output device and channel.");
+                    }).catch(error => setFeedback(error instanceof Error ? error.message : String(error)));
+                  }}>Connect MIDI device</button>
+                  <label htmlFor="settings-webmidi-select" style={{ display: "block", fontSize: "0.8rem", color: "var(--muted, #9fac9f)" }}>
+                    MIDI Output Device:
+                  </label>
+                  {midiStatus?.permission === "unsupported" ? (
+                    <p style={{ margin: "0.2rem 0", color: "#f87171", fontSize: "0.78rem" }}>
+                      Web MIDI API is not supported in this browser.
+                    </p>
+                  ) : midiStatus?.permission === "denied" ? (
+                    <p style={{ margin: "0.2rem 0", color: "#f87171", fontSize: "0.78rem" }}>
+                      MIDI access permission was denied by browser.
+                    </p>
+                  ) : (midiStatus?.devices.length ?? 0) === 0 ? (
+                    <p style={{ margin: "0.2rem 0", color: "#facc15", fontSize: "0.78rem" }}>
+                      No connected MIDI output devices found. Connect a device via USB/Bluetooth.
+                    </p>
+                  ) : (
+                    <select
+                      id="settings-webmidi-select"
+                      value={settings.webMidiDeviceId ?? midiStatus?.devices[0]?.id ?? ""}
+                      onChange={(e) => handleChange("webMidiDeviceId", e.target.value)}
+                      style={{
+                        width: "100%",
+                        background: "#19211d",
+                        color: "#edf2ed",
+                        border: "1px solid var(--border, #33423a)",
+                        borderRadius: "0.35rem",
+                        padding: "0.4rem 0.6rem",
+                        fontSize: "0.85rem",
+                      }}
+                    >
+                      {midiStatus?.devices.map((dev) => (
+                        <option key={dev.id} value={dev.id}>
+                          {dev.name} ({dev.manufacturer})
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                  <label htmlFor="settings-webmidi-channel">MIDI channel</label>
+                  <select id="settings-webmidi-channel" value={settings.webMidiChannel ?? 0}
+                    onChange={event => void handleChange("webMidiChannel", Number(event.target.value))}>
+                    {Array.from({ length: 16 }, (_, channel) => <option key={channel} value={channel}>{channel + 1}</option>)}
+                  </select>
+                  <p style={{ fontSize: "0.78rem" }}>Volume is sent to the hardware as CC7. External sound is not captured for export.</p>
+                </div>
+              )}
 
               <div>
                 <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.8rem", color: "var(--muted, #9fac9f)", marginBottom: "0.3rem" }}>

@@ -1,4 +1,4 @@
-import type { M1KeyStyle, MotionPlan, Note, PerformancePlan, SongDocument } from "@handthesia/contracts";
+import type { FingeringPlan, M1KeyStyle, MotionPlan, Note, PerformancePlan, SongDocument } from "@handthesia/contracts";
 import { Application, Container, Graphics } from "pixi.js";
 import { FallingNotesView } from "./fallingNotesView";
 import { HandsView } from "./handsView";
@@ -16,6 +16,8 @@ export interface PianoSceneDisplaySettings {
 
 export interface PianoSceneOptions {
   target: HTMLElement;
+  /** Offline renders have an immutable pixel viewport and no automatic ticker. */
+  fixedViewport?: { width: number; height: number; resolution: 1 };
   keyStyle?: M1KeyStyle;
   pixelsPerSecond?: number;
   keyboardHeight?: number;
@@ -37,10 +39,53 @@ export const BOTTOM_MAX_SHARE = 0.5; // Keys + hand area never take more than 50
 export const HAND_AREA_MIN_H = 120; // Minimum hand area height in px
 export const FELT_H = 6; // Red piano felt strip height in px
 
+function getRendererResolution(): number {
+  const devicePixelRatio = typeof window !== "undefined" ? window.devicePixelRatio : 1;
+  if (!Number.isFinite(devicePixelRatio) || devicePixelRatio <= 0) return 1;
+  return Math.min(2, Math.max(1, devicePixelRatio));
+}
+
 export interface BottomLayout {
   keyboardRect: { x: number; y: number; width: number; height: number };
   handRect: { x: number; y: number; width: number; height: number };
   feltRect: { x: number; y: number; width: number; height: number };
+}
+
+export interface PianoSceneFingeringEditorOptions {
+  active: boolean;
+  playing: boolean;
+  plan: FingeringPlan | null;
+  selectedNoteIds: ReadonlySet<string>;
+  onSelectionChange?: (noteIds: readonly string[]) => void;
+  onPauseForScroll?: () => void;
+  onEditorViewTimeChange?: (time: number | null) => void;
+}
+
+export interface PianoSceneGeometrySnapshot {
+  notes: Array<{
+    noteId: string;
+    pitch: number;
+    rect: { x: number; y: number; width: number; height: number };
+  }>;
+  keyboardRect: { x: number; y: number; width: number; height: number } | null;
+  keyCount: number;
+  minPitch: number;
+  maxPitch: number;
+  rendererSize: { width: number; height: number };
+  viewTime: number;
+}
+
+export function getKeyboardInventory(keyRects: ReadonlyMap<number, unknown>): {
+  keyCount: number;
+  minPitch: number;
+  maxPitch: number;
+} {
+  const pitches = [...keyRects.keys()].sort((left, right) => left - right);
+  return {
+    keyCount: pitches.length,
+    minPitch: pitches[0] ?? 0,
+    maxPitch: pitches[pitches.length - 1] ?? 0,
+  };
 }
 
 export function computeBottomLayout(
@@ -48,20 +93,23 @@ export function computeBottomLayout(
   height: number,
   customKeyboardHeight?: number,
 ): BottomLayout {
-  let ww = width / 52.0;
-  const budget = BOTTOM_MAX_SHARE * height;
-  if (ww * (KEY_LEN_WW + HAND_LEN_WW) > budget) {
-    ww = budget / (KEY_LEN_WW + HAND_LEN_WW);
-  }
-
-  const kbW = Math.round(ww * 52);
-  const kbH = customKeyboardHeight ?? Math.round(ww * KEY_LEN_WW);
-  const handH = Math.max(
+  const ww = Math.max(1, width) / 52.0;
+  const budget = Math.max(0, BOTTOM_MAX_SHARE * height);
+  const desiredKeyboardHeight = Math.max(1, customKeyboardHeight ?? Math.round(ww * KEY_LEN_WW));
+  const desiredHandHeight = Math.max(
     Math.round(ww * HAND_LEN_WW),
     Math.min(HAND_AREA_MIN_H, Math.round(height * 0.2)),
   );
-  const kbX = Math.round((width - kbW) / 2);
-  const kbY = Math.max(FELT_H, height - handH - kbH);
+  const desiredTotal = desiredKeyboardHeight + desiredHandHeight;
+  const verticalScale = desiredTotal > budget && desiredTotal > 0 ? budget / desiredTotal : 1;
+  const kbH = Math.max(0, Math.round(desiredKeyboardHeight * verticalScale));
+  const scaledHandHeight = Math.max(0, Math.round(desiredHandHeight * verticalScale));
+  const handH = Math.max(0, Math.min(scaledHandHeight, Math.floor(budget) - kbH));
+  // Keep all 88 keys visible across the available width; only their vertical
+  // presentation is compressed in short viewports.
+  const kbW = Math.max(0, width);
+  const kbX = 0;
+  const kbY = Math.max(0, height - handH - kbH);
 
   return {
     keyboardRect: { x: kbX, y: kbY, width: kbW, height: kbH },
@@ -73,6 +121,7 @@ export function computeBottomLayout(
 export class PianoScene {
   private readonly app: Application;
   private readonly target: HTMLElement;
+  private readonly fixedViewport: PianoSceneOptions["fixedViewport"];
   private readonly keyboardView: KeyboardView;
   private readonly fallingNotesView: FallingNotesView;
   private readonly handsView: HandsView;
@@ -87,6 +136,23 @@ export class PianoScene {
   private notes: Note[] = [];
   private motionPlan: MotionPlan | null = null;
   private performancePlan: PerformancePlan | null = null;
+  private fingeringEditor: PianoSceneFingeringEditorOptions = {
+    active: false,
+    playing: false,
+    plan: null,
+    selectedNoteIds: new Set(),
+  };
+  private editorViewTime: number | null = null;
+  private currentTransportTime = 0;
+  private lastActiveNotes: number[] | undefined;
+  private pointerSelection: {
+    pointerId: number;
+    startX: number;
+    startY: number;
+    moved: boolean;
+    additive: boolean;
+    originalSelection: Set<string>;
+  } | null = null;
   private displaySettings: Required<PianoSceneDisplaySettings> = {
     showFingerLabels: true,
     showNoteNames: false,
@@ -100,6 +166,7 @@ export class PianoScene {
   private constructor(app: Application, options: PianoSceneOptions) {
     this.app = app;
     this.target = options.target;
+    this.fixedViewport = options.fixedViewport;
     this.keyStyle = options.keyStyle ?? "realistic";
     this.pixelsPerSecond = options.pixelsPerSecond ?? 200;
     this.keyboardHeight = options.keyboardHeight;
@@ -121,6 +188,13 @@ export class PianoScene {
     this.sceneContainer.addChild(this.handsView);
 
     this.app.stage.addChild(this.sceneContainer);
+    this.app.canvas.tabIndex = 0;
+    this.app.canvas.setAttribute("aria-label", "Piano workspace");
+    this.app.canvas.addEventListener("pointerdown", this.handleEditorPointerDown);
+    this.app.canvas.addEventListener("pointermove", this.handleEditorPointerMove);
+    this.app.canvas.addEventListener("pointerup", this.handleEditorPointerUp);
+    this.app.canvas.addEventListener("pointercancel", this.handleEditorPointerUp);
+    this.app.canvas.addEventListener("wheel", this.handleEditorWheel, { passive: false });
 
     if (options.song) {
       this.setSong(options.song);
@@ -144,11 +218,19 @@ export class PianoScene {
   public static async create(options: PianoSceneOptions): Promise<PianoScene> {
     const app = new Application();
     const isCanvas = options.target instanceof HTMLCanvasElement;
+    const fixed = options.fixedViewport;
+    if (fixed && (!Number.isInteger(fixed.width) || !Number.isInteger(fixed.height) ||
+        fixed.width < 2 || fixed.height < 2 || fixed.resolution !== 1)) {
+      throw new Error("Export viewport requires integer width/height of at least two pixels and resolution=1.");
+    }
 
     await app.init({
-      ...(isCanvas ? { canvas: options.target as HTMLCanvasElement } : { resizeTo: options.target }),
-      autoDensity: true,
-      resolution: typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1,
+      ...(isCanvas ? { canvas: options.target as HTMLCanvasElement } : fixed ? {} : { resizeTo: options.target }),
+      ...(fixed ? { width: fixed.width, height: fixed.height, autoStart: false, sharedTicker: false } : {}),
+      autoDensity: !fixed,
+      // Native DPR plus MSAA smooths vector edges without extra full-scene supersampling.
+      antialias: true,
+      resolution: fixed?.resolution ?? getRendererResolution(),
       backgroundColor: options.backgroundColor ?? 0x121216,
     });
 
@@ -165,6 +247,7 @@ export class PianoScene {
   }
 
   private setupResizeObserver(): void {
+    if (this.fixedViewport) return;
     if (typeof ResizeObserver !== "undefined") {
       this.resizeObserver = new ResizeObserver(() => {
         if (!this.isDestroyed) {
@@ -178,8 +261,20 @@ export class PianoScene {
   public resize(): void {
     if (this.isDestroyed) return;
 
-    const width = Math.max(10, this.target.clientWidth || this.app.screen.width);
-    const height = Math.max(10, this.target.clientHeight || this.app.screen.height);
+    const width = this.fixedViewport?.width ?? Math.max(10, this.target.clientWidth || this.app.screen.width);
+    const height = this.fixedViewport?.height ?? Math.max(10, this.target.clientHeight || this.app.screen.height);
+    const resolution = this.fixedViewport?.resolution ?? getRendererResolution();
+
+    // `resizeTo` handles ordinary visible DOM resizes, while this explicit
+    // resize keeps the renderer backing canvas in step with measured pane
+    // dimensions after the scene was hidden or moved by the studio splitter.
+    if (
+      this.app.screen.width !== width ||
+      this.app.screen.height !== height ||
+      this.app.renderer.resolution !== resolution
+    ) {
+      this.app.renderer.resize(width, height, resolution);
+    }
 
     const bottomLayout = computeBottomLayout(width, height, this.keyboardHeight);
     this.currentBottomLayout = bottomLayout;
@@ -269,14 +364,18 @@ export class PianoScene {
 
   public update(transportTime: number, activeNotes?: number[]): void {
     if (this.isDestroyed) return;
+    this.currentTransportTime = transportTime;
+    this.lastActiveNotes = activeNotes;
+    const editorPaused = this.fingeringEditor.active && !this.fingeringEditor.playing;
+    const sceneTime = editorPaused ? (this.editorViewTime ?? transportTime) : transportTime;
 
     // Determine pressed keys map
     const pressedMap = new Map<number, KeyPressInfo>();
 
-    if (activeNotes !== undefined) {
+    if (activeNotes !== undefined && !editorPaused) {
       for (const pitch of activeNotes) {
         // Try to match hand and finger from current note in song
-        const matched = this.findActiveNoteForPitch(pitch, transportTime);
+        const matched = this.findActiveNoteForPitch(pitch, sceneTime);
         if (matched) {
           pressedMap.set(pitch, { hand: matched.hand, finger: matched.finger });
         } else {
@@ -286,15 +385,15 @@ export class PianoScene {
     } else {
       // Keyboard state follows the performed key-down intervals when available.
       for (const note of this.fallingNotesView.getRenderedNoteTimings()) {
-        if (note.startSeconds <= transportTime && transportTime < note.endSeconds) {
+        if (note.startSeconds <= sceneTime && sceneTime < note.endSeconds) {
           pressedMap.set(note.pitch, { hand: note.hand, finger: note.finger });
         }
       }
     }
 
     this.keyboardView.setPressedKeys(pressedMap);
-    this.fallingNotesView.update(transportTime);
-    this.handsView.update(transportTime);
+    this.fallingNotesView.update(sceneTime);
+    this.handsView.update(sceneTime);
   }
 
   private findActiveNoteForPitch(pitch: number, time: number) {
@@ -310,7 +409,9 @@ export class PianoScene {
   public setNotes(notes: Note[]): void {
     this.notes = notes;
     this.fallingNotesView.setNotes(notes);
-    if (this.performancePlan) {
+    if (this.fingeringEditor.active) {
+      this.fallingNotesView.setFingeringPlan(this.fingeringEditor.plan);
+    } else if (this.performancePlan) {
       this.fallingNotesView.setPerformancePlan(this.performancePlan, this.notes);
     }
   }
@@ -321,7 +422,171 @@ export class PianoScene {
       this.fallingNotesView.setNotes(this.notes);
     }
     this.performancePlan = plan;
-    this.fallingNotesView.setPerformancePlan(plan, this.notes);
+    if (this.fingeringEditor.active) {
+      this.fallingNotesView.setFingeringPlan(this.fingeringEditor.plan);
+    } else {
+      this.fallingNotesView.setPerformancePlan(plan, this.notes);
+    }
+  }
+
+  public setFingeringEditor(options: PianoSceneFingeringEditorOptions): void {
+    const wasActive = this.fingeringEditor.active;
+    const planChanged = this.fingeringEditor.plan !== options.plan;
+    this.fingeringEditor = options;
+    if (options.active) {
+      // A transport lead-in is useful for playback, but can leave the edit
+      // viewport entirely before the first note on a short screen.
+      if (!wasActive && !options.playing && this.editorViewTime === null && this.currentTransportTime < 0) {
+        this.editorViewTime = 0;
+        options.onEditorViewTimeChange?.(0);
+      }
+      if (!wasActive || planChanged) this.fallingNotesView.setFingeringPlan(options.plan);
+      this.fallingNotesView.setSelectedNoteIds(options.selectedNoteIds);
+    } else if (wasActive) {
+      this.fallingNotesView.setPerformancePlan(this.performancePlan, this.notes);
+      this.fallingNotesView.setSelectedNoteIds([]);
+      this.fallingNotesView.setSelectionMarquee(null);
+      this.pointerSelection = null;
+    }
+    this.update(this.currentTransportTime, this.lastActiveNotes);
+  }
+
+  private getCanvasPoint(event: PointerEvent | WheelEvent): { x: number; y: number } {
+    const bounds = this.app.canvas.getBoundingClientRect();
+    return {
+      x: (event.clientX - bounds.left) * (this.app.screen.width / Math.max(1, bounds.width)),
+      y: (event.clientY - bounds.top) * (this.app.screen.height / Math.max(1, bounds.height)),
+    };
+  }
+
+  private handleEditorPointerDown = (event: PointerEvent): void => {
+    if (!this.fingeringEditor.active || event.button !== 0) return;
+    const point = this.getCanvasPoint(event);
+    const additive = event.shiftKey || event.ctrlKey || event.metaKey;
+    const noteId = this.fallingNotesView.getNoteAtPoint(point.x, point.y, this.getCurrentSceneTime());
+    if (noteId) {
+      const selection = new Set(this.fingeringEditor.selectedNoteIds);
+      if (additive && selection.has(noteId)) selection.delete(noteId);
+      else if (additive) selection.add(noteId);
+      else {
+        selection.clear();
+        selection.add(noteId);
+      }
+      this.fallingNotesView.setSelectedNoteIds(selection);
+      this.fingeringEditor.onSelectionChange?.([...selection]);
+      this.app.canvas.focus({ preventScroll: true });
+      event.preventDefault();
+      return;
+    }
+
+    this.pointerSelection = {
+      pointerId: event.pointerId,
+      startX: point.x,
+      startY: point.y,
+      moved: false,
+      additive,
+      originalSelection: new Set(this.fingeringEditor.selectedNoteIds),
+    };
+    this.app.canvas.setPointerCapture(event.pointerId);
+    this.fallingNotesView.setSelectionMarquee({ x: point.x, y: point.y, width: 0, height: 0 });
+    this.app.canvas.focus({ preventScroll: true });
+    event.preventDefault();
+  };
+
+  private handleEditorPointerMove = (event: PointerEvent): void => {
+    const drag = this.pointerSelection;
+    if (!this.fingeringEditor.active || !drag || drag.pointerId !== event.pointerId) return;
+    const point = this.getCanvasPoint(event);
+    const deltaX = point.x - drag.startX;
+    const deltaY = point.y - drag.startY;
+    drag.moved ||= Math.hypot(deltaX, deltaY) >= 4;
+    if (!drag.moved) return;
+    this.fallingNotesView.setSelectionMarquee({
+      x: Math.min(drag.startX, point.x),
+      y: Math.min(drag.startY, point.y),
+      width: Math.abs(deltaX),
+      height: Math.abs(deltaY),
+    });
+    event.preventDefault();
+  };
+
+  private handleEditorPointerUp = (event: PointerEvent): void => {
+    const drag = this.pointerSelection;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    this.pointerSelection = null;
+    if (this.app.canvas.hasPointerCapture(event.pointerId)) this.app.canvas.releasePointerCapture(event.pointerId);
+    this.fallingNotesView.setSelectionMarquee(null);
+    if (event.type === "pointercancel") return;
+
+    const selection = drag.moved
+      ? new Set(this.fallingNotesView.getNoteIdsInRect({
+          x: Math.min(drag.startX, this.getCanvasPoint(event).x),
+          y: Math.min(drag.startY, this.getCanvasPoint(event).y),
+          width: Math.abs(this.getCanvasPoint(event).x - drag.startX),
+          height: Math.abs(this.getCanvasPoint(event).y - drag.startY),
+        }, this.getCurrentSceneTime()))
+      : new Set<string>();
+    if (drag.additive) for (const noteId of drag.originalSelection) selection.add(noteId);
+    this.fallingNotesView.setSelectedNoteIds(selection);
+    this.fingeringEditor.onSelectionChange?.([...selection]);
+    event.preventDefault();
+  };
+
+  private handleEditorWheel = (event: WheelEvent): void => {
+    if (!this.fingeringEditor.active) return;
+    event.preventDefault();
+    if (this.fingeringEditor.playing) {
+      this.editorViewTime = this.currentTransportTime;
+      this.fingeringEditor.onEditorViewTimeChange?.(this.editorViewTime);
+      this.fingeringEditor.onPauseForScroll?.();
+      return;
+    }
+    let anchor = this.editorViewTime ?? this.currentTransportTime;
+    const oldPps = this.pixelsPerSecond;
+    if (event.ctrlKey || event.metaKey) {
+      const point = this.getCanvasPoint(event);
+      const hitLine = this.currentBottomLayout?.keyboardRect.y ?? this.app.screen.height;
+      const timeAtCursor = anchor + (hitLine - point.y) / oldPps;
+      const nextPps = Math.max(40, Math.min(600, oldPps * Math.exp(-event.deltaY * 0.001)));
+      anchor = timeAtCursor - (hitLine - point.y) / nextPps;
+      this.setPixelsPerSecond(nextPps);
+    } else {
+      anchor += event.deltaY / oldPps;
+    }
+    this.setEditorViewTime(Math.max(0, anchor));
+  };
+
+  private getCurrentSceneTime(): number {
+    return this.fingeringEditor.active && !this.fingeringEditor.playing
+      ? (this.editorViewTime ?? this.currentTransportTime)
+      : this.currentTransportTime;
+  }
+
+  public setEditorViewTime(time: number | null): void {
+    this.editorViewTime = typeof time === "number" && Number.isFinite(time) ? time : null;
+    this.fingeringEditor.onEditorViewTimeChange?.(this.editorViewTime);
+    this.update(this.currentTransportTime, this.lastActiveNotes);
+  }
+
+  public getEditorViewTime(): number | null {
+    return this.editorViewTime;
+  }
+
+  public getGeometrySnapshot(): PianoSceneGeometrySnapshot {
+    const editorPaused = this.fingeringEditor.active && !this.fingeringEditor.playing;
+    const viewTime = editorPaused ? (this.editorViewTime ?? this.currentTransportTime) : this.currentTransportTime;
+    const inventory = getKeyboardInventory(this.keyboardView.getLayout().keyRects);
+    return {
+      notes: this.fallingNotesView.getPaintedNoteGeometries(viewTime).map((note) => ({
+        noteId: note.noteId,
+        pitch: note.pitch,
+        rect: { ...note.visibleRect },
+      })),
+      keyboardRect: this.currentBottomLayout ? { ...this.currentBottomLayout.keyboardRect } : null,
+      ...inventory,
+      rendererSize: { width: this.app.screen.width, height: this.app.screen.height },
+      viewTime,
+    };
   }
 
   public setMotionPlan(motionPlan: MotionPlan | null): void {
@@ -370,8 +635,9 @@ export class PianoScene {
   }
 
   public setPixelsPerSecond(pps: number): void {
-    this.pixelsPerSecond = pps;
-    this.fallingNotesView.setPixelsPerSecond(pps);
+    this.pixelsPerSecond = Math.max(40, Math.min(600, pps));
+    this.fallingNotesView.setPixelsPerSecond(this.pixelsPerSecond);
+    this.update(this.currentTransportTime, this.lastActiveNotes);
   }
 
   public getApp(): Application {
@@ -398,6 +664,12 @@ export class PianoScene {
       this.resizeObserver.disconnect();
       this.resizeObserver = null;
     }
+
+    this.app.canvas.removeEventListener("pointerdown", this.handleEditorPointerDown);
+    this.app.canvas.removeEventListener("pointermove", this.handleEditorPointerMove);
+    this.app.canvas.removeEventListener("pointerup", this.handleEditorPointerUp);
+    this.app.canvas.removeEventListener("pointercancel", this.handleEditorPointerUp);
+    this.app.canvas.removeEventListener("wheel", this.handleEditorWheel);
 
     this.sceneContainer.destroy({ children: true });
     this.app.destroy(true, { children: true });

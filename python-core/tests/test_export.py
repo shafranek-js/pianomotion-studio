@@ -5,9 +5,9 @@ import json
 from pathlib import Path
 import sys
 
-REPO = Path(__file__).resolve().parents[3]
-CORE_ROOT = REPO / "web" / "python-core"
-FIXTURES = REPO / "web" / "tests" / "fixtures"
+REPO = Path(__file__).resolve().parents[2]
+CORE_ROOT = REPO / "python-core"
+FIXTURES = REPO / "tests" / "fixtures"
 
 if str(CORE_ROOT) not in sys.path:
     sys.path.insert(0, str(CORE_ROOT))

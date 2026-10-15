@@ -10,5 +10,5 @@
     "strict": true,
     "types": ["node"]
   },
-  "include": ["vitest.config.ts", "playwright.config.ts"]
+  "include": ["vitest.config.ts", "playwright.config.ts", "playwright.worker.config.ts", "playwright.audio.config.ts", "playwright.preview.config.ts", "playwright.media.config.ts"]
 }

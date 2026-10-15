@@ -10,6 +10,7 @@ import {
   SyncedAudioSource,
   Transport,
 } from "./index.ts";
+import type { StretchNode } from "./signalsmithStretch.ts";
 
 /**
  * Mock AudioParam for test environment.
@@ -59,6 +60,7 @@ class MockAudioBufferSourceNode extends MockAudioNode {
   public startTime = 0;
   public startOffset = 0;
   public startDuration = 0;
+  public playbackRate = new MockAudioParam(1);
   public onended: (() => void) | null = null;
 
   start(when = 0, offset = 0, duration?: number): void {
@@ -108,6 +110,7 @@ class MockAudioBuffer {
  */
 class MockAudioContext {
   public currentTime = 10.0;
+  public sampleRate = 44100;
   public state: AudioContextState = "running";
   public destination = new MockGainNode() as unknown as AudioNode;
   public lastCreatedSource: MockAudioBufferSourceNode | null = null;
@@ -153,6 +156,32 @@ class MockAudioContext {
     }
     return buffer;
   }
+}
+
+function createMockStretchNode(): {
+  node: StretchNode;
+  schedule: ReturnType<typeof vi.fn>;
+  addBuffers: ReturnType<typeof vi.fn>;
+} {
+  const schedule = vi.fn((options: Parameters<StretchNode["schedule"]>[0]) => {
+    void options;
+    return Promise.resolve();
+  });
+  const addBuffers = vi.fn().mockResolvedValue(10);
+  const node = {
+    inputTime: 0,
+    schedule,
+    start: vi.fn().mockResolvedValue(undefined),
+    stop: vi.fn().mockResolvedValue(undefined),
+    addBuffers,
+    dropBuffers: vi.fn().mockResolvedValue(undefined),
+    latency: vi.fn().mockReturnValue(0.03),
+    setUpdateInterval: vi.fn().mockResolvedValue(undefined),
+    configure: vi.fn().mockResolvedValue(undefined),
+    connect: vi.fn(),
+    disconnect: vi.fn(),
+  } as unknown as StretchNode;
+  return { node, schedule, addBuffers };
 }
 
 describe("audioDecoder.ts", () => {
@@ -425,45 +454,31 @@ describe("SyncedAudioSource", () => {
 
     it("calculates audio time correctly at 1.0x speed with positive offset (+1.0s)", () => {
       const source = new SyncedAudioSource(1.0);
-      expect(source.calculateAudioTime(0.0, 1.0)).toBe(1.0);
-      expect(source.calculateAudioTime(2.5, 1.0)).toBe(3.5);
+      expect(source.calculateAudioTime(0.0)).toBe(1.0);
+      expect(source.calculateAudioTime(2.5)).toBe(3.5);
     });
 
-    it("calculates audio time correctly at 0.5x speed with positive offset (+1.0s)", () => {
+    it("calculates audio time correctly regardless of playback speed (A14: songTime + offset)", () => {
       const source = new SyncedAudioSource(1.0);
-      // at 0.5x speed, 1 second of songTime takes 2 real seconds
-      // audioTime = 1.0 + 1.0 / 0.5 = 3.0s
-      expect(source.calculateAudioTime(1.0, 0.5)).toBe(3.0);
-      expect(source.calculateAudioTime(2.0, 0.5)).toBe(5.0);
-    });
-
-    it("calculates audio time correctly at 2.0x speed with positive offset (+1.0s)", () => {
-      const source = new SyncedAudioSource(1.0);
-      // at 2.0x speed, 1 second of songTime takes 0.5 real seconds
-      // audioTime = 1.0 + 1.0 / 2.0 = 1.5s
-      expect(source.calculateAudioTime(1.0, 2.0)).toBe(1.5);
-      expect(source.calculateAudioTime(4.0, 2.0)).toBe(3.0);
+      // songTime is musical score time; recordingPosition = songTime + offset
+      expect(source.calculateAudioTime(1.0)).toBe(2.0);
+      expect(source.calculateAudioTime(2.0)).toBe(3.0);
+      expect(source.calculateAudioTime(4.0)).toBe(5.0);
     });
 
     it("calculates negative audio time during lead-in with negative offset (-2.0s)", () => {
       const source = new SyncedAudioSource(-2.0);
       // at songTime = 0.0, recording is at -2.0s (delay = 2.0s)
-      expect(source.calculateAudioTime(0.0, 1.0)).toBe(-2.0);
-
-      // at 0.5x speed, songTime = 1.0 -> -2.0 + 1.0 / 0.5 = 0.0s (recording begins now!)
-      expect(source.calculateAudioTime(1.0, 0.5)).toBe(0.0);
-
-      // at 2.0x speed, songTime = 1.0 -> -2.0 + 1.0 / 2.0 = -1.5s (still 1.5s before start)
-      expect(source.calculateAudioTime(1.0, 2.0)).toBe(-1.5);
-
-      // at 2.0x speed, songTime = 4.0 -> -2.0 + 4.0 / 2.0 = 0.0s
-      expect(source.calculateAudioTime(4.0, 2.0)).toBe(0.0);
+      expect(source.calculateAudioTime(0.0)).toBe(-2.0);
+      expect(source.calculateAudioTime(1.0)).toBe(-1.0);
+      expect(source.calculateAudioTime(2.0)).toBe(0.0);
     });
   });
 
   describe("Playback lifecycle and controls", () => {
-    it("attaches recording and connects internal gain node to destination", () => {
-      const source = new SyncedAudioSource(0.0, 0.8);
+    it("attaches recording to the Signalsmith stretch node and connects its gain node", async () => {
+      const stretch = createMockStretchNode();
+      const source = new SyncedAudioSource(0.0, 0.8, async () => stretch.node);
       const recording = {
         buffer: sampleBuffer,
         durationSeconds: 10.0,
@@ -472,16 +487,57 @@ describe("SyncedAudioSource", () => {
         peaks: new Float32Array(2000),
       };
 
-      source.attach(recording, mockContext as unknown as AudioContext, mockDestination);
+      await source.attach(recording, mockContext as unknown as AudioContext, mockDestination);
 
       expect(mockContext.lastCreatedGain).not.toBeNull();
       expect(mockContext.lastCreatedGain?.destination).toBe(mockDestination);
       expect(source.getRecording()).toBe(recording);
       expect(source.getVolume()).toBe(0.8);
+      expect(source.getStretchLatencySeconds()).toBe(0.03);
     });
 
-    it("plays from immediate offset when audioTime >= 0", () => {
-      const source = new SyncedAudioSource(1.5);
+    it("reports missing pitch-preserving support instead of falling back to varispeed", async () => {
+      const source = new SyncedAudioSource();
+      const recording = {
+        buffer: sampleBuffer,
+        durationSeconds: 10,
+        sampleRate: 44100,
+        numberOfChannels: 2,
+        peaks: new Float32Array(1),
+      };
+
+      await expect(source.attach(recording, mockContext as unknown as AudioContext, mockDestination))
+        .rejects.toThrow(/AudioWorklet support/);
+      expect(source.getError()?.message).toMatch(/AudioWorklet support/);
+      source.play(0, 1);
+      expect(source.isPlaying()).toBe(false);
+    });
+
+    it("resamples decoded channels to the live AudioContext rate before Signalsmith preparation", async () => {
+      const stretch = createMockStretchNode();
+      const source = new SyncedAudioSource(0, 1, async () => stretch.node);
+      const input = new MockAudioBuffer({ numberOfChannels: 2, length: 8, sampleRate: 44100 });
+      input.getChannelData(0).set([0, 1, 2, 3, 4, 5, 6, 7]);
+      input.getChannelData(1).set([7, 6, 5, 4, 3, 2, 1, 0]);
+      mockContext.sampleRate = 22050;
+
+      await source.attach({
+        buffer: input as unknown as AudioBuffer,
+        durationSeconds: input.duration,
+        sampleRate: 44100,
+        numberOfChannels: 2,
+        peaks: new Float32Array(1),
+      }, mockContext as unknown as AudioContext, mockDestination);
+
+      const channels = stretch.addBuffers.mock.calls[0]?.[0] as Float32Array[];
+      expect(channels.map((channel) => channel.length)).toEqual([4, 4]);
+      expect([...channels[0]!]).toEqual([0, 2, 4, 6]);
+      expect([...channels[1]!]).toEqual([7, 5, 3, 1]);
+    });
+
+    it("schedules playback at the aligned recording position when audio time is nonnegative", async () => {
+      const stretch = createMockStretchNode();
+      const source = new SyncedAudioSource(1.5, 1, async () => stretch.node);
       const recording = {
         buffer: sampleBuffer,
         durationSeconds: 10.0,
@@ -490,19 +546,24 @@ describe("SyncedAudioSource", () => {
         peaks: new Float32Array(2000),
       };
 
-      source.attach(recording, mockContext as unknown as AudioContext, mockDestination);
+      await source.attach(recording, mockContext as unknown as AudioContext, mockDestination);
       source.play(0.0, 1.0); // audioTime = 1.5
+      await Promise.resolve();
+      await Promise.resolve();
 
       expect(source.isPlaying()).toBe(true);
-      const bufferNode = mockContext.lastCreatedSource;
-      expect(bufferNode).not.toBeNull();
-      expect(bufferNode?.started).toBe(true);
-      expect(bufferNode?.startTime).toBe(mockContext.currentTime);
-      expect(bufferNode?.startOffset).toBe(1.5);
+      expect(stretch.schedule).toHaveBeenLastCalledWith({
+        output: mockContext.currentTime,
+        input: 1.5,
+        rate: 1,
+        semitones: 0,
+        active: true,
+      });
     });
 
-    it("schedules future start with delay when audioTime < 0", () => {
-      const source = new SyncedAudioSource(-2.0);
+    it("schedules a future start when the recording position is negative", async () => {
+      const stretch = createMockStretchNode();
+      const source = new SyncedAudioSource(-2.0, 1, async () => stretch.node);
       const recording = {
         buffer: sampleBuffer,
         durationSeconds: 10.0,
@@ -511,17 +572,24 @@ describe("SyncedAudioSource", () => {
         peaks: new Float32Array(2000),
       };
 
-      source.attach(recording, mockContext as unknown as AudioContext, mockDestination);
+      await source.attach(recording, mockContext as unknown as AudioContext, mockDestination);
       source.play(0.0, 1.0); // audioTime = -2.0s -> delay 2.0s
+      await Promise.resolve();
+      await Promise.resolve();
 
       expect(source.isPlaying()).toBe(true);
-      const bufferNode = mockContext.lastCreatedSource;
-      expect(bufferNode?.startTime).toBe(mockContext.currentTime + 2.0);
-      expect(bufferNode?.startOffset).toBe(0.0);
+      expect(stretch.schedule).toHaveBeenLastCalledWith({
+        output: mockContext.currentTime + 2,
+        input: 0,
+        rate: 1,
+        semitones: 0,
+        active: true,
+      });
     });
 
-    it("pauses active playback and stops source node", () => {
-      const source = new SyncedAudioSource(0.0);
+    it("pauses active Signalsmith playback", async () => {
+      const stretch = createMockStretchNode();
+      const source = new SyncedAudioSource(0.0, 1, async () => stretch.node);
       const recording = {
         buffer: sampleBuffer,
         durationSeconds: 10.0,
@@ -530,18 +598,18 @@ describe("SyncedAudioSource", () => {
         peaks: new Float32Array(2000),
       };
 
-      source.attach(recording, mockContext as unknown as AudioContext, mockDestination);
+      await source.attach(recording, mockContext as unknown as AudioContext, mockDestination);
       source.play(0.0, 1.0);
       expect(source.isPlaying()).toBe(true);
 
-      const bufferNode = mockContext.lastCreatedSource;
       source.pause();
       expect(source.isPlaying()).toBe(false);
-      expect(bufferNode?.stopped).toBe(true);
+      expect(stretch.schedule).toHaveBeenLastCalledWith({ output: mockContext.currentTime, active: false });
     });
 
-    it("seeks and restarts playback if currently playing", () => {
-      const source = new SyncedAudioSource(0.0);
+    it("seeks and restarts stretch playback at the new input position", async () => {
+      const stretch = createMockStretchNode();
+      const source = new SyncedAudioSource(0.0, 1, async () => stretch.node);
       const recording = {
         buffer: sampleBuffer,
         durationSeconds: 10.0,
@@ -550,18 +618,76 @@ describe("SyncedAudioSource", () => {
         peaks: new Float32Array(2000),
       };
 
-      source.attach(recording, mockContext as unknown as AudioContext, mockDestination);
+      await source.attach(recording, mockContext as unknown as AudioContext, mockDestination);
       source.play(1.0, 1.0);
+      await Promise.resolve();
+      await Promise.resolve();
 
       // Seek to 4.0s
       source.seek(4.0, 1.0);
+      await Promise.resolve();
+      await Promise.resolve();
       expect(source.isPlaying()).toBe(true);
-      const newSource = mockContext.lastCreatedSource;
-      expect(newSource?.startOffset).toBe(4.0);
+      expect(stretch.schedule).toHaveBeenLastCalledWith({
+        output: mockContext.currentTime,
+        input: 4,
+        rate: 1,
+        semitones: 0,
+        active: true,
+      });
     });
 
-    it("updates offset and resyncs if playing", () => {
-      const source = new SyncedAudioSource(0.0);
+    it("does not let an old stop RPC restart playback after a newer seek and speed change", async () => {
+      const stretch = createMockStretchNode();
+      const stopResolvers: Array<() => void> = [];
+      let deferredStops = 0;
+      stretch.schedule.mockImplementation((options) => {
+        if (!options.active && deferredStops < 2) {
+          deferredStops += 1;
+          return new Promise<void>((resolve) => stopResolvers.push(resolve));
+        }
+        return Promise.resolve();
+      });
+      const source = new SyncedAudioSource(0, 1, async () => stretch.node);
+      await source.attach({
+        buffer: sampleBuffer,
+        durationSeconds: 10,
+        sampleRate: 44100,
+        numberOfChannels: 2,
+        peaks: new Float32Array(1),
+      }, mockContext as unknown as AudioContext, mockDestination);
+
+      source.play(1, 1);
+      source.seek(4, 1);
+      source.setSpeed(1.5, 5);
+      expect(stopResolvers).toHaveLength(2);
+
+      // Resolve the newer stop first and the original play's stop last. The
+      // stale continuation must not overwrite the newer position or speed.
+      stopResolvers[1]!();
+      await Promise.resolve();
+      await Promise.resolve();
+      stopResolvers[0]!();
+      await Promise.resolve();
+      await Promise.resolve();
+
+      const activeSchedules = stretch.schedule.mock.calls
+        .map(([options]) => options)
+        .filter((options) => options.active);
+      expect(activeSchedules).toEqual([{
+        output: mockContext.currentTime,
+        input: 5,
+        rate: 1.5,
+        semitones: 0,
+        active: true,
+      }]);
+      expect(source.isPlaying()).toBe(true);
+      source.dispose();
+    });
+
+    it("updates offset and resyncs if playing", async () => {
+      const stretch = createMockStretchNode();
+      const source = new SyncedAudioSource(0.0, 1, async () => stretch.node);
       const recording = {
         buffer: sampleBuffer,
         durationSeconds: 10.0,
@@ -570,19 +696,29 @@ describe("SyncedAudioSource", () => {
         peaks: new Float32Array(2000),
       };
 
-      source.attach(recording, mockContext as unknown as AudioContext, mockDestination);
+      await source.attach(recording, mockContext as unknown as AudioContext, mockDestination);
       source.play(2.0, 1.0);
+      await Promise.resolve();
+      await Promise.resolve();
 
       source.setOffset(0.5, 2.0, 1.0);
+      await Promise.resolve();
+      await Promise.resolve();
       expect(source.getOffset()).toBe(0.5);
 
-      const updatedSource = mockContext.lastCreatedSource;
-      // audioTime = 0.5 + 2.0 / 1.0 = 2.5
-      expect(updatedSource?.startOffset).toBe(2.5);
+      // recordingPosition = songTime + offset = 2.5 seconds
+      expect(stretch.schedule).toHaveBeenLastCalledWith({
+        output: mockContext.currentTime,
+        input: 2.5,
+        rate: 1,
+        semitones: 0,
+        active: true,
+      });
     });
 
-    it("controls volume and mute state", () => {
-      const source = new SyncedAudioSource(0.0, 0.5);
+    it("controls volume and mute state", async () => {
+      const stretch = createMockStretchNode();
+      const source = new SyncedAudioSource(0.0, 0.5, async () => stretch.node);
       const recording = {
         buffer: sampleBuffer,
         durationSeconds: 10.0,
@@ -591,7 +727,7 @@ describe("SyncedAudioSource", () => {
         peaks: new Float32Array(2000),
       };
 
-      source.attach(recording, mockContext as unknown as AudioContext, mockDestination);
+      await source.attach(recording, mockContext as unknown as AudioContext, mockDestination);
       const gainNode = mockContext.lastCreatedGain!;
 
       source.setVolume(0.9);
@@ -607,8 +743,9 @@ describe("SyncedAudioSource", () => {
       expect(gainNode.gain.value).toBe(0.9);
     });
 
-    it("disposes resources cleanly", () => {
-      const source = new SyncedAudioSource(0.0);
+    it("disposes resources cleanly", async () => {
+      const stretch = createMockStretchNode();
+      const source = new SyncedAudioSource(0.0, 1, async () => stretch.node);
       const recording = {
         buffer: sampleBuffer,
         durationSeconds: 10.0,
@@ -617,7 +754,7 @@ describe("SyncedAudioSource", () => {
         peaks: new Float32Array(2000),
       };
 
-      source.attach(recording, mockContext as unknown as AudioContext, mockDestination);
+      await source.attach(recording, mockContext as unknown as AudioContext, mockDestination);
       source.play(0.0, 1.0);
       source.dispose();
 
@@ -645,7 +782,8 @@ describe("Transport integration with SyncedAudioSource", () => {
       audioContext: mockContext as unknown as AudioContext,
     });
     transport.setDuration(10.0);
-    const syncedAudio = new SyncedAudioSource(0.0, 0.8);
+    const stretch = createMockStretchNode();
+    const syncedAudio = new SyncedAudioSource(0.0, 0.8, async () => stretch.node);
     const recording = {
       buffer: sampleBuffer,
       durationSeconds: 5.0,
@@ -654,7 +792,7 @@ describe("Transport integration with SyncedAudioSource", () => {
       peaks: new Float32Array(1000),
     };
 
-    syncedAudio.attach(recording, mockContext as unknown as AudioContext, mockContext.destination);
+    await syncedAudio.attach(recording, mockContext as unknown as AudioContext, mockContext.destination);
     transport.setSyncedAudio(syncedAudio);
 
     expect(transport.getSyncedAudio()).toBe(syncedAudio);
@@ -662,6 +800,7 @@ describe("Transport integration with SyncedAudioSource", () => {
     const playSpy = vi.spyOn(syncedAudio, "play");
     const pauseSpy = vi.spyOn(syncedAudio, "pause");
     const seekSpy = vi.spyOn(syncedAudio, "seek");
+    const speedSpy = vi.spyOn(syncedAudio, "setSpeed");
     const volumeSpy = vi.spyOn(syncedAudio, "setVolume");
 
     await transport.play();
@@ -671,15 +810,52 @@ describe("Transport integration with SyncedAudioSource", () => {
     expect(seekSpy).toHaveBeenCalledWith(2.0, transport.getSpeed());
 
     transport.setSpeed(1.5);
-    expect(seekSpy).toHaveBeenCalled();
+    expect(speedSpy).toHaveBeenCalledWith(1.5, expect.any(Number));
 
+    // Master volume scales master gain directly, not double-applied to track trim (A14)
     transport.setVolume(0.5);
-    expect(volumeSpy).toHaveBeenCalledWith(0.5);
+    expect(volumeSpy).not.toHaveBeenCalled();
 
     transport.pause();
     expect(pauseSpy).toHaveBeenCalled();
 
     transport.dispose();
     expect(transport.getSyncedAudio()).toBeNull();
+  });
+
+  it("stops and reports a rejected DSP schedule, then allows an explicit Play retry", async () => {
+    const transport = new Transport({ audioContext: mockContext as unknown as AudioContext });
+    transport.setDuration(5);
+    transport.seek(0);
+    const stretch = createMockStretchNode();
+    stretch.schedule.mockRejectedValueOnce(new Error("DSP schedule failed"));
+    const syncedAudio = new SyncedAudioSource(0, 1, async () => stretch.node);
+    await syncedAudio.attach({
+      buffer: sampleBuffer,
+      durationSeconds: 5,
+      sampleRate: 44100,
+      numberOfChannels: 2,
+      peaks: new Float32Array(1),
+    }, mockContext as unknown as AudioContext, mockContext.destination);
+    const errors: Error[] = [];
+    transport.subscribeOutputError((error) => errors.push(error));
+    transport.setSyncedAudio(syncedAudio);
+
+    await transport.play();
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(transport.getState()).toBe("paused");
+    expect(syncedAudio.isPlaying()).toBe(false);
+    expect(errors.map((error) => error.message)).toEqual(["DSP schedule failed"]);
+
+    await transport.play();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(transport.getState()).toBe("playing");
+    expect(syncedAudio.isPlaying()).toBe(true);
+    expect(syncedAudio.getError()).toBeNull();
+    expect(errors).toHaveLength(1);
+    transport.dispose();
   });
 });

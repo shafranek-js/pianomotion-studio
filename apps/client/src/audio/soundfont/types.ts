@@ -28,6 +28,7 @@ export interface Sf2Zone {
   sampleIndex: number;
   rootKey?: number;
   pitchCorrection?: number;
+  sampleModes?: number; // 0 = no loop, 1 = continuous loop, 3 = loop while key down
   pan?: number; // -500..500
   initialAttenuationDb?: number;
   attackSeconds?: number;
@@ -52,7 +53,7 @@ export interface Sf2SoundFont {
 }
 
 export interface SoundFontSynthOptions {
-  audioContext: AudioContext;
+  audioContext: AudioContext | OfflineAudioContext;
   destinationNode?: AudioNode;
   maxPolyphony?: number;
 }

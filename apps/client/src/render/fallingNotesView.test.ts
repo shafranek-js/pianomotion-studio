@@ -1,83 +1,104 @@
-import type { Note, PerformancePlan } from "@handthesia/contracts";
-import { Graphics } from "pixi.js";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import type { FingeringPlan, Note, PerformancePlan } from "@handthesia/contracts";
+import { describe, expect, it } from "vitest";
 import { FallingNotesView } from "./fallingNotesView";
 import { KeyboardLayout } from "./keyboardView";
 
-function makeNote(noteId: string, pitch: number, startSeconds: number, endSeconds: number): Note {
+function note(noteId: string, overrides: Partial<Note> = {}): Note {
   return {
     noteId,
     trackId: "track-1",
-    pitch,
-    velocity: 88,
-    startSeconds,
-    endSeconds,
+    pitch: 60,
+    velocity: 90,
+    startSeconds: 1,
+    endSeconds: 1.5,
     hand: "right",
-    finger: 3,
+    finger: 1,
     glissando: false,
+    ...overrides,
   };
 }
 
-function makePlan(events: PerformancePlan["events"]): PerformancePlan {
-  return {
-    schemaVersion: 1,
-    planId: "render-performance-plan",
-    projectId: "render-project",
-    inputRevision: 1,
-    profileId: "render-profile",
-    profileRevision: 1,
-    engineVersion: "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
-    diagnostics: [],
-    kind: "performance",
-    fingeringPlanId: "render-fingering-plan",
-    events,
-  };
-}
+describe("FallingNotesView painted geometry", () => {
+  it("uses the drawn lane and visible clipped rectangle for hit testing and marquee selection", () => {
+    const keyboard = new KeyboardLayout();
+    keyboard.compute({ x: 0, y: 220, width: 1040, height: 70 }, "realistic");
+    const view = new FallingNotesView({ pixelsPerSecond: 100 });
+    view.setLayout({ hitLineY: 220, viewportTop: 0, viewportBottom: 220, keyboardLayout: keyboard });
+    view.setNotes([note("overlap-a"), note("overlap-b")]);
+    view.update(1.25);
 
-describe("FallingNotesView performance timing", () => {
-  afterEach(() => vi.restoreAllMocks());
+    const [first, second] = view.getPaintedNoteGeometries();
+    expect(first?.x).toBe(keyboard.getLane(60).x);
+    expect(first?.width).toBe(keyboard.getLane(60).width);
+    expect(first?.y).toBe(195);
+    expect(first?.height).toBe(50);
+    expect(first?.visibleRect).toEqual({
+      x: first?.x,
+      y: 195,
+      width: first?.width,
+      height: 25,
+    });
+    expect(second?.visibleRect).toEqual(first?.visibleRect);
 
-  it("draws rolled notes at performed durations in realistic and equal keyboard layouts", () => {
-    const earlySource = makeNote("early-release", 60, 0.5, 2.8);
-    const rolledSource = makeNote("rolled-note", 88, 0.75, 2.2);
-    const unplayableSource = makeNote("unplayable", 67, 0.5, 3.0);
-    const plan = makePlan([
-      { type: "press", timeSeconds: 0.75, noteId: "early-release", pitch: 60, velocity: 88 },
-      { type: "press", timeSeconds: 1.25, noteId: "rolled-note", pitch: 88, velocity: 88 },
-      { type: "release", timeSeconds: 1.55, noteId: "rolled-note" },
-      { type: "release", timeSeconds: 1.75, noteId: "early-release" },
+    const x = first!.x + first!.width / 2;
+    expect(view.getNoteAtPoint(x, 208)).toBe("overlap-b");
+    expect(view.getNoteAtPoint(x, 228)).toBeNull();
+    expect(view.getNoteIdsInRect({ x: x - 1, y: 205, width: 2, height: 5 })).toEqual([
+      "overlap-a",
+      "overlap-b",
     ]);
 
-    for (const style of ["realistic", "equal"] as const) {
-      const layout = new KeyboardLayout();
-      layout.compute({ x: 0, y: 100, width: 1000, height: 100 }, style);
-      const view = new FallingNotesView({ pixelsPerSecond: 100 });
-      view.setLayout({
-        hitLineY: 100,
-        viewportTop: 0,
-        viewportBottom: 100,
-        keyboardLayout: layout,
-      });
-      view.setNotes([earlySource, rolledSource, unplayableSource]);
-      view.setPerformancePlan(plan);
+    view.destroy({ children: true });
+  });
 
-      const timings = view.getRenderedNoteTimings();
-      expect(timings.map((note) => [note.noteId, note.startSeconds, note.endSeconds])).toEqual([
-        ["early-release", 0.75, 1.75],
-        ["rolled-note", 1.25, 1.55],
-      ]);
-      expect(timings[0]?.sourceNote).toBe(earlySource);
-      expect(timings.some((note) => note.noteId === "unplayable")).toBe(false);
+  it("projects source-time notes at the independent view anchor without changing timing", () => {
+    const keyboard = new KeyboardLayout();
+    keyboard.compute({ x: 0, y: 300, width: 880, height: 70 }, "realistic");
+    const view = new FallingNotesView({ pixelsPerSecond: 120 });
+    view.setLayout({ hitLineY: 300, viewportTop: 0, viewportBottom: 300, keyboardLayout: keyboard });
+    view.setNotes([note("source-time", { startSeconds: 4, endSeconds: 4.5 })]);
+    const performed: PerformancePlan = {
+      schemaVersion: 1,
+      kind: "performance",
+      planId: "performance-1",
+      projectId: "project-1",
+      inputRevision: 1,
+      profileId: "profile-1",
+      profileRevision: 1,
+      engineVersion: "test",
+      fingeringPlanId: "fingering-1",
+      diagnostics: [],
+      events: [
+        { type: "press", timeSeconds: 5, noteId: "source-time", pitch: 60, velocity: 90 },
+        { type: "release", timeSeconds: 5.5, noteId: "source-time" },
+      ],
+    };
+    const fingering: FingeringPlan = {
+      schemaVersion: 1,
+      kind: "fingering",
+      planId: "fingering-1",
+      projectId: "project-1",
+      inputRevision: 1,
+      profileId: "profile-1",
+      profileRevision: 1,
+      engineVersion: "test",
+      diagnostics: [],
+      assignments: [
+        { noteId: "source-time", hand: "left", finger: 4, disposition: "played" },
+      ],
+    };
+    view.setPerformancePlan(performed);
+    expect(view.getRenderedNoteTimings()[0]?.startSeconds).toBe(5);
+    view.setFingeringPlan(fingering);
+    view.update(4);
 
-      const notesGraphics = (view as unknown as { notesGraphics: Graphics }).notesGraphics;
-      const bodySpy = vi.spyOn(notesGraphics, "roundRect");
-      view.update(1.25);
+    const geometry = view.getPaintedNoteGeometries(3.5)[0];
+    expect(view.getRenderedNoteTimings()[0]?.startSeconds).toBe(4);
+    expect(view.getRenderedNoteTimings()[0]?.hand).toBe("left");
+    expect(view.getRenderedNoteTimings()[0]?.finger).toBe(4);
+    expect(geometry?.y).toBe(180);
+    expect(geometry?.visibleRect.height).toBe(60);
 
-      // The first bar is 100px tall from the performed 1.0s interval. The
-      // second rolled note starts at the boundary and is 30px tall.
-      expect(bodySpy.mock.calls.map((call) => call[3])).toEqual([100, 30]);
-      expect(bodySpy.mock.calls.map((call) => call[1])).toEqual([50, 70]);
-      view.destroy();
-    }
+    view.destroy({ children: true });
   });
 });

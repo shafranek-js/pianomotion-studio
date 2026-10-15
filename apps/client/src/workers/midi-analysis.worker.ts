@@ -14,6 +14,7 @@ import {
   type M1EngineStage,
 } from "@handthesia/contracts";
 import pyodidePins from "../../../../tools/pyodide-runtime-manifest.json";
+import { releaseAssetUrl } from "../pwa/urls";
 
 type PyodideInstance = {
   FS: {
@@ -49,7 +50,6 @@ const workerScope = self as unknown as {
   addEventListener(type: "message", listener: (event: MessageEvent<unknown>) => void): void;
   postMessage(message: unknown, transfer?: Transferable[]): void;
 };
-const appBaseUrl = new URL(import.meta.env.BASE_URL, workerScope.location.origin);
 const maxMidiBytes = 16 * 1024 * 1024;
 
 type ActiveSongContext = {
@@ -66,9 +66,16 @@ type ActiveSongContext = {
 let runtimePromise: Promise<RuntimeState> | undefined;
 let analysisRunning = false;
 let activeSongContext: ActiveSongContext | undefined;
+let operationQueue: Promise<void> = Promise.resolve();
 
 workerScope.addEventListener("message", (event: MessageEvent<unknown>) => {
-  void handleMessage(event.data);
+  const message = event.data;
+  // One interpreter owns shared Python globals and the active song context.
+  // Serialize operations even when the UI supersedes a previous request.
+  operationQueue = operationQueue.then(() => handleMessage(message)).catch(error => {
+    const request = M1EngineMessageSchema.safeParse(message);
+    if (request.success) postError(request.data, "compute", "WORKER_OPERATION_FAILED", errorMessage(error), true);
+  });
 });
 
 async function handleMessage(message: unknown): Promise<void> {
@@ -485,7 +492,7 @@ async function initializeRuntime(
   report: typeof postProgress,
 ): Promise<RuntimeState> {
   report(identity, "load", "Loading self-hosted Pyodide 314.0.7.");
-  const runtimeBaseUrl = new URL("pyodide/", appBaseUrl);
+  const runtimeBaseUrl = releaseAssetUrl("pyodide/");
   const assetManifest = await fetchJson(new URL("asset-manifest.json", runtimeBaseUrl)) as {
     runtime?: { version?: string; pythonVersion?: string; abiVersion?: string; platform?: string };
     files?: Array<{ path: string; sha256: string }>;
@@ -515,7 +522,7 @@ async function initializeRuntime(
     if (!builtWheel || builtWheel.file !== wheel.file || builtWheel.sha256 !== wheel.sha256) {
       throw new WorkerStageError("init", "WHEEL_MANIFEST_MISMATCH", `The staged ${wheel.name} wheel does not match its source pin.`);
     }
-    const wheelUrl = new URL(`pyodide/wheels/${wheel.file}`, appBaseUrl);
+    const wheelUrl = releaseAssetUrl(`pyodide/wheels/${wheel.file}`);
     const bytes = await fetchBytes(wheelUrl);
     if (await sha256(bytes) !== wheel.sha256) {
       throw new WorkerStageError("init", "WHEEL_CHECKSUM_MISMATCH", `SHA-256 verification failed for ${wheel.file}.`);
@@ -536,7 +543,7 @@ await micropip.install(json.loads(__m1_wheel_paths_json), deps=False)
     pyodide.globals.delete("__m1_wheel_paths_json");
   }
 
-  const coreManifest = await fetchJson(new URL("python-core/source_manifest.json", appBaseUrl)) as CoreManifest;
+  const coreManifest = await fetchJson(releaseAssetUrl("python-core/source_manifest.json")) as CoreManifest;
   const files = validateCoreManifest(coreManifest);
   const canonicalFilesJson = JSON.stringify({ files: Object.fromEntries(files) });
   const computedEngineVersion = await sha256(new TextEncoder().encode(canonicalFilesJson));
@@ -550,7 +557,7 @@ await micropip.install(json.loads(__m1_wheel_paths_json), deps=False)
   report(identity, "init", `Verifying ${files.length} packaged Python-core source files.`);
   pyodide.FS.mkdirTree("/python-core");
   for (const [relativePath, expectedHash] of files) {
-    const sourceUrl = new URL(`python-core/${relativePath}`, appBaseUrl);
+    const sourceUrl = releaseAssetUrl(`python-core/${relativePath}`);
     const bytes = await fetchBytes(sourceUrl);
     if (await sha256(bytes) !== expectedHash) {
       throw new WorkerStageError("init", "CORE_SOURCE_CHECKSUM_MISMATCH", `SHA-256 verification failed for ${relativePath}.`);

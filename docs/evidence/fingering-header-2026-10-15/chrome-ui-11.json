@@ -1,0 +1,539 @@
+{
+  "config": {
+    "argv": [
+      "C:\\nvm4w\\nodejs\\node.exe",
+      "C:\\Projects\\pianomotion-studio\\node_modules\\@playwright\\test\\cli.js",
+      "test",
+      "--config",
+      "playwright.config.ts",
+      "tests/browser/editor-m4.spec.ts",
+      "tests/browser/studio-workspace.spec.ts",
+      "tests/browser/stabilization.spec.ts",
+      "tests/browser/update-save-barrier.spec.ts"
+    ],
+    "configFile": "C:\\Projects\\pianomotion-studio\\playwright.config.ts",
+    "rootDir": "C:/Projects/pianomotion-studio/tests/browser",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "C:/Projects/pianomotion-studio/test-results/ui-chrome",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "",
+        "name": "",
+        "testDir": "C:/Projects/pianomotion-studio/tests/browser",
+        "testIgnore": [
+          "**/offline-pwa.spec.ts",
+          "**/pwa-deployment-m8.spec.ts",
+          "**/media-export.spec.ts",
+          "**/video-export-m7.spec.ts",
+          "**/parity-m1.spec.ts",
+          "**/motion-streaming.spec.ts",
+          "**/audio-dsp.spec.ts",
+          "**/audio-output.spec.ts"
+        ],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 90000
+      }
+    ],
+    "filteredProjects": [
+      {
+        "grep": {},
+        "grepInvert": null,
+        "outputDir": "C:\\Projects\\pianomotion-studio\\test-results\\ui-chrome",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "name": "",
+        "testDir": "C:\\Projects\\pianomotion-studio\\tests\\browser",
+        "snapshotDir": "C:\\Projects\\pianomotion-studio\\tests\\browser",
+        "testIgnore": [
+          "**/offline-pwa.spec.ts",
+          "**/pwa-deployment-m8.spec.ts",
+          "**/media-export.spec.ts",
+          "**/video-export-m7.spec.ts",
+          "**/parity-m1.spec.ts",
+          "**/motion-streaming.spec.ts",
+          "**/audio-dsp.spec.ts",
+          "**/audio-output.spec.ts"
+        ],
+        "testMatch": "**/*.@(spec|test).?(c|m)[jt]s?(x)",
+        "timeout": 90000,
+        "use": {
+          "baseURL": "http://127.0.0.1:4173",
+          "browserName": "chromium",
+          "channel": "chrome",
+          "headless": true
+        },
+        "dependencies": [],
+        "ignoreSnapshots": false,
+        "__projectId": ""
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "list",
+        null
+      ],
+      [
+        "json",
+        {
+          "outputFile": "test-results/reports/ui-chrome.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "default",
+    "updateSourceMethod": "patch",
+    "version": "1.64.0",
+    "workers": 1,
+    "webServer": {
+      "command": "npm run dev -- --host 127.0.0.1 --port 4173 --strictPort",
+      "url": "http://127.0.0.1:4173",
+      "reuseExistingServer": false,
+      "timeout": 60000
+    }
+  },
+  "suites": [
+    {
+      "title": "editor-m4.spec.ts",
+      "file": "editor-m4.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "unified fingering scene retains history, contextual tools and live playback",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 180000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 11944,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-15T13:21:07.073Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a83466ba7b7d9baaf73c-e829073e81b14a800a1a",
+          "file": "editor-m4.spec.ts",
+          "line": 4,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "stabilization.spec.ts",
+      "file": "stabilization.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "selection does not calculate; edits preserve IDs/history and exported MIDI markers",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 240000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 16463,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-15T13:21:19.464Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a2318d7f8ee162e34ba8-2e463ed0841c5c722f11",
+          "file": "stabilization.spec.ts",
+          "line": 7,
+          "column": 1
+        },
+        {
+          "title": "latest profile/equal geometry survive package bytes and session recovery",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 240000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 14633,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-15T13:21:35.939Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a2318d7f8ee162e34ba8-8dcca296c46982126551",
+          "file": "stabilization.spec.ts",
+          "line": 49,
+          "column": 1
+        },
+        {
+          "title": "autosaved pending intent is recovered and replanned after reload",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 240000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 11410,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-15T13:21:50.588Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a2318d7f8ee162e34ba8-ecf84aa04e110e3f83a0",
+          "file": "stabilization.spec.ts",
+          "line": 87,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "studio-workspace.spec.ts",
+      "file": "studio-workspace.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "six responsive sizes preserve one scene, all keys, contextual tools and panel focus",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 300000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 13840,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-15T13:22:02.030Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "745088f930d57411a1f8-3d1bdea72925e56d1d11",
+          "file": "studio-workspace.spec.ts",
+          "line": 21,
+          "column": 1
+        },
+        {
+          "title": "painted note editing survives commit, portable package and fresh browser context",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 240000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 17829,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-15T13:22:15.881Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "745088f930d57411a1f8-22f3c87c57520921de88",
+          "file": "studio-workspace.spec.ts",
+          "line": 141,
+          "column": 1
+        },
+        {
+          "title": "invalid packages retain the active scene and committed project",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 180000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 6172,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-15T13:22:33.722Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "745088f930d57411a1f8-6b595a7d6265905f1763",
+          "file": "studio-workspace.spec.ts",
+          "line": 195,
+          "column": 1
+        },
+        {
+          "title": "an IndexedDB abort after request success never announces a committed save",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 150000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 5687,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-15T13:22:39.909Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "745088f930d57411a1f8-af10457a93fb56eae379",
+          "file": "studio-workspace.spec.ts",
+          "line": 211,
+          "column": 1
+        },
+        {
+          "title": "legacy geometry is explicit, engine changes replan, and failed candidate replan retains the scene",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 360000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 20249,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-15T13:22:45.608Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "745088f930d57411a1f8-ad8fb5e1ae9648d9049f",
+          "file": "studio-workspace.spec.ts",
+          "line": 247,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "update-save-barrier.spec.ts",
+      "file": "update-save-barrier.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "update never activates after real project transaction abort; edited session survives",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 180000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 7244,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-15T13:23:05.888Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "7f1d303b71d40ed094d5-9c11cb837b503fc8a137",
+          "file": "update-save-barrier.spec.ts",
+          "line": 4,
+          "column": 1
+        },
+        {
+          "title": "edits made during worker activation prevent the final reload",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 180000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 5898,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-15T13:23:13.141Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "7f1d303b71d40ed094d5-e0c5b36f5e51b67ca4b7",
+          "file": "update-save-barrier.spec.ts",
+          "line": 39,
+          "column": 1
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-10-15T13:21:02.044Z",
+    "duration": 138497.62900000002,
+    "expected": 11,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}

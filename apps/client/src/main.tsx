@@ -2,7 +2,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./app.css";
-import { registerServiceWorker } from "./pwa";
+import { applicationBuildId, registerServiceWorker } from "./pwa";
 
 const rootElement = document.getElementById("root");
 
@@ -16,4 +16,8 @@ createRoot(rootElement).render(
   </StrictMode>,
 );
 
-void registerServiceWorker();
+document.documentElement.dataset.releaseBuildId = applicationBuildId();
+
+if (import.meta.env.PROD) {
+  void registerServiceWorker();
+}

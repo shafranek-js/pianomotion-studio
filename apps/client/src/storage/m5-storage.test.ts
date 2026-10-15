@@ -266,6 +266,26 @@ class MockDatabaseState {
         return store;
       },
       transaction: (_storeNames: string | string[], mode = "readonly") => {
+        let pendingRequests = 0;
+        let finished = false;
+        const beforeWrites = new Map<MockIDBStore, Map<unknown, unknown>>();
+        const scheduleCompletion = () => {
+          setTimeout(() => {
+            if (finished || pendingRequests !== 0) return;
+            finished = true;
+            txObj.oncomplete?.();
+          }, 0);
+        };
+        const abortTransaction = (error: DOMException | Error | null = null) => {
+          if (finished) return;
+          finished = true;
+          txObj.error = error;
+          for (const [store, records] of beforeWrites) store.records = new Map(records);
+          setTimeout(() => {
+            if (error) txObj.onerror?.({ target: txObj });
+            txObj.onabort?.({ target: txObj });
+          }, 0);
+        };
         const txObj = {
           mode,
           error: null as DOMException | Error | null,
@@ -277,22 +297,50 @@ class MockDatabaseState {
             if (!store) {
               throw new Error(`Store "${name}" not found`);
             }
-            if (store.simulateQuotaError && mode === "readwrite") {
-              const quotaErr = new DOMException("Quota exceeded", "QuotaExceededError");
-              txObj.error = quotaErr;
-              setTimeout(() => {
-                if (txObj.onerror) txObj.onerror({ target: txObj });
-                if (txObj.onabort) txObj.onabort({ target: txObj });
-              }, 0);
+            if (mode === "readwrite" && !beforeWrites.has(store)) {
+              beforeWrites.set(store, new Map(store.records));
             }
-            return store;
+            // Bind each request to its transaction without changing the shared
+            // store counters/delays used by the serialization assertions.
+            return new Proxy(store, {
+              get(target, property) {
+                const member = Reflect.get(target, property);
+                if (!["put", "get", "getAll", "delete", "clear"].includes(String(property))) return member;
+                return (...args: unknown[]) => {
+                  if (finished) throw new DOMException("Transaction inactive", "TransactionInactiveError");
+                  pendingRequests += 1;
+                  const request = Reflect.apply(member, target, args) as MockReq;
+                  let consumerSuccess: MockReq["onsuccess"] = null;
+                  let consumerError: MockReq["onerror"] = null;
+                  Object.defineProperties(request, {
+                    onsuccess: {
+                      configurable: true,
+                      get: () => (event: { target: MockReq }) => {
+                        if (finished) return;
+                        consumerSuccess?.(event);
+                        pendingRequests -= 1;
+                        scheduleCompletion();
+                      },
+                      set: (handler: MockReq["onsuccess"]) => { consumerSuccess = handler; },
+                    },
+                    onerror: {
+                      configurable: true,
+                      get: () => (event: { target: MockReq }) => {
+                        if (finished) return;
+                        consumerError?.(event);
+                        abortTransaction(request.error);
+                      },
+                      set: (handler: MockReq["onerror"]) => { consumerError = handler; },
+                    },
+                  });
+                  return request;
+                };
+              },
+            });
           },
-          abort: () => {
-            setTimeout(() => {
-              if (txObj.onabort) txObj.onabort({ target: txObj });
-            }, 0);
-          },
+          abort: () => abortTransaction(),
         };
+        scheduleCompletion();
         return txObj;
       },
       close: () => {},
@@ -976,6 +1024,8 @@ describe("Milestone M5 Storage & Persistence", () => {
       await expect(service.flush()).resolves.toBeUndefined();
       expect(errorHandler).toHaveBeenCalledTimes(1);
       expect(errorHandler.mock.calls[0]?.[0]).toBeInstanceOf(StorageQuotaExceededError);
+      // A release/update barrier must observe even a previously reported failure.
+      await expect(service.flush({ throwOnError: true })).rejects.toThrow(StorageQuotaExceededError);
     });
 
     it("getStorageQuota uses navigator.storage.estimate when available and handles missing API", async () => {

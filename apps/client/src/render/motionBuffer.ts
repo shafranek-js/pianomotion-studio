@@ -1,4 +1,5 @@
 import type {
+  InitialMotionWindow,
   MotionPose,
   M1SampleMotionResult,
 } from "@handthesia/contracts";
@@ -8,9 +9,26 @@ import { getFingerTipsByFinger } from "./skins";
 export interface MotionBufferOptions {
   windowAheadSeconds?: number;
   windowBehindSeconds?: number;
+  expectedHands?: readonly MotionHand[];
+  requiredAnchors?: readonly MotionRequiredAnchor[];
 }
 
+export type MotionHand = "left" | "right";
+
+export interface MotionRequiredAnchor {
+  hand: MotionHand;
+  timeSeconds: number;
+  toleranceSeconds?: number;
+}
+
+export const MAX_POSE_GAP_SECONDS = 0.25;
+
 export interface MotionBufferRange {
+  start: number;
+  end: number;
+}
+
+export interface HandCoverageInterval {
   start: number;
   end: number;
 }
@@ -157,6 +175,10 @@ export class MotionBuffer {
 
   private leftPoses: MotionPose[] = [];
   private rightPoses: MotionPose[] = [];
+  private expectedHands: MotionHand[] | null = null;
+  private requiredAnchors: MotionRequiredAnchor[] = [];
+  private declaredCoverage: Record<MotionHand, HandCoverageInterval[]> = { left: [], right: [] };
+  private verifiedCoverage: Record<MotionHand, HandCoverageInterval[]> = { left: [], right: [] };
 
   public constructor(options?: MotionBufferOptions) {
     if (options?.windowAheadSeconds !== undefined) {
@@ -164,6 +186,12 @@ export class MotionBuffer {
     }
     if (options?.windowBehindSeconds !== undefined) {
       this.windowBehindSeconds = options.windowBehindSeconds;
+    }
+    if (options?.expectedHands !== undefined) {
+      this.setExpectedHands(options.expectedHands);
+    }
+    if (options?.requiredAnchors !== undefined) {
+      this.setRequiredAnchors(options.requiredAnchors);
     }
   }
 
@@ -207,11 +235,30 @@ export class MotionBuffer {
     this.pruneOlderThan(this.currentTime - this.windowBehindSeconds);
 
     this.rebuildHandPoses();
+    this.rebuildVerifiedCoverage();
     this.updateBufferedRange();
   }
 
   public addSampleMotionResult(result: M1SampleMotionResult, currentTime?: number): void {
     this.addPoses(result.poses, currentTime);
+    this.addCoverageMetadata(result.coverage);
+  }
+
+  public addInitialMotionWindow(window: InitialMotionWindow, currentTime?: number): void {
+    this.addPoses(window.poses, currentTime);
+    this.addCoverageMetadata(window.coverage);
+  }
+
+  public setExpectedHands(hands: readonly MotionHand[]): void {
+    const expected = [...new Set(hands)];
+    this.expectedHands = expected.length > 0 ? expected : null;
+  }
+
+  public setRequiredAnchors(anchors: readonly MotionRequiredAnchor[]): void {
+    this.requiredAnchors = anchors
+      .filter((anchor) => Number.isFinite(anchor.timeSeconds) && anchor.timeSeconds >= 0)
+      .map((anchor) => ({ ...anchor }))
+      .sort((a, b) => a.timeSeconds - b.timeSeconds || a.hand.localeCompare(b.hand));
   }
 
   public samplePose(time: number, hand: "left" | "right"): MotionPose | null {
@@ -254,25 +301,99 @@ export class MotionBuffer {
     return lerpPose(p0, p1, alpha);
   }
 
+  public getHandCoverageIntervals(hand: "left" | "right"): HandCoverageInterval[] {
+    return this.verifiedCoverage[hand].map((interval) => ({ ...interval }));
+  }
+
+  public isHandCovered(hand: "left" | "right", start: number, end: number): boolean {
+    if (end <= start) return true;
+    const intervals = this.getHandCoverageIntervals(hand);
+    return intervals.some((int) => int.start <= start + 1e-4 && int.end >= end - 1e-4);
+  }
+
+  public getHandContinuousCoverageUntil(hand: "left" | "right", currentTime: number): number | null {
+    const intervals = this.getHandCoverageIntervals(hand);
+    const covering = intervals.find((int) => int.start <= currentTime + 1e-4 && int.end >= currentTime - 1e-4);
+    return covering ? covering.end : null;
+  }
+
+  public getActiveHands(): ("left" | "right")[] {
+    if (this.expectedHands !== null) return [...this.expectedHands];
+    const hands: ("left" | "right")[] = [];
+    if (this.declaredCoverage.left.length > 0 || this.leftPoses.length > 0) hands.push("left");
+    if (this.declaredCoverage.right.length > 0 || this.rightPoses.length > 0) hands.push("right");
+    return hands.length > 0 ? hands : ["right"];
+  }
+
+  public hasCoverage(start: number, end: number): boolean {
+    const active = this.getActiveHands();
+    if (!active.every((hand) => this.isHandCovered(hand, start, end))) return false;
+    let index = this.firstAnchorAtOrAfter(start - 1e-4);
+    while (index < this.requiredAnchors.length) {
+      const anchor = this.requiredAnchors[index]!;
+      if (anchor.timeSeconds > end + 1e-4) break;
+      if (!this.hasPoseAtAnchor(anchor)) return false;
+      index += 1;
+    }
+    return true;
+  }
+
   public needsMorePoses(currentTime: number): boolean {
     this.currentTime = currentTime;
-    if (this.bufferedRange === null) {
+    if (this.poses.length === 0) {
       return true;
     }
-    return currentTime + 1.5 > this.bufferedRange.end;
+    const targetEnd = currentTime + 1.5;
+    // A10: All active hands must have continuous coverage without gaps > 250ms
+    return !this.hasCoverage(currentTime, targetEnd);
   }
 
   public getMissingWindow(currentTime: number): { start: number; end: number } {
     this.currentTime = currentTime;
     const targetEnd = currentTime + this.windowAheadSeconds;
-    if (this.bufferedRange === null || this.bufferedRange.end < currentTime) {
+    let missingAnchor: MotionRequiredAnchor | undefined;
+    let anchorIndex = this.firstAnchorAtOrAfter(currentTime - 1e-4);
+    while (anchorIndex < this.requiredAnchors.length) {
+      const anchor = this.requiredAnchors[anchorIndex]!;
+      if (anchor.timeSeconds > targetEnd + 1e-4) break;
+      if (!this.hasPoseAtAnchor(anchor)) {
+        missingAnchor = anchor;
+        break;
+      }
+      anchorIndex += 1;
+    }
+    if (missingAnchor) {
+      const start = Math.max(0, missingAnchor.timeSeconds - MAX_POSE_GAP_SECONDS);
+      return { start, end: Math.max(targetEnd, start + this.windowAheadSeconds) };
+    }
+    if (this.poses.length === 0) {
       return {
         start: currentTime,
         end: targetEnd,
       };
     }
-    const start = this.bufferedRange.end;
-    const end = targetEnd > start ? targetEnd : start + this.windowAheadSeconds;
+    const active = this.getActiveHands();
+
+    let minContinuousEnd: number | null = null;
+    for (const hand of active) {
+      const until = this.getHandContinuousCoverageUntil(hand, currentTime);
+      if (until === null) {
+        minContinuousEnd = null;
+        break;
+      }
+      minContinuousEnd = minContinuousEnd === null ? until : Math.min(minContinuousEnd, until);
+    }
+
+    if (minContinuousEnd === null || minContinuousEnd < currentTime) {
+      const hasPriorPoses = this.poses.some((p) => p.transportTimeSeconds <= currentTime);
+      const start = hasPriorPoses ? Math.max(0, currentTime - MAX_POSE_GAP_SECONDS) : currentTime;
+      const end = Math.max(targetEnd, start + this.windowAheadSeconds);
+      return { start, end };
+    }
+
+    // Current time is covered up to minContinuousEnd. Request next chunk with boundary overlap
+    const start = Math.max(0, minContinuousEnd - MAX_POSE_GAP_SECONDS);
+    const end = Math.max(targetEnd, start + this.windowAheadSeconds);
     return { start, end };
   }
 
@@ -280,6 +401,7 @@ export class MotionBuffer {
     this.currentTime = currentTime;
     this.pruneOlderThan(currentTime - this.windowBehindSeconds);
     this.rebuildHandPoses();
+    this.rebuildVerifiedCoverage();
     this.updateBufferedRange();
   }
 
@@ -292,6 +414,8 @@ export class MotionBuffer {
     this.leftPoses = [];
     this.rightPoses = [];
     this.bufferedRange = null;
+    this.declaredCoverage = { left: [], right: [] };
+    this.verifiedCoverage = { left: [], right: [] };
   }
 
   public setBufferedRange(range: MotionBufferRange | null): void {
@@ -299,8 +423,96 @@ export class MotionBuffer {
   }
 
   private pruneOlderThan(cutoffTime: number): void {
-    if (this.poses.length === 0) return;
     this.poses = this.poses.filter((p) => p.transportTimeSeconds >= cutoffTime - 1e-6);
+    for (const hand of ["left", "right"] as const) {
+      this.declaredCoverage[hand] = this.declaredCoverage[hand]
+        .filter((interval) => interval.end >= cutoffTime - 1e-6)
+        .map((interval) => ({ start: Math.max(interval.start, cutoffTime), end: interval.end }));
+    }
+  }
+
+  private addCoverageMetadata(coverage: M1SampleMotionResult["coverage"] | InitialMotionWindow["coverage"]): void {
+    if (!coverage) return;
+    for (const hand of ["left", "right"] as const) {
+      const metadata = coverage[hand];
+      if (!metadata || metadata.poseCount === 0 || metadata.coveredEndTimeSeconds < metadata.coveredStartTimeSeconds) continue;
+      const intervals = this.declaredCoverage[hand];
+      intervals.push({ start: metadata.coveredStartTimeSeconds, end: metadata.coveredEndTimeSeconds });
+      intervals.sort((a, b) => a.start - b.start || a.end - b.end);
+      const merged: HandCoverageInterval[] = [];
+      for (const interval of intervals) {
+        const previous = merged[merged.length - 1];
+        if (previous && interval.start <= previous.end + 1e-4) {
+          previous.end = Math.max(previous.end, interval.end);
+        } else {
+          merged.push({ ...interval });
+        }
+      }
+      this.declaredCoverage[hand] = merged;
+    }
+    this.rebuildVerifiedCoverage();
+  }
+
+  /** Only declare coverage where response metadata and renderable pose runs overlap. */
+  private rebuildVerifiedCoverage(): void {
+    for (const hand of ["left", "right"] as const) {
+      const poses = hand === "left" ? this.leftPoses : this.rightPoses;
+      const declared = this.declaredCoverage[hand];
+      const verified: HandCoverageInterval[] = [];
+      let coverageIndex = 0;
+
+      const hasDeclaredPoseTime = (timeSeconds: number): boolean => {
+        while (coverageIndex < declared.length && declared[coverageIndex]!.end < timeSeconds - 1e-4) {
+          coverageIndex += 1;
+        }
+        const interval = declared[coverageIndex];
+        return interval !== undefined && interval.start <= timeSeconds + 1e-4 && interval.end >= timeSeconds - 1e-4;
+      };
+
+      for (let index = 0; index + 1 < poses.length; index += 1) {
+        const start = poses[index]!.transportTimeSeconds;
+        const end = poses[index + 1]!.transportTimeSeconds;
+        if (end - start > MAX_POSE_GAP_SECONDS + 1e-4) continue;
+
+        // Metadata validates each endpoint, while the adjacent rendered poses
+        // prove that interpolation bridges any tiny gap between response chunks.
+        // Never bridge a metadata interval's full declared span on sparse poses.
+        if (!hasDeclaredPoseTime(start) || !hasDeclaredPoseTime(end)) continue;
+
+        const previous = verified[verified.length - 1];
+        if (previous && start <= previous.end + 1e-4) {
+          previous.end = Math.max(previous.end, end);
+        } else {
+          verified.push({ start, end });
+        }
+      }
+      this.verifiedCoverage[hand] = verified;
+    }
+  }
+
+  private hasPoseAtAnchor(anchor: MotionRequiredAnchor): boolean {
+    const poses = anchor.hand === "left" ? this.leftPoses : this.rightPoses;
+    const tolerance = Math.max(0, anchor.toleranceSeconds ?? 1e-3);
+    const earliest = anchor.timeSeconds - tolerance;
+    let low = 0;
+    let high = poses.length;
+    while (low < high) {
+      const middle = Math.floor((low + high) / 2);
+      if (poses[middle]!.transportTimeSeconds < earliest) low = middle + 1;
+      else high = middle;
+    }
+    return low < poses.length && poses[low]!.transportTimeSeconds <= anchor.timeSeconds + tolerance;
+  }
+
+  private firstAnchorAtOrAfter(timeSeconds: number): number {
+    let low = 0;
+    let high = this.requiredAnchors.length;
+    while (low < high) {
+      const middle = Math.floor((low + high) / 2);
+      if (this.requiredAnchors[middle]!.timeSeconds < timeSeconds) low = middle + 1;
+      else high = middle;
+    }
+    return low;
   }
 
   private rebuildHandPoses(): void {

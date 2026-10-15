@@ -14,7 +14,7 @@ import {
   xToTime,
   yToPitch,
 } from "./pianoRollCanvas.ts";
-import { PianoRollView } from "./pianoRollView.ts";
+import { PianoRollView, shouldCaptureSpaceForPanning } from "./pianoRollView.ts";
 
 function createMockNote(overrides: Partial<Note> = {}): Note {
   return {
@@ -513,5 +513,72 @@ describe("PianoRollView zoom & scroll behavior", () => {
     expect(view.getViewport().scrollY).toBe(568);
 
     view.destroy();
+  });
+});
+
+describe("PianoRollView Space panning focus gate", () => {
+  it("does not hijack Space outside an active focused editor canvas", () => {
+    const listeners = new Map<string, Array<(event: KeyboardEvent) => void>>();
+    const fakeWindow = {
+      addEventListener: vi.fn((type: string, listener: EventListenerOrEventListenerObject) => {
+        const list = listeners.get(type) ?? [];
+        list.push(listener as (event: KeyboardEvent) => void);
+        listeners.set(type, list);
+      }),
+      removeEventListener: vi.fn(),
+      emit(type: string, event: KeyboardEvent) {
+        for (const listener of listeners.get(type) ?? []) listener(event);
+      },
+    };
+    const ctx = {
+      save: vi.fn(), restore: vi.fn(), scale: vi.fn(), fillRect: vi.fn(), strokeRect: vi.fn(),
+      beginPath: vi.fn(), moveTo: vi.fn(), lineTo: vi.fn(), stroke: vi.fn(), fillText: vi.fn(),
+      closePath: vi.fn(), fill: vi.fn(), setLineDash: vi.fn(),
+    } as unknown as CanvasRenderingContext2D;
+    const canvas = {
+      clientWidth: 800,
+      clientHeight: 400,
+      width: 800,
+      height: 400,
+      style: { width: "800px", height: "400px", cursor: "default" },
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      getContext: () => ctx,
+    } as unknown as HTMLCanvasElement;
+    const button = {} as HTMLButtonElement;
+    const fakeDocument: { activeElement: Element | null } = { activeElement: canvas };
+    vi.stubGlobal("window", fakeWindow);
+    vi.stubGlobal("document", fakeDocument);
+    const view = new PianoRollView(canvas, { active: false });
+
+    const inactivePreventDefault = vi.fn();
+    fakeWindow.emit("keydown", { code: "Space", target: canvas, preventDefault: inactivePreventDefault } as unknown as KeyboardEvent);
+    expect(inactivePreventDefault).not.toHaveBeenCalled();
+
+    view.setActive(true);
+    const canvasPreventDefault = vi.fn();
+    fakeWindow.emit("keydown", { code: "Space", target: canvas, preventDefault: canvasPreventDefault } as unknown as KeyboardEvent);
+    expect(canvasPreventDefault).toHaveBeenCalledOnce();
+
+    fakeDocument.activeElement = button;
+    const buttonPreventDefault = vi.fn();
+    fakeWindow.emit("keydown", { code: "Space", target: button, preventDefault: buttonPreventDefault } as unknown as KeyboardEvent);
+    expect(buttonPreventDefault).not.toHaveBeenCalled();
+
+    view.destroy();
+    vi.unstubAllGlobals();
+  });
+
+  it("captures Space only while the active canvas itself has focus", () => {
+    const canvas = {} as HTMLCanvasElement;
+    const button = {} as HTMLButtonElement;
+    const spaceEvent = { code: "Space", target: canvas };
+
+    expect(shouldCaptureSpaceForPanning(true, false, spaceEvent, canvas, canvas)).toBe(true);
+    expect(shouldCaptureSpaceForPanning(false, false, spaceEvent, canvas, canvas)).toBe(false);
+    expect(shouldCaptureSpaceForPanning(true, false, { ...spaceEvent, target: button }, canvas, canvas)).toBe(false);
+    expect(shouldCaptureSpaceForPanning(true, false, spaceEvent, canvas, button)).toBe(false);
+    expect(shouldCaptureSpaceForPanning(true, true, spaceEvent, canvas, canvas)).toBe(false);
+    expect(shouldCaptureSpaceForPanning(true, false, { code: "Enter", target: canvas }, canvas, canvas)).toBe(false);
   });
 });

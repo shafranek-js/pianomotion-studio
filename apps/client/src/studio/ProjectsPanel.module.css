@@ -1,0 +1,141 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  min-width: 0;
+  color: var(--studio-text, #f3f5f4);
+}
+
+.recentSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.recentSection h3,
+.allHeading {
+  margin: 0;
+  color: var(--studio-muted, #a4afaa);
+  font-size: 0.73rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.allHeading {
+  margin-top: 0.35rem;
+}
+
+.searchLabel {
+  color: var(--studio-muted, #a4afaa);
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.search {
+  width: 100%;
+  min-height: 2.6rem;
+  border: 1px solid var(--studio-border, #39423f);
+  border-radius: 0.65rem;
+  background: var(--studio-input, #151a18);
+  color: inherit;
+  padding: 0.55rem 0.7rem;
+  font: inherit;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  display: flex;
+  align-items: stretch;
+  gap: 0.4rem;
+  min-width: 0;
+  border: 1px solid var(--studio-border, #39423f);
+  border-radius: 0.75rem;
+  background: var(--studio-surface, #1d2421);
+  overflow: hidden;
+}
+
+.open {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  padding: 0.75rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.open:hover,
+.open[aria-current="true"] {
+  background: var(--studio-hover, #28332e);
+}
+
+.name {
+  overflow: hidden;
+  color: var(--studio-text, #f3f5f4);
+  font-size: 0.9rem;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.meta {
+  color: var(--studio-muted, #a4afaa);
+  font-size: 0.72rem;
+}
+
+.delete,
+.refresh {
+  align-self: center;
+  border: 1px solid var(--studio-border, #39423f);
+  border-radius: 0.55rem;
+  background: transparent;
+  color: var(--studio-muted, #c4ceca);
+  padding: 0.45rem 0.6rem;
+  font: inherit;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+
+.delete {
+  flex: 0 0 auto;
+  margin-right: 0.4rem;
+}
+
+.delete:hover {
+  color: #ffb8ad;
+  border-color: #9b5145;
+}
+
+.refresh {
+  align-self: flex-start;
+}
+
+.empty,
+.error {
+  margin: 0;
+  border-radius: 0.65rem;
+  background: var(--studio-surface, #1d2421);
+  padding: 0.75rem;
+  color: var(--studio-muted, #a4afaa);
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+.error {
+  color: #ffb8ad;
+}

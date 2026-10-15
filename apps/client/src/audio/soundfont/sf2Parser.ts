@@ -7,6 +7,17 @@ export class InvalidSoundFontError extends Error {
   }
 }
 
+export const MAX_SF2_FILE_BYTES = 128 * 1024 * 1024;
+
+export function assertSf2FileSize(byteLength: number): void {
+  if (!Number.isSafeInteger(byteLength) || byteLength < 12) {
+    throw new InvalidSoundFontError("File is too small to be a valid SF2 file.");
+  }
+  if (byteLength > MAX_SF2_FILE_BYTES) {
+    throw new InvalidSoundFontError(`File exceeds the ${MAX_SF2_FILE_BYTES / (1024 * 1024)} MiB SoundFont limit.`);
+  }
+}
+
 /**
  * Parser for SoundFont 2 (SF2) binary files conforming to SF2.04 specification.
  */
@@ -133,6 +144,16 @@ export class Sf2Parser {
       }
     }
 
+    for (const sample of sampleHeaders) {
+      if (sample.name === "EOS") continue;
+      if ((sample.sampleType & 0x8000) !== 0) {
+        throw new InvalidSoundFontError("ROM-backed samples are not supported; choose a bank containing embedded PCM samples.");
+      }
+      if ((sample.sampleType & 0x7fff) !== 1) {
+        throw new InvalidSoundFontError("Only mono PCM samples are supported; stereo, linked, and unknown sample types cannot be rendered.");
+      }
+    }
+
     // Parse Presets & Instruments if present
     if (rawPhdr && rawPbag && rawPgen && rawInst && rawIbag && rawIgen) {
       this.assemblePresets(
@@ -167,6 +188,14 @@ export class Sf2Parser {
       });
     }
 
+    for (const preset of presets) {
+      for (const zone of preset.zones) {
+        if (zone.sampleModes !== undefined && ![0, 1, 3].includes(zone.sampleModes)) {
+          throw new InvalidSoundFontError(`Preset '${preset.name}' uses reserved or unsupported sampleModes ${zone.sampleModes}; supported values are 0, 1, and 3.`);
+        }
+      }
+    }
+
     return {
       header,
       presets,
@@ -186,8 +215,13 @@ export class Sf2Parser {
       if (tag === "INAM") header.name = val;
       else if (tag === "isng") header.soundEngine = val;
       else if (tag === "ifil" && size >= 4) {
-        header.versionMajor = this.view.getUint16(this.offset, true);
-        header.versionMinor = this.view.getUint16(this.offset + 2, true);
+        const versionMajor = this.view.getUint16(this.offset, true);
+        const versionMinor = this.view.getUint16(this.offset + 2, true);
+        if (versionMajor !== 2 || versionMinor > 4) {
+          throw new InvalidSoundFontError(`SoundFont version ${versionMajor}.${versionMinor} is unsupported; this renderer accepts SF2 versions through 2.4.`);
+        }
+        header.versionMajor = versionMajor;
+        header.versionMinor = versionMinor;
       }
 
       this.offset += size + (size % 2);
@@ -200,6 +234,12 @@ export class Sf2Parser {
       const tag = this.readFourCC();
       const size = this.readUint32();
       if (tag === "smpl") {
+        if (size >= 4 && this.decodeFixedString(this.bytes.subarray(this.offset, this.offset + 4)) === "OggS") {
+          throw new InvalidSoundFontError("Ogg/Vorbis-compressed sample data (SF3) is not supported; choose an uncompressed PCM SF2 bank.");
+        }
+        if (size % 2 !== 0) {
+          throw new InvalidSoundFontError("Sample data must contain complete 16-bit PCM values.");
+        }
         const sampleCount = Math.floor(size / 2);
         // Copy 16-bit PCM samples
         const sampleData = new Int16Array(sampleCount);
@@ -286,6 +326,7 @@ export class Sf2Parser {
             let pan: number | undefined;
             let attack: number | undefined;
             let release: number | undefined;
+            let sampleModes: number | undefined;
 
             for (let ig = igenStart; ig < igenEnd && ig * 4 + 4 <= rawIgen.byteLength; ig++) {
               const op = igenView.getUint16(ig * 4, true);
@@ -295,6 +336,7 @@ export class Sf2Parser {
               else if (op === 43) iKeyRange = [val & 0xff, (val >> 8) & 0xff];
               else if (op === 44) iVelRange = [val & 0xff, (val >> 8) & 0xff];
               else if (op === 58) rootKey = val;
+              else if (op === 54) sampleModes = val;
               else if (op === 52) pitchCorrection = val > 32767 ? val - 65536 : val;
               else if (op === 17) pan = val > 32767 ? val - 65536 : val;
               else if (op === 34) attack = Math.pow(2, (val > 32767 ? val - 65536 : val) / 1200);
@@ -314,6 +356,7 @@ export class Sf2Parser {
                   sampleIndex: sampleId,
                   rootKey: rootKey ?? sampleHeaders[sampleId]?.originalPitch,
                   pitchCorrection: pitchCorrection ?? sampleHeaders[sampleId]?.pitchCorrection,
+                  sampleModes,
                   pan,
                   attackSeconds: attack,
                   releaseSeconds: release,
@@ -360,4 +403,97 @@ export class Sf2Parser {
     const decoder = new TextDecoder("ascii");
     return decoder.decode(bytes.subarray(0, len)).trim();
   }
+}
+
+/**
+ * Convenience helper to parse an SF2 buffer into Sf2SoundFont.
+ */
+export function parseSf2(buffer: ArrayBuffer | Uint8Array): Sf2SoundFont {
+  assertSf2FileSize(buffer.byteLength);
+  try {
+    return new Sf2Parser(buffer).parse();
+  } catch (error) {
+    throw asInvalidSoundFontError(error, "The file could not be parsed as an SF2 bank.");
+  }
+}
+
+/** Converts parser and worker failures into a user-facing SoundFont error. */
+function asInvalidSoundFontError(reason: unknown, fallback: string): InvalidSoundFontError {
+  if (reason instanceof InvalidSoundFontError) return reason;
+  const message = reason instanceof Error ? reason.message : typeof reason === "string" ? reason : fallback;
+  const cleanMessage = message.replace(/^Invalid SoundFont:\s*/i, "").trim();
+  return new InvalidSoundFontError(cleanMessage || fallback);
+}
+
+/** Parses in a Worker and preserves input bytes by default. `transferInput: true` detaches an ArrayBuffer; Uint8Array inputs are copied into a plain transferable buffer. */
+export function parseSf2Async(
+  buffer: ArrayBuffer | Uint8Array,
+  options: { transferInput?: boolean } = {},
+): Promise<Sf2SoundFont> {
+  let bytes: ArrayBuffer;
+  try {
+    assertSf2FileSize(buffer.byteLength);
+    if (typeof Worker === "undefined") return Promise.resolve(parseSf2(buffer));
+    if (buffer instanceof Uint8Array) {
+      // `view.buffer` is typed as ArrayBufferLike and may be a SharedArrayBuffer.
+      // Copy into a plain ArrayBuffer for Worker.postMessage's transfer list.
+      const copy = new ArrayBuffer(buffer.byteLength);
+      new Uint8Array(copy).set(buffer);
+      bytes = copy;
+    } else {
+      bytes = options.transferInput ? buffer : buffer.slice(0);
+    }
+  } catch (error) {
+    return Promise.reject(asInvalidSoundFontError(error, "Unable to read this file."));
+  }
+
+  return new Promise((resolve, reject) => {
+    let worker: Worker;
+    try {
+      worker = new Worker(new URL("./sf2Parse.worker.ts", import.meta.url), { type: "module" });
+    } catch (error) {
+      reject(asInvalidSoundFontError(error, "The SoundFont parser worker could not be started."));
+      return;
+    }
+    let settled = false;
+    const finish = (callback: () => void) => {
+      if (settled) return;
+      settled = true;
+      try {
+        worker.terminate();
+      } catch {
+        // The worker may already have terminated after a runtime failure.
+      }
+      callback();
+    };
+    worker.onmessage = (event: MessageEvent<{ soundFont?: Omit<Sf2SoundFont, "rawSampleData">; rawSampleBuffer?: ArrayBuffer; error?: string }>) => {
+      const data = event.data;
+      if (!data || data.error || !data.soundFont || !data.rawSampleBuffer) {
+        finish(() => reject(asInvalidSoundFontError(data?.error, "The parser worker returned incomplete data.")));
+        return;
+      }
+      if (!(data.rawSampleBuffer instanceof ArrayBuffer)) {
+        finish(() => reject(new InvalidSoundFontError("The parser worker returned invalid sample data.")));
+        return;
+      }
+      try {
+        const result: Sf2SoundFont = { ...data.soundFont, rawSampleData: new Int16Array(data.rawSampleBuffer) };
+        finish(() => resolve(result));
+      } catch (error) {
+        finish(() => reject(asInvalidSoundFontError(error, "The parser worker returned invalid SoundFont data.")));
+      }
+    };
+    worker.onerror = (event) => {
+      event.preventDefault();
+      finish(() => reject(asInvalidSoundFontError(event.message, "The SoundFont parser worker failed.")));
+    };
+    worker.onmessageerror = () => {
+      finish(() => reject(new InvalidSoundFontError("The SoundFont parser worker returned data that could not be decoded.")));
+    };
+    try {
+      worker.postMessage({ buffer: bytes }, [bytes]);
+    } catch (error) {
+      finish(() => reject(asInvalidSoundFontError(error, "The SoundFont parser worker could not receive the file.")));
+    }
+  });
 }

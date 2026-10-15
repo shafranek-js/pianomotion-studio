@@ -378,6 +378,34 @@ describe("transport.ts", () => {
     expect(transport.getCurrentTime()).toBe(-2.0);
   });
 
+  it.each(["pause", "stop", "dispose"] as const)(
+    "does not start a pending play after %s invalidates a suspended-context resume",
+    async (cancel) => {
+      let resolveResume!: () => void;
+      vi.spyOn(mockCtx, "resume").mockImplementation(() => new Promise<void>((resolve) => {
+        resolveResume = () => {
+          (mockCtx as unknown as MockAudioContext).state = "running";
+          resolve();
+        };
+      }));
+      const noteOn = vi.spyOn(sampler, "noteOn");
+      transport.loadPlan(makeTestPerformancePlan([
+        { type: "press", timeSeconds: 0, noteId: "cancelled-resume", pitch: 60, velocity: 90 },
+        { type: "release", timeSeconds: 1, noteId: "cancelled-resume" },
+      ]), 2);
+      transport.seek(0);
+
+      const pendingPlay = transport.play();
+      expect(resolveResume).toBeTypeOf("function");
+      transport[cancel]();
+      resolveResume();
+      await pendingPlay;
+
+      expect(transport.getState()).not.toBe("playing");
+      expect(noteOn).not.toHaveBeenCalled();
+    },
+  );
+
   it("accurately computes playhead time across playback and speed changes", async () => {
     const plan = makeTestPerformancePlan([]);
     transport.loadPlan(plan, 10.0);
@@ -523,6 +551,112 @@ describe("transport.ts", () => {
     expect(sampler.getActiveVoiceCount()).toBe(1);
     (mockCtx as unknown as MockAudioContext).currentTime = 0.5;
     expect(transport.getCurrentTime()).toBeCloseTo(1.125, 5);
+  });
+
+  it("preserves active voices and envelope decay during speed change without silenceAll or note re-attack (A15)", async () => {
+    const plan = makeTestPerformancePlan([
+      { type: "press", timeSeconds: 0, noteId: "voice1", pitch: 60, velocity: 90 },
+      { type: "release", timeSeconds: 2.0, noteId: "voice1" },
+    ]);
+    transport.loadPlan(plan, 4);
+    transport.seek(0.5);
+    await transport.play();
+    expect(sampler.getActiveVoiceCount()).toBe(1);
+
+    const silenceAllSpy = vi.spyOn(sampler, "silenceAll");
+    const noteOnSpy = vi.spyOn(sampler, "noteOn");
+
+    // Advance clock and change speed while playing
+    (mockCtx as unknown as MockAudioContext).currentTime = 0.5;
+    transport.setSpeed(1.5);
+
+    // Verified: silenceAll must NOT be called on speed change
+    expect(silenceAllSpy).not.toHaveBeenCalled();
+    // Verified: sounding note must NOT be re-attacked with noteOn
+    expect(noteOnSpy).not.toHaveBeenCalled();
+    // Voice remains active and ringing
+    expect(sampler.getActiveVoiceCount()).toBe(1);
+  });
+
+  it("rewinds queued NoteOff and sustain/sostenuto events to the clock before tempo rescheduling", async () => {
+    const plan = makeTestPerformancePlan([
+      { type: "press", timeSeconds: 0, noteId: "queued-held", pitch: 60, velocity: 90 },
+      { type: "pedal", timeSeconds: 0.02, controller: 64, value: 127 },
+      { type: "pedal", timeSeconds: 0.03, controller: 66, value: 127 },
+      { type: "release", timeSeconds: 0.04, noteId: "queued-held" },
+    ]);
+    transport.loadPlan(plan, 4);
+    transport.seek(0);
+    await transport.play();
+
+    expect(sampler.getKeyDownNotes()).toEqual([{ noteId: "queued-held", pitch: 60 }]);
+    expect(sampler.getPedalState()).toEqual({ sustain: false, sostenuto: false, soft: false });
+
+    (mockCtx as unknown as MockAudioContext).currentTime = 0.01;
+    transport.setSpeed(2);
+
+    expect(sampler.getKeyDownNotes()).toEqual([{ noteId: "queued-held", pitch: 60 }]);
+    const voices = (sampler as unknown as {
+      activeVoices: Map<string, { keyState: "down" | "up"; released: boolean; keyReleaseTimePoint?: number; releaseTimePoint?: number }>;
+    }).activeVoices;
+    expect(voices.get("queued-held")?.released).toBe(false);
+    expect(voices.get("queued-held")?.keyReleaseTimePoint).toBeGreaterThan(0.01);
+    expect(sampler.getPedalState()).toEqual({ sustain: false, sostenuto: false, soft: false });
+    const futurePedals = (sampler as unknown as {
+      pedalEvents: Array<{ controller: number; value: number; time: number }>;
+    }).pedalEvents;
+    expect(futurePedals.map(({ controller, value }) => ({ controller, value }))).toEqual([
+      { controller: 64, value: 127 },
+      { controller: 66, value: 127 },
+    ]);
+    expect(futurePedals[0]?.time).toBeCloseTo(0.015, 8);
+    expect(futurePedals[1]?.time).toBeCloseTo(0.02, 8);
+
+    (mockCtx as unknown as MockAudioContext).currentTime = 0.015;
+    expect(sampler.getPedalState().sustain).toBe(true);
+    expect(sampler.getKeyDownNotes()).toEqual([{ noteId: "queued-held", pitch: 60 }]);
+  });
+
+  it("keeps restored pedal holds while a tempo change requeues future NoteOff and pedal commands", async () => {
+    const plan = makeTestPerformancePlan([
+      { type: "press", timeSeconds: 0, noteId: "restored-held", pitch: 60, velocity: 90 },
+      { type: "pedal", timeSeconds: 0.02, controller: 64, value: 127 },
+      { type: "pedal", timeSeconds: 0.03, controller: 66, value: 127 },
+      { type: "release", timeSeconds: 0.15, noteId: "restored-held" },
+      { type: "pedal", timeSeconds: 0.16, controller: 64, value: 0 },
+      { type: "pedal", timeSeconds: 0.17, controller: 66, value: 0 },
+    ]);
+    transport.loadPlan(plan, 1);
+    transport.seek(0.1);
+    await transport.play();
+
+    expect(sampler.getPedalState()).toEqual({ sustain: true, sostenuto: true, soft: false });
+    expect(sampler.getKeyDownNotes()).toEqual([{ noteId: "restored-held", pitch: 60 }]);
+    (mockCtx as unknown as MockAudioContext).currentTime = 0.04;
+    transport.setSpeed(1.5);
+
+    expect(sampler.getPedalState()).toEqual({ sustain: true, sostenuto: true, soft: false });
+    expect(sampler.getKeyDownNotes()).toEqual([{ noteId: "restored-held", pitch: 60 }]);
+    const scheduled = (sampler as unknown as {
+      activeVoices: Map<string, { keyState: "down" | "up"; released: boolean; keyReleaseTimePoint?: number; releaseTimePoint?: number }>;
+      pedalEvents: Array<{ controller: number; value: number; time: number }>;
+    });
+    const voice = scheduled.activeVoices.get("restored-held");
+    expect(voice?.keyReleaseTimePoint).toBeCloseTo(0.046667, 5);
+    expect(voice?.released).toBe(true);
+    expect(voice?.releaseTimePoint).toBeCloseTo(0.06, 5);
+    expect(scheduled.pedalEvents.map(({ controller, value }) => ({ controller, value }))).toEqual([
+      { controller: 64, value: 0 },
+      { controller: 66, value: 0 },
+    ]);
+    expect(scheduled.pedalEvents.every((event) => event.time > 0.04)).toBe(true);
+
+    (mockCtx as unknown as MockAudioContext).currentTime = 0.055;
+    expect(sampler.getPedalState()).toEqual({ sustain: false, sostenuto: true, soft: false });
+    expect(voice?.releaseTimePoint).toBeCloseTo(0.06, 5);
+    (mockCtx as unknown as MockAudioContext).currentTime = 0.065;
+    expect(sampler.getPedalState()).toEqual({ sustain: false, sostenuto: false, soft: false });
+    expect(voice?.released).toBe(true);
   });
 
   it("reconstructs sustain, sostenuto capture, and soft pedal state in event order", async () => {

@@ -1,6 +1,6 @@
 import type { ExportResolutionPreset, VideoExportDimensions } from "./types";
 
-export const VIDEO_FPS = 60;
+export const VIDEO_FPS = 30;
 export const VIDEO_TAIL_S = 1.5;
 
 export const RESOLUTION_PRESETS: Record<ExportResolutionPreset, { width: number; height: number; label: string }> = {

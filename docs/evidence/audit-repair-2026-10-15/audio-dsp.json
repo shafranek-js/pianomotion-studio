@@ -1,0 +1,51 @@
+{
+  "date": "2026-10-15",
+  "command": "npx playwright test --config playwright.audio-dsp.config.ts",
+  "browser": "Chromium headless, local Vite dev server at http://127.0.0.1:5176",
+  "csp": "Exact Content-Security-Policy from apps/client/public/_headers injected as an early meta policy",
+  "result": "passed",
+  "measuredSpeeds": [0.25, 0.5, 1, 2],
+  "permanentRegressionSuiteUpdate": {
+    "status": "added-after-this-recorded-run; pending rerun by root",
+    "uiSupportedSpeeds": [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2],
+    "fixedOutputWindowsSeconds": {
+      "speedsBelow2x": [[1, 1.5], [1.5, 2]],
+      "speed2x": [[0.5, 1], [1, 1.5]]
+    },
+    "requiresNonzeroToneRms": true
+  },
+  "pitchMeasurement": "Normalized autocorrelation with parabolic lag interpolation over two steady-state 0.4-second output windows per speed",
+  "pitchToleranceCents": 5,
+  "pitchWindows": [
+    { "speed": 0.25, "fromSeconds": 0.8, "toSeconds": 1.2, "errorCents": 1.5892 },
+    { "speed": 0.25, "fromSeconds": 1.2, "toSeconds": 1.6, "errorCents": 4.4216 },
+    { "speed": 0.5, "fromSeconds": 0.8, "toSeconds": 1.2, "errorCents": 2.6230 },
+    { "speed": 0.5, "fromSeconds": 1.2, "toSeconds": 1.6, "errorCents": 2.6192 },
+    { "speed": 1, "fromSeconds": 0.8, "toSeconds": 1.2, "errorCents": 1.5268 },
+    { "speed": 1, "fromSeconds": 1.2, "toSeconds": 1.6, "errorCents": 1.5380 },
+    { "speed": 2, "fromSeconds": 0.8, "toSeconds": 1.2, "errorCents": 1.2061 },
+    { "speed": 2, "fromSeconds": 1.2, "toSeconds": 1.6, "errorCents": 1.2101 }
+  ],
+  "markerPosition": [
+    { "speed": 0.25, "expectedSeconds": 2, "measuredSeconds": 2.0075, "errorMilliseconds": 7.5 },
+    { "speed": 0.5, "expectedSeconds": 1, "measuredSeconds": 1, "errorMilliseconds": 0 },
+    { "speed": 1, "expectedSeconds": 0.5, "measuredSeconds": 0.5025, "errorMilliseconds": 2.5 },
+    { "speed": 2, "expectedSeconds": 0.25, "measuredSeconds": 0.2525, "errorMilliseconds": 2.5 }
+  ],
+  "syntheticSoundFont": {
+    "purpose": "Browser-generated bank checks one-shot, continuous-loop, mode-3 pedal hold/tail behavior, and sequential offline voice preservation; not a user or commercial bank.",
+    "mode0TailRms": 0.89,
+    "mode0PreTailRms": 0.101136,
+    "mode1HeldLoopRms": 0.560591,
+    "mode3HeldLoopRms": 0.560591,
+    "mode1ReleasedRms": 0.000855,
+    "mode3ReleasedTailRms": 0.007522,
+    "mode3ToMode1ReleasedRmsRatio": 8.8,
+    "sequentialNotes": 100,
+    "minimumOnsetPeak": 0.491998
+  },
+  "limitations": [
+    "This synthetic-bank browser test verifies renderer behavior, not compatibility with arbitrary user SoundFonts.",
+    "This is automated headless browser evidence, not manual hardware or subjective audio acceptance."
+  ]
+}

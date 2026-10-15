@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { loadStudioSong, settledStudio } from "./studio-helpers";
 
 test.describe("M5 Profiles, Settings & Durable Persistence (W034–W038, Gate G5)", () => {
   test("complete profiles & settings journey: profile switching, anatomy editing, settings modal, and autosave recovery", async ({
@@ -7,31 +8,18 @@ test.describe("M5 Profiles, Settings & Durable Persistence (W034–W038, Gate G5
     const pageErrors: string[] = [];
     page.on("pageerror", (err) => pageErrors.push(err.message));
 
-    await page.goto("/");
-
-    // 1. Initial page header verification
-    await expect(page).toHaveTitle("PianoMotion Studio · MIDI diagnostics");
-
-    // 2. Select fixture and run analysis
-    await page.locator("#fixture-select").selectOption("tracked-right-hand");
-    await page.locator("#analyze-button").click();
-
-    // 3. Wait for analysis to finish and player to mount
-    await expect(page.locator(".player-card")).toBeVisible({ timeout: 35_000 });
-    await expect(page.locator("#piano-canvas-container canvas")).toBeVisible({
-      timeout: 5_000,
-    });
+    test.setTimeout(180_000);
+    const initial = await loadStudioSong(page);
 
     // 4. Verify M5 action buttons in player header
-    const profileBtn = page.locator("#profile-modal-btn");
-    const settingsBtn = page.locator("#settings-modal-btn");
+    const profileBtn = page.getByRole("button", {name: "Open pianist settings", exact: true});
+    const settingsBtn = page.getByRole("button", {name: "Open preferences", exact: true});
     await expect(profileBtn).toBeVisible();
     await expect(settingsBtn).toBeVisible();
-    await expect(profileBtn).toContainText(/Default/i);
 
     // 5. Open and test Settings Modal
     await settingsBtn.click();
-    const settingsModal = page.locator('[role="dialog"][aria-labelledby="settings-modal-title"]');
+    const settingsModal = page.getByRole("dialog", {name: "Preferences", exact:true});
     await expect(settingsModal).toBeVisible();
 
     // Change key geometry to Equal key widths
@@ -50,7 +38,7 @@ test.describe("M5 Profiles, Settings & Durable Persistence (W034–W038, Gate G5
 
     // 6. Open and test Profiles Modal
     await profileBtn.click();
-    const profileModal = page.locator('[role="dialog"][aria-labelledby="profile-modal-title"]');
+    const profileModal = page.getByRole("dialog", {name:"Pianist settings", exact:true});
     await expect(profileModal).toBeVisible();
 
     // Verify Active Profile dropdown contains canonical profiles
@@ -59,6 +47,10 @@ test.describe("M5 Profiles, Settings & Durable Persistence (W034–W038, Gate G5
 
     // Switch to Virtuoso profile
     await activeProfileSelect.selectOption("virtuoso");
+    await expect(profileModal.getByRole("button", {name:"Save & Apply",exact:true})).toBeDisabled();
+    await profileModal.getByRole("button", {name:"Duplicate",exact:true}).click();
+    await expect(activeProfileSelect).not.toHaveValue("virtuoso");
+    const customProfileId=await activeProfileSelect.inputValue();
 
     // Switch to Motion tab
     await profileModal.getByRole("tab", { name: /Motion/i }).click();
@@ -74,7 +66,9 @@ test.describe("M5 Profiles, Settings & Durable Persistence (W034–W038, Gate G5
     await expect(profileModal).toBeHidden();
 
     // Player header updates to show "Virtuoso" profile
-    await expect(profileBtn).toContainText(/Virtuoso/i, { timeout: 10_000 });
+    const applied = await settledStudio(page, initial.result.revision);
+    expect(applied.profile.profileId).toBe(customProfileId);
+    expect(applied.keyStyle).toBe("equal");
 
     // 7. Verify Autosave session in IndexedDB (wait for debounce flush)
     await page.waitForTimeout(1_000);

@@ -1,65 +1,31 @@
-# Hand-thesia Web — Rollback & Recovery Procedures
+# PianoMotion Studio — recovery and rollback
 
-This runbook outlines operational procedures for rolling back web deployments, handling service worker cache invalidation, and recovering from data or runtime issues.
+Current implementation: 2026-10-15 remediation. See AUDIT_REPAIR_PROGRESS.md for actual acceptance; historical milestone reports are not current release evidence.
 
----
+## Protect data first
 
-## 1. Hosting / CDN Deployment Rollback
+Keep the existing tab open after any save, import, Worker, bank or update error. A project is saved only after its IndexedDB transaction commits and the exact recovery snapshot is flushed. Update activation additionally checks that project/revision/change token have not changed during the operation. A blocked or failed result must not reload the tab.
 
-Because Hand-thesia Web is distributed as an immutable static client bundle (`web/apps/client/dist`), rollbacks on modern static hosts (Cloudflare Pages, Netlify, Vercel, S3/CloudFront) are instant and zero-downtime:
+If calculation fails, retain the editable draft and use Retry calculation in Diagnostics. If bank preparation fails, the previous prepared audio output remains active. A malformed import must not replace the current session. Where possible export a verified project package before maintenance; keep original MIDI/audio/SF2 files separately.
 
-1. **Host Dashboard**:
-   - Navigate to the deployment history in the hosting provider dashboard.
-   - Select the previous stable deployment hash/ID.
-   - Click **Promote to Production** / **Rollback**.
-2. **CDN Cache Purge**:
-   - Purge `/index.html`, `/sw.js`, and `/manifest.webmanifest`.
-   - Hashed static assets in `/assets/` do not require purging because they are content-hashed and immutable.
+Do not clear site data, delete IndexedDB, delete stores, unregister all service workers or remove unrelated origin caches as routine repair. Browser profiles and origins have separate databases; moving between localhost ports does not migrate them.
 
----
+## Production release rollback
 
-## 2. Client-Side Service Worker Cache Invalidation
+The output is apps/client/dist, generated with npm run build. Each build has a content-derived ID, a matching sw.js, offline-manifest.json, and immutable releases/<buildId>/ assets. App base path and release resource base are separate. For a subdirectory set APP_BASE=/pianomotion/ before building and unset it afterwards for root builds.
 
-When an urgent hotfix or rollback occurs, client browsers that have cached the previous Service Worker must be forced to refresh:
+Rollback is a deployment operation and needs separate authorization. Preserve the complete previous deployment, including its immutable release directory. Restore a coherent index, manifest and service worker together; do not hand-edit hashes, copy only new Python files over an older shell, or purge release assets used by open tabs. Mutable entry points should revalidate; release assets can be immutable.
 
-1. **Increment Cache Version in `sw.js`**:
-   - Change `CACHE_NAME = 'handthesia-shell-v1'` to `handthesia-shell-v2`.
-   - On the next client visit, the browser detects byte changes in `/sw.js` (served with `no-cache, no-store, must-revalidate`).
-2. **Automatic Lifecycle Handling**:
-   - The service worker `activate` event automatically deletes all caches that do not match the current `CACHE_NAME` or `PYODIDE_CACHE`:
-     ```js
-     caches.keys().then((keys) =>
-       Promise.all(
-         keys.filter((k) => k !== CACHE_NAME && k !== PYODIDE_CACHE).map((k) => caches.delete(k)),
-       ),
-     );
-     ```
-   - `self.clients.claim()` ensures active tabs immediately transition to the updated worker.
+The service worker stages and SHA-256 verifies every mandatory file, then publishes a completion marker as its last cache write. A failed final copy removes that incomplete cache; the last committed release remains usable. Cache retention uses installation metadata and open-client build pins, retaining current and previous committed releases and pinned releases. Only the application's base-scoped namespace is eligible for collection. Unrecognized older caches are left alone rather than risking unrelated data.
 
----
+An update is offered through the status bar, including an update already waiting when the tab opened. The save barrier runs before activation. If it reports quota, abort, pending replan or intervening changes, fix that condition and retry; a failed save is not permission to refresh.
 
-## 3. Database & Storage Migration Recovery
+## Inspect storage without modifying it
 
-### IndexedDB Schema Versioning:
-- Current Database: `handthesia_db` at version `2`.
-- Store layout:
-  - `projects`: Primary project storage.
-  - `profiles`: Custom PianistProfile DTOs.
-  - `settings`: Client configuration.
-  - `session`: Autosave recovery snapshots.
+The project database is handthesia_db, schema version 2, with projects, profiles, settings and session stores. SF2 source bytes live in the separate asset database implemented by audio/soundfont/soundfontAssetStore.ts; musical packages do not embed them automatically. Layout preferences live separately from musical documents.
 
-### Emergency Database Recovery:
-If a client experiences corrupted local storage:
-1. Open Developer Tools -> Application / Storage -> IndexedDB -> `handthesia_db`.
-2. Inspect the `session` store for the last valid autosave snapshot (`AUTOSAVE_SESSION_ID`).
-3. To reset settings without losing songs: delete the `handthesia:settings` key in `localStorage`.
-4. If a hard reset is necessary: click **Clear site data**; users can re-import their saved `.handthesia.json` project packages.
+Record origin, build ID, engine hash, project ID/revision, error text and whether a transaction committed. Use read-only DevTools inspection or copy records for diagnosis. Do not overwrite a damaged record automatically: retain the original for developer-assisted recovery. A request-success event alone is not evidence of commit.
 
----
+## Source rollback in this checkout
 
-## 4. Source Control Rollback Policy
-
-In accordance with project best practices:
-- All application files reside strictly within `web/`.
-- Never execute destructive `git reset --hard` or `git clean` on shared environments.
-- Use explicit revert commits (`git revert <commit-sha>`) if rollbacks are authorized by the user.
+Working directory: C:\Projects\pianomotion-studio. Preserve dirty/untracked user work. No commit, reset, clean, push or publication is part of remediation. If a later authorized rollback uses Git, review and preserve current changes first; use an explicit scoped revert or a separate checkout instead of destructive reset/clean.

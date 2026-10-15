@@ -3,6 +3,7 @@ import {
   computeBottomLayout,
   BOTTOM_MAX_SHARE,
   FELT_H,
+  getKeyboardInventory,
   HAND_AREA_MIN_H,
   HAND_LEN_WW,
   KEY_LEN_WW,
@@ -35,7 +36,7 @@ describe("computeBottomLayout (hand viewport framing)", () => {
     expect(handRect.x).toBe(0);
   });
 
-  it("centers keyboard and clamps width when aspect ratio is ultra-wide (1920x600)", () => {
+  it("keeps all 88 keys across the viewport and caps vertical height when ultra-wide (1920x600)", () => {
     const layout = computeBottomLayout(1920, 600);
     const { keyboardRect, handRect, feltRect } = layout;
 
@@ -43,9 +44,9 @@ describe("computeBottomLayout (hand viewport framing)", () => {
     const totalBottomH = keyboardRect.height + handRect.height;
     expect(totalBottomH).toBeLessThanOrEqual(300);
 
-    // Keyboard is centered with margins
-    expect(keyboardRect.x).toBeGreaterThan(0);
-    expect(keyboardRect.x * 2 + keyboardRect.width).toBeCloseTo(1920, -1);
+    // Horizontal width represents the full piano regardless of viewport height.
+    expect(keyboardRect.x).toBe(0);
+    expect(keyboardRect.width).toBe(1920);
     expect(handRect.x).toBe(keyboardRect.x);
     expect(handRect.width).toBe(keyboardRect.width);
     expect(feltRect.x).toBe(keyboardRect.x);
@@ -87,5 +88,23 @@ describe("computeBottomLayout (hand viewport framing)", () => {
     expect(wristScreenY).toBeLessThanOrEqual(800);
     expect(wristScreenY).toBeGreaterThanOrEqual(keyboardBottom);
     expect(wristScreenY).toBeLessThanOrEqual(layout.handRect.y + layout.handRect.height);
+  });
+
+  it("preserves all 88 keys at narrow and short workspace sizes", () => {
+    for (const [width, height] of [[320, 220], [1600, 160]]) {
+      const layout = computeBottomLayout(width, height);
+      const keyboard = new KeyboardLayout();
+      keyboard.compute(layout.keyboardRect, "realistic");
+      const inventory = getKeyboardInventory(keyboard.keyRects);
+
+      expect(layout.keyboardRect.x).toBe(0);
+      expect(layout.keyboardRect.width).toBe(width);
+      expect(inventory).toEqual({ keyCount: 88, minPitch: 21, maxPitch: 108 });
+      expect(keyboard.getKeyRect(inventory.minPitch)).toBeDefined();
+      expect(keyboard.getKeyRect(inventory.maxPitch)).toBeDefined();
+      expect(layout.keyboardRect.height + layout.handRect.height).toBeLessThanOrEqual(height * BOTTOM_MAX_SHARE);
+      expect(layout.keyboardRect.y + layout.keyboardRect.height).toBe(layout.handRect.y);
+      expect(layout.handRect.y + layout.handRect.height).toBe(height);
+    }
   });
 });

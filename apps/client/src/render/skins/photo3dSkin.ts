@@ -1,6 +1,6 @@
 import type { Graphics } from "pixi.js";
 import type { HandGeometry, ScreenPoint } from "./geometry";
-import { mixRgb, rgbToHex, type SkinSettings } from "./types";
+import { rgbToHex, type SkinSettings } from "./types";
 
 /**
  * Directional stage key light vector in 3D: light coming from above-front.
@@ -104,12 +104,13 @@ export function renderPhoto3dSkin(
   skinSettings: SkinSettings,
   ppi: number,
 ): void {
+  // Keep the renderer signature consistent with the other skin renderers.
+  void ppi;
   const baseCol: [number, number, number] = skinSettings.colors["photo-3d"]?.skin ?? [232, 190, 165];
   const nailCol: [number, number, number] = skinSettings.colors["photo-3d"]?.nail ?? [240, 196, 188];
   const lw = Math.max(1.0, geom.outlineWidth);
 
   // 1. Forearm in 3D
-  const armLen = Math.hypot(geom.armEnd.x - geom.wristCenter.x, geom.armEnd.y - geom.wristCenter.y);
   const hw = geom.wristWidth * 0.55;
 
   draw3DPhalanx(

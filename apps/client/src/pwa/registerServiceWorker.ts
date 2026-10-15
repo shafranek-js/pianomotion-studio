@@ -1,10 +1,19 @@
+import { appBaseUrl, applicationBuildId } from "./urls";
+
+let currentRegistration: ServiceWorkerRegistration | null = null;
+
+export function getCurrentServiceWorkerRegistration(): ServiceWorkerRegistration | null {
+  return currentRegistration;
+}
+
 export interface ServiceWorkerRegistrationCallbacks {
   onUpdate?: (registration: ServiceWorkerRegistration) => void;
   onSuccess?: (registration: ServiceWorkerRegistration) => void;
 }
 
 /**
- * Registers the PWA service worker with scope '/' and sets up lifecycle listeners.
+ * Registers the PWA service worker with scope according to base path and sets up lifecycle listeners.
+ * Only registers in production mode.
  */
 export async function registerServiceWorker(
   callbacks?: ServiceWorkerRegistrationCallbacks,
@@ -13,39 +22,64 @@ export async function registerServiceWorker(
     return null;
   }
 
-  try {
-    const registration = await navigator.serviceWorker.register("/sw.js", {
-      scope: "/",
-    });
+  // Never register service worker in development mode
+  if (import.meta.env.DEV) {
+    return null;
+  }
 
-    registration.addEventListener("updatefound", () => {
+  try {
+    const baseUrl = appBaseUrl();
+    const scopePath = baseUrl.pathname.endsWith("/") ? baseUrl.pathname : `${baseUrl.pathname}/`;
+    const swUrl = appBaseUrl("sw.js").href;
+    const notifiedWorkers = new WeakSet<ServiceWorker>();
+
+    const reportInstalledWorker = (worker: ServiceWorker) => {
+      if (worker.state !== "installed" || notifiedWorkers.has(worker)) {
+        return;
+      }
+      notifiedWorkers.add(worker);
+      if (navigator.serviceWorker.controller) {
+        window.dispatchEvent(new CustomEvent("sw-update-available", { detail: { registration } }));
+        callbacks?.onUpdate?.(registration);
+      } else {
+        window.dispatchEvent(new CustomEvent("sw-installed", { detail: { registration } }));
+        callbacks?.onSuccess?.(registration);
+      }
+    };
+
+    const registration = await navigator.serviceWorker.register(swUrl, {
+      scope: scopePath,
+      updateViaCache: "none",
+    });
+    currentRegistration = registration;
+
+    const watchInstallingWorker = () => {
       const installingWorker = registration.installing;
       if (!installingWorker) {
         return;
       }
-
+      reportInstalledWorker(installingWorker);
       installingWorker.addEventListener("statechange", () => {
-        if (installingWorker.state === "installed") {
-          if (navigator.serviceWorker.controller) {
-            // New content is available; update can be triggered
-            window.dispatchEvent(
-              new CustomEvent("sw-update-available", {
-                detail: { registration },
-              }),
-            );
-            callbacks?.onUpdate?.(registration);
-          } else {
-            // Core shell assets are cached for offline availability
-            window.dispatchEvent(
-              new CustomEvent("sw-installed", {
-                detail: { registration },
-              }),
-            );
-            callbacks?.onSuccess?.(registration);
-          }
-        }
+        reportInstalledWorker(installingWorker);
       });
-    });
+    };
+
+    registration.addEventListener("updatefound", watchInstallingWorker);
+    watchInstallingWorker();
+
+    const pinBuildForCurrentController = () => {
+      navigator.serviceWorker.controller?.postMessage({
+        type: "PIN_BUILD",
+        buildId: applicationBuildId(),
+      });
+    };
+    pinBuildForCurrentController();
+    navigator.serviceWorker.addEventListener("controllerchange", pinBuildForCurrentController);
+
+    // A page opened after an update was previously installed still needs to surface that waiting worker.
+    if (registration.waiting) {
+      reportInstalledWorker(registration.waiting);
+    }
 
     return registration;
   } catch (error) {

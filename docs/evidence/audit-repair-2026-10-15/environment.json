@@ -1,0 +1,21 @@
+{
+  "capturedAt": "2026-10-15T06:20:49.253Z",
+  "platform": "win32",
+  "release": "10.0.26200",
+  "architecture": "x64",
+  "cpu": "11th Gen Intel(R) Core(TM) i7-11700F @ 2.50GHz",
+  "logicalCpus": 16,
+  "totalMemoryMiB": 32484,
+  "node": "v24.14.0",
+  "appVersion": "0.1.0-dev.1",
+  "head": "dc7eb963ff793110c586b4e86129cb22282cd452",
+  "dirtyFiles": 128,
+  "engineVersion": "cbac6c063b2895ca471e8f84a43ab3bcf6d47b571f3ccf2643e8a36cc108241b",
+  "unitSnapshot": {
+    "passed": 352,
+    "files": 24,
+    "observed": "2026-10-15 08:17 Europe/Prague",
+    "final": false
+  },
+  "state": "implementation-in-progress"
+}

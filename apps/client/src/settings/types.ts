@@ -53,6 +53,10 @@ export interface Settings {
     | "photo-3d";
   showHandShadow: boolean;
   soundOutput: "synth" | "soundfont" | "webmidi";
+  soundfontAssetId?: string | null;
+  webMidiDeviceId?: string | null;
+  /** MIDI wire channel 0..15; the UI displays 1..16. */
+  webMidiChannel?: number;
 }
 export type AppSettings = Settings;
 
@@ -74,6 +78,9 @@ export const SettingsSchema = z.object({
   skinStyle: SkinStyleSchema.default("realistic"),
   showHandShadow: z.boolean().default(true),
   soundOutput: SoundOutputSchema.default("synth"),
+  soundfontAssetId: z.string().nullable().optional(),
+  webMidiDeviceId: z.string().nullable().optional(),
+  webMidiChannel: z.number().int().min(0).max(15).default(0),
 });
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -89,6 +96,9 @@ export const DEFAULT_SETTINGS: Settings = {
   skinStyle: "realistic",
   showHandShadow: true,
   soundOutput: "synth",
+  soundfontAssetId: null,
+  webMidiDeviceId: null,
+  webMidiChannel: 0,
 };
 
 export type SettingsListener = (settings: Settings) => void;
@@ -159,10 +169,12 @@ export function sanitizeSettings(input: Partial<Settings> | unknown): Settings {
     "photo-3d",
   ] as const;
 
-  const skinStyle: (typeof VALID_SKIN_STYLES)[number] =
+  const storedSkinStyle: (typeof VALID_SKIN_STYLES)[number] =
     typeof raw.skinStyle === "string" && (VALID_SKIN_STYLES as readonly string[]).includes(raw.skinStyle)
       ? (raw.skinStyle as (typeof VALID_SKIN_STYLES)[number])
       : DEFAULT_SETTINGS.skinStyle;
+  const skinStyle = storedSkinStyle === "photo-segmented" || storedSkinStyle === "photo-mesh"
+    ? "realistic" : storedSkinStyle;
 
   const showHandShadow =
     typeof raw.showHandShadow === "boolean"
@@ -173,6 +185,16 @@ export function sanitizeSettings(input: Partial<Settings> | unknown): Settings {
     raw.soundOutput === "synth" || raw.soundOutput === "soundfont" || raw.soundOutput === "webmidi"
       ? raw.soundOutput
       : DEFAULT_SETTINGS.soundOutput;
+
+  const soundfontAssetId =
+    typeof raw.soundfontAssetId === "string" && raw.soundfontAssetId.trim().length > 0
+      ? raw.soundfontAssetId.trim()
+      : null;
+
+  const webMidiDeviceId =
+    typeof raw.webMidiDeviceId === "string" && raw.webMidiDeviceId.trim().length > 0
+      ? raw.webMidiDeviceId.trim()
+      : null;
 
   return {
     keyStyle,
@@ -187,5 +209,9 @@ export function sanitizeSettings(input: Partial<Settings> | unknown): Settings {
     skinStyle,
     showHandShadow,
     soundOutput,
+    soundfontAssetId,
+    webMidiDeviceId,
+    webMidiChannel: typeof raw.webMidiChannel === "number" && Number.isInteger(raw.webMidiChannel)
+      ? Math.max(0, Math.min(15, raw.webMidiChannel)) : 0,
   };
 }

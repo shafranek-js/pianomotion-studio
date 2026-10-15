@@ -1,0 +1,49 @@
+name: Verify studio
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+jobs:
+  windows:
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        channel: [chrome, msedge]
+    defaults:
+      run:
+        working-directory: pianomotion-studio
+    env:
+      PIANOMOTION_BROWSER_CHANNEL: ${{ matrix.channel }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: pianomotion-studio
+      - name: Frozen desktop geometry reference
+        uses: actions/checkout@v4
+        with:
+          repository: V9011N/pygame-piano-animator
+          ref: f8189c021d9235005fb35faa2c8cfbc09a3768a0
+          path: pygame-piano-animator
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: pianomotion-studio/package-lock.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+      - run: npm ci
+      - run: python -m pip install -r python-core/requirements-test.txt
+      - run: npx playwright install chromium
+      - name: Verify selected browser is installed
+        run: npx playwright install ${{ matrix.channel }}
+      - run: npm run ci
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: evidence-${{ matrix.channel }}
+          path: |
+            pianomotion-studio/test-results/
+            pianomotion-studio/playwright-report/
+            pianomotion-studio/docs/evidence/audit-repair-2026-10-15/

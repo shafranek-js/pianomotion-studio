@@ -11,11 +11,12 @@ import mido
 import pytest
 
 
-REPO = Path(__file__).resolve().parents[3]
-CORE_ROOT = REPO / "web" / "python-core"
-FIXTURES = REPO / "web" / "tests" / "fixtures"
-GOLDEN_INDEX = REPO / "web" / "docs" / "evidence" / "baseline-2026-10-13" / "golden-index.json"
-sys.path.insert(0, str(CORE_ROOT))
+REPO = Path(__file__).resolve().parents[2]
+CORE_ROOT = REPO / "python-core"
+FIXTURES = REPO / "tests" / "fixtures"
+GOLDEN_INDEX = REPO / "docs" / "evidence" / "baseline-2026-10-13" / "golden-index.json"
+if str(CORE_ROOT) not in sys.path:
+    sys.path.insert(0, str(CORE_ROOT))
 
 from handthesia_core.api import analyze_midi  # noqa: E402
 from handthesia_core import identity  # noqa: E402
@@ -96,8 +97,15 @@ def test_source_manifest_hash_is_canonical_and_reproducible():
 
 
 def test_keyboard_geometry_matches_desktop_rectangles():
-    import pygame
-    import common
+    desktop_repo = REPO.parent / "pygame-piano-animator"
+    if desktop_repo.exists() and str(desktop_repo) not in sys.path:
+        sys.path.insert(0, str(desktop_repo))
+    try:
+        import pygame
+        import common
+    except ImportError as exc:
+        pytest.skip(f"Desktop pygame/common not available: {exc}")
+        return
 
     cases = [
         (21, 108, "realistic", (17, 19, 1400, 150)),
@@ -253,3 +261,17 @@ def test_profile_a_b_a_runs_are_observationally_isolated():
     assert default["motionPlan"] == run_a_again["motionPlan"]
     assert run_b["profile"]["profileId"] == "larger-hand"
     assert run_b["motionPlan"] != default["motionPlan"]
+
+
+if __name__ == "__main__":
+    for test in (
+        test_python_package_imports_without_pygame,
+        test_source_manifest_hash_is_canonical_and_reproducible,
+        test_keyboard_geometry_matches_desktop_rectangles,
+        test_core_matches_frozen_desktop_numeric_fields_for_all_fixtures,
+        test_raw_event_mapping_never_claims_a_clean_cross_track_duplicate,
+        test_document_source_ids_follow_normalizer_aliases_not_pitch_time_join,
+        test_profile_a_b_a_runs_are_observationally_isolated,
+    ):
+        test()
+        print(f"PASS: {test.__name__}")

@@ -4,6 +4,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { M1AnalyzeMidiResult } from "@handthesia/contracts";
 import { compareM1ResultToGolden, type GoldenFixture, type FixtureParity } from "../parity/compare";
+import { openStudioInspector } from "./studio-helpers";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -60,9 +61,17 @@ test.describe.serial("M1 Pyodide browser verification suite", () => {
     });
 
     await page.goto("/");
-    await expect(page).toHaveTitle("PianoMotion Studio · MIDI diagnostics");
+    await expect(page).toHaveTitle("PianoMotion Studio");
+    await openDeveloperTools();
     await expect(page.locator("#fixture-select")).toBeEnabled({ timeout: 30_000 });
   });
+
+  async function openDeveloperTools() {
+    await openStudioInspector(page, "Diagnostics");
+    if (!await page.locator("#fixture-select").isVisible()) {
+      await page.getByText("Developer tools", {exact:true}).click();
+    }
+  }
 
   test.afterAll(async () => {
     if (page) {
@@ -89,6 +98,7 @@ test.describe.serial("M1 Pyodide browser verification suite", () => {
     durationMs: number;
     memoryBytes?: number;
   }> {
+    await openDeveloperTools();
     const fixtureSelect = page.locator("#fixture-select");
     await expect(fixtureSelect).toBeEnabled({ timeout: 15_000 });
 
@@ -108,10 +118,15 @@ test.describe.serial("M1 Pyodide browser verification suite", () => {
     await page.waitForFunction(
       () =>
         (window.__m1LastResult !== null && window.__m1LastResult !== undefined) ||
-        (window.__m1LastError !== null && window.__m1LastError !== undefined),
+        (window.__m1LastError !== null && window.__m1LastError !== undefined) ||
+        document.querySelector('[role="alertdialog"][aria-labelledby="replace-project-title"]') !== null,
       undefined,
       { timeout: 90_000 },
     );
+    const replaceDialog = page.getByRole("alertdialog", {name:"Unsaved changes"});
+    if (await replaceDialog.isVisible()) {
+      await replaceDialog.getByRole("button", {name:"Discard and open", exact:true}).click();
+    }
 
     const durationMs = Date.now() - startMs;
 
@@ -177,6 +192,7 @@ test.describe.serial("M1 Pyodide browser verification suite", () => {
   }
 
   test("cancellation terminates worker and disposes job", async () => {
+    await openDeveloperTools();
     const fixtureSelect = page.locator("#fixture-select");
     await expect(fixtureSelect).toBeEnabled();
     // Use stress fixture so worker has real computation underway
@@ -197,8 +213,8 @@ test.describe.serial("M1 Pyodide browser verification suite", () => {
     await cancelButton.click();
 
     // Verify UI reflects cancellation
-    await expect(page.getByRole("status")).toContainText(
-      "Analysis canceled. The Worker was terminated.",
+    await expect(page.getByTestId("studio-status")).toContainText(
+      /cancel/i,
       { timeout: 5_000 },
     );
 
@@ -220,26 +236,21 @@ test.describe.serial("M1 Pyodide browser verification suite", () => {
     expect(invalidRun.result.document).toBeNull();
     expect(invalidRun.result.diagnostics.length).toBeGreaterThan(0);
     expect(invalidRun.result.diagnostics[0]?.code).toBe("midi-load-failed");
-    await expect(page.getByRole("status")).toContainText("MIDI input rejected");
+    await expect(page.getByTestId("studio-status")).toContainText(/rejected|invalid|failed/i);
 
     // 2. Test uploaded corrupted custom file
     const fileInput = page.locator("#midi-file");
     const corruptBuffer = Buffer.from("CORRUPT_NOT_A_MIDI_HEADER_1234567890");
-    await fileInput.setInputFiles({
-      name: "corrupt-test.mid",
-      mimeType: "audio/midi",
-      buffer: corruptBuffer,
-    });
-
-    const analyzeButton = page.locator("#analyze-button");
-    await expect(analyzeButton).toBeEnabled();
-
     await page.evaluate(() => {
       window.__m1LastResult = null;
       window.__m1LastError = null;
     });
 
-    await analyzeButton.click();
+    await fileInput.setInputFiles({
+      name: "corrupt-test.mid",
+      mimeType: "audio/midi",
+      buffer: corruptBuffer,
+    });
 
     await page.waitForFunction(
       () =>
@@ -249,10 +260,10 @@ test.describe.serial("M1 Pyodide browser verification suite", () => {
       { timeout: 30_000 },
     );
 
-    const customResult = await page.evaluate(() => window.__m1LastResult);
-    expect(customResult).not.toBeNull();
-    expect(customResult?.status).toBe("invalid");
-    expect(customResult?.diagnostics.some((d) => d.code === "midi-load-failed")).toBe(true);
+    await expect(page.getByTestId("studio-status")).toContainText(/invalid|rejected|not opened|failed/i);
+    // The invalid fixture above verifies the raw Worker result. The File path
+    // rejects an unusable candidate and retains the currently mounted project.
+    expect(await page.evaluate(() => window.__m1LastError)).toBeTruthy();
 
     // 3. Verify worker did not crash and can process valid input immediately
     const validRun = await runFixtureAnalysis("tracked-right-hand");

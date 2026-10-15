@@ -1,15 +1,19 @@
 import type { MidiOutputDevice, WebMidiListener, WebMidiStatus } from "./types";
 
+let sharedMidiAccess: MIDIAccess | null = null;
+let sharedAccessRequest: Promise<MIDIAccess> | null = null;
+const attachedManagers = new Set<WebMidiOutputManager>();
+let sharedManager: WebMidiOutputManager | null = null;
+
 /**
- * Controller for optional hardware Web MIDI output (W044).
- * Supports hot-plugging, device disconnect safety, timestamp scheduling,
- * and comprehensive panic / silence-all.
+ * Controller for optional hardware Web MIDI output. Permission is requested
+ * only by `requestPermissionFromUserGesture`; `init` only reuses a grant.
  */
 export class WebMidiOutputManager {
   private midiAccess: MIDIAccess | null = null;
   private activeOutput: MIDIOutput | null = null;
   private activeDeviceId: string | null = null;
-  private listeners = new Set<WebMidiListener>();
+  private readonly listeners = new Set<WebMidiListener>();
   private status: WebMidiStatus = {
     supported: false,
     permission: "prompt",
@@ -19,65 +23,66 @@ export class WebMidiOutputManager {
 
   constructor() {
     this.status.supported = typeof navigator !== "undefined" && "requestMIDIAccess" in navigator;
-    if (!this.status.supported) {
-      this.status.permission = "unsupported";
-    }
+    if (!this.status.supported) this.status.permission = "unsupported";
   }
 
-  /**
-   * Initializes Web MIDI access and scans available output devices.
-   */
+  /** Reuses an existing grant and never opens the browser permission prompt. */
   public async init(): Promise<WebMidiStatus> {
+    if (!this.status.supported) {
+      this.status.permission = "unsupported";
+    } else if (sharedMidiAccess) {
+      this.attachAccess(sharedMidiAccess);
+    }
+    this.notify();
+    return this.getStatus();
+  }
+
+  /** Must be called directly from a user gesture, such as Settings > Connect. */
+  public async requestPermissionFromUserGesture(): Promise<WebMidiStatus> {
     if (!this.status.supported || typeof navigator.requestMIDIAccess !== "function") {
       this.status.permission = "unsupported";
       this.notify();
       return this.getStatus();
     }
 
-    try {
-      this.midiAccess = await navigator.requestMIDIAccess({ sysex: false });
-      this.status.permission = "granted";
-      this.updateDeviceList();
+    if (sharedMidiAccess) {
+      this.attachAccess(sharedMidiAccess);
+      this.notify();
+      return this.getStatus();
+    }
 
-      // Listen for connection / disconnection of MIDI hardware
-      this.midiAccess.onstatechange = () => {
-        this.updateDeviceList();
-      };
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
+    try {
+      sharedAccessRequest ??= navigator.requestMIDIAccess({ sysex: false });
+      sharedMidiAccess = await sharedAccessRequest;
+      this.attachAccess(sharedMidiAccess);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
       this.status.permission = "denied";
-      this.status.errorMessage = msg;
+      this.status.errorMessage = message;
+    } finally {
+      sharedAccessRequest = null;
     }
 
     this.notify();
     return this.getStatus();
   }
 
-  /**
-   * Lists currently connected MIDI output devices.
-   */
   public getStatus(): WebMidiStatus {
-    return {
-      ...this.status,
-      devices: [...this.status.devices],
-    };
+    return { ...this.status, devices: [...this.status.devices] };
   }
 
-  /**
-   * Selects an active MIDI output device by its ID, or null to disable.
-   */
   public selectDevice(deviceId: string | null): boolean {
-    if (this.activeDeviceId === deviceId) {
-      return true;
-    }
+    if (this.activeDeviceId === deviceId) return true;
 
     if (this.activeOutput) {
-      this.silenceAll();
+      this.clearScheduledMessages();
+      this.silenceActiveOutput(this.activeOutput);
       this.activeOutput = null;
     }
 
     this.activeDeviceId = deviceId;
     this.status.activeDeviceId = deviceId;
+    this.status.errorMessage = undefined;
 
     if (!deviceId || !this.midiAccess) {
       this.notify();
@@ -85,132 +90,69 @@ export class WebMidiOutputManager {
     }
 
     const output = this.midiAccess.outputs.get(deviceId);
-    if (output) {
+    if (output && output.state === "connected") {
       this.activeOutput = output;
       this.notify();
       return true;
     }
 
-    // Device not found
     this.activeDeviceId = null;
     this.status.activeDeviceId = null;
+    this.status.errorMessage = "Selected MIDI output is not connected.";
     this.notify();
     return false;
   }
 
-  /**
-   * Sends a MIDI Note On command.
-   */
   public sendNoteOn(pitch: number, velocity: number, channel = 0, timestampMs?: number): void {
-    if (!this.activeOutput) return;
-    const clampedPitch = Math.max(0, Math.min(127, Math.round(pitch)));
-    const clampedVelocity = Math.max(0, Math.min(127, Math.round(velocity)));
-    const clampedChannel = Math.max(0, Math.min(15, Math.round(channel)));
-
-    const statusByte = 0x90 | clampedChannel;
-    try {
-      if (timestampMs !== undefined) {
-        this.activeOutput.send([statusByte, clampedPitch, clampedVelocity], timestampMs);
-      } else {
-        this.activeOutput.send([statusByte, clampedPitch, clampedVelocity]);
-      }
-    } catch {
-      // Ignore transient send failures on unplugged device
-    }
+    const clampedPitch = this.clampMidiValue(pitch);
+    const clampedVelocity = this.clampMidiValue(velocity);
+    const statusByte = 0x90 | this.clampChannel(channel);
+    this.send([statusByte, clampedPitch, clampedVelocity], timestampMs);
   }
 
-  /**
-   * Sends a MIDI Note Off command.
-   */
   public sendNoteOff(pitch: number, channel = 0, timestampMs?: number): void {
-    if (!this.activeOutput) return;
-    const clampedPitch = Math.max(0, Math.min(127, Math.round(pitch)));
-    const clampedChannel = Math.max(0, Math.min(15, Math.round(channel)));
-
-    const statusByte = 0x80 | clampedChannel;
-    try {
-      if (timestampMs !== undefined) {
-        this.activeOutput.send([statusByte, clampedPitch, 0], timestampMs);
-      } else {
-        this.activeOutput.send([statusByte, clampedPitch, 0]);
-      }
-    } catch {
-      // Ignore transient send failures
-    }
+    const clampedPitch = this.clampMidiValue(pitch);
+    const statusByte = 0x80 | this.clampChannel(channel);
+    this.send([statusByte, clampedPitch, 0], timestampMs);
   }
 
-  /**
-   * Sends a MIDI Control Change (e.g. sustain CC 64, sostenuto CC 66, soft CC 67, volume CC 7).
-   */
   public sendControlChange(controller: number, value: number, channel = 0, timestampMs?: number): void {
-    if (!this.activeOutput) return;
-    const clampedCtrl = Math.max(0, Math.min(127, Math.round(controller)));
-    const clampedVal = Math.max(0, Math.min(127, Math.round(value)));
-    const clampedChannel = Math.max(0, Math.min(15, Math.round(channel)));
+    const statusByte = 0xb0 | this.clampChannel(channel);
+    this.send([statusByte, this.clampMidiValue(controller), this.clampMidiValue(value)], timestampMs);
+  }
 
-    const statusByte = 0xb0 | clampedChannel;
+  /** Clears timestamped commands that have not reached the device yet. */
+  public clearScheduledMessages(): void {
     try {
-      if (timestampMs !== undefined) {
-        this.activeOutput.send([statusByte, clampedCtrl, clampedVal], timestampMs);
-      } else {
-        this.activeOutput.send([statusByte, clampedCtrl, clampedVal]);
-      }
+      (this.activeOutput as (MIDIOutput & { clear?: () => void }) | null)?.clear?.();
     } catch {
-      // Ignore transient send failures
+      // The port may have disconnected between status checks and this call.
     }
   }
 
-  /**
-   * Sends panic / silence commands across all channels (All Notes Off, All Sound Off, Reset Pedals).
-   */
   public silenceAll(): void {
-    if (!this.activeOutput) return;
-    try {
-      for (let ch = 0; ch < 16; ch++) {
-        const statusByte = 0xb0 | ch;
-        // CC 120: All Sound Off
-        this.activeOutput.send([statusByte, 120, 0]);
-        // CC 123: All Notes Off
-        this.activeOutput.send([statusByte, 123, 0]);
-        // CC 64: Sustain Off
-        this.activeOutput.send([statusByte, 64, 0]);
-        // CC 66: Sostenuto Off
-        this.activeOutput.send([statusByte, 66, 0]);
-        // CC 67: Soft Off
-        this.activeOutput.send([statusByte, 67, 0]);
-      }
-    } catch {
-      // Ignore
-    }
+    this.clearScheduledMessages();
+    if (this.activeOutput) this.silenceActiveOutput(this.activeOutput);
   }
 
-  /**
-   * Subscribes to status and device list updates.
-   */
   public subscribe(listener: WebMidiListener): () => void {
     this.listeners.add(listener);
     listener(this.getStatus());
-    return () => {
-      this.listeners.delete(listener);
-    };
+    return () => this.listeners.delete(listener);
   }
 
-  /**
-   * Cleans up listeners and silences active output.
-   */
+  /** Detaches this manager while retaining the shared browser permission grant. */
   public dispose(): void {
     this.silenceAll();
     this.activeOutput = null;
     this.activeDeviceId = null;
     this.status.activeDeviceId = null;
+    this.status.devices = [];
     this.listeners.clear();
-    if (this.midiAccess) {
-      this.midiAccess.onstatechange = null;
-      this.midiAccess = null;
-    }
+    this.detachAccess();
   }
 
-  private updateDeviceList(): void {
+  public refreshDevices(): void {
     if (!this.midiAccess) return;
     const devices: MidiOutputDevice[] = [];
     for (const [id, port] of this.midiAccess.outputs.entries()) {
@@ -223,20 +165,78 @@ export class WebMidiOutputManager {
     }
 
     this.status.devices = devices;
-
-    // Check if previously active device was disconnected
     if (this.activeDeviceId) {
-      const activePort = this.midiAccess.outputs.get(this.activeDeviceId);
-      if (!activePort || activePort.state !== "connected") {
+      const port = this.midiAccess.outputs.get(this.activeDeviceId);
+      if (!port || port.state !== "connected") {
         this.activeOutput = null;
         this.activeDeviceId = null;
         this.status.activeDeviceId = null;
+        this.status.errorMessage = "The active MIDI output disconnected.";
       } else {
-        this.activeOutput = activePort;
+        this.activeOutput = port;
       }
     }
-
     this.notify();
+  }
+
+  private attachAccess(access: MIDIAccess): void {
+    if (this.midiAccess === access) {
+      this.status.permission = "granted";
+      this.refreshDevices();
+      return;
+    }
+    if (this.midiAccess) this.detachAccess();
+    this.midiAccess = access;
+    this.status.permission = "granted";
+    attachedManagers.add(this);
+    if (attachedManagers.size === 1) {
+      access.onstatechange = () => {
+        for (const manager of attachedManagers) manager.refreshDevices();
+      };
+    }
+    this.refreshDevices();
+  }
+
+  private detachAccess(): void {
+    if (!this.midiAccess) return;
+    attachedManagers.delete(this);
+    if (attachedManagers.size === 0 && this.midiAccess.onstatechange) {
+      this.midiAccess.onstatechange = null;
+    }
+    this.midiAccess = null;
+  }
+
+  private send(message: number[], timestampMs?: number): void {
+    if (!this.activeOutput) return;
+    try {
+      if (timestampMs === undefined) this.activeOutput.send(message);
+      else this.activeOutput.send(message, timestampMs);
+    } catch {
+      // Ignore transient send failures on an unplugged device.
+    }
+  }
+
+  private silenceActiveOutput(output: MIDIOutput): void {
+    try {
+      for (let channel = 0; channel < 16; channel++) {
+        const statusByte = 0xb0 | channel;
+        output.send([statusByte, 120, 0]);
+        output.send([statusByte, 123, 0]);
+        output.send([statusByte, 64, 0]);
+        output.send([statusByte, 66, 0]);
+        output.send([statusByte, 67, 0]);
+      }
+    } catch {
+      // Ignore a device disappearing during panic.
+    }
+  }
+
+  private clampMidiValue(value: number): number {
+    return Math.max(0, Math.min(127, Math.round(value)));
+  }
+
+  private clampChannel(channel: number): number {
+    return Math.max(0, Math.min(15, Math.round(channel)));
   }
 
   private notify(): void {
@@ -245,8 +245,14 @@ export class WebMidiOutputManager {
       try {
         listener(current);
       } catch {
-        // Ignore subscriber error
+        // A subscriber must not prevent other status updates.
       }
     }
   }
+}
+
+/** Shared manager for Settings and the active player transport. */
+export function getSharedWebMidiOutputManager(): WebMidiOutputManager {
+  sharedManager ??= new WebMidiOutputManager();
+  return sharedManager;
 }

@@ -16,6 +16,12 @@ SCHEMA_VERSION = 1
 _active_animator_sessions: dict[tuple[str, int, str], dict] = {}
 
 
+def _store_active_session(key: tuple[str, int, str], session_data: dict) -> None:
+    """Store active animator session, evicting previous sessions (A12)."""
+    _active_animator_sessions.clear()
+    _active_animator_sessions[key] = session_data
+
+
 def _manifest():
     path = Path(__file__).with_name("source_manifest.json")
     try:
@@ -620,12 +626,12 @@ def analyze_midi(data: bytes, options: dict) -> dict:
     animators = hands.build_hands(planning_song, pianist=profile_context, key_style=key_style)
     _report_progress(0.28, "Solving kinematics and scheduling rolled chords...")
     keyboard = KeyboardGeometry(keyboard_rect, style=key_style)
-    _active_animator_sessions[(project_id, revision, profile_dto["profileId"])] = {
+    _store_active_session((project_id, revision, profile_dto["profileId"]), {
         "animators": animators,
         "planning_song": planning_song,
         "keyboard": keyboard,
         "song": song,
-    }
+    })
     assignments = []
     assignment_by_identity = {}
     gliss_ids = set()
@@ -752,56 +758,21 @@ def analyze_midi(data: bytes, options: dict) -> dict:
     }
 
     if requested_times is None:
-        if fixture_id == "imported-midi" or options.get("sampleDense", False):
-            dense_times = set()
-            strike_dt = 1.0 / 60.0
+        # Persist only canonical sparse controls in rawBaseline/motionPlan.
+        # Playback density is returned separately in initialMotionWindow below,
+        # so ordinary opens never create a full-duration dense plan.
+        common_sample_times = set()
+        if len(animators) == 2:
             for animator in animators.values():
-                for t, _notes in getattr(animator, "groups", []):
-                    tf = float(t)
-                    dense_times.add(tf)
-                    if tf - strike_dt >= 0.0:
-                        dense_times.add(tf - strike_dt)
-                    dense_times.add(tf + strike_dt)
-                for press, release, _n in getattr(animator, "performance", []):
-                    pf = float(press)
-                    dense_times.add(pf)
-                    if pf - strike_dt >= 0.0:
-                        dense_times.add(pf - strike_dt)
-                    dense_times.add(pf + strike_dt)
-                    dense_times.add(float(release))
+                common_sample_times.update(_selected_times(animator))
             for start, end, _top, _strength, _lead in crossing_episodes:
-                dense_times.add(float(start))
-                dense_times.add(float(end))
-                mid = (start + end) / 2.0
-                dense_times.add(float(mid))
-            grid_step = 0.25
-            curr_t = 0.0
-            max_t = float(song.duration)
-            while curr_t <= max_t:
-                dense_times.add(curr_t)
-                curr_t += grid_step
-            dense_times.add(max_t)
-
-            sorted_dense = sorted({_rounded(t) for t in dense_times if 0.0 <= t <= max_t + 1.0})
-            max_points = int(options.get("maxInitialPoses", 2500))
-            if len(sorted_dense) > max_points:
-                step = len(sorted_dense) / max_points
-                sorted_dense = [sorted_dense[int(i * step)] for i in range(max_points)]
-
-            sample_times_by_hand = {hand_name: sorted_dense for hand_name in animators}
-        else:
-            common_sample_times = set()
-            if len(animators) == 2:
-                for animator in animators.values():
-                    common_sample_times.update(_selected_times(animator))
-                for start, end, _top, _strength, _lead in crossing_episodes:
-                    common_sample_times.add(float(start))
-                    if end > start:
-                        common_sample_times.add(float((start + end) / 2))
-            sample_times_by_hand = {
-                hand_name: sorted(common_sample_times) if common_sample_times else _selected_times(animator)
-                for hand_name, animator in animators.items()
-            }
+                common_sample_times.add(float(start))
+                if end > start:
+                    common_sample_times.add(float((start + end) / 2))
+        sample_times_by_hand = {
+            hand_name: sorted(common_sample_times) if common_sample_times else _selected_times(animator)
+            for hand_name, animator in animators.items()
+        }
     else:
         shared = sorted(set(requested_times))
         sample_times_by_hand = {hand_name: shared for hand_name in animators}
@@ -851,12 +822,12 @@ def analyze_midi(data: bytes, options: dict) -> dict:
             "coordinateFrame": "keyboard-local-inches-v1",
             "poses": motion_poses,
         }
-    _active_animator_sessions[(project_id, revision, profile_dto["profileId"])] = {
+    _store_active_session((project_id, revision, profile_dto["profileId"]), {
         "animators": animators,
         "planning_song": planning_song,
         "keyboard": keyboard,
         "song": song,
-    }
+    })
 
     raw_pedals = [{"time": _rounded(t), "controller": int(c), "value": int(v)}
                   for t, c, v in song.raw_controls]
@@ -939,6 +910,35 @@ def analyze_midi(data: bytes, options: dict) -> dict:
         },
     }
 
+    initial_motion_window = None
+    if fixture_id == "imported-midi" or options.get("sampleDense", False):
+        initial_end = min(4.0, float(song.duration))
+        if initial_end > 0.0:
+            # Startup playback gets a bounded, explicitly covered window. The
+            # result is runtime metadata; canonical rawBaseline samples above
+            # remain sparse and unchanged.
+            sampled_window = sample_motion_window(
+                b"", None, None, 0.0, initial_end,
+                {
+                    "projectId": project_id,
+                    "revision": revision,
+                    "requestId": request_id + "/initial-motion",
+                    "engineVersion": engine_version,
+                    "profile": profile_dto,
+                    "keyStyle": key_style,
+                    "keyboardRect": [int(v) for v in rect_values],
+                    "maxPoses": 200,
+                },
+            )
+            initial_motion_window = {
+                key: sampled_window[key]
+                for key in (
+                    "startTimeSeconds", "endTimeSeconds", "poses", "coverage",
+                    "truncated", "continuationTimeSeconds",
+                )
+                if key in sampled_window
+            }
+
     _report_progress(1.0, "Analysis complete.")
     return {
         **common_result,
@@ -947,6 +947,7 @@ def analyze_midi(data: bytes, options: dict) -> dict:
         "fingeringPlan": fingering_plan,
         "performancePlan": performance_plan,
         "motionPlan": motion_plan,
+        **({"initialMotionWindow": initial_motion_window} if initial_motion_window is not None else {}),
         "diagnostics": diagnostics,
         "rawBaseline": raw_baseline,
     }
@@ -991,9 +992,15 @@ def replan_document(data: bytes, document: dict, fingering_plan: dict, options: 
             fingering_plan.get("profileRevision") != profile_revision):
         raise ValueError("fingering plan profile identity does not match the request")
 
-    options["engineVersion"] = engine_version
+    # Replans are tied to the currently packaged engine source. Derive the
+    # version here just as analyze_midi does; there is no local variable from
+    # a prior Worker request to trust.
+    options["engineVersion"] = _engine_version(_manifest())
 
     analyze_options = {key: value for key, value in options.items() if key not in ("resource", "rawBaseline")}
+    # Replans feed the active player too, so return a fresh bounded startup
+    # window for this edited revision instead of leaving stale motion on screen.
+    analyze_options.setdefault("sampleDense", True)
     analyze_options["_editorReplan"] = {
         "document": document,
         "fingeringPlan": fingering_plan,
@@ -1081,19 +1088,31 @@ def sample_motion_window(
 ) -> dict:
     """Bounded motion lookahead buffer sampling.
 
-    Takes original MIDI bytes, document, fingering_plan, startTimeSeconds, endTimeSeconds, options.
-    Identifies note events / attacks that fall within [start_time - 0.2, end_time + 0.2] plus
-    uniform intermediate steps (at least every 0.25s during active play or 60Hz key strikes).
-    Solves poses for both hands using animator.pose(sample_time, keyboard) and pairs/arranges
-    crossings via hands.arrange_crossing.
-    Returns a dictionary conforming to M1SampleMotionResultSchema.
-    Caches active animator sessions in _active_animator_sessions keyed by (projectId, revision, profileId).
+    Samples from the explicit start through the effective end plus a small forward
+    strike lookahead. Continuations should pass their own boundary overlap; implicit
+    history is excluded so a dense capped window can make forward progress. Samples
+    note events, crossings, and uniform steps no farther apart than 250ms, while
+    keeping poses at each timestamp together under the total pose cap.
+
+    Active animator sessions are cached by (projectId, revision, profileId).
     """
     options = dict(options or {})
     start_time = _finite(start_time, "start_time")
     end_time = _finite(end_time, "end_time")
+    if start_time < 0:
+        raise ValueError("startTimeSeconds must be nonnegative")
     if end_time <= start_time:
         raise ValueError("endTimeSeconds must be greater than startTimeSeconds")
+    if end_time - start_time > 5.0:
+        raise ValueError("Motion window must not exceed 5 seconds")
+
+    raw_max_poses = options.get("maxPoses", 200)
+    try:
+        max_poses = int(raw_max_poses)
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise ValueError("maxPoses must be an integer from 1 through 500") from exc
+    if isinstance(raw_max_poses, bool) or max_poses != raw_max_poses or max_poses < 1 or max_poses > 500:
+        raise ValueError("maxPoses must be an integer from 1 through 500")
 
     profile_dto, profile_context = _resolve_profile(options.get("profile"))
     profile_id = profile_dto["profileId"]
@@ -1174,16 +1193,56 @@ def sample_motion_window(
             planning_song.cleanup = list(song.cleanup)
 
         animators = hands.build_hands(planning_song, pianist=profile_context, key_style=key_style)
-        _active_animator_sessions[session_key] = {
+        _store_active_session(session_key, {
             "animators": animators,
             "planning_song": planning_song,
             "keyboard": keyboard,
             "song": song,
+        })
+
+    effective_end_time = end_time
+    truncated = False
+    continuation_time: float | None = None
+
+    manifest = _manifest()
+    engine_version = str(options.get("engineVersion") or _engine_version(manifest))
+    request_id = str(options.get("requestId") or f"motion-window/{project_id}/{revision}/{_rounded(start_time)}-{_rounded(effective_end_time)}").strip()
+    lowest_key_left = keyboard.key_rects[midi_loader.LOWEST_PIANO_KEY].left
+
+    # A13: maxPoses=1 returns single pose at window start, left-hand priority, without full coverage claim
+    if max_poses == 1:
+        raw_hand = midi_loader.LEFT if midi_loader.LEFT in animators else next(iter(animators))
+        pose = animators[raw_hand].pose(start_time, keyboard)
+        hand_key = "left" if raw_hand == midi_loader.LEFT else "right"
+        single_pose = _motion_pose(pose, raw_hand, start_time, lowest_key_left, pose["ppi"])
+        single_coverage = {}
+        for animator_hand in animators:
+            coverage_hand = "left" if animator_hand == midi_loader.LEFT else "right"
+            single_coverage[coverage_hand] = {
+                "coveredStartTimeSeconds": _rounded(start_time),
+                "coveredEndTimeSeconds": _rounded(start_time),
+                "isComplete": False,
+                "poseCount": 1 if coverage_hand == hand_key else 0,
+            }
+        return {
+            "type": "sample-motion-result",
+            "requestId": request_id,
+            "projectId": project_id,
+            "revision": revision,
+            "engineVersion": engine_version,
+            "startTimeSeconds": _rounded(start_time),
+            "endTimeSeconds": _rounded(effective_end_time),
+            "poses": [single_pose],
+            "coverage": single_coverage,
+            "truncated": True,
+            "continuationTimeSeconds": _rounded(start_time),
         }
 
-    max_poses = int(options.get("maxPoses", 200))
-    window_start = max(0.0, start_time - 0.2)
-    window_end = max(window_start, end_time + 0.2)
+    # Window starts are explicit. The caller supplies a small boundary overlap
+    # when needed; excluding implicit history prevents dense continuations from
+    # spending the pose budget on already-returned groups.
+    window_start = max(0.0, start_time)
+    window_end = max(window_start, effective_end_time + 0.2)
 
     sample_times: set[float] = set()
 
@@ -1210,7 +1269,7 @@ def sample_motion_window(
             if window_start <= rf <= window_end:
                 sample_times.add(rf)
 
-    # Crossing episodes
+    # Crossing episodes in [window_start, window_end]
     episodes = hands.crossing_episodes(planning_song)
     for c_start, c_end, _top, _strength, _lead in episodes:
         cs = float(c_start)
@@ -1223,7 +1282,7 @@ def sample_motion_window(
         if window_start <= mid <= window_end:
             sample_times.add(mid)
 
-    # 2. Uniform intermediate steps (at least every 0.25s)
+    # 2. Lazy uniform intermediate steps (at least every 0.25s) within requested window only (A11)
     grid_step = 0.25
     curr_t = window_start
     while curr_t <= window_end:
@@ -1231,58 +1290,95 @@ def sample_motion_window(
         curr_t += grid_step
     sample_times.add(window_end)
     sample_times.add(start_time)
-    sample_times.add(end_time)
+    sample_times.add(effective_end_time)
 
     sorted_times = sorted({_rounded(t) for t in sample_times if window_start <= t <= window_end})
 
-    # 3. Respect maxPoses
-    num_hands = max(1, len(animators))
-    max_time_points = max(1, max_poses // num_hands)
-    if len(sorted_times) > max_time_points:
-        indices = [round(i * (len(sorted_times) - 1) / (max_time_points - 1)) for i in range(max_time_points)]
-        sorted_times = [sorted_times[i] for i in sorted(set(indices))]
-
-    # 4. Solve poses and arrange crossings
+    # 3. Solve poses without splitting paired time groups
     motion_poses = []
-    lowest_key_left = keyboard.key_rects[midi_loader.LOWEST_PIANO_KEY].left
-
     for t in sorted_times:
-        sampled = {}
-        for hand_name, animator in animators.items():
-            pose = animator.pose(t, keyboard)
-            if len(animators) == 2:
-                pose.update({"hand": hand_name, "anim": animator, "song": planning_song, "t": t})
-            else:
-                pose["hand"] = hand_name
-            sampled[hand_name] = pose
-
+        poses_for_t = []
         if len(animators) == 2:
+            sampled = {}
+            for h in (midi_loader.RIGHT, midi_loader.LEFT):
+                if h in animators:
+                    p = animators[h].pose(t, keyboard)
+                    p.update({"hand": h, "anim": animators[h], "song": planning_song, "t": t})
+                    sampled[h] = p
             paired = [sampled[h] for h in (midi_loader.RIGHT, midi_loader.LEFT) if h in sampled]
             arranged = hands.arrange_crossing(paired) if len(paired) == 2 else paired
             for pose in arranged:
-                hand_name = pose["hand"]
-                motion_poses.append(_motion_pose(pose, hand_name, t, lowest_key_left, pose["ppi"]))
+                poses_for_t.append(_motion_pose(pose, pose["hand"], t, lowest_key_left, pose["ppi"]))
         else:
-            for hand_name, pose in sampled.items():
-                motion_poses.append(_motion_pose(pose, hand_name, t, lowest_key_left, pose["ppi"]))
+            for hand_name, animator in animators.items():
+                p = animator.pose(t, keyboard)
+                poses_for_t.append(_motion_pose(p, hand_name, t, lowest_key_left, p["ppi"]))
+
+        if len(poses_for_t) > max_poses:
+            raise ValueError(
+                f"maxPoses={max_poses} cannot fit a complete paired pose group of {len(poses_for_t)}"
+            )
+        if len(motion_poses) + len(poses_for_t) > max_poses:
+            truncated = True
+            continuation_time = _rounded(t)
+            break
+
+        motion_poses.extend(poses_for_t)
 
     motion_poses.sort(key=lambda item: (item["transportTimeSeconds"], item["hand"]))
-    if len(motion_poses) > max_poses:
-        motion_poses = motion_poses[:max_poses]
 
-    manifest = _manifest()
-    engine_version = str(options.get("engineVersion") or _engine_version(manifest))
-    request_id = str(options.get("requestId") or f"motion-window/{project_id}/{revision}/{_rounded(start_time)}-{_rounded(end_time)}").strip()
+    # 4. Calculate continuous coverage per hand (no gaps > 250ms)
+    coverage = {}
+    for raw_hand in animators:
+        hand_key = "left" if raw_hand == midi_loader.LEFT else "right"
+        h_poses = [p for p in motion_poses if p["hand"] == hand_key]
+        if not h_poses:
+            coverage[hand_key] = {
+                "coveredStartTimeSeconds": _rounded(start_time),
+                "coveredEndTimeSeconds": _rounded(start_time),
+                "isComplete": False,
+                "poseCount": 0,
+            }
+            continue
 
-    return {
+        h_times = [p["transportTimeSeconds"] for p in h_poses]
+        continuous_end = h_times[0]
+        has_gap = False
+        for idx in range(len(h_times) - 1):
+            gap = h_times[idx + 1] - h_times[idx]
+            if gap > 0.250001:
+                continuous_end = h_times[idx]
+                has_gap = True
+                break
+            continuous_end = h_times[idx + 1]
+
+        is_complete = (
+            not truncated
+            and not has_gap
+            and h_times[0] <= start_time + 1e-4
+            and continuous_end >= effective_end_time - 1e-4
+        )
+        coverage[hand_key] = {
+            "coveredStartTimeSeconds": _rounded(h_times[0]),
+            "coveredEndTimeSeconds": _rounded(continuous_end),
+            "isComplete": is_complete,
+            "poseCount": len(h_poses),
+        }
+
+    res = {
         "type": "sample-motion-result",
         "requestId": request_id,
         "projectId": project_id,
         "revision": revision,
         "engineVersion": engine_version,
         "startTimeSeconds": _rounded(start_time),
-        "endTimeSeconds": _rounded(end_time),
+        "endTimeSeconds": _rounded(effective_end_time),
         "poses": motion_poses,
+        "coverage": coverage,
+        "truncated": bool(truncated),
     }
+    if continuation_time is not None:
+        res["continuationTimeSeconds"] = continuation_time
+    return res
 
 

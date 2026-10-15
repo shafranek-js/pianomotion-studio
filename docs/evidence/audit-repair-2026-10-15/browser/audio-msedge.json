@@ -1,0 +1,209 @@
+{
+  "config": {
+    "argv": [
+      "C:\\nvm4w\\nodejs\\node.exe",
+      "C:\\Projects\\pianomotion-studio\\node_modules\\@playwright\\test\\cli.js",
+      "test",
+      "--config",
+      "playwright.audio.config.ts"
+    ],
+    "configFile": "C:\\Projects\\pianomotion-studio\\playwright.audio.config.ts",
+    "rootDir": "C:/Projects/pianomotion-studio/tests/browser",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "C:/Projects/pianomotion-studio/test-results/audio-msedge",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "",
+        "name": "",
+        "testDir": "C:/Projects/pianomotion-studio/tests/browser",
+        "testIgnore": [],
+        "testMatch": [
+          "**/audio-dsp.spec.ts",
+          "**/audio-output.spec.ts"
+        ],
+        "timeout": 180000
+      }
+    ],
+    "filteredProjects": [
+      {
+        "grep": {},
+        "grepInvert": null,
+        "outputDir": "C:\\Projects\\pianomotion-studio\\test-results\\audio-msedge",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "name": "",
+        "testDir": "C:\\Projects\\pianomotion-studio\\tests\\browser",
+        "snapshotDir": "C:\\Projects\\pianomotion-studio\\tests\\browser",
+        "testIgnore": [],
+        "testMatch": [
+          "**/audio-dsp.spec.ts",
+          "**/audio-output.spec.ts"
+        ],
+        "timeout": 180000,
+        "use": {
+          "baseURL": "http://127.0.0.1:4173",
+          "browserName": "chromium",
+          "channel": "msedge",
+          "headless": true
+        },
+        "dependencies": [],
+        "ignoreSnapshots": false,
+        "__projectId": ""
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "list",
+        null
+      ],
+      [
+        "json",
+        {
+          "outputFile": "test-results/reports/audio-msedge.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "default",
+    "updateSourceMethod": "patch",
+    "version": "1.64.0",
+    "workers": 1,
+    "webServer": {
+      "command": "npm run dev -- --host 127.0.0.1 --port 4173 --strictPort",
+      "url": "http://127.0.0.1:4173",
+      "reuseExistingServer": false,
+      "timeout": 60000
+    }
+  },
+  "suites": [
+    {
+      "title": "audio-dsp.spec.ts",
+      "file": "audio-dsp.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "real AudioWorklet tone/marker accuracy and offline SF2 mode/polyphony",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 180000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1662,
+                  "errors": [],
+                  "stdout": [
+                    {
+                      "text": "AUDIO_DSP_METRICS {\"stretchMetrics\":[{\"speed\":0.25,\"cents\":2.652614943359045,\"pitchWindows\":[{\"from\":1,\"to\":1.5,\"cents\":2.652614943359045,\"rms\":0.24027359975388105},{\"from\":1.5,\"to\":2,\"cents\":0.7299524774007662,\"rms\":0.2648714227503033}],\"expectedMarker\":2,\"measuredMarker\":2.0075},{\"speed\":0.5,\"cents\":2.6257007712476073,\"pitchWindows\":[{\"from\":1,\"to\":1.5,\"cents\":2.6257007712476073,\"rms\":0.2806766912113471},{\"from\":1.5,\"to\":2,\"cents\":2.6339331706656997,\"rms\":0.2808014923954033}],\"expectedMarker\":1,\"measuredMarker\":1},{\"speed\":0.75,\"cents\":1.6677753479533357,\"pitchWindows\":[{\"from\":1,\"to\":1.5,\"cents\":1.6677753479533357,\"rms\":0.2824896141005319},{\"from\":1.5,\"to\":2,\"cents\":1.667866077776052,\"rms\":0.28248799217351717}],\"expectedMarker\":0.6666666666666666,\"measuredMarker\":0.6675},{\"speed\":1,\"cents\":1.5304618740672338,\"pitchWindows\":[{\"from\":1,\"to\":1.5,\"cents\":1.5304618740672338,\"rms\":0.28244231053958363},{\"from\":1.5,\"to\":2,\"cents\":1.5386821323884734,\"rms\":0.2825548098468198}],\"expectedMarker\":0.5,\"measuredMarker\":0.5025},{\"speed\":1.25,\"cents\":1.392331006560014,\"pitchWindows\":[{\"from\":1,\"to\":1.5,\"cents\":1.392331006560014,\"rms\":0.2826686926695576},{\"from\":1.5,\"to\":2,\"cents\":1.3892998173607682,\"rms\":0.28252776238150845}],\"expectedMarker\":0.4,\"measuredMarker\":0.4025},{\"speed\":1.5,\"cents\":1.309357625343111,\"pitchWindows\":[{\"from\":1,\"to\":1.5,\"cents\":1.309357625343111,\"rms\":0.2825283894539497},{\"from\":1.5,\"to\":2,\"cents\":1.3137375307075654,\"rms\":0.28267466979124095}],\"expectedMarker\":0.3333333333333333,\"measuredMarker\":0.335},{\"speed\":2,\"cents\":1.2084086894412036,\"pitchWindows\":[{\"from\":0.5,\"to\":1,\"cents\":1.2084086894412036,\"rms\":0.28257790393508053},{\"from\":1,\"to\":1.5,\"cents\":1.2145930476459932,\"rms\":0.2827121324381018}],\"expectedMarker\":0.25,\"measuredMarker\":0.2525}],\"modeMetrics\":{\"mode0EarlyTail\":0.8899999856949042,\"mode0PreTail\":0.10113636404276047,\"mode1EarlyLoop\":0.5605912804603679,\"mode3HeldLoop\":0.5605912804603679,\"mode3ReleasedTail\":0.0075220688365456,\"mode1ReleasedLoop\":0.0008547805508109227},\"onsetPeaks\":[0.49199816584587097,0.5129367709159851,0.5131601095199585,0.5132026672363281,0.5132821798324585,0.5132026672363281,0.5132821798324585,0.5132026672363281,0.5132821798324585,0.5132026076316833,0.5132821798324585,0.5132026672363281,0.5132821798324585,0.5132026076316833,0.5132821798324585,0.5132026672363281,0.5132821798324585,0.5132026672363281,0.5132821798324585,0.5132026672363281,0.5132821798324585,0.5132026672363281,0.5132821798324585,0.5132026672363281,0.5132821798324585,0.5132026076316833,0.5132821798324585,0.5132026672363281,0.5132821798324585,0.5132026672363281,0.5132821798324585,0.5132026672363281,0.5132821798324585,0.5132026076316833,0.5132821798324585,0.5132026672363281,0.5132821798324585,0.5132026076316833,0.5132821798324585,0.5132026076316833,0.5132821798324585,0.5132026672363281,0.5132821798324585,0.5132026076316833,0.5132821798324585,0.5132026672363281,0.5132821798324585,0.5132026672363281,0.5132821798324585,0.5132026076316833,0.5132821798324585,0.5132026672363281,0.5132821798324585,0.5132026076316833,0.5132821798324585,0.5132026672363281,0.5132821798324585,0.5132026672363281,0.5132821798324585,0.5132026672363281,0.5132821798324585,0.5132026672363281,0.5132821798324585,0.5132026672363281,0.5132821798324585,0.5132026672363281,0.5132821798324585,0.5132026672363281,0.5132821798324585,0.5132026672363281,0.5132821798324585,0.5132026672363281,0.5132821798324585,0.5132026076316833,0.5132821798324585,0.5132026672363281,0.5132821798324585,0.5132026672363281,0.5132821798324585,0.5132026076316833,0.5132821798324585,0.5132026672363281,0.5132821798324585,0.5132026672363281,0.5132821798324585,0.5132026672363281,0.5132821798324585,0.5132026076316833,0.5132821798324585,0.5132026672363281,0.5132821798324585,0.5132026672363281,0.5132821798324585,0.5132026076316833,0.5132821798324585,0.5132026672363281,0.5132821798324585,0.5132026672363281,0.5132821798324585,0.5132026076316833]}\n"
+                    }
+                  ],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-15T12:52:56.318Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "audio-dsp-metrics",
+                      "contentType": "application/json",
+                      "body": "ewogICJzdHJldGNoTWV0cmljcyI6IFsKICAgIHsKICAgICAgInNwZWVkIjogMC4yNSwKICAgICAgImNlbnRzIjogMi42NTI2MTQ5NDMzNTkwNDUsCiAgICAgICJwaXRjaFdpbmRvd3MiOiBbCiAgICAgICAgewogICAgICAgICAgImZyb20iOiAxLAogICAgICAgICAgInRvIjogMS41LAogICAgICAgICAgImNlbnRzIjogMi42NTI2MTQ5NDMzNTkwNDUsCiAgICAgICAgICAicm1zIjogMC4yNDAyNzM1OTk3NTM4ODEwNQogICAgICAgIH0sCiAgICAgICAgewogICAgICAgICAgImZyb20iOiAxLjUsCiAgICAgICAgICAidG8iOiAyLAogICAgICAgICAgImNlbnRzIjogMC43Mjk5NTI0Nzc0MDA3NjYyLAogICAgICAgICAgInJtcyI6IDAuMjY0ODcxNDIyNzUwMzAzMwogICAgICAgIH0KICAgICAgXSwKICAgICAgImV4cGVjdGVkTWFya2VyIjogMiwKICAgICAgIm1lYXN1cmVkTWFya2VyIjogMi4wMDc1CiAgICB9LAogICAgewogICAgICAic3BlZWQiOiAwLjUsCiAgICAgICJjZW50cyI6IDIuNjI1NzAwNzcxMjQ3NjA3MywKICAgICAgInBpdGNoV2luZG93cyI6IFsKICAgICAgICB7CiAgICAgICAgICAiZnJvbSI6IDEsCiAgICAgICAgICAidG8iOiAxLjUsCiAgICAgICAgICAiY2VudHMiOiAyLjYyNTcwMDc3MTI0NzYwNzMsCiAgICAgICAgICAicm1zIjogMC4yODA2NzY2OTEyMTEzNDcxCiAgICAgICAgfSwKICAgICAgICB7CiAgICAgICAgICAiZnJvbSI6IDEuNSwKICAgICAgICAgICJ0byI6IDIsCiAgICAgICAgICAiY2VudHMiOiAyLjYzMzkzMzE3MDY2NTY5OTcsCiAgICAgICAgICAicm1zIjogMC4yODA4MDE0OTIzOTU0MDMzCiAgICAgICAgfQogICAgICBdLAogICAgICAiZXhwZWN0ZWRNYXJrZXIiOiAxLAogICAgICAibWVhc3VyZWRNYXJrZXIiOiAxCiAgICB9LAogICAgewogICAgICAic3BlZWQiOiAwLjc1LAogICAgICAiY2VudHMiOiAxLjY2Nzc3NTM0Nzk1MzMzNTcsCiAgICAgICJwaXRjaFdpbmRvd3MiOiBbCiAgICAgICAgewogICAgICAgICAgImZyb20iOiAxLAogICAgICAgICAgInRvIjogMS41LAogICAgICAgICAgImNlbnRzIjogMS42Njc3NzUzNDc5NTMzMzU3LAogICAgICAgICAgInJtcyI6IDAuMjgyNDg5NjE0MTAwNTMxOQogICAgICAgIH0sCiAgICAgICAgewogICAgICAgICAgImZyb20iOiAxLjUsCiAgICAgICAgICAidG8iOiAyLAogICAgICAgICAgImNlbnRzIjogMS42Njc4NjYwNzc3NzYwNTIsCiAgICAgICAgICAicm1zIjogMC4yODI0ODc5OTIxNzM1MTcxNwogICAgICAgIH0KICAgICAgXSwKICAgICAgImV4cGVjdGVkTWFya2VyIjogMC42NjY2NjY2NjY2NjY2NjY2LAogICAgICAibWVhc3VyZWRNYXJrZXIiOiAwLjY2NzUKICAgIH0sCiAgICB7CiAgICAgICJzcGVlZCI6IDEsCiAgICAgICJjZW50cyI6IDEuNTMwNDYxODc0MDY3MjMzOCwKICAgICAgInBpdGNoV2luZG93cyI6IFsKICAgICAgICB7CiAgICAgICAgICAiZnJvbSI6IDEsCiAgICAgICAgICAidG8iOiAxLjUsCiAgICAgICAgICAiY2VudHMiOiAxLjUzMDQ2MTg3NDA2NzIzMzgsCiAgICAgICAgICAicm1zIjogMC4yODI0NDIzMTA1Mzk1ODM2MwogICAgICAgIH0sCiAgICAgICAgewogICAgICAgICAgImZyb20iOiAxLjUsCiAgICAgICAgICAidG8iOiAyLAogICAgICAgICAgImNlbnRzIjogMS41Mzg2ODIxMzIzODg0NzM0LAogICAgICAgICAgInJtcyI6IDAuMjgyNTU0ODA5ODQ2ODE5OAogICAgICAgIH0KICAgICAgXSwKICAgICAgImV4cGVjdGVkTWFya2VyIjogMC41LAogICAgICAibWVhc3VyZWRNYXJrZXIiOiAwLjUwMjUKICAgIH0sCiAgICB7CiAgICAgICJzcGVlZCI6IDEuMjUsCiAgICAgICJjZW50cyI6IDEuMzkyMzMxMDA2NTYwMDE0LAogICAgICAicGl0Y2hXaW5kb3dzIjogWwogICAgICAgIHsKICAgICAgICAgICJmcm9tIjogMSwKICAgICAgICAgICJ0byI6IDEuNSwKICAgICAgICAgICJjZW50cyI6IDEuMzkyMzMxMDA2NTYwMDE0LAogICAgICAgICAgInJtcyI6IDAuMjgyNjY4NjkyNjY5NTU3NgogICAgICAgIH0sCiAgICAgICAgewogICAgICAgICAgImZyb20iOiAxLjUsCiAgICAgICAgICAidG8iOiAyLAogICAgICAgICAgImNlbnRzIjogMS4zODkyOTk4MTczNjA3NjgyLAogICAgICAgICAgInJtcyI6IDAuMjgyNTI3NzYyMzgxNTA4NDUKICAgICAgICB9CiAgICAgIF0sCiAgICAgICJleHBlY3RlZE1hcmtlciI6IDAuNCwKICAgICAgIm1lYXN1cmVkTWFya2VyIjogMC40MDI1CiAgICB9LAogICAgewogICAgICAic3BlZWQiOiAxLjUsCiAgICAgICJjZW50cyI6IDEuMzA5MzU3NjI1MzQzMTExLAogICAgICAicGl0Y2hXaW5kb3dzIjogWwogICAgICAgIHsKICAgICAgICAgICJmcm9tIjogMSwKICAgICAgICAgICJ0byI6IDEuNSwKICAgICAgICAgICJjZW50cyI6IDEuMzA5MzU3NjI1MzQzMTExLAogICAgICAgICAgInJtcyI6IDAuMjgyNTI4Mzg5NDUzOTQ5NwogICAgICAgIH0sCiAgICAgICAgewogICAgICAgICAgImZyb20iOiAxLjUsCiAgICAgICAgICAidG8iOiAyLAogICAgICAgICAgImNlbnRzIjogMS4zMTM3Mzc1MzA3MDc1NjU0LAogICAgICAgICAgInJtcyI6IDAuMjgyNjc0NjY5NzkxMjQwOTUKICAgICAgICB9CiAgICAgIF0sCiAgICAgICJleHBlY3RlZE1hcmtlciI6IDAuMzMzMzMzMzMzMzMzMzMzMywKICAgICAgIm1lYXN1cmVkTWFya2VyIjogMC4zMzUKICAgIH0sCiAgICB7CiAgICAgICJzcGVlZCI6IDIsCiAgICAgICJjZW50cyI6IDEuMjA4NDA4Njg5NDQxMjAzNiwKICAgICAgInBpdGNoV2luZG93cyI6IFsKICAgICAgICB7CiAgICAgICAgICAiZnJvbSI6IDAuNSwKICAgICAgICAgICJ0byI6IDEsCiAgICAgICAgICAiY2VudHMiOiAxLjIwODQwODY4OTQ0MTIwMzYsCiAgICAgICAgICAicm1zIjogMC4yODI1Nzc5MDM5MzUwODA1MwogICAgICAgIH0sCiAgICAgICAgewogICAgICAgICAgImZyb20iOiAxLAogICAgICAgICAgInRvIjogMS41LAogICAgICAgICAgImNlbnRzIjogMS4yMTQ1OTMwNDc2NDU5OTMyLAogICAgICAgICAgInJtcyI6IDAuMjgyNzEyMTMyNDM4MTAxOAogICAgICAgIH0KICAgICAgXSwKICAgICAgImV4cGVjdGVkTWFya2VyIjogMC4yNSwKICAgICAgIm1lYXN1cmVkTWFya2VyIjogMC4yNTI1CiAgICB9CiAgXSwKICAibW9kZU1ldHJpY3MiOiB7CiAgICAibW9kZTBFYXJseVRhaWwiOiAwLjg4OTk5OTk4NTY5NDkwNDIsCiAgICAibW9kZTBQcmVUYWlsIjogMC4xMDExMzYzNjQwNDI3NjA0NywKICAgICJtb2RlMUVhcmx5TG9vcCI6IDAuNTYwNTkxMjgwNDYwMzY3OSwKICAgICJtb2RlM0hlbGRMb29wIjogMC41NjA1OTEyODA0NjAzNjc5LAogICAgIm1vZGUzUmVsZWFzZWRUYWlsIjogMC4wMDc1MjIwNjg4MzY1NDU2LAogICAgIm1vZGUxUmVsZWFzZWRMb29wIjogMC4wMDA4NTQ3ODA1NTA4MTA5MjI3CiAgfSwKICAib25zZXRQZWFrcyI6IFsKICAgIDAuNDkxOTk4MTY1ODQ1ODcwOTcsCiAgICAwLjUxMjkzNjc3MDkxNTk4NTEsCiAgICAwLjUxMzE2MDEwOTUxOTk1ODUsCiAgICAwLjUxMzIwMjY2NzIzNjMyODEsCiAgICAwLjUxMzI4MjE3OTgzMjQ1ODUsCiAgICAwLjUxMzIwMjY2NzIzNjMyODEsCiAgICAwLjUxMzI4MjE3OTgzMjQ1ODUsCiAgICAwLjUxMzIwMjY2NzIzNjMyODEsCiAgICAwLjUxMzI4MjE3OTgzMjQ1ODUsCiAgICAwLjUxMzIwMjYwNzYzMTY4MzMsCiAgICAwLjUxMzI4MjE3OTgzMjQ1ODUsCiAgICAwLjUxMzIwMjY2NzIzNjMyODEsCiAgICAwLjUxMzI4MjE3OTgzMjQ1ODUsCiAgICAwLjUxMzIwMjYwNzYzMTY4MzMsCiAgICAwLjUxMzI4MjE3OTgzMjQ1ODUsCiAgICAwLjUxMzIwMjY2NzIzNjMyODEsCiAgICAwLjUxMzI4MjE3OTgzMjQ1ODUsCiAgICAwLjUxMzIwMjY2NzIzNjMyODEsCiAgICAwLjUxMzI4MjE3OTgzMjQ1ODUsCiAgICAwLjUxMzIwMjY2NzIzNjMyODEsCiAgICAwLjUxMzI4MjE3OTgzMjQ1ODUsCiAgICAwLjUxMzIwMjY2NzIzNjMyODEsCiAgICAwLjUxMzI4MjE3OTgzMjQ1ODUsCiAgICAwLjUxMzIwMjY2NzIzNjMyODEsCiAgICAwLjUxMzI4MjE3OTgzMjQ1ODUsCiAgICAwLjUxMzIwMjYwNzYzMTY4MzMsCiAgICAwLjUxMzI4MjE3OTgzMjQ1ODUsCiAgICAwLjUxMzIwMjY2NzIzNjMyODEsCiAgICAwLjUxMzI4MjE3OTgzMjQ1ODUsCiAgICAwLjUxMzIwMjY2NzIzNjMyODEsCiAgICAwLjUxMzI4MjE3OTgzMjQ1ODUsCiAgICAwLjUxMzIwMjY2NzIzNjMyODEsCiAgICAwLjUxMzI4MjE3OTgzMjQ1ODUsCiAgICAwLjUxMzIwMjYwNzYzMTY4MzMsCiAgICAwLjUxMzI4MjE3OTgzMjQ1ODUsCiAgICAwLjUxMzIwMjY2NzIzNjMyODEsCiAgICAwLjUxMzI4MjE3OTgzMjQ1ODUsCiAgICAwLjUxMzIwMjYwNzYzMTY4MzMsCiAgICAwLjUxMzI4MjE3OTgzMjQ1ODUsCiAgICAwLjUxMzIwMjYwNzYzMTY4MzMsCiAgICAwLjUxMzI4MjE3OTgzMjQ1ODUsCiAgICAwLjUxMzIwMjY2NzIzNjMyODEsCiAgICAwLjUxMzI4MjE3OTgzMjQ1ODUsCiAgICAwLjUxMzIwMjYwNzYzMTY4MzMsCiAgICAwLjUxMzI4MjE3OTgzMjQ1ODUsCiAgICAwLjUxMzIwMjY2NzIzNjMyODEsCiAgICAwLjUxMzI4MjE3OTgzMjQ1ODUsCiAgICAwLjUxMzIwMjY2NzIzNjMyODEsCiAgICAwLjUxMzI4MjE3OTgzMjQ1ODUsCiAgICAwLjUxMzIwMjYwNzYzMTY4MzMsCiAgICAwLjUxMzI4MjE3OTgzMjQ1ODUsCiAgICAwLjUxMzIwMjY2NzIzNjMyODEsCiAgICAwLjUxMzI4MjE3OTgzMjQ1ODUsCiAgICAwLjUxMzIwMjYwNzYzMTY4MzMsCiAgICAwLjUxMzI4MjE3OTgzMjQ1ODUsCiAgICAwLjUxMzIwMjY2NzIzNjMyODEsCiAgICAwLjUxMzI4MjE3OTgzMjQ1ODUsCiAgICAwLjUxMzIwMjY2NzIzNjMyODEsCiAgICAwLjUxMzI4MjE3OTgzMjQ1ODUsCiAgICAwLjUxMzIwMjY2NzIzNjMyODEsCiAgICAwLjUxMzI4MjE3OTgzMjQ1ODUsCiAgICAwLjUxMzIwMjY2NzIzNjMyODEsCiAgICAwLjUxMzI4MjE3OTgzMjQ1ODUsCiAgICAwLjUxMzIwMjY2NzIzNjMyODEsCiAgICAwLjUxMzI4MjE3OTgzMjQ1ODUsCiAgICAwLjUxMzIwMjY2NzIzNjMyODEsCiAgICAwLjUxMzI4MjE3OTgzMjQ1ODUsCiAgICAwLjUxMzIwMjY2NzIzNjMyODEsCiAgICAwLjUxMzI4MjE3OTgzMjQ1ODUsCiAgICAwLjUxMzIwMjY2NzIzNjMyODEsCiAgICAwLjUxMzI4MjE3OTgzMjQ1ODUsCiAgICAwLjUxMzIwMjY2NzIzNjMyODEsCiAgICAwLjUxMzI4MjE3OTgzMjQ1ODUsCiAgICAwLjUxMzIwMjYwNzYzMTY4MzMsCiAgICAwLjUxMzI4MjE3OTgzMjQ1ODUsCiAgICAwLjUxMzIwMjY2NzIzNjMyODEsCiAgICAwLjUxMzI4MjE3OTgzMjQ1ODUsCiAgICAwLjUxMzIwMjY2NzIzNjMyODEsCiAgICAwLjUxMzI4MjE3OTgzMjQ1ODUsCiAgICAwLjUxMzIwMjYwNzYzMTY4MzMsCiAgICAwLjUxMzI4MjE3OTgzMjQ1ODUsCiAgICAwLjUxMzIwMjY2NzIzNjMyODEsCiAgICAwLjUxMzI4MjE3OTgzMjQ1ODUsCiAgICAwLjUxMzIwMjY2NzIzNjMyODEsCiAgICAwLjUxMzI4MjE3OTgzMjQ1ODUsCiAgICAwLjUxMzIwMjY2NzIzNjMyODEsCiAgICAwLjUxMzI4MjE3OTgzMjQ1ODUsCiAgICAwLjUxMzIwMjYwNzYzMTY4MzMsCiAgICAwLjUxMzI4MjE3OTgzMjQ1ODUsCiAgICAwLjUxMzIwMjY2NzIzNjMyODEsCiAgICAwLjUxMzI4MjE3OTgzMjQ1ODUsCiAgICAwLjUxMzIwMjY2NzIzNjMyODEsCiAgICAwLjUxMzI4MjE3OTgzMjQ1ODUsCiAgICAwLjUxMzIwMjYwNzYzMTY4MzMsCiAgICAwLjUxMzI4MjE3OTgzMjQ1ODUsCiAgICAwLjUxMzIwMjY2NzIzNjMyODEsCiAgICAwLjUxMzI4MjE3OTgzMjQ1ODUsCiAgICAwLjUxMzIwMjY2NzIzNjMyODEsCiAgICAwLjUxMzI4MjE3OTgzMjQ1ODUsCiAgICAwLjUxMzIwMjYwNzYzMTY4MzMKICBdCn0="
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "90abece6466217447d9f-53be47dbc5c18c4b9b7a",
+          "file": "audio-dsp.spec.ts",
+          "line": 3,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "audio-output.spec.ts",
+      "file": "audio-output.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "uploads, parses, activates and reloads a real synthetic mono SF2 output",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 180000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 16710,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-15T12:52:58.666Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "42d735ec217b13c6bd7a-fe533bc4d3867f991a51",
+          "file": "audio-output.spec.ts",
+          "line": 6,
+          "column": 1
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-10-15T12:52:51.666Z",
+    "duration": 25025.035,
+    "expected": 2,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}

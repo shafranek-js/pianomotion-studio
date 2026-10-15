@@ -16,6 +16,13 @@ interface ActiveVoice {
   sustainedBySustain: boolean;
   heldBySostenuto: boolean;
   released: boolean;
+  releaseTimePoint?: number;
+  releaseSequence?: number;
+  startSequence: number;
+  heldBySustainAtRelease: boolean;
+  keyReleaseTimePoint?: number;
+  sostenutoCapturedAtBaseline: boolean;
+  sustainedAtBaseline: boolean;
 
   oscillators: OscillatorNode[];
   voiceGain: GainNode;
@@ -27,6 +34,13 @@ export interface PedalState {
   sustain: boolean;
   sostenuto: boolean;
   soft: boolean;
+}
+
+interface ScheduledPedalEvent {
+  controller: 64 | 66 | 67;
+  value: number;
+  time: number;
+  sequence: number;
 }
 
 export interface RestoredPianoVoice {
@@ -69,6 +83,9 @@ export class PianoSampler {
   private timbre: PianoTimbre = "acoustic";
 
   private readonly activeVoices = new Map<string, ActiveVoice>();
+  private pedalEvents: ScheduledPedalEvent[] = [];
+  private eventSequence = 0;
+  private pedalBaseline: PedalState = { sustain: false, sostenuto: false, soft: false };
   private readonly pedalState: PedalState = {
     sustain: false,
     sostenuto: false,
@@ -231,6 +248,10 @@ export class PianoSampler {
       sustainedBySustain: false,
       heldBySostenuto: false,
       released: false,
+      startSequence: this.eventSequence++,
+      heldBySustainAtRelease: false,
+      sostenutoCapturedAtBaseline: false,
+      sustainedAtBaseline: false,
       oscillators,
       voiceGain,
       filter,
@@ -262,6 +283,9 @@ export class PianoSampler {
     voice.keyState = "up";
     const now = this.audioContext.currentTime;
     const releaseTimePoint = Math.max(now, scheduledTime ?? now);
+    voice.releaseSequence = this.eventSequence++;
+    voice.keyReleaseTimePoint = releaseTimePoint;
+    voice.heldBySustainAtRelease = this.pedalState.sustain;
 
     // If sustain pedal is currently active, voice continues ringing
     if (this.pedalState.sustain) {
@@ -286,6 +310,7 @@ export class PianoSampler {
       return;
     }
     voice.released = true;
+    voice.releaseTimePoint = releaseTimePoint;
 
     // Estimate current gain from decay curve to avoid clicks upon release
     const elapsedSinceAttack = Math.max(0, releaseTimePoint - (voice.startTime + ATTACK_SECONDS));
@@ -341,6 +366,8 @@ export class PianoSampler {
     const isEngaged = value >= 64;
     const now = this.audioContext.currentTime;
     const eventTime = Math.max(now, scheduledTime ?? now);
+    const sequence = this.eventSequence++;
+    this.pedalEvents.push({ controller, value, time: eventTime, sequence });
 
     if (controller === 64) {
       // Sustain pedal (CC 64)
@@ -423,9 +450,11 @@ export class PianoSampler {
     }
 
     this.activeVoices.clear();
+    this.pedalEvents = [];
     this.pedalState.sustain = false;
     this.pedalState.sostenuto = false;
     this.pedalState.soft = false;
+    this.pedalBaseline = { sustain: false, sostenuto: false, soft: false };
   }
 
   /**
@@ -502,11 +531,153 @@ export class PianoSampler {
     return this.activeVoices.size;
   }
 
+  /** Returns notes that are currently key-down, including lookahead NoteOffs not yet audible. */
+  public getKeyDownNotes(): Array<{ noteId: string; pitch: number }> {
+    const now = this.audioContext.currentTime;
+    return [...this.activeVoices.values()]
+      .filter((voice) => voice.keyState === "down" || (voice.keyReleaseTimePoint !== undefined && voice.keyReleaseTimePoint > now))
+      .map(({ noteId, pitch }) => ({ noteId, pitch }));
+  }
+
   /**
    * Returns the current pedal states.
    */
   public getPedalState(): Readonly<PedalState> {
-    return { ...this.pedalState };
+    return this.pedalsAt(this.audioContext.currentTime);
+  }
+
+  /**
+   * Cancels future scheduled notes and future release ramps beyond now,
+   * preserving active sounding voices and their envelope decay phase (A15).
+   */
+  public cancelScheduledFutureEvents(now: number): void {
+    const cutoff = Math.max(this.audioContext.currentTime, now);
+    const pedalsAtCutoff = this.pedalsAt(cutoff);
+
+    for (const [noteId, voice] of this.activeVoices.entries()) {
+      if (voice.startTime > cutoff) {
+        // Voice was scheduled in lookahead and has not started sounding yet
+        this.forceStopVoice(noteId, cutoff);
+        continue;
+      }
+
+      voice.keyState = voice.releaseTimePoint !== undefined && voice.releaseTimePoint <= cutoff
+        ? "up"
+        : voice.keyReleaseTimePoint !== undefined && voice.keyReleaseTimePoint <= cutoff ? "up" : "down";
+      voice.heldBySostenuto = this.wasCapturedBySostenuto(voice, cutoff);
+      voice.sustainedBySustain = this.wasHeldBySustain(voice, cutoff);
+
+      if (voice.released && voice.releaseTimePoint !== undefined && voice.releaseTimePoint > cutoff) {
+        this.cancelFutureRelease(voice, cutoff);
+      }
+      if (voice.keyReleaseTimePoint !== undefined && voice.keyReleaseTimePoint > cutoff) {
+        // A queued NoteOff held by a pedal has no release ramp yet, so it does
+        // not pass through cancelFutureRelease. Remove its timestamp as well
+        // as restoring keyState, otherwise later pedal capture logic can see
+        // the discarded NoteOff after a tempo change.
+        voice.keyReleaseTimePoint = undefined;
+        voice.releaseSequence = undefined;
+        voice.heldBySustainAtRelease = false;
+      }
+      if (voice.keyState === "up" && !voice.heldBySostenuto && !voice.sustainedBySustain && !voice.released) {
+        this.scheduleVoiceRelease(voice, cutoff);
+      }
+      voice.sostenutoCapturedAtBaseline = voice.heldBySostenuto;
+      voice.sustainedAtBaseline = voice.sustainedBySustain;
+    }
+
+    // Fold the consumed history into a compact state baseline. The transport
+    // will enqueue the next plan suffix after this cancellation boundary.
+    this.pedalBaseline = { ...pedalsAtCutoff };
+    this.pedalState.sustain = pedalsAtCutoff.sustain;
+    this.pedalState.sostenuto = pedalsAtCutoff.sostenuto;
+    this.pedalState.soft = pedalsAtCutoff.soft;
+    this.pedalEvents = [];
+  }
+
+  private pedalsAt(time: number): PedalState {
+    const state: PedalState = { ...this.pedalBaseline };
+    for (const event of this.pedalEvents) {
+      if (event.time > time) continue;
+      const engaged = event.value >= 64;
+      if (event.controller === 64) state.sustain = engaged;
+      else if (event.controller === 66) state.sostenuto = engaged;
+      else state.soft = engaged;
+    }
+    return state;
+  }
+
+  private wasCapturedBySostenuto(voice: ActiveVoice, time: number): boolean {
+    let pedalDown = this.pedalBaseline.sostenuto;
+    let captured = voice.sostenutoCapturedAtBaseline;
+    const events = this.pedalEvents
+      .filter((event) => event.controller === 66 && event.time <= time)
+      .sort((a, b) => a.time - b.time || a.sequence - b.sequence);
+    for (const event of events) {
+      const engaged = event.value >= 64;
+      if (!pedalDown && engaged) {
+        const voiceWasDown = voice.startTime < event.time ||
+          (voice.startTime === event.time && voice.startSequence < event.sequence);
+        const releaseAfterCapture = voice.keyReleaseTimePoint === undefined ||
+          voice.keyReleaseTimePoint > event.time ||
+          (voice.keyReleaseTimePoint === event.time && (voice.releaseSequence ?? Infinity) > event.sequence);
+        if (voiceWasDown && releaseAfterCapture) captured = true;
+      } else if (pedalDown && !engaged) {
+        captured = false;
+      }
+      pedalDown = engaged;
+    }
+    return captured;
+  }
+
+  private wasHeldBySustain(voice: ActiveVoice, time: number): boolean {
+    let heldFromBaseline = voice.sustainedAtBaseline;
+    if (heldFromBaseline && this.pedalEvents.some((event) =>
+      event.controller === 64 && event.value < 64 && event.time <= time)) {
+      heldFromBaseline = false;
+    }
+    if (!voice.heldBySustainAtRelease || voice.keyReleaseTimePoint === undefined || voice.keyReleaseTimePoint > time) {
+      return heldFromBaseline;
+    }
+    let heldAtRelease = true;
+    for (const event of this.pedalEvents) {
+      if (event.controller !== 64 || event.time > time) continue;
+      const occursAfterRelease = event.time > voice.keyReleaseTimePoint ||
+        (event.time === voice.keyReleaseTimePoint && event.sequence > (voice.releaseSequence ?? -1));
+      if (occursAfterRelease && event.value < 64) heldAtRelease = false;
+    }
+    return heldFromBaseline || heldAtRelease;
+  }
+
+  private cancelFutureRelease(voice: ActiveVoice, time: number): void {
+    if (voice.keyReleaseTimePoint !== undefined && voice.keyReleaseTimePoint > time) {
+      voice.keyReleaseTimePoint = undefined;
+      voice.releaseSequence = undefined;
+      voice.heldBySustainAtRelease = false;
+    }
+    voice.released = false;
+    voice.releaseTimePoint = undefined;
+    if (voice.cleanupTimer) {
+      clearTimeout(voice.cleanupTimer);
+      voice.cleanupTimer = undefined;
+    }
+    const elapsed = Math.max(0, time - (voice.startTime + ATTACK_SECONDS));
+    const currentGainEstimate = Math.max(0.0001, voice.peakGain * Math.exp(-elapsed / voice.decayTime));
+    try {
+      voice.voiceGain.gain.cancelScheduledValues(time);
+      voice.voiceGain.gain.setValueAtTime(currentGainEstimate, time);
+      voice.voiceGain.gain.setTargetAtTime(0.0001, time, voice.decayTime);
+      const naturalStop = time + voice.decayTime * 4.5 + 1;
+      for (const oscillator of voice.oscillators) oscillator.stop(naturalStop);
+    } catch {
+      // Keep the sounding voice alive if an AudioParam mock or browser rejects restoration.
+    }
+    const autoCleanupDelayMs = Math.round((voice.decayTime * 4.5 + 1.0) * 1000);
+    voice.cleanupTimer = setTimeout(() => {
+      if (this.activeVoices.get(voice.noteId) === voice) {
+        this.forceStopVoice(voice.noteId, this.audioContext.currentTime);
+      }
+    }, autoCleanupDelayMs);
   }
 
   /** Restores only currently sounding voices and their exact pedal relationships. */
@@ -522,10 +693,16 @@ export class PianoSampler {
         voice.keyState = restored.keyState;
         voice.heldBySostenuto = restored.heldBySostenuto;
         voice.sustainedBySustain = restored.sustainedBySustain;
+        voice.keyReleaseTimePoint = restored.keyState === "up" ? this.audioContext.currentTime : undefined;
+        voice.sostenutoCapturedAtBaseline = restored.heldBySostenuto;
+        voice.sustainedAtBaseline = restored.sustainedBySustain;
+        voice.heldBySustainAtRelease = restored.sustainedBySustain;
+        if (restored.keyState === "up") voice.releaseSequence = this.eventSequence++;
       }
       this.pedalState.sustain = finalPedals.sustain;
       this.pedalState.sostenuto = finalPedals.sostenuto;
       this.pedalState.soft = finalPedals.soft;
+      this.pedalBaseline = { ...finalPedals };
     } catch (error) {
       this.silenceAll();
       throw error;

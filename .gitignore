@@ -2,8 +2,12 @@
 /apps/client/public/pyodide/
 /apps/client/public/python-core/
 /apps/client/public/m1-fixtures/
+/apps/client/public/offline-manifest.json
 dist/
 /apps/client/dist/
 test-results/
 *.zip
 node_modules/
+.venv*/
+__pycache__/
+*.pyc

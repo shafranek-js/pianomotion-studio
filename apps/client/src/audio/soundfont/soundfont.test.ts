@@ -212,6 +212,461 @@ describe("SoundFont 2 Parser & Synthesizer (W042, W043)", () => {
     synth.silenceAll();
     expect(synth.getActiveVoiceCount()).toBe(0);
 
+    synth.pedalChange(64, 127, 10.5);
+    expect(synth.getPedalState().sustain).toBe(false);
+    mockAudioContext.currentTime = 10.5;
+    expect(synth.getPedalState().sustain).toBe(true);
+
+    synth.dispose();
+  });
+
+  it("validates SF2 loop bounds and handles sample modes 0, 1, and 3 correctly", () => {
+    interface MockBufferSource {
+      loop?: boolean;
+      loopStart?: number;
+      loopEnd?: number;
+      playbackRate: { setValueAtTime: ReturnType<typeof vi.fn> };
+      start: ReturnType<typeof vi.fn>;
+      stop: ReturnType<typeof vi.fn>;
+      connect: ReturnType<typeof vi.fn>;
+      disconnect: ReturnType<typeof vi.fn>;
+      onended: (() => void) | null;
+    }
+    const createdSources: MockBufferSource[] = [];
+    const mockAudioContext = {
+      currentTime: 0,
+      destination: {},
+      createGain: vi.fn().mockReturnValue({
+        gain: { setValueAtTime: vi.fn(), cancelScheduledValues: vi.fn(), exponentialRampToValueAtTime: vi.fn(), value: 0.8 },
+        connect: vi.fn(),
+        disconnect: vi.fn(),
+      }),
+      createBuffer: vi.fn().mockReturnValue({ duration: 1.0, getChannelData: vi.fn().mockReturnValue(new Float32Array(44100)) }),
+      createBufferSource: vi.fn().mockImplementation(() => {
+        const src = {
+          buffer: null,
+          loop: false,
+          loopStart: 0,
+          loopEnd: 0,
+          playbackRate: { setValueAtTime: vi.fn() },
+          start: vi.fn(),
+          stop: vi.fn(),
+          connect: vi.fn(),
+          disconnect: vi.fn(),
+          onended: null as (() => void) | null,
+        };
+        createdSources.push(src);
+        return src;
+      }),
+      createStereoPanner: vi.fn().mockReturnValue({ pan: { setValueAtTime: vi.fn() }, connect: vi.fn(), disconnect: vi.fn() }),
+    };
+
+    const sf: Sf2SoundFont = {
+      header: { name: "LoopTest", versionMajor: 2, versionMinor: 4 },
+      presets: [
+        {
+          name: "Presets",
+          presetNumber: 0,
+          bankNumber: 0,
+          zones: [
+            // Mode 1: continuous loop
+            { keyRange: [60, 60], velRange: [1, 127], sampleIndex: 0, sampleModes: 1 },
+            // Mode 0: no loop
+            { keyRange: [61, 61], velRange: [1, 127], sampleIndex: 0, sampleModes: 0 },
+            // Mode 3: loop while held, unloop on release
+            { keyRange: [62, 62], velRange: [1, 127], sampleIndex: 0, sampleModes: 3 },
+            // Invalid loop bounds (loopEnd <= loopStart)
+            { keyRange: [63, 63], velRange: [1, 127], sampleIndex: 1, sampleModes: 1 },
+          ],
+        },
+      ],
+      samples: [
+        { name: "ValidSample", start: 0, end: 44100, loopStart: 4410, loopEnd: 22050, sampleRate: 44100, originalPitch: 60, pitchCorrection: 0, sampleType: 1 },
+        { name: "InvalidLoopSample", start: 0, end: 44100, loopStart: 22050, loopEnd: 4410, sampleRate: 44100, originalPitch: 63, pitchCorrection: 0, sampleType: 1 },
+      ],
+      rawSampleData: new Int16Array(44100),
+    };
+
+    const synth = new SoundFontSynth({
+      // @ts-expect-error mock context
+      audioContext: mockAudioContext,
+      maxPolyphony: 10,
+    });
+    synth.loadSoundFont(sf);
+
+    // Pitch 60 (Mode 1 - continuous): should loop
+    synth.noteOn(60, 100, "note-mode1");
+    expect(createdSources[0].loop).toBe(true);
+    expect(createdSources[0].loopStart).toBeCloseTo(0.1, 3);
+    expect(createdSources[0].loopEnd).toBeCloseTo(0.5, 3);
+
+    // Pitch 61 (Mode 0 - no loop): should not loop
+    synth.noteOn(61, 100, "note-mode0");
+    expect(createdSources[1].loop).toBe(false);
+
+    // Pitch 62 (Mode 3 - loop while key down): should loop while pressed, unloop on release
+    synth.noteOn(62, 100, "note-mode3");
+    expect(createdSources[2].loop).toBe(true);
+    synth.noteOff("note-mode3");
+    expect(createdSources[2].loop).toBe(true); // the original loop stops at the exact release timestamp
+    expect(createdSources[2].stop).toHaveBeenCalledWith(0);
+    expect(createdSources[3]?.loop).toBe(false); // a one-shot loop tail continues after release
+
+    // Pitch 63 (Invalid loop bounds): should not loop
+    synth.noteOn(63, 100, "note-badloop");
+    expect(createdSources[3].loop).toBe(false);
+
+    synth.dispose();
+  });
+
+  it("isolates distinct voices of identical pitch when noteId is provided", () => {
+    const mockAudioContext = {
+      currentTime: 0,
+      destination: {},
+      createGain: vi.fn().mockReturnValue({
+        gain: { setValueAtTime: vi.fn(), cancelScheduledValues: vi.fn(), exponentialRampToValueAtTime: vi.fn(), value: 0.8 },
+        connect: vi.fn(),
+        disconnect: vi.fn(),
+      }),
+      createBuffer: vi.fn().mockReturnValue({ duration: 1.0, getChannelData: vi.fn().mockReturnValue(new Float32Array(44100)) }),
+      createBufferSource: vi.fn().mockImplementation(() => ({
+        buffer: null,
+        loop: false,
+        loopStart: 0,
+        loopEnd: 0,
+        playbackRate: { setValueAtTime: vi.fn() },
+        start: vi.fn(),
+        stop: vi.fn(),
+        connect: vi.fn(),
+        disconnect: vi.fn(),
+        onended: null as (() => void) | null,
+      })),
+      createStereoPanner: vi.fn().mockReturnValue({ pan: { setValueAtTime: vi.fn() }, connect: vi.fn(), disconnect: vi.fn() }),
+    };
+
+    const sf: Sf2SoundFont = {
+      header: { name: "PolyTest", versionMajor: 2, versionMinor: 4 },
+      presets: [
+        {
+          name: "Default",
+          presetNumber: 0,
+          bankNumber: 0,
+          zones: [{ keyRange: [60, 60], velRange: [1, 127], sampleIndex: 0 }],
+        },
+      ],
+      samples: [
+        { name: "C4", start: 0, end: 44100, loopStart: 0, loopEnd: 44100, sampleRate: 44100, originalPitch: 60, pitchCorrection: 0, sampleType: 1 },
+      ],
+      rawSampleData: new Int16Array(44100),
+    };
+
+    const synth = new SoundFontSynth({
+      // @ts-expect-error mock context
+      audioContext: mockAudioContext,
+      maxPolyphony: 10,
+    });
+    synth.loadSoundFont(sf);
+
+    // Strike two voices with identical pitch (C4 = 60), distinct noteIds
+    synth.noteOn(60, 90, "voice-left-hand");
+    synth.noteOn(60, 110, "voice-right-hand");
+    expect(synth.getActiveVoiceCount()).toBe(2);
+
+    // Releasing left-hand note must NOT release right-hand note of same pitch
+    synth.noteOff("voice-left-hand");
+    expect(synth.getActiveVoiceCount()).toBe(2); // still ringing in release/active
+
+    synth.dispose();
+  });
+
+  it("uses the scheduled Web Audio times and cancels only a future release without reattacking", () => {
+    const gainCalls = {
+      setValueAtTime: vi.fn(),
+      cancelScheduledValues: vi.fn(),
+      exponentialRampToValueAtTime: vi.fn(),
+    };
+    const sources: Array<{
+      loop: boolean;
+      playbackRate: { setValueAtTime: ReturnType<typeof vi.fn> };
+      start: ReturnType<typeof vi.fn>;
+      stop: ReturnType<typeof vi.fn>;
+      connect: ReturnType<typeof vi.fn>;
+      disconnect: ReturnType<typeof vi.fn>;
+      onended: (() => void) | null;
+    }> = [];
+    const context = {
+      currentTime: 10,
+      destination: {},
+      createGain: vi.fn().mockReturnValue({ gain: gainCalls, connect: vi.fn(), disconnect: vi.fn() }),
+      createBuffer: vi.fn().mockReturnValue({
+        duration: 1,
+        sampleRate: 44_100,
+        getChannelData: vi.fn().mockReturnValue(new Float32Array(44_100)),
+      }),
+      createBufferSource: vi.fn().mockImplementation(() => {
+        const source = {
+          loop: false,
+          playbackRate: { setValueAtTime: vi.fn() },
+          start: vi.fn(),
+          stop: vi.fn(),
+          connect: vi.fn(),
+          disconnect: vi.fn(),
+          onended: null as (() => void) | null,
+        };
+        sources.push(source);
+        return source;
+      }),
+    };
+    const soundFont: Sf2SoundFont = {
+      header: { name: "Scheduled", versionMajor: 2, versionMinor: 4 },
+      presets: [{ name: "Default", presetNumber: 0, bankNumber: 0, zones: [
+        { keyRange: [60, 60], velRange: [1, 127], sampleIndex: 0, releaseSeconds: 0.2 },
+      ] }],
+      samples: [{ name: "Sample", start: 0, end: 44_100, loopStart: 0, loopEnd: 44_100, sampleRate: 44_100, originalPitch: 60, pitchCorrection: 0, sampleType: 1 }],
+      rawSampleData: new Int16Array(44_100),
+    };
+    const synth = new SoundFontSynth({ audioContext: context as unknown as AudioContext });
+    synth.loadSoundFont(soundFont);
+
+    synth.noteOn(60, 100, "scheduled-note", 10.5);
+    expect(sources[0]!.start).toHaveBeenCalledWith(10.5);
+    expect(sources[0]!.playbackRate.setValueAtTime).toHaveBeenCalledWith(1, 10.5);
+    synth.noteOff("scheduled-note", 60, 10.8);
+    expect(gainCalls.exponentialRampToValueAtTime).toHaveBeenCalledWith(expect.any(Number), 11);
+    expect(sources[0]!.stop).toHaveBeenCalledWith(11.05);
+
+    synth.cancelScheduledFutureEvents(10.7);
+    expect(sources[0]!.stop).toHaveBeenLastCalledWith(10.7 + 24 * 60 * 60);
+    expect(synth.getKeyDownNotes()).toEqual([{ noteId: "scheduled-note", pitch: 60 }]);
+    expect(synth.getActiveVoiceCount()).toBe(1);
+    synth.dispose();
+  });
+
+  it("keeps mode 3 looping through sustain and exits only at effective release", () => {
+    const sources: Array<{
+      loop: boolean;
+      loopStart: number;
+      loopEnd: number;
+      playbackRate: { setValueAtTime: ReturnType<typeof vi.fn> };
+      start: ReturnType<typeof vi.fn>;
+      stop: ReturnType<typeof vi.fn>;
+      connect: ReturnType<typeof vi.fn>;
+      disconnect: ReturnType<typeof vi.fn>;
+      onended: (() => void) | null;
+    }> = [];
+    const context = {
+      currentTime: 0,
+      destination: {},
+      createGain: vi.fn().mockReturnValue({
+        gain: { setValueAtTime: vi.fn(), cancelScheduledValues: vi.fn(), exponentialRampToValueAtTime: vi.fn() },
+        connect: vi.fn(), disconnect: vi.fn(),
+      }),
+      createBuffer: vi.fn().mockReturnValue({
+        duration: 1,
+        sampleRate: 44_100,
+        getChannelData: vi.fn().mockReturnValue(new Float32Array(44_100)),
+      }),
+      createBufferSource: vi.fn().mockImplementation(() => {
+        const source = {
+          loop: false,
+          loopStart: 0,
+          loopEnd: 0,
+          playbackRate: { setValueAtTime: vi.fn() },
+          start: vi.fn(),
+          stop: vi.fn(),
+          connect: vi.fn(),
+          disconnect: vi.fn(),
+          onended: null as (() => void) | null,
+        };
+        sources.push(source);
+        return source;
+      }),
+    };
+    const soundFont: Sf2SoundFont = {
+      header: { name: "Mode3Pedal", versionMajor: 2, versionMinor: 4 },
+      presets: [{ name: "Default", presetNumber: 0, bankNumber: 0, zones: [
+        { keyRange: [60, 60], velRange: [1, 127], sampleIndex: 0, sampleModes: 3 },
+      ] }],
+      samples: [{ name: "Loop", start: 0, end: 44_100, loopStart: 4_410, loopEnd: 13_230, sampleRate: 44_100, originalPitch: 60, pitchCorrection: 0, sampleType: 1 }],
+      rawSampleData: new Int16Array(44_100),
+    };
+    const synth = new SoundFontSynth({ audioContext: context as unknown as AudioContext });
+    synth.loadSoundFont(soundFont);
+
+    synth.noteOn(60, 100, "pedaled", 0);
+    synth.pedalChange(64, 127, 0.1);
+    synth.noteOff("pedaled", 60, 0.3);
+    expect(sources).toHaveLength(1);
+    expect(sources[0]!.loop).toBe(true);
+    expect(sources[0]!.stop).not.toHaveBeenCalled();
+
+    synth.pedalChange(64, 0, 0.8);
+    expect(sources).toHaveLength(2);
+    expect(sources[0]!.stop).toHaveBeenCalledWith(0.8);
+    expect(sources[1]!.loop).toBe(false);
+    expect(sources[1]!.start).toHaveBeenCalledWith(0.8, expect.any(Number));
+    synth.dispose();
+  });
+
+  it("restores held mode-3 pedals across tempo cancellation and reschedules the actual loop tail", () => {
+    const sources: Array<{
+      buffer: { duration: number; sampleRate: number } | null;
+      loop: boolean;
+      loopStart: number;
+      loopEnd: number;
+      playbackRate: { setValueAtTime: ReturnType<typeof vi.fn> };
+      start: ReturnType<typeof vi.fn>;
+      stop: ReturnType<typeof vi.fn>;
+      connect: ReturnType<typeof vi.fn>;
+      disconnect: ReturnType<typeof vi.fn>;
+      onended: (() => void) | null;
+    }> = [];
+    const context = {
+      currentTime: 0,
+      destination: {},
+      createGain: vi.fn().mockReturnValue({
+        gain: { setValueAtTime: vi.fn(), cancelScheduledValues: vi.fn(), exponentialRampToValueAtTime: vi.fn() },
+        connect: vi.fn(), disconnect: vi.fn(),
+      }),
+      createBuffer: vi.fn().mockReturnValue({
+        duration: 1,
+        sampleRate: 44_100,
+        getChannelData: vi.fn().mockReturnValue(new Float32Array(44_100)),
+      }),
+      createBufferSource: vi.fn().mockImplementation(() => {
+        const source = {
+          buffer: null as { duration: number; sampleRate: number } | null,
+          loop: false,
+          loopStart: 0,
+          loopEnd: 0,
+          playbackRate: { setValueAtTime: vi.fn() },
+          start: vi.fn(),
+          stop: vi.fn(),
+          connect: vi.fn(),
+          disconnect: vi.fn(),
+          onended: null as (() => void) | null,
+        };
+        sources.push(source);
+        return source;
+      }),
+    };
+    const soundFont: Sf2SoundFont = {
+      header: { name: "RestoredLoop", versionMajor: 2, versionMinor: 4 },
+      presets: [{ name: "Default", presetNumber: 0, bankNumber: 0, zones: [
+        { keyRange: [60, 60], velRange: [1, 127], sampleIndex: 0, sampleModes: 3, releaseSeconds: 0.2 },
+      ] }],
+      samples: [{ name: "Loop", start: 0, end: 44_100, loopStart: 4_410, loopEnd: 13_230, sampleRate: 44_100, originalPitch: 60, pitchCorrection: 0, sampleType: 1 }],
+      rawSampleData: new Int16Array(44_100),
+    };
+    const synth = new SoundFontSynth({ audioContext: context as unknown as AudioContext });
+    synth.loadSoundFont(soundFont);
+    synth.restoreState({
+      voices: [{
+        noteId: "restored-mode3",
+        pitch: 60,
+        velocity: 100,
+        keyState: "down",
+        heldBySostenuto: true,
+        sustainedBySustain: false,
+        softPedalAtPress: false,
+      }],
+      pedals: { sustain: true, sostenuto: true, soft: false },
+    });
+
+    synth.noteOff("restored-mode3", 60, 0.3);
+    synth.pedalChange(64, 0, 0.4);
+    synth.pedalChange(66, 0, 0.5);
+    expect(synth.getPedalState()).toEqual({ sustain: true, sostenuto: true, soft: false });
+    expect(sources[0]!.loop).toBe(true);
+    expect(sources).toHaveLength(2); // first lookahead release tail
+
+    // Transport.setSpeed cancels the audio-clock suffix and then queues it again.
+    synth.cancelScheduledFutureEvents(0.1);
+    expect(synth.getPedalState()).toEqual({ sustain: true, sostenuto: true, soft: false });
+    expect(synth.getKeyDownNotes()).toEqual([{ noteId: "restored-mode3", pitch: 60 }]);
+    expect(sources[0]!.loop).toBe(true);
+    expect(sources[0]!.stop).toHaveBeenLastCalledWith(0.1 + 24 * 60 * 60);
+
+    synth.noteOff("restored-mode3", 60, 0.3);
+    synth.pedalChange(64, 0, 0.4);
+    synth.pedalChange(66, 0, 0.5);
+    context.currentTime = 0.45;
+    expect(synth.getPedalState()).toEqual({ sustain: false, sostenuto: true, soft: false });
+    expect(sources[0]!.loop).toBe(true);
+    context.currentTime = 0.55;
+    expect(synth.getPedalState()).toEqual({ sustain: false, sostenuto: false, soft: false });
+    expect(sources).toHaveLength(3);
+    expect(sources[2]!.loop).toBe(false);
+    expect(sources[2]!.start).toHaveBeenCalledWith(0.5, expect.any(Number));
+    synth.dispose();
+  });
+
+  it("implements selective sostenuto (CC66) capturing only held keys without capturing new notes", () => {
+    const mockAudioContext = {
+      currentTime: 0,
+      destination: {},
+      createGain: vi.fn().mockReturnValue({
+        gain: { setValueAtTime: vi.fn(), cancelScheduledValues: vi.fn(), exponentialRampToValueAtTime: vi.fn(), value: 0.8 },
+        connect: vi.fn(),
+        disconnect: vi.fn(),
+      }),
+      createBuffer: vi.fn().mockReturnValue({ duration: 1.0, getChannelData: vi.fn().mockReturnValue(new Float32Array(44100)) }),
+      createBufferSource: vi.fn().mockImplementation(() => ({
+        buffer: null,
+        loop: false,
+        loopStart: 0,
+        loopEnd: 0,
+        playbackRate: { setValueAtTime: vi.fn() },
+        start: vi.fn(),
+        stop: vi.fn(),
+        connect: vi.fn(),
+        disconnect: vi.fn(),
+        onended: null as (() => void) | null,
+      })),
+      createStereoPanner: vi.fn().mockReturnValue({ pan: { setValueAtTime: vi.fn() }, connect: vi.fn(), disconnect: vi.fn() }),
+    };
+
+    const sf: Sf2SoundFont = {
+      header: { name: "SostenutoTest", versionMajor: 2, versionMinor: 4 },
+      presets: [
+        {
+          name: "Default",
+          presetNumber: 0,
+          bankNumber: 0,
+          zones: [{ keyRange: [60, 72], velRange: [1, 127], sampleIndex: 0 }],
+        },
+      ],
+      samples: [
+        { name: "Sample", start: 0, end: 44100, loopStart: 0, loopEnd: 44100, sampleRate: 44100, originalPitch: 60, pitchCorrection: 0, sampleType: 1 },
+      ],
+      rawSampleData: new Int16Array(44100),
+    };
+
+    const synth = new SoundFontSynth({
+      // @ts-expect-error mock context
+      audioContext: mockAudioContext,
+      maxPolyphony: 10,
+    });
+    synth.loadSoundFont(sf);
+
+    // 1. Press note 1 (C4 = 60)
+    synth.noteOn(60, 90, "n1");
+
+    // 2. Depress Sostenuto pedal (CC 66 = 127) -> captures n1
+    synth.pedalChange(66, 127);
+    expect(synth.getPedalState().sostenuto).toBe(true);
+
+    // 3. Play note 2 (C5 = 72) while Sostenuto is ALREADY held down -> n2 must NOT be captured!
+    synth.noteOn(72, 90, "n2");
+
+    // 4. Release keys
+    synth.noteOff("n1");
+    synth.noteOff("n2");
+
+    // Sostenuto holds n1; lifting Sostenuto releases n1
+    synth.pedalChange(66, 0);
+    expect(synth.getPedalState().sostenuto).toBe(false);
+
     synth.dispose();
   });
 });

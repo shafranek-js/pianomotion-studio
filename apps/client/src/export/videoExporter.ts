@@ -1,53 +1,232 @@
+import {
+  AudioBufferSource,
+  CanvasSource,
+  Mp4OutputFormat,
+  Output,
+  WebMOutputFormat,
+  canEncodeAudio,
+  canEncodeVideo,
+} from "mediabunny";
+import { computeSha256Hex } from "../audio/soundfont/soundfontAssetStore";
+import { parseSf2Async } from "../audio/soundfont/sf2Parser";
 import { PianoScene } from "../render";
-import { calculateExportTiming } from "./videoDimensions";
 import { renderOfflineAudio, type OfflineAudioRenderResult } from "./offlineAudioRenderer";
+import { calculateExportTiming } from "./videoDimensions";
+import {
+  createBoundedBlobVideoSink,
+  createFileVideoSink,
+  beginSaveFilePicker,
+  MAX_VIDEO_BLOB_BYTES,
+  type SaveFileHandleLike,
+  type VideoOutputSink,
+} from "./videoExportSink";
+import { VideoExportAnalysisWorker, type VideoExportMotionProvider } from "./videoExportAnalysisWorker";
+import { freezeVideoExportSnapshot } from "./videoExportSnapshot";
+import type { AudioBufferLike } from "./wavEncoder";
 import type {
   ExportSceneDataSource,
+  ExportSourceIdentity,
   VideoExportOptions,
   VideoExportProgress,
 } from "./types";
+import type { PerformancePlan } from "@handthesia/contracts";
 
-/**
- * Progress weights for video export pipeline stages:
- *   WEIGHTS = (0.86, 0.10, 0.04)  // frames, audio, mux
- */
 export const WEIGHT_FRAMES = 0.86;
 export const WEIGHT_AUDIO = 0.10;
 export const WEIGHT_MUX = 0.04;
 
+export interface SavedVideoFile {
+  name: string;
+  sizeBytes: number;
+  mimeType: string;
+}
+
 export interface VideoExportResult {
-  videoBlob: Blob;
-  audioWavBlob?: Blob;
   filename: string;
+  mimeType: string;
+  sizeBytes: number;
+  savedFile?: SavedVideoFile;
+  boundedBlob?: Blob;
 }
 
-/**
- * Resolves the best supported video MIME type for MediaRecorder.
- */
-export function getSupportedVideoMimeType(): string {
-  if (typeof MediaRecorder === "undefined") {
-    return "video/webm";
+interface CodecSelection {
+  video: "avc" | "vp9" | "vp8";
+  audio: "aac" | "opus" | null;
+  mimeType: "video/mp4" | "video/webm";
+}
+
+export interface VideoCodecCapability {
+  supported: boolean;
+  reason: string | null;
+}
+
+export interface ExportTiming {
+  startTime: number;
+  durationSeconds: number;
+  totalFrames: number;
+  fps: number;
+  speed: number;
+}
+
+export function getSupportedVideoMimeType(preferredFormat: "mp4" | "webm" = "mp4"): string {
+  return preferredFormat === "webm" ? "video/webm" : "video/mp4";
+}
+
+export async function preflightVideoCodecs(
+  format: "mp4" | "webm",
+  options: { width: number; height: number; fps: number; includeAudio: boolean },
+): Promise<CodecSelection> {
+  if (typeof VideoEncoder === "undefined") {
+    throw new Error("Video export requires WebCodecs VideoEncoder support.");
   }
-  const candidates = [
-    "video/webm;codecs=vp9,opus",
-    "video/webm;codecs=vp9",
-    "video/webm;codecs=vp8,opus",
-    "video/webm;codecs=vp8",
-    "video/webm",
-    "video/mp4;codecs=avc1,mp4a.40.2",
-    "video/mp4",
-  ];
-  for (const candidate of candidates) {
-    if (MediaRecorder.isTypeSupported(candidate)) {
-      return candidate;
+  const videoOptions = { width: options.width, height: options.height, frameRate: options.fps };
+  let video: CodecSelection["video"];
+  let audio: CodecSelection["audio"] = null;
+  if (format === "mp4") {
+    if (!(await canEncodeVideo("avc", videoOptions))) {
+      throw new Error("This browser cannot encode H.264/AVC video for MP4 at the selected dimensions and frame rate.");
     }
+    video = "avc";
+    if (options.includeAudio) {
+      if (typeof AudioEncoder === "undefined" || !(await canEncodeAudio("aac", { numberOfChannels: 2, sampleRate: 44_100 }))) {
+        throw new Error("This browser cannot encode AAC audio for MP4.");
+      }
+      audio = "aac";
+    }
+    return { video, audio, mimeType: "video/mp4" };
   }
-  return "video/webm";
+
+  if (await canEncodeVideo("vp9", videoOptions)) video = "vp9";
+  else if (await canEncodeVideo("vp8", videoOptions)) video = "vp8";
+  else throw new Error("This browser cannot encode VP9 or VP8 video for WebM at the selected dimensions and frame rate.");
+  if (options.includeAudio) {
+    if (typeof AudioEncoder === "undefined" || !(await canEncodeAudio("opus", { numberOfChannels: 2, sampleRate: 44_100 }))) {
+      throw new Error("This browser cannot encode Opus audio for WebM.");
+    }
+    audio = "opus";
+  }
+  return { video, audio, mimeType: "video/webm" };
 }
 
-/**
- * Headless offline/real-time video export engine.
- */
+/** Checks the selected settings without opening an output picker or starting an export. */
+export async function queryVideoCodecCapabilities(options: {
+  width: number;
+  height: number;
+  fps: number;
+  includeAudio: boolean;
+}): Promise<Record<"mp4" | "webm", VideoCodecCapability>> {
+  const check = async (format: "mp4" | "webm"): Promise<VideoCodecCapability> => {
+    try {
+      await preflightVideoCodecs(format, options);
+      return { supported: true, reason: null };
+    } catch (error) {
+      return {
+        supported: false,
+        reason: error instanceof Error ? error.message : String(error),
+      };
+    }
+  };
+  const [mp4, webm] = await Promise.all([check("mp4"), check("webm")]);
+  return { mp4, webm };
+}
+
+function createCanvas(width: number, height: number): HTMLCanvasElement {
+  if (typeof document === "undefined") throw new Error("Video export requires a browser canvas.");
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  return canvas;
+}
+
+function createNativeAudioBufferSlice(buffer: AudioBufferLike, start: number, end: number): AudioBuffer {
+  if (typeof AudioBuffer === "undefined") throw new Error("Video export requires Web Audio AudioBuffer support.");
+  const length = end - start;
+  if (length <= 0) throw new RangeError("Audio encoder chunk must contain at least one sample.");
+  const native = new AudioBuffer({
+    numberOfChannels: Math.min(2, buffer.numberOfChannels),
+    length,
+    sampleRate: buffer.sampleRate,
+  });
+  for (let channel = 0; channel < native.numberOfChannels; channel += 1) {
+    native.copyToChannel(new Float32Array(buffer.getChannelData(channel).subarray(start, end)), channel);
+  }
+  return native;
+}
+
+function makeFilename(title: string, preset: string, fps: number, format: "mp4" | "webm"): string {
+  const safeTitle = (title || "performance").trim().replace(/[^a-zA-Z0-9_\u0400-\u04FF-]/g, "_") || "performance";
+  return `${safeTitle}_${preset}_${fps}fps.${format}`;
+}
+
+function canonicalJson(value: unknown): string {
+  const normalize = (entry: unknown): unknown => {
+    if (Array.isArray(entry)) return entry.map(normalize);
+    if (entry && typeof entry === "object") {
+      return Object.fromEntries(Object.entries(entry)
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([key, child]) => [key, normalize(child)]));
+    }
+    return entry;
+  };
+  return JSON.stringify(normalize(value));
+}
+
+export function assertReplanMatchesFrozenSource(
+  sourceIdentity: ExportSourceIdentity,
+  frozenDocument: ExportSceneDataSource["document"],
+  frozenPerformance: PerformancePlan,
+  replanned: Awaited<ReturnType<VideoExportAnalysisWorker["replan"]>>,
+): void {
+  const performance = replanned.performancePlan;
+  if (!replanned.document || canonicalJson(replanned.document) !== canonicalJson(frozenDocument)) {
+    throw new Error("The independent export replan changed the frozen source document.");
+  }
+  if (!performance || performance.projectId !== sourceIdentity.projectId ||
+      performance.inputRevision !== sourceIdentity.revision ||
+      performance.engineVersion !== sourceIdentity.engineVersion ||
+      performance.profileId !== frozenPerformance.profileId ||
+      performance.profileRevision !== frozenPerformance.profileRevision ||
+      performance.fingeringPlanId !== replanned.fingeringPlan?.planId ||
+      canonicalJson(replanned.fingeringPlan?.assignments) !== canonicalJson(sourceIdentity.fingeringPlan.assignments) ||
+      canonicalJson(performance.events) !== canonicalJson(frozenPerformance.events)) {
+    throw new Error("The independent export replan does not match the frozen performance events.");
+  }
+}
+
+function openOutputSink(
+  mode: VideoExportOptions["outputMode"],
+  filename: string,
+  mimeType: string,
+): Promise<SaveFileHandleLike> | null {
+  if (mode === "bounded-blob") return null;
+  const promise = beginSaveFilePicker(filename, mimeType);
+  // Picker cancellation can happen while codec preflight is still pending.
+  // Keep the original promise for the awaited result, but mark it handled now.
+  promise?.catch(() => {});
+  return promise;
+}
+
+async function selectOutputSink(
+  mode: VideoExportOptions["outputMode"],
+  pickerPromise: Promise<SaveFileHandleLike> | null,
+  mimeType: string,
+  blobLimitBytes: number | undefined,
+): Promise<{ sink: VideoOutputSink; handle?: SaveFileHandleLike }> {
+  if (mode === "file" && !pickerPromise) {
+    throw new Error("File output is unavailable because this browser does not support the File System Access API.");
+  }
+  if (pickerPromise) {
+    const handle = await pickerPromise;
+    return { sink: await createFileVideoSink(handle), handle };
+  }
+  return { sink: createBoundedBlobVideoSink(mimeType, blobLimitBytes ?? MAX_VIDEO_BLOB_BYTES) };
+}
+
+function throwIfCancelled(signal: AbortSignal): void {
+  if (signal.aborted) throw new DOMException("Video export canceled", "AbortError");
+}
+
+/** Headless WebCodecs video exporter with a dedicated planning Worker and backpressured output. */
 export class VideoExporter {
   private cancelled = false;
   private running = false;
@@ -59,288 +238,290 @@ export class VideoExporter {
     this.abortController.abort();
   }
 
-  public isCancelled(): boolean {
-    return this.cancelled;
-  }
-
-  public isRunning(): boolean {
-    return this.running;
-  }
-
-  public getExportCanvas(): HTMLCanvasElement | null {
-    return this.exportCanvas;
-  }
+  public isCancelled(): boolean { return this.cancelled; }
+  public isRunning(): boolean { return this.running; }
+  public getExportCanvas(): HTMLCanvasElement | null { return this.exportCanvas; }
 
   public async exportVideo(
     source: ExportSceneDataSource,
-    options: VideoExportOptions,
+    optionsInput: VideoExportOptions,
     onProgress?: (progress: VideoExportProgress) => void,
   ): Promise<VideoExportResult> {
-    if (this.running) {
-      throw new Error("An export is already running");
-    }
+    if (this.running) throw new Error("An export is already running.");
 
+    // This copy is deliberately the first export operation: all live editor state is frozen before a picker or Worker can await.
+    const snapshot = freezeVideoExportSnapshot(source, optionsInput);
+    const options = snapshot.options;
     this.cancelled = false;
     this.running = true;
     this.abortController = new AbortController();
-
-    const startTimeMs = Date.now();
-    const leadIn = source.settings.leadInSeconds ?? -2.0;
-    const songDuration = source.document.durationSeconds ?? 0;
-    const timing = calculateExportTiming(
-      leadIn,
-      songDuration,
-      options.speed,
-      options.tailSeconds,
-      options.fps,
-    );
-
-    const safeTitle = (source.document.title || "performance")
-      .trim()
-      .replace(/[^a-zA-Z0-9_\u0400-\u04FF-]/g, "_");
-    const mimeType = getSupportedVideoMimeType();
-    const extension = mimeType.includes("mp4") ? "mp4" : "webm";
-    const filename = `${safeTitle}_${options.preset}_${options.fps}fps.${extension}`;
-
-    // Create offscreen canvas for headless rendering
-    let canvas: HTMLCanvasElement;
-    if (typeof document !== "undefined" && typeof document.createElement === "function") {
-      canvas = document.createElement("canvas");
-      canvas.width = options.width;
-      canvas.height = options.height;
-    } else {
-      // Mock canvas for Node/test environments
-      canvas = {
-        width: options.width,
-        height: options.height,
-        getContext: () => null,
-      } as unknown as HTMLCanvasElement;
-    }
-    this.exportCanvas = canvas;
-
+    const signal = this.abortController.signal;
+    const format = options.format ?? "mp4";
+    const initialMimeType = getSupportedVideoMimeType(format);
+    const filename = makeFilename(snapshot.document.title, options.preset, options.fps, format);
+    let pickerPromise: Promise<SaveFileHandleLike> | null;
     let scene: PianoScene | null = null;
-    let recorder: MediaRecorder | null = null;
-    const recordedChunks: Blob[] = [];
+    let analysisWorker: VideoExportAnalysisWorker | null = null;
+    let motionProvider: VideoExportMotionProvider;
+    let output: Output | null = null;
+    let sink: VideoOutputSink | null = null;
+    let completed = false;
+    let totalFrames = 0;
+    let frameCount = 0;
+    let audioProgress = 0;
+    const startedAt = Date.now();
 
     try {
+      pickerPromise = openOutputSink(options.outputMode ?? "auto", filename, initialMimeType);
+      const safeWidth = Math.max(2, Math.floor(options.width / 2) * 2);
+      const safeHeight = Math.max(2, Math.floor(options.height / 2) * 2);
+      if (safeWidth !== options.width || safeHeight !== options.height || options.width < 2 || options.height < 2) {
+        throw new RangeError("Video dimensions must be positive even integers.");
+      }
+      if (![30, 60].includes(options.fps) || !Number.isFinite(options.speed) || options.speed < 0.25 || options.speed > 2) {
+        throw new RangeError("Video export requires 30 or 60 FPS and a playback speed from 0.25x to 2x.");
+      }
+
+      const leadIn = snapshot.settings.leadInSeconds ?? -2;
+      const rawTiming = calculateExportTiming(
+        leadIn,
+        snapshot.document.durationSeconds,
+        options.speed,
+        options.tailSeconds,
+        options.fps,
+      );
+      totalFrames = rawTiming.totalFrames;
+      const timing: ExportTiming = {
+        ...rawTiming,
+        durationSeconds: rawTiming.totalFrames / rawTiming.fps,
+      };
+      const codec = await preflightVideoCodecs(format, {
+        width: safeWidth,
+        height: safeHeight,
+        fps: options.fps,
+        includeAudio: options.includeAudio && options.audioSource !== "none",
+      });
+      throwIfCancelled(signal);
+      const selectedSink = await selectOutputSink(options.outputMode ?? "auto", pickerPromise, codec.mimeType, options.blobLimitBytes);
+      sink = selectedSink.sink;
+
+      const canvas = createCanvas(safeWidth, safeHeight);
+      this.exportCanvas = canvas;
       onProgress?.({
-        phase: "preparing",
-        doneFrames: 0,
-        totalFrames: timing.totalFrames,
-        frameProgress: 0,
-        audioProgress: 0,
-        muxProgress: 0,
-        overallProgress: 0.01,
-        statusText: "Initializing offscreen renderer...",
-        etaSeconds: null,
-        previewCanvas: canvas,
+        phase: "preparing", doneFrames: 0, totalFrames, frameProgress: 0, audioProgress: 0,
+        muxProgress: 0, overallProgress: 0.01, statusText: "Freezing project and rebuilding export plans…",
+        etaSeconds: null, previewCanvas: canvas,
       });
 
-      // Initialize offscreen PixiJS scene
-      if (typeof document !== "undefined" && typeof document.createElement === "function") {
-        scene = await PianoScene.create({
-          target: canvas,
-          song: source.document,
-          performancePlan: source.performancePlan,
-          keyStyle: source.keyStyle,
-          displaySettings: {
-            showFingerLabels: source.settings.showFingerLabels,
-            showNoteNames: source.settings.showNoteNames,
-            skinStyle: source.settings.skinStyle,
-            showHandShadow: source.settings.showHandShadow,
-            renderCapFps: 0, // Uncapped for export
-          },
-          pixelsPerSecond: 180,
-        });
+      const actualMidiHash = await computeSha256Hex(snapshot.sourceIdentity.originalMidiBytes);
+      if (actualMidiHash !== snapshot.sourceIdentity.resource.sha256) {
+        throw new Error("The frozen original MIDI bytes no longer match the saved source resource hash.");
       }
-
-      // Initialize MediaRecorder if in browser environment
-      const hasMediaRecorder =
-        typeof MediaRecorder !== "undefined" &&
-        typeof canvas.captureStream === "function";
-
-      if (hasMediaRecorder) {
-        const stream = canvas.captureStream(options.fps);
-        recorder = new MediaRecorder(stream, {
-          mimeType,
-          videoBitsPerSecond: 8_000_000,
-        });
-
-        recorder.ondataavailable = (event) => {
-          if (event.data && event.data.size > 0) {
-            recordedChunks.push(event.data);
-          }
-        };
-
-        recorder.start(100); // 100ms slice chunks
-      }
-
-      // --- PHASE 1: Render Video Frames (Weight: 0.86) ---
-      const totalFrames = timing.totalFrames;
-      for (let i = 0; i < totalFrames; i++) {
-        if (this.cancelled) {
-          throw new Error("Export cancelled");
-        }
-
-        const t = timing.startTime + (i / timing.fps) * timing.speed;
-
-        if (scene) {
-          scene.update(t);
-          scene.getApp().renderer.render(scene.getApp().stage);
-        }
-
-        const doneFrames = i + 1;
-        const frameFrac = doneFrames / totalFrames;
-        const overallProgress = frameFrac * WEIGHT_FRAMES;
-
-        const elapsedSec = (Date.now() - startTimeMs) / 1000;
-        const etaSeconds =
-          frameFrac > 0.03
-            ? Math.max(0, Math.round(((elapsedSec / frameFrac) * (1 - frameFrac))))
-            : null;
-
+      analysisWorker = new VideoExportAnalysisWorker();
+      const replanned = await analysisWorker.replan(snapshot, signal, (message) => {
         onProgress?.({
-          phase: "rendering_frames",
-          doneFrames,
-          totalFrames,
-          frameProgress: frameFrac,
-          audioProgress: 0,
-          muxProgress: 0,
-          overallProgress,
-          statusText: `Rendering frames ${doneFrames} / ${totalFrames} (${Math.round(frameFrac * 100)}%)`,
-          etaSeconds,
-          previewCanvas: canvas,
+          phase: "preparing", doneFrames: 0, totalFrames, frameProgress: 0, audioProgress: 0,
+          muxProgress: 0, overallProgress: 0.04, statusText: message, etaSeconds: null, previewCanvas: canvas,
         });
+      });
+      assertReplanMatchesFrozenSource(
+        snapshot.sourceIdentity,
+        snapshot.document,
+        snapshot.performancePlan,
+        replanned,
+      );
+      motionProvider = analysisWorker.createMotionProvider(replanned, signal, (message) => {
+        onProgress?.({
+          phase: "preparing", doneFrames: 0, totalFrames, frameProgress: 0, audioProgress: 0,
+          muxProgress: 0, overallProgress: 0.08, statusText: message, etaSeconds: null, previewCanvas: canvas,
+        });
+      });
+      throwIfCancelled(signal);
+      scene = await PianoScene.create({
+        target: canvas,
+        fixedViewport: { width: safeWidth, height: safeHeight, resolution: 1 },
+        song: snapshot.document,
+        performancePlan: snapshot.performancePlan,
+        // The bounded streamed buffer wins when it has a current pose; the frozen
+        // sparse plan keeps hands visible during lead-in/tail and uncovered gaps.
+        motionPlan: snapshot.motionPlan ?? null,
+        motionBuffer: motionProvider.buffer,
+        keyStyle: replanned.keyStyle,
+        displaySettings: {
+          showFingerLabels: snapshot.settings.showFingerLabels,
+          showNoteNames: snapshot.settings.showNoteNames,
+          skinStyle: snapshot.settings.skinStyle,
+          showHandShadow: snapshot.settings.showHandShadow,
+          renderCapFps: 0,
+        },
+        pixelsPerSecond: 180,
+      });
 
-        // Async yield every 4 frames (or every frame if test/slow) to allow recorder processing & DOM updates
-        if (i % 4 === 0 || i === totalFrames - 1) {
-          await new Promise((r) => setTimeout(r, 0));
+      let soundFont: Awaited<ReturnType<typeof parseSf2Async>> | null = null;
+      if (options.includeAudio && options.audioSource === "soundfont") {
+        const identity = snapshot.sourceIdentity;
+        if (identity.activeOutputId !== "soundfont" || !identity.soundFontAssetId ||
+            !identity.soundFontAssetBytes || identity.soundFontAssetBytes.byteLength === 0) {
+          throw new Error("The selected SoundFont is no longer loaded for this exact source identity.");
         }
+        const frozenAssetHash = await computeSha256Hex(identity.soundFontAssetBytes);
+        if (frozenAssetHash !== identity.soundFontAssetId) {
+          throw new Error("The frozen SoundFont bytes do not match the active source asset identity.");
+        }
+        soundFont = await parseSf2Async(identity.soundFontAssetBytes);
       }
-
-      // Stop recorder and finalize video stream
-      if (recorder && recorder.state !== "inactive") {
-        await new Promise<void>((resolve) => {
-          recorder!.onstop = () => resolve();
-          recorder!.stop();
-        });
+      if (options.includeAudio && options.audioSource === "recording" && !snapshot.audioRecording) {
+        throw new Error("The selected synchronized recording is not available in the export snapshot.");
       }
+      throwIfCancelled(signal);
 
-      if (this.cancelled) {
-        throw new Error("Export cancelled");
-      }
-
-      // --- PHASE 2: Render Audio (Weight: 0.10) ---
       let audioResult: OfflineAudioRenderResult | null = null;
-      if (options.includeAudio && options.audioSource !== "none") {
-        onProgress?.({
-          phase: "rendering_audio",
-          doneFrames: totalFrames,
-          totalFrames,
-          frameProgress: 1.0,
-          audioProgress: 0.1,
-          muxProgress: 0,
-          overallProgress: WEIGHT_FRAMES + 0.01,
-          statusText: "Rendering master audio...",
-          etaSeconds: null,
-          previewCanvas: canvas,
-        });
-
+      const wantsAudio = options.includeAudio && options.audioSource !== "none";
+      if (wantsAudio) {
         audioResult = await renderOfflineAudio({
-          document: source.document,
-          performancePlan: source.performancePlan,
-          audioRecording: options.audioSource === "recording" ? source.audioRecording : null,
-          audioOffset: source.audioOffset,
-          speed: options.speed,
+          document: snapshot.document,
+          performancePlan: snapshot.performancePlan,
+          soundFont,
+          audioRecording: options.audioSource === "recording" ? snapshot.audioRecording : null,
+          audioOffset: snapshot.audioOffset,
+          speed: timing.speed,
           startTime: timing.startTime,
           durationSeconds: timing.durationSeconds,
-          volume: source.settings.masterVolume ?? 0.8,
-          onProgress: (audioP) => {
-            const overallProgress = WEIGHT_FRAMES + audioP * WEIGHT_AUDIO;
+          volume: snapshot.settings.masterVolume ?? 0.8,
+          createWav: false,
+          onProgress: (value) => {
+            audioProgress = value;
             onProgress?.({
-              phase: "rendering_audio",
-              doneFrames: totalFrames,
-              totalFrames,
-              frameProgress: 1.0,
-              audioProgress: audioP,
-              muxProgress: 0,
-              overallProgress,
-              statusText: `Rendering master audio (${Math.round(audioP * 100)}%)...`,
-              etaSeconds: null,
-              previewCanvas: canvas,
+              phase: "rendering_audio", doneFrames: 0, totalFrames, frameProgress: 0,
+              audioProgress: value, muxProgress: 0,
+              overallProgress: value * WEIGHT_AUDIO,
+              statusText: `Rendering master audio (${Math.round(value * 100)}%)…`,
+              etaSeconds: null, previewCanvas: canvas,
             });
           },
-          cancelSignal: this.abortController.signal,
+          cancelSignal: signal,
         });
       }
 
-      if (this.cancelled) {
-        throw new Error("Export cancelled");
-      }
-
-      // --- PHASE 3: Multiplexing / Finalization (Weight: 0.04) ---
-      onProgress?.({
-        phase: "multiplexing",
-        doneFrames: totalFrames,
-        totalFrames,
-        frameProgress: 1.0,
-        audioProgress: 1.0,
-        muxProgress: 0.5,
-        overallProgress: WEIGHT_FRAMES + WEIGHT_AUDIO + 0.02,
-        statusText: "Finalizing video container...",
-        etaSeconds: null,
-        previewCanvas: canvas,
+      output = new Output({
+        format: format === "mp4" ? new Mp4OutputFormat({ fastStart: false }) : new WebMOutputFormat(),
+        target: sink.target,
       });
+      const canvasSource = new CanvasSource(canvas, { codec: codec.video, bitrate: 8_000_000 });
+      // WebM needs DefaultDuration to describe each cluster's last frame.
+      // Declaring the fixed rate also keeps container timestamps on the frame grid.
+      output.addVideoTrack(canvasSource, { frameRate: timing.fps });
+      const audioSource = wantsAudio && codec.audio
+        ? new AudioBufferSource({ codec: codec.audio, bitrate: 192_000 }, { startTimestamp: 0 })
+        : null;
+      if (audioSource) output.addAudioTrack(audioSource);
+      await output.start();
 
-      // Construct final Blob
-      const videoBlob = recordedChunks.length > 0
-        ? new Blob(recordedChunks, { type: mimeType })
-        : new Blob([new Uint8Array(1024)], { type: mimeType });
-
-      const finalResult: VideoExportResult = {
-        videoBlob,
-        audioWavBlob: audioResult?.wavBlob,
-        filename,
+      let nextAudioFrame = 0;
+      const audioBuffer = audioResult?.audioBuffer ?? null;
+      const chunkFrames = audioBuffer ? Math.max(1, Math.round(audioBuffer.sampleRate * 0.5)) : 0;
+      const addReadyAudio = async (frameEndSeconds: number, force = false) => {
+        if (!audioSource || !audioBuffer) return;
+        while (nextAudioFrame < audioBuffer.length) {
+          const nextEnd = Math.min(audioBuffer.length, nextAudioFrame + chunkFrames);
+          if (!force && nextEnd / audioBuffer.sampleRate > frameEndSeconds + 1e-9) return;
+          throwIfCancelled(signal);
+          await audioSource.add(createNativeAudioBufferSlice(audioBuffer, nextAudioFrame, nextEnd));
+          nextAudioFrame = nextEnd;
+        }
       };
 
-      onProgress?.({
-        phase: "completed",
-        doneFrames: totalFrames,
-        totalFrames,
-        frameProgress: 1.0,
-        audioProgress: 1.0,
-        muxProgress: 1.0,
-        overallProgress: 1.0,
-        statusText: "Export completed successfully!",
-        etaSeconds: 0,
-        previewCanvas: canvas,
-        outputBlob: videoBlob,
-        audioWavBlob: audioResult?.wavBlob,
-        outputFilename: filename,
-        outputMimeType: mimeType,
-      });
-
-      return finalResult;
-    } catch (err: unknown) {
-      const isAbort = this.cancelled || (err instanceof Error && err.message.includes("cancelled"));
-      onProgress?.({
-        phase: isAbort ? "cancelled" : "error",
-        doneFrames: 0,
-        totalFrames: timing.totalFrames,
-        frameProgress: 0,
-        audioProgress: 0,
-        muxProgress: 0,
-        overallProgress: 0,
-        statusText: isAbort ? "Export cancelled." : `Error: ${err instanceof Error ? err.message : String(err)}`,
-        etaSeconds: null,
-        error: isAbort ? null : (err instanceof Error ? err.message : String(err)),
-      });
-      throw err;
-    } finally {
-      this.running = false;
-      if (scene) {
-        scene.destroy();
+      const songDuration = replanned.document!.durationSeconds;
+      for (let i = 0; i < totalFrames; i += 1) {
+        throwIfCancelled(signal);
+        const timestampSeconds = i / timing.fps;
+        const songTime = timing.startTime + timestampSeconds * timing.speed;
+        const motionStart = Math.max(0, Math.min(songDuration, songTime));
+        const motionEnd = Math.min(songDuration, motionStart + 1.5);
+        await motionProvider.ensureCoverage(motionStart, motionEnd);
+        throwIfCancelled(signal);
+        scene.update(songTime);
+        scene.getApp().renderer.render(scene.getApp().stage);
+        await canvasSource.add(timestampSeconds, 1 / timing.fps);
+        await addReadyAudio(timestampSeconds + 1 / timing.fps);
+        frameCount = i + 1;
+        const frameProgress = frameCount / totalFrames;
+        const overallProgress = frameProgress * WEIGHT_FRAMES + audioProgress * WEIGHT_AUDIO;
+        const elapsedSeconds = (Date.now() - startedAt) / 1000;
+        const etaSeconds = frameProgress > 0.03
+          ? Math.max(0, Math.round((elapsedSeconds / frameProgress) * (1 - frameProgress)))
+          : null;
+        onProgress?.({
+          phase: "rendering_frames", doneFrames: frameCount, totalFrames,
+          frameProgress, audioProgress, muxProgress: 0, overallProgress,
+          statusText: `Rendering frames ${frameCount} / ${totalFrames} (${Math.round(frameProgress * 100)}%)`,
+          etaSeconds, previewCanvas: canvas,
+        });
+        if (i % 4 === 0 || i === totalFrames - 1) await new Promise<void>((resolve) => setTimeout(resolve, 0));
       }
+      await addReadyAudio(timing.durationSeconds, true);
+      throwIfCancelled(signal);
+
+      onProgress?.({
+        phase: "multiplexing", doneFrames: totalFrames, totalFrames, frameProgress: 1,
+        audioProgress: 1, muxProgress: 0.5,
+        overallProgress: WEIGHT_FRAMES + WEIGHT_AUDIO + 0.02,
+        statusText: "Finalizing video file…", etaSeconds: null, previewCanvas: canvas,
+      });
+      await output.finalize();
+      if (output.state !== "finalized") throw new Error("Video container did not finalize successfully.");
+      // Precise codec strings become available only after encoded packets exist.
+      // Awaiting this before feeding frames/audio deadlocks the muxer.
+      const exactMimeType = await output.getMimeType();
+      if (!sink.isClosed()) throw new Error("Video output sink did not close successfully.");
+      const sizeBytes = sink.getSizeBytes();
+      if (!Number.isSafeInteger(sizeBytes) || sizeBytes <= 0) throw new Error("Video export produced an empty output file.");
+      const boundedBlob = sink.getBlob() ?? undefined;
+      if (sink.mode === "bounded-blob" && (!boundedBlob || boundedBlob.size !== sizeBytes)) {
+        throw new Error("Bounded Blob output did not close with the expected byte length.");
+      }
+      const actualFilename = selectedSink.handle?.name || filename;
+      const savedFile = sink.mode === "file"
+        ? { name: actualFilename, sizeBytes, mimeType: exactMimeType }
+        : undefined;
+      const result: VideoExportResult = {
+        filename: actualFilename,
+        mimeType: exactMimeType,
+        sizeBytes,
+        ...(savedFile ? { savedFile } : {}),
+        ...(boundedBlob ? { boundedBlob } : {}),
+      };
+      completed = true;
+      onProgress?.({
+        phase: "completed", doneFrames: totalFrames, totalFrames,
+        frameProgress: 1, audioProgress: 1, muxProgress: 1,
+        overallProgress: 1, statusText: "Export completed successfully.", etaSeconds: 0,
+        previewCanvas: canvas, outputBlob: boundedBlob ?? null,
+        outputSavedFile: savedFile ?? null, outputFilename: actualFilename,
+        outputMimeType: exactMimeType,
+      });
+      return result;
+    } catch (error: unknown) {
+      const abortError = this.cancelled || signal.aborted ||
+        (error instanceof DOMException && error.name === "AbortError");
+      if (sink && !completed) await sink.abort(error);
+      if (output && output.state !== "finalized" && output.state !== "canceled") {
+        await output.cancel().catch(() => {});
+      }
+      const message = error instanceof Error ? error.message : String(error);
+      onProgress?.({
+        phase: abortError ? "cancelled" : "error", doneFrames: frameCount, totalFrames,
+        frameProgress: totalFrames ? frameCount / totalFrames : 0, audioProgress,
+        muxProgress: 0, overallProgress: 0,
+        statusText: abortError ? "Export canceled." : `Export failed: ${message}`,
+        etaSeconds: null, error: abortError ? null : message,
+      });
+      throw error;
+    } finally {
+      analysisWorker?.dispose();
+      if (scene) scene.destroy();
+      if (sink && !completed) await sink.abort(new DOMException("Video export did not complete", "AbortError"));
+      this.running = false;
       this.exportCanvas = null;
     }
   }

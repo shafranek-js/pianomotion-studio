@@ -12,8 +12,10 @@ import {
   M1EngineLoadRequestSchema,
   M1EngineLoadResultSchema,
   M1EngineProgressSchema,
+  M1SampleMotionRequestSchema,
   MotionPlanSchema,
   PerformancePlanSchema,
+  PACKAGE_VERSION,
   ProjectPackageSchema,
   SongDocumentSchema,
   validateEngineResponseForRequest,
@@ -391,12 +393,13 @@ describe("derived plan and worker envelope validation", () => {
   it("validates package resource references and paths", () => {
     const descriptor = { resourceId: "midi-1", purpose: "source-midi", mediaType: "audio/midi", byteLength: 1, sha256: "a".repeat(64), path: "resources/source.mid" };
     const project = {
-      packageVersion: 1,
+      packageVersion: PACKAGE_VERSION,
       projectId: "project-a",
       document: song({ sourceMidiResourceId: "midi-1" }),
       profiles: [profile],
       resources: [descriptor],
       resourcePayloads: { "resources/source.mid": "AA==" },
+      sourceContext: { fixtureId: "test-fixture", keyStyle: "equal" },
     };
     expect(ProjectPackageSchema.safeParse(project).success).toBe(true);
     expect(ProjectPackageSchema.safeParse({ ...project, resources: [{ ...descriptor, path: "../source.mid" }] }).success).toBe(false);
@@ -744,5 +747,25 @@ describe("M1 binary worker protocol", () => {
     expect(M1EngineLifecycleSchema.safeParse({ type: "cancelled", ...identity, stage: "compute" }).success).toBe(true);
     expect(M1EngineProgressSchema.safeParse({ type: "progress", ...identity, stage: "unknown" }).success).toBe(false);
     expect(M1EngineProgressSchema.safeParse({ type: "progress", ...identity, stage: "load", progress: 1.2 }).success).toBe(false);
+  });
+});
+
+describe("bounded motion runtime requests", () => {
+  const request = {
+    type: "sample-motion", requestId: "sample-bounds", projectId: "project-a", revision: 1,
+    engineVersion: "a".repeat(64), startTimeSeconds: 0, endTimeSeconds: 5, maxPoses: 500,
+  };
+  it("accepts exact limits, total caps 1-5 and a distant short window", () => {
+    expect(M1SampleMotionRequestSchema.safeParse(request).success).toBe(true);
+    for (const maxPoses of [1, 2, 3, 4, 5]) {
+      expect(M1SampleMotionRequestSchema.safeParse({ ...request, maxPoses }).success).toBe(true);
+    }
+    expect(M1SampleMotionRequestSchema.safeParse({ ...request, startTimeSeconds: 1e9, endTimeSeconds: 1e9 + 4 }).success).toBe(true);
+  });
+  it.each([
+    { startTimeSeconds: -0.01 }, { endTimeSeconds: 5.001 }, { endTimeSeconds: 0 },
+    { maxPoses: 501 }, { maxPoses: 0 }, { maxPoses: 2.5 }, { maxPoses: true },
+  ])("rejects out-of-bounds runtime work: %j", patch => {
+    expect(M1SampleMotionRequestSchema.safeParse({ ...request, ...patch }).success).toBe(false);
   });
 });

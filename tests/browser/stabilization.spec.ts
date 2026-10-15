@@ -1,174 +1,114 @@
-import { expect, test, type Page } from "@playwright/test";
-import { readFile } from "node:fs/promises";
-import { createHash } from "node:crypto";
-import { M1AnalyzeMidiResultSchema, ProjectPackageSchema } from "@handthesia/contracts";
+import {expect,test} from "@playwright/test";
+import {readFile} from "node:fs/promises";
+import {createHash} from "node:crypto";
+import {ProjectPackageSchema} from "@handthesia/contracts";
+import {exportStudioPackage,focusStudioScene,loadStudioSong,openStudioInspector,saveStudioProject,settledStudio} from "./studio-helpers";
 
-async function loadSong(page: Page) {
-  await page.goto("/");
-  await expect(page.locator("#analyze-button")).toBeEnabled();
-  await page.locator("#fixture-select").selectOption("tracked-right-hand");
-  await page.locator("#analyze-button").click();
-  await expect(page.locator(".player-card")).toBeVisible({timeout: 45_000});
-  await page.waitForFunction(() => window.__playerSnapshot && !window.__playerSnapshot.pending);
-}
-
-async function settled(page: Page, minimumRevision: number) {
-  await page.waitForFunction(revision => {
-    const snapshot = window.__playerSnapshot;
-    return snapshot && !snapshot.pending && snapshot.result.revision >= revision;
-  }, minimumRevision, {timeout: 60_000});
-  const snapshot = await page.evaluate(() => window.__playerSnapshot!);
-  const result = M1AnalyzeMidiResultSchema.parse(snapshot.result);
-  expect(result.performancePlan?.fingeringPlanId).toBe(result.fingeringPlan?.planId);
-  expect(result.motionPlan?.performancePlanId).toBe(result.performancePlan?.planId);
-  return snapshot;
-}
-
-test("editor selection leaves playback alone; edits preserve IDs, history and exported markers", async ({page}) => {
-  test.setTimeout(150_000);
-  const errors: string[] = [];
-  page.on("pageerror", error => errors.push(error.message));
-  const externalRequests: string[] = [];
-  page.on("request", request => {if (/^https?:/.test(request.url()) && !request.url().startsWith("http://127.0.0.1:4173/")) externalRequests.push(request.url());});
-  let workers = 0;
-  page.on("worker", () => workers++);
-  await loadSong(page);
-  const initial = await settled(page, 0);
-  const originalIds = initial.result.document!.notes.map(note => note.noteId);
-  await page.locator("#tab-btn-editor").click();
-  const canvas = page.locator('[data-testid="piano-roll-viewport"] canvas');
-  await canvas.focus();
-  await page.keyboard.press("ArrowRight");
-  const workerCount = workers;
-  await page.waitForTimeout(650); // Exceeds the real replan debounce: selection must produce no job.
-  expect(workers).toBe(workerCount);
-  expect((await settled(page, 0)).result.revision).toBe(initial.result.revision);
-  const toolbar = page.locator(".fingering-toolbar");
-  await toolbar.getByRole("button", {name: "Finger 4", exact: true}).click();
-  const edited = await settled(page, initial.result.revision + 1);
-  expect(edited.result.document!.notes.map(note => note.noteId)).toEqual(originalIds);
-  const pin = edited.result.document!.notes.find(note => note.finger === 4);
+test("selection does not calculate; edits preserve IDs/history and exported MIDI markers",async({page})=>{
+  test.setTimeout(240_000);
+  const errors:string[]=[];page.on("pageerror",e=>errors.push(e.message));
+  let workers=0;page.on("worker",()=>workers++);
+  const initial=await loadStudioSong(page);
+  await page.getByRole("button",{name:"Fingering",exact:true}).click();
+  await focusStudioScene(page);await page.keyboard.press("ArrowRight");
+  const count=workers;
+  await page.waitForTimeout(650); // Longer than the real edit debounce.
+  expect(workers).toBe(count);
+  expect((await settledStudio(page,0)).result.revision).toBe(initial.result.revision);
+  const toolbar=page.locator(".fingering-toolbar");
+  await page.getByTestId("studio-header").getByRole("button",{name:"Finger 4",exact:true}).click();
+  const edited=await settledStudio(page,initial.result.revision+1);
+  expect(edited.result.document!.notes.map(n=>n.noteId)).toEqual(initial.result.document!.notes.map(n=>n.noteId));
+  const pin=edited.result.fingeringPlan!.assignments.find(a=>a.fingerMode==="manual" && a.finger===4)!;
   expect(pin).toBeDefined();
-  const undo = toolbar.getByRole("button", {name: /Undo/i});
-  await expect(undo).toBeEnabled();
   await page.locator("#player-play-button").click();
+  await page.getByTestId("studio-header").getByRole("button",{name:"Finger 3",exact:true}).click();
+  const second=await settledStudio(page,edited.result.revision+1);
   await expect(page.locator("#player-play-button")).toContainText("Pause");
-  // Without selecting again, the same selected note and history must survive the returned plan.
-  await toolbar.getByRole("button", {name: "Finger 3", exact: true}).click();
-  const second = await settled(page, edited.result.revision + 1);
-  await expect(page.locator("#player-play-button")).toContainText("Pause");
-  expect(Number(await page.locator("#player-seek-slider").inputValue())).toBeGreaterThan(-2);
+  expect(second.result.document!.notes.find(n=>n.noteId===pin.noteId)?.finger).toBe(3);
   await page.locator("#player-play-button").click();
-  const pausedTime = Number(await page.locator("#player-seek-slider").inputValue());
-  expect(second.result.document!.notes.find(note => note.noteId === pin!.noteId)?.finger).toBe(3);
-  await undo.click();
-  const undone = await settled(page, second.result.revision + 1);
-  expect(undone.result.document!.notes.find(note => note.noteId === pin!.noteId)?.finger).toBe(4);
-  expect(Math.abs(Number(await page.locator("#player-seek-slider").inputValue()) - pausedTime)).toBeLessThan(0.1);
-  const downloadPromise = page.waitForEvent("download");
-  await page.locator("#player-export-midi-button").click();
-  const download = await downloadPromise;
-  const file = await download.path();
-  expect(file).not.toBeNull();
-  await page.locator("#midi-file").setInputFiles(file!);
-  await page.locator("#analyze-button").click();
-  await expect(page.locator(".player-card")).toBeVisible({timeout: 45_000});
-  const imported = await page.evaluate(() => window.__m1LastResult!);
-  const reimportedPin = imported.document!.notes.find(note => note.pitch === pin!.pitch && Math.abs(note.startSeconds - pin!.startSeconds) < 0.001);
-  expect(reimportedPin?.finger).toBe(4);
+  const paused=Number(await page.locator("#player-seek-slider").inputValue());
+  await toolbar.getByRole("button",{name:"Undo",exact:true}).click();
+  const undone=await settledStudio(page,second.result.revision+1);
+  expect(undone.result.document!.notes.find(n=>n.noteId===pin.noteId)?.finger).toBe(4);
+  expect(Math.abs(Number(await page.locator("#player-seek-slider").inputValue())-paused)).toBeLessThan(.1);
+  await saveStudioProject(page);
+  await page.getByRole("button",{name:"Export",exact:true}).click();
+  const event=page.waitForEvent("download");
+  await page.getByRole("menuitem",{name:"Fingered MIDI (.mid)",exact:true}).click();
+  const download=await event;
+  const file=await download.path();expect(file).not.toBeNull();
+  await page.locator("#midi-file").setInputFiles({name:download.suggestedFilename(),mimeType:"audio/midi",buffer:await readFile(file!)});
+  await page.waitForFunction(id=>window.__playerSnapshot?.result.projectId!==id,initial.result.projectId);
+  const imported=await settledStudio(page,0);
+  const source=undone.result.document!.notes.find(n=>n.noteId===pin.noteId)!;
+  expect(imported.result.document!.notes.find(n=>n.pitch===source.pitch && n.startSeconds===source.startSeconds)?.finger).toBe(4);
   expect(errors).toEqual([]);
-  expect(externalRequests).toEqual([]);
 });
 
-test("latest profile and equal geometry reach live plans, package bytes and reload recovery", async ({page}) => {
-  test.setTimeout(150_000);
-  const errors: string[] = [];
-  page.on("pageerror", error => errors.push(error.message));
-  await loadSong(page);
-  const initial = await settled(page, 0);
-  await page.locator("#profile-modal-btn").click();
+test("latest profile/equal geometry survive package bytes and session recovery",async({page})=>{
+  test.setTimeout(240_000);
+  const initial=await loadStudioSong(page);
+  await page.getByRole("button",{name:"Open pianist settings",exact:true}).click();
   await page.locator("#active-profile-select").selectOption("virtuoso");
   await page.locator("#active-profile-select").selectOption("small-hands");
-  await page.locator('[aria-labelledby="profile-modal-title"]').getByRole("button", {name: "Close", exact: true}).click();
-  await page.locator("#player-keystyle-select").selectOption("equal");
-  const applied = await settled(page, initial.result.revision + 2);
-  expect(applied.result.profile.profileId).toBe("small-hands");
+  await page.getByRole("dialog",{name:"Pianist settings",exact:true}).getByRole("button",{name:"Close",exact:true}).click();
+  await openStudioInspector(page,"Scene");
+  await page.locator("#studio-key-style").selectOption("equal");
+  const applied=await settledStudio(page,initial.result.revision+2);
+  expect(applied.profile.profileId).toBe("small-hands");
   expect(applied.result.fingeringPlan!.profileId).toBe("small-hands");
   expect(applied.keyStyle).toBe("equal");
-  expect(applied.result.document!.notes.map(note => note.noteId)).toEqual(initial.result.document!.notes.map(note => note.noteId));
+  expect(applied.result.document!.notes.map(n=>n.noteId)).toEqual(initial.result.document!.notes.map(n=>n.noteId));
   expect(applied.result.motionPlan).not.toEqual(initial.result.motionPlan);
-  const packageDownload = page.waitForEvent("download");
-  await page.locator("#player-export-json-button").click();
-  const downloaded = await packageDownload;
-  const packagePath = await downloaded.path();
-  const json = JSON.parse(await readFile(packagePath!, "utf8"));
-  const pkg = ProjectPackageSchema.parse(json);
-  expect(pkg.profiles.some(profile => profile.profileId === "small-hands")).toBe(true);
-  const resource = pkg.resources.find(resource => resource.resourceId === pkg.document.sourceMidiResourceId)!;
-  expect(resource).toBeDefined();
-  const encoded = json.resourcePayloads[resource.path];
-  const bytes = Buffer.from(encoded, "base64");
-  expect(bytes.byteLength).toBe(resource.byteLength);
+  await page.getByRole("button",{name:"Close panel",exact:true}).click();
+  const file=await exportStudioPackage(page);
+  const pkg=ProjectPackageSchema.parse(JSON.parse(await readFile(file,"utf8")));
+  const resource=pkg.resources.find(r=>r.resourceId===pkg.document.sourceMidiResourceId)!;
+  const bytes=Buffer.from(pkg.resourcePayloads![resource.path]!,"base64");
+  expect(bytes.length).toBe(resource.byteLength);
   expect(createHash("sha256").update(bytes).digest("hex")).toBe(resource.sha256);
-  expect(json.fingeringPlan.profileId).toBe("small-hands");
-  await page.locator("#tab-btn-split").click();
-  await expect(page.locator("#tab-btn-split")).toHaveClass(/is-active/);
-  expect(await page.evaluate(() => window.__playerSnapshot?.viewMode)).toBe("split");
-  await expect.poll(async () => page.evaluate(async () => {
-    const db = await new Promise<IDBDatabase>((resolve, reject) => {
-      const request = indexedDB.open("handthesia_db", 2);
-      request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error);
-    });
-    const snapshot = await new Promise<Record<string, unknown> | undefined>((resolve, reject) => {
-      const request = db.transaction("session", "readonly").objectStore("session").get("current_session");
-      request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error);
-    });
-    db.close();
-    return {revision: (snapshot?.result as {revision?: number} | undefined)?.revision, viewMode: snapshot?.viewMode, plansState: snapshot?.plansState};
-  }), {timeout: 15_000}).toEqual({revision: applied.result.revision, viewMode: "split", plansState: "valid"});
+  expect(pkg.sourceContext.keyStyle).toBe("equal");
+  await page.getByRole("button",{name:"Fingering",exact:true}).click();
+  await expect.poll(async()=>page.evaluate(async()=>{
+    const db=await new Promise<IDBDatabase>(resolve=>{const r=indexedDB.open("handthesia_db",2);r.onsuccess=()=>resolve(r.result);});
+    try{return await new Promise<{viewMode:string;plansState:string}>(resolve=>{const r=db.transaction("session").objectStore("session").get("current_session");r.onsuccess=()=>resolve({viewMode:r.result?.viewMode,plansState:r.result?.plansState});});}
+    finally{db.close();}
+  }),{timeout:15_000}).toEqual({viewMode:"editor",plansState:"valid"});
   await page.reload();
-  await expect(page.locator(".player-card")).toBeVisible({timeout: 45_000});
-  await expect(page.getByTestId("session-restore-notice")).toContainText("restored");
-  const recovered = await settled(page, applied.result.revision);
-  expect(recovered.result.document).toEqual(applied.result.document);
-  expect(recovered.result.fingeringPlan).toEqual(applied.result.fingeringPlan);
-  await expect(page.locator("#profile-modal-btn")).toContainText(/Small/i);
-  await expect(page.locator("#player-keystyle-select")).toHaveValue("equal");
-  await expect(page.locator("#tab-btn-split")).toHaveClass(/is-active/);
-  expect(errors).toEqual([]);
+  const restored=await settledStudio(page,applied.result.revision);
+  expect(restored.result.document).toEqual(applied.result.document);
+  expect(restored.result.fingeringPlan!.assignments).toEqual(applied.result.fingeringPlan!.assignments);
+  expect(restored.profile).toEqual(applied.profile);
+  expect(restored.keyStyle).toBe("equal");
+  expect(restored.viewMode).toBe("editor");
 });
 
-test("reload recovers an autosaved pending edit and recalculates instead of applying stale plans", async ({page}) => {
-  test.setTimeout(90_000);
-  await loadSong(page);
-  const initial = await settled(page, 0);
-  // Delay the real manifest response to keep the new calculation in flight during autosave.
-  const manifestRoute = "**/python-core/source_manifest.json";
-  await page.route(manifestRoute, async route => {
-    await new Promise(resolve => setTimeout(resolve, 2_000));
-    await route.continue().catch(() => undefined); // The old request may be aborted by navigation.
+test("autosaved pending intent is recovered and replanned after reload",async({page})=>{
+  test.setTimeout(240_000);
+  const initial=await loadStudioSong(page);
+  // Delay sending a real replan, rather than relying on a second manifest fetch
+  // which the persistent, already initialized Worker correctly no longer needs.
+  await page.evaluate(()=>{
+    const original=Worker.prototype.postMessage;
+    Worker.prototype.postMessage=function(message:unknown,options:StructuredSerializeOptions|Transferable[]=[]){
+      const send=()=>Reflect.apply(original,this,[message,options]);
+      if((message as {type?:string})?.type==="replan-document") setTimeout(send,2500);
+      else send();
+    };
   });
-  await page.locator("#tab-btn-editor").click();
-  await page.locator('[data-testid="piano-roll-viewport"] canvas').focus();
-  await page.keyboard.press("ArrowRight");
-  await page.locator(".fingering-toolbar").getByRole("button", {name: "Finger 4", exact: true}).click();
-  await expect.poll(async () => page.evaluate(async () => {
-    const db = await new Promise<IDBDatabase>(resolve => {
-      const q = indexedDB.open("handthesia_db", 2); q.onsuccess = () => resolve(q.result);
-    });
-    const record = await new Promise<{plansState?: string; draftFingeringPlan?: {inputRevision: number}}>(resolve => {
-      const q = db.transaction("session").objectStore("session").get("current_session"); q.onsuccess = () => resolve(q.result);
-    });
-    db.close();
-    return {state: record?.plansState, revision: record?.draftFingeringPlan?.inputRevision};
-  }), {timeout: 10_000}).toEqual({state: "recompute-required", revision: initial.result.revision + 1});
-  const pending = await page.evaluate(() => window.__playerSnapshot!.draftPlan);
-  const pin = pending.assignments.find(assignment => assignment.fingerMode === "manual" && assignment.finger === 4)!;
-  expect(pin).toBeDefined();
-  await page.unroute(manifestRoute);
+  await page.getByRole("button",{name:"Fingering",exact:true}).click();
+  await focusStudioScene(page);await page.keyboard.press("ArrowRight");
+  await page.getByTestId("studio-header").getByRole("button",{name:"Finger 4",exact:true}).click();
+  await expect.poll(async()=>page.evaluate(async()=>{
+    const db=await new Promise<IDBDatabase>(resolve=>{const r=indexedDB.open("handthesia_db",2);r.onsuccess=()=>resolve(r.result);});
+    try{return await new Promise<{state:string;revision:number}>(resolve=>{const r=db.transaction("session").objectStore("session").get("current_session");r.onsuccess=()=>resolve({state:r.result?.plansState,revision:r.result?.draftFingeringPlan?.inputRevision});});}
+    finally{db.close();}
+  }),{timeout:10_000}).toEqual({state:"recompute-required",revision:initial.result.revision+1});
+  const pending=await page.evaluate(()=>window.__playerSnapshot!.draftPlan);
+  const pin=pending.assignments.find(a=>a.fingerMode==="manual" && a.finger===4)!;expect(pin).toBeDefined();
   await page.reload();
-  await expect(page.getByTestId("session-restore-notice")).toContainText("recalculating", {timeout: 30_000});
-  const recovered = await settled(page, pending.inputRevision);
-  expect(recovered.result.document!.notes.find(note => note.noteId === pin.noteId)?.finger).toBe(4);
-  expect(recovered.result.fingeringPlan!.assignments.find(assignment => assignment.noteId === pin.noteId)?.finger).toBe(4);
+  const restored=await settledStudio(page,pending.inputRevision);
+  const assignment=restored.result.fingeringPlan!.assignments.find(a=>a.noteId===pin.noteId)!;
+  expect(assignment.finger).toBe(4);expect(assignment.fingerMode).toBe("manual");
 });

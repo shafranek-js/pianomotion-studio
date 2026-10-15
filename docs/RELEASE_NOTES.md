@@ -1,9 +1,29 @@
 # PianoMotion Studio — Release Notes
 
-**Version**: 1.0.0-web  
-**Release Date**: 2026-10-13  
-**Status**: Production Ready / Release Gate G8 Closed  
+**Version**: 0.1.0-dev.3
+
+**Date**: 2026-10-15
+
+**Status**: R01–R14 implementation and automatic verification completed; manual hardware/listening and load limits remain open. No release, commit, push or publication performed.
 **Architecture**: Offline-First Progressive Web Application (SPA + Web Workers + WebAssembly)
+
+---
+
+## Fingering header controls — dev.3
+
+Hand, finger, Clear, Unplayable and Gliss assignments move next to the workspace mode switch in the top header, visible only in Fingering. Smaller windows wrap these controls into additional header rows. Undo/Redo, Step Entry and Shortcuts stay above the shared scene. The editor session and canvas stay mounted when switching modes. The package format remains v2.
+
+Focused verification: 25 unit tests; Chrome 11 scenarios plus final editor/responsive reruns; Edge 11 scenarios; typecheck, scoped lint and build passed. Six standard viewports and four additional header boundary widths have no page horizontal overflow or inaccessible header controls. See [UI evidence](evidence/fingering-header-2026-10-15/VERIFICATION.md) for exact runs and screenshots. This is separate from the preceding audit checks below.
+
+## Current remediation
+
+The active record is [AUDIT_REPAIR_PROGRESS.md](AUDIT_REPAIR_PROGRESS.md). This preview adds committed-save/update barriers, content-addressed offline releases with old-tab pins, bounded motion streaming, one performance-event audio path, local Signalsmith 1.3.2 time stretch, prepared SF2/MIDI outputs and deterministic MP4/WebM export. The application version is synchronized across workspaces and the status bar.
+
+Automatic verification: **397 unit tests, 28 Python tests, all 13 frozen fixtures**, typecheck/lint/build, and Windows Chrome/Edge UI, Worker, audio, production PWA and native media decode scenarios. Exact outcomes and the Chrome PWA full-plus-focused correction are recorded in the active matrix. Production builds always pin production mode even when invoked from a Vite development process. Real decoded examples and JSON evidence are retained with the report.
+
+Manual gates remain for a user's compatible SF2 bank, physical MIDI, subjective listening and complete motion review. Worker analysis finished the 2k-note benchmark; 10k and a valid 50k MIDI timed out at 120 seconds and are not accepted as supported loads. See [ROLLBACK.md](ROLLBACK.md) for non-destructive recovery, [audio support](AUDIO_SUPPORT.md) for the explicit SF2 subset and cancellation boundary, and [dependency notices](evidence/licenses-2026-10-15.md) for corrected Signalsmith MIT and Mediabunny MPL-2.0 evidence. Source redistribution rights remain unresolved.
+
+**Everything below is historical milestone documentation.** Its old test totals, renderer descriptions, MediaRecorder fallback and two-cache model do not describe current acceptance or the current export/PWA implementation. Do not cite the historical test table as a current pass.
 
 ---
 

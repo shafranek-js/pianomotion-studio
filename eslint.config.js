@@ -14,6 +14,8 @@ export default tseslint.config(
       "apps/client/public/pyodide/**",
       "apps/client/public/python-core/**",
       "apps/client/public/m1-fixtures/**",
+      // Keep the pinned upstream DSP distribution byte-for-byte intact.
+      "apps/client/src/audio/vendor/**",
     ],
   },
   eslint.configs.recommended,

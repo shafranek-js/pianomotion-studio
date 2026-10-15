@@ -1,0 +1,8075 @@
+{
+  "mimeType": "video/webm; codecs=\"vp09.00.31.08, opus\"",
+  "durationSeconds": 20.133,
+  "videoDurationSeconds": 20.133,
+  "audioDurationSeconds": 20.12,
+  "width": 1280,
+  "height": 720,
+  "videoPackets": [
+    {
+      "timestamp": 0,
+      "duration": 0.033,
+      "bytes": 16896
+    },
+    {
+      "timestamp": 0.033,
+      "duration": 0.034,
+      "bytes": 80
+    },
+    {
+      "timestamp": 0.067,
+      "duration": 0.033,
+      "bytes": 62
+    },
+    {
+      "timestamp": 0.1,
+      "duration": 0.033,
+      "bytes": 74
+    },
+    {
+      "timestamp": 0.133,
+      "duration": 0.034,
+      "bytes": 73
+    },
+    {
+      "timestamp": 0.167,
+      "duration": 0.033,
+      "bytes": 68
+    },
+    {
+      "timestamp": 0.2,
+      "duration": 0.033,
+      "bytes": 79
+    },
+    {
+      "timestamp": 0.233,
+      "duration": 0.034,
+      "bytes": 146
+    },
+    {
+      "timestamp": 0.267,
+      "duration": 0.033,
+      "bytes": 170
+    },
+    {
+      "timestamp": 0.3,
+      "duration": 0.033,
+      "bytes": 95
+    },
+    {
+      "timestamp": 0.333,
+      "duration": 0.034,
+      "bytes": 2688
+    },
+    {
+      "timestamp": 0.367,
+      "duration": 0.033,
+      "bytes": 264
+    },
+    {
+      "timestamp": 0.4,
+      "duration": 0.033,
+      "bytes": 192
+    },
+    {
+      "timestamp": 0.433,
+      "duration": 0.034,
+      "bytes": 184
+    },
+    {
+      "timestamp": 0.467,
+      "duration": 0.033,
+      "bytes": 171
+    },
+    {
+      "timestamp": 0.5,
+      "duration": 0.033,
+      "bytes": 136
+    },
+    {
+      "timestamp": 0.533,
+      "duration": 0.034,
+      "bytes": 198
+    },
+    {
+      "timestamp": 0.567,
+      "duration": 0.033,
+      "bytes": 139
+    },
+    {
+      "timestamp": 0.6,
+      "duration": 0.033,
+      "bytes": 120
+    },
+    {
+      "timestamp": 0.633,
+      "duration": 0.034,
+      "bytes": 1103
+    },
+    {
+      "timestamp": 0.667,
+      "duration": 0.033,
+      "bytes": 7363
+    },
+    {
+      "timestamp": 0.7,
+      "duration": 0.033,
+      "bytes": 118
+    },
+    {
+      "timestamp": 0.733,
+      "duration": 0.034,
+      "bytes": 77
+    },
+    {
+      "timestamp": 0.767,
+      "duration": 0.033,
+      "bytes": 86
+    },
+    {
+      "timestamp": 0.8,
+      "duration": 0.033,
+      "bytes": 247
+    },
+    {
+      "timestamp": 0.833,
+      "duration": 0.034,
+      "bytes": 415
+    },
+    {
+      "timestamp": 0.867,
+      "duration": 0.033,
+      "bytes": 861
+    },
+    {
+      "timestamp": 0.9,
+      "duration": 0.033,
+      "bytes": 580
+    },
+    {
+      "timestamp": 0.933,
+      "duration": 0.034,
+      "bytes": 228
+    },
+    {
+      "timestamp": 0.967,
+      "duration": 0.033,
+      "bytes": 149
+    },
+    {
+      "timestamp": 1,
+      "duration": 0.033,
+      "bytes": 319
+    },
+    {
+      "timestamp": 1.033,
+      "duration": 0.034,
+      "bytes": 562
+    },
+    {
+      "timestamp": 1.067,
+      "duration": 0.033,
+      "bytes": 255
+    },
+    {
+      "timestamp": 1.1,
+      "duration": 0.033,
+      "bytes": 230
+    },
+    {
+      "timestamp": 1.133,
+      "duration": 0.034,
+      "bytes": 235
+    },
+    {
+      "timestamp": 1.167,
+      "duration": 0.033,
+      "bytes": 192
+    },
+    {
+      "timestamp": 1.2,
+      "duration": 0.033,
+      "bytes": 134
+    },
+    {
+      "timestamp": 1.233,
+      "duration": 0.034,
+      "bytes": 194
+    },
+    {
+      "timestamp": 1.267,
+      "duration": 0.033,
+      "bytes": 131
+    },
+    {
+      "timestamp": 1.3,
+      "duration": 0.033,
+      "bytes": 113
+    },
+    {
+      "timestamp": 1.333,
+      "duration": 0.034,
+      "bytes": 208
+    },
+    {
+      "timestamp": 1.367,
+      "duration": 0.033,
+      "bytes": 179
+    },
+    {
+      "timestamp": 1.4,
+      "duration": 0.033,
+      "bytes": 139
+    },
+    {
+      "timestamp": 1.433,
+      "duration": 0.034,
+      "bytes": 163
+    },
+    {
+      "timestamp": 1.467,
+      "duration": 0.033,
+      "bytes": 152
+    },
+    {
+      "timestamp": 1.5,
+      "duration": 0.033,
+      "bytes": 155
+    },
+    {
+      "timestamp": 1.533,
+      "duration": 0.034,
+      "bytes": 218
+    },
+    {
+      "timestamp": 1.567,
+      "duration": 0.033,
+      "bytes": 160
+    },
+    {
+      "timestamp": 1.6,
+      "duration": 0.033,
+      "bytes": 120
+    },
+    {
+      "timestamp": 1.633,
+      "duration": 0.034,
+      "bytes": 260
+    },
+    {
+      "timestamp": 1.667,
+      "duration": 0.033,
+      "bytes": 538
+    },
+    {
+      "timestamp": 1.7,
+      "duration": 0.033,
+      "bytes": 527
+    },
+    {
+      "timestamp": 1.733,
+      "duration": 0.034,
+      "bytes": 444
+    },
+    {
+      "timestamp": 1.767,
+      "duration": 0.033,
+      "bytes": 426
+    },
+    {
+      "timestamp": 1.8,
+      "duration": 0.033,
+      "bytes": 140
+    },
+    {
+      "timestamp": 1.833,
+      "duration": 0.034,
+      "bytes": 236
+    },
+    {
+      "timestamp": 1.867,
+      "duration": 0.033,
+      "bytes": 454
+    },
+    {
+      "timestamp": 1.9,
+      "duration": 0.033,
+      "bytes": 557
+    },
+    {
+      "timestamp": 1.933,
+      "duration": 0.034,
+      "bytes": 178
+    },
+    {
+      "timestamp": 1.967,
+      "duration": 0.03333333300000001,
+      "bytes": 370
+    },
+    {
+      "timestamp": 2,
+      "duration": 0.033,
+      "bytes": 20618
+    },
+    {
+      "timestamp": 2.033,
+      "duration": 0.034,
+      "bytes": 11684
+    },
+    {
+      "timestamp": 2.067,
+      "duration": 0.033,
+      "bytes": 4042
+    },
+    {
+      "timestamp": 2.1,
+      "duration": 0.033,
+      "bytes": 3137
+    },
+    {
+      "timestamp": 2.133,
+      "duration": 0.034,
+      "bytes": 3568
+    },
+    {
+      "timestamp": 2.167,
+      "duration": 0.033,
+      "bytes": 3144
+    },
+    {
+      "timestamp": 2.2,
+      "duration": 0.033,
+      "bytes": 3324
+    },
+    {
+      "timestamp": 2.233,
+      "duration": 0.034,
+      "bytes": 3490
+    },
+    {
+      "timestamp": 2.267,
+      "duration": 0.033,
+      "bytes": 1675
+    },
+    {
+      "timestamp": 2.3,
+      "duration": 0.033,
+      "bytes": 2307
+    },
+    {
+      "timestamp": 2.333,
+      "duration": 0.034,
+      "bytes": 2278
+    },
+    {
+      "timestamp": 2.367,
+      "duration": 0.033,
+      "bytes": 2576
+    },
+    {
+      "timestamp": 2.4,
+      "duration": 0.033,
+      "bytes": 2518
+    },
+    {
+      "timestamp": 2.433,
+      "duration": 0.034,
+      "bytes": 2669
+    },
+    {
+      "timestamp": 2.467,
+      "duration": 0.033,
+      "bytes": 2756
+    },
+    {
+      "timestamp": 2.5,
+      "duration": 0.033,
+      "bytes": 4637
+    },
+    {
+      "timestamp": 2.533,
+      "duration": 0.034,
+      "bytes": 4866
+    },
+    {
+      "timestamp": 2.567,
+      "duration": 0.033,
+      "bytes": 4943
+    },
+    {
+      "timestamp": 2.6,
+      "duration": 0.033,
+      "bytes": 5274
+    },
+    {
+      "timestamp": 2.633,
+      "duration": 0.034,
+      "bytes": 5661
+    },
+    {
+      "timestamp": 2.667,
+      "duration": 0.033,
+      "bytes": 5890
+    },
+    {
+      "timestamp": 2.7,
+      "duration": 0.033,
+      "bytes": 5352
+    },
+    {
+      "timestamp": 2.733,
+      "duration": 0.034,
+      "bytes": 4679
+    },
+    {
+      "timestamp": 2.767,
+      "duration": 0.033,
+      "bytes": 3657
+    },
+    {
+      "timestamp": 2.8,
+      "duration": 0.033,
+      "bytes": 3803
+    },
+    {
+      "timestamp": 2.833,
+      "duration": 0.034,
+      "bytes": 3695
+    },
+    {
+      "timestamp": 2.867,
+      "duration": 0.033,
+      "bytes": 3590
+    },
+    {
+      "timestamp": 2.9,
+      "duration": 0.033,
+      "bytes": 3968
+    },
+    {
+      "timestamp": 2.933,
+      "duration": 0.034,
+      "bytes": 3995
+    },
+    {
+      "timestamp": 2.967,
+      "duration": 0.033,
+      "bytes": 2507
+    },
+    {
+      "timestamp": 3,
+      "duration": 0.033,
+      "bytes": 3522
+    },
+    {
+      "timestamp": 3.033,
+      "duration": 0.034,
+      "bytes": 3786
+    },
+    {
+      "timestamp": 3.067,
+      "duration": 0.033,
+      "bytes": 3853
+    },
+    {
+      "timestamp": 3.1,
+      "duration": 0.033,
+      "bytes": 3737
+    },
+    {
+      "timestamp": 3.133,
+      "duration": 0.034,
+      "bytes": 3780
+    },
+    {
+      "timestamp": 3.167,
+      "duration": 0.033,
+      "bytes": 3261
+    },
+    {
+      "timestamp": 3.2,
+      "duration": 0.033,
+      "bytes": 3592
+    },
+    {
+      "timestamp": 3.233,
+      "duration": 0.034,
+      "bytes": 2320
+    },
+    {
+      "timestamp": 3.267,
+      "duration": 0.033,
+      "bytes": 4867
+    },
+    {
+      "timestamp": 3.3,
+      "duration": 0.033,
+      "bytes": 5330
+    },
+    {
+      "timestamp": 3.333,
+      "duration": 0.034,
+      "bytes": 5509
+    },
+    {
+      "timestamp": 3.367,
+      "duration": 0.033,
+      "bytes": 5671
+    },
+    {
+      "timestamp": 3.4,
+      "duration": 0.033,
+      "bytes": 5315
+    },
+    {
+      "timestamp": 3.433,
+      "duration": 0.034,
+      "bytes": 4766
+    },
+    {
+      "timestamp": 3.467,
+      "duration": 0.033,
+      "bytes": 4726
+    },
+    {
+      "timestamp": 3.5,
+      "duration": 0.033,
+      "bytes": 4194
+    },
+    {
+      "timestamp": 3.533,
+      "duration": 0.034,
+      "bytes": 2948
+    },
+    {
+      "timestamp": 3.567,
+      "duration": 0.033,
+      "bytes": 2682
+    },
+    {
+      "timestamp": 3.6,
+      "duration": 0.033,
+      "bytes": 3016
+    },
+    {
+      "timestamp": 3.633,
+      "duration": 0.034,
+      "bytes": 2231
+    },
+    {
+      "timestamp": 3.667,
+      "duration": 0.033,
+      "bytes": 3450
+    },
+    {
+      "timestamp": 3.7,
+      "duration": 0.033,
+      "bytes": 4305
+    },
+    {
+      "timestamp": 3.733,
+      "duration": 0.034,
+      "bytes": 3910
+    },
+    {
+      "timestamp": 3.767,
+      "duration": 0.033,
+      "bytes": 3893
+    },
+    {
+      "timestamp": 3.8,
+      "duration": 0.033,
+      "bytes": 3566
+    },
+    {
+      "timestamp": 3.833,
+      "duration": 0.034,
+      "bytes": 3997
+    },
+    {
+      "timestamp": 3.867,
+      "duration": 0.033,
+      "bytes": 3456
+    },
+    {
+      "timestamp": 3.9,
+      "duration": 0.033,
+      "bytes": 4666
+    },
+    {
+      "timestamp": 3.933,
+      "duration": 0.034,
+      "bytes": 5312
+    },
+    {
+      "timestamp": 3.967,
+      "duration": 0.03333333300000001,
+      "bytes": 5149
+    },
+    {
+      "timestamp": 4,
+      "duration": 0.033,
+      "bytes": 22134
+    },
+    {
+      "timestamp": 4.033,
+      "duration": 0.034,
+      "bytes": 9995
+    },
+    {
+      "timestamp": 4.067,
+      "duration": 0.033,
+      "bytes": 4446
+    },
+    {
+      "timestamp": 4.1,
+      "duration": 0.033,
+      "bytes": 4150
+    },
+    {
+      "timestamp": 4.133,
+      "duration": 0.034,
+      "bytes": 3466
+    },
+    {
+      "timestamp": 4.167,
+      "duration": 0.033,
+      "bytes": 3387
+    },
+    {
+      "timestamp": 4.2,
+      "duration": 0.033,
+      "bytes": 2601
+    },
+    {
+      "timestamp": 4.233,
+      "duration": 0.034,
+      "bytes": 2958
+    },
+    {
+      "timestamp": 4.267,
+      "duration": 0.033,
+      "bytes": 2676
+    },
+    {
+      "timestamp": 4.3,
+      "duration": 0.033,
+      "bytes": 2733
+    },
+    {
+      "timestamp": 4.333,
+      "duration": 0.034,
+      "bytes": 2239
+    },
+    {
+      "timestamp": 4.367,
+      "duration": 0.033,
+      "bytes": 4280
+    },
+    {
+      "timestamp": 4.4,
+      "duration": 0.033,
+      "bytes": 4571
+    },
+    {
+      "timestamp": 4.433,
+      "duration": 0.034,
+      "bytes": 3820
+    },
+    {
+      "timestamp": 4.467,
+      "duration": 0.033,
+      "bytes": 4237
+    },
+    {
+      "timestamp": 4.5,
+      "duration": 0.033,
+      "bytes": 4671
+    },
+    {
+      "timestamp": 4.533,
+      "duration": 0.034,
+      "bytes": 4490
+    },
+    {
+      "timestamp": 4.567,
+      "duration": 0.033,
+      "bytes": 4441
+    },
+    {
+      "timestamp": 4.6,
+      "duration": 0.033,
+      "bytes": 5467
+    },
+    {
+      "timestamp": 4.633,
+      "duration": 0.034,
+      "bytes": 6149
+    },
+    {
+      "timestamp": 4.667,
+      "duration": 0.033,
+      "bytes": 5896
+    },
+    {
+      "timestamp": 4.7,
+      "duration": 0.033,
+      "bytes": 4763
+    },
+    {
+      "timestamp": 4.733,
+      "duration": 0.034,
+      "bytes": 4346
+    },
+    {
+      "timestamp": 4.767,
+      "duration": 0.033,
+      "bytes": 4250
+    },
+    {
+      "timestamp": 4.8,
+      "duration": 0.033,
+      "bytes": 4538
+    },
+    {
+      "timestamp": 4.833,
+      "duration": 0.034,
+      "bytes": 2165
+    },
+    {
+      "timestamp": 4.867,
+      "duration": 0.033,
+      "bytes": 2527
+    },
+    {
+      "timestamp": 4.9,
+      "duration": 0.033,
+      "bytes": 2694
+    },
+    {
+      "timestamp": 4.933,
+      "duration": 0.034,
+      "bytes": 1419
+    },
+    {
+      "timestamp": 4.967,
+      "duration": 0.033,
+      "bytes": 1414
+    },
+    {
+      "timestamp": 5,
+      "duration": 0.033,
+      "bytes": 2028
+    },
+    {
+      "timestamp": 5.033,
+      "duration": 0.034,
+      "bytes": 2658
+    },
+    {
+      "timestamp": 5.067,
+      "duration": 0.033,
+      "bytes": 919
+    },
+    {
+      "timestamp": 5.1,
+      "duration": 0.033,
+      "bytes": 2203
+    },
+    {
+      "timestamp": 5.133,
+      "duration": 0.034,
+      "bytes": 3042
+    },
+    {
+      "timestamp": 5.167,
+      "duration": 0.033,
+      "bytes": 4543
+    },
+    {
+      "timestamp": 5.2,
+      "duration": 0.033,
+      "bytes": 4827
+    },
+    {
+      "timestamp": 5.233,
+      "duration": 0.034,
+      "bytes": 4884
+    },
+    {
+      "timestamp": 5.267,
+      "duration": 0.033,
+      "bytes": 4754
+    },
+    {
+      "timestamp": 5.3,
+      "duration": 0.033,
+      "bytes": 5152
+    },
+    {
+      "timestamp": 5.333,
+      "duration": 0.034,
+      "bytes": 5780
+    },
+    {
+      "timestamp": 5.367,
+      "duration": 0.033,
+      "bytes": 5572
+    },
+    {
+      "timestamp": 5.4,
+      "duration": 0.033,
+      "bytes": 3677
+    },
+    {
+      "timestamp": 5.433,
+      "duration": 0.034,
+      "bytes": 4076
+    },
+    {
+      "timestamp": 5.467,
+      "duration": 0.033,
+      "bytes": 3894
+    },
+    {
+      "timestamp": 5.5,
+      "duration": 0.033,
+      "bytes": 4350
+    },
+    {
+      "timestamp": 5.533,
+      "duration": 0.034,
+      "bytes": 3835
+    },
+    {
+      "timestamp": 5.567,
+      "duration": 0.033,
+      "bytes": 2581
+    },
+    {
+      "timestamp": 5.6,
+      "duration": 0.033,
+      "bytes": 1462
+    },
+    {
+      "timestamp": 5.633,
+      "duration": 0.034,
+      "bytes": 1082
+    },
+    {
+      "timestamp": 5.667,
+      "duration": 0.033,
+      "bytes": 1413
+    },
+    {
+      "timestamp": 5.7,
+      "duration": 0.033,
+      "bytes": 1493
+    },
+    {
+      "timestamp": 5.733,
+      "duration": 0.034,
+      "bytes": 1775
+    },
+    {
+      "timestamp": 5.767,
+      "duration": 0.033,
+      "bytes": 633
+    },
+    {
+      "timestamp": 5.8,
+      "duration": 0.033,
+      "bytes": 1267
+    },
+    {
+      "timestamp": 5.833,
+      "duration": 0.034,
+      "bytes": 2447
+    },
+    {
+      "timestamp": 5.867,
+      "duration": 0.033,
+      "bytes": 4337
+    },
+    {
+      "timestamp": 5.9,
+      "duration": 0.033,
+      "bytes": 4780
+    },
+    {
+      "timestamp": 5.933,
+      "duration": 0.034,
+      "bytes": 4446
+    },
+    {
+      "timestamp": 5.967,
+      "duration": 0.03333333300000001,
+      "bytes": 5045
+    },
+    {
+      "timestamp": 6,
+      "duration": 0.033,
+      "bytes": 24910
+    },
+    {
+      "timestamp": 6.033,
+      "duration": 0.034,
+      "bytes": 8672
+    },
+    {
+      "timestamp": 6.067,
+      "duration": 0.033,
+      "bytes": 5541
+    },
+    {
+      "timestamp": 6.1,
+      "duration": 0.033,
+      "bytes": 4018
+    },
+    {
+      "timestamp": 6.133,
+      "duration": 0.034,
+      "bytes": 3658
+    },
+    {
+      "timestamp": 6.167,
+      "duration": 0.033,
+      "bytes": 3814
+    },
+    {
+      "timestamp": 6.2,
+      "duration": 0.033,
+      "bytes": 4156
+    },
+    {
+      "timestamp": 6.233,
+      "duration": 0.034,
+      "bytes": 2629
+    },
+    {
+      "timestamp": 6.267,
+      "duration": 0.033,
+      "bytes": 1545
+    },
+    {
+      "timestamp": 6.3,
+      "duration": 0.033,
+      "bytes": 1686
+    },
+    {
+      "timestamp": 6.333,
+      "duration": 0.034,
+      "bytes": 1599
+    },
+    {
+      "timestamp": 6.367,
+      "duration": 0.033,
+      "bytes": 1737
+    },
+    {
+      "timestamp": 6.4,
+      "duration": 0.033,
+      "bytes": 1799
+    },
+    {
+      "timestamp": 6.433,
+      "duration": 0.034,
+      "bytes": 1844
+    },
+    {
+      "timestamp": 6.467,
+      "duration": 0.033,
+      "bytes": 1072
+    },
+    {
+      "timestamp": 6.5,
+      "duration": 0.033,
+      "bytes": 4150
+    },
+    {
+      "timestamp": 6.533,
+      "duration": 0.034,
+      "bytes": 5056
+    },
+    {
+      "timestamp": 6.567,
+      "duration": 0.033,
+      "bytes": 5176
+    },
+    {
+      "timestamp": 6.6,
+      "duration": 0.033,
+      "bytes": 5228
+    },
+    {
+      "timestamp": 6.633,
+      "duration": 0.034,
+      "bytes": 5726
+    },
+    {
+      "timestamp": 6.667,
+      "duration": 0.033,
+      "bytes": 5443
+    },
+    {
+      "timestamp": 6.7,
+      "duration": 0.033,
+      "bytes": 5236
+    },
+    {
+      "timestamp": 6.733,
+      "duration": 0.034,
+      "bytes": 3716
+    },
+    {
+      "timestamp": 6.767,
+      "duration": 0.033,
+      "bytes": 4044
+    },
+    {
+      "timestamp": 6.8,
+      "duration": 0.033,
+      "bytes": 3490
+    },
+    {
+      "timestamp": 6.833,
+      "duration": 0.034,
+      "bytes": 4132
+    },
+    {
+      "timestamp": 6.867,
+      "duration": 0.033,
+      "bytes": 4068
+    },
+    {
+      "timestamp": 6.9,
+      "duration": 0.033,
+      "bytes": 4278
+    },
+    {
+      "timestamp": 6.933,
+      "duration": 0.034,
+      "bytes": 1795
+    },
+    {
+      "timestamp": 6.967,
+      "duration": 0.033,
+      "bytes": 2073
+    },
+    {
+      "timestamp": 7,
+      "duration": 0.033,
+      "bytes": 2234
+    },
+    {
+      "timestamp": 7.033,
+      "duration": 0.034,
+      "bytes": 2257
+    },
+    {
+      "timestamp": 7.067,
+      "duration": 0.033,
+      "bytes": 1804
+    },
+    {
+      "timestamp": 7.1,
+      "duration": 0.033,
+      "bytes": 2363
+    },
+    {
+      "timestamp": 7.133,
+      "duration": 0.034,
+      "bytes": 2167
+    },
+    {
+      "timestamp": 7.167,
+      "duration": 0.033,
+      "bytes": 2402
+    },
+    {
+      "timestamp": 7.2,
+      "duration": 0.033,
+      "bytes": 5242
+    },
+    {
+      "timestamp": 7.233,
+      "duration": 0.034,
+      "bytes": 4730
+    },
+    {
+      "timestamp": 7.267,
+      "duration": 0.033,
+      "bytes": 5009
+    },
+    {
+      "timestamp": 7.3,
+      "duration": 0.033,
+      "bytes": 5486
+    },
+    {
+      "timestamp": 7.333,
+      "duration": 0.034,
+      "bytes": 6470
+    },
+    {
+      "timestamp": 7.367,
+      "duration": 0.033,
+      "bytes": 6003
+    },
+    {
+      "timestamp": 7.4,
+      "duration": 0.033,
+      "bytes": 5631
+    },
+    {
+      "timestamp": 7.433,
+      "duration": 0.034,
+      "bytes": 5639
+    },
+    {
+      "timestamp": 7.467,
+      "duration": 0.033,
+      "bytes": 5349
+    },
+    {
+      "timestamp": 7.5,
+      "duration": 0.033,
+      "bytes": 5359
+    },
+    {
+      "timestamp": 7.533,
+      "duration": 0.034,
+      "bytes": 5438
+    },
+    {
+      "timestamp": 7.567,
+      "duration": 0.033,
+      "bytes": 5248
+    },
+    {
+      "timestamp": 7.6,
+      "duration": 0.033,
+      "bytes": 5017
+    },
+    {
+      "timestamp": 7.633,
+      "duration": 0.034,
+      "bytes": 4468
+    },
+    {
+      "timestamp": 7.667,
+      "duration": 0.033,
+      "bytes": 3647
+    },
+    {
+      "timestamp": 7.7,
+      "duration": 0.033,
+      "bytes": 2243
+    },
+    {
+      "timestamp": 7.733,
+      "duration": 0.034,
+      "bytes": 4657
+    },
+    {
+      "timestamp": 7.767,
+      "duration": 0.033,
+      "bytes": 4361
+    },
+    {
+      "timestamp": 7.8,
+      "duration": 0.033,
+      "bytes": 3898
+    },
+    {
+      "timestamp": 7.833,
+      "duration": 0.034,
+      "bytes": 3780
+    },
+    {
+      "timestamp": 7.867,
+      "duration": 0.033,
+      "bytes": 4982
+    },
+    {
+      "timestamp": 7.9,
+      "duration": 0.033,
+      "bytes": 5466
+    },
+    {
+      "timestamp": 7.933,
+      "duration": 0.034,
+      "bytes": 5563
+    },
+    {
+      "timestamp": 7.967,
+      "duration": 0.03333333300000001,
+      "bytes": 5759
+    },
+    {
+      "timestamp": 8,
+      "duration": 0.033,
+      "bytes": 24825
+    },
+    {
+      "timestamp": 8.033,
+      "duration": 0.034,
+      "bytes": 6957
+    },
+    {
+      "timestamp": 8.067,
+      "duration": 0.033,
+      "bytes": 5466
+    },
+    {
+      "timestamp": 8.1,
+      "duration": 0.033,
+      "bytes": 5815
+    },
+    {
+      "timestamp": 8.133,
+      "duration": 0.034,
+      "bytes": 6018
+    },
+    {
+      "timestamp": 8.167,
+      "duration": 0.033,
+      "bytes": 5096
+    },
+    {
+      "timestamp": 8.2,
+      "duration": 0.033,
+      "bytes": 4906
+    },
+    {
+      "timestamp": 8.233,
+      "duration": 0.034,
+      "bytes": 4870
+    },
+    {
+      "timestamp": 8.267,
+      "duration": 0.033,
+      "bytes": 4719
+    },
+    {
+      "timestamp": 8.3,
+      "duration": 0.033,
+      "bytes": 4843
+    },
+    {
+      "timestamp": 8.333,
+      "duration": 0.034,
+      "bytes": 2344
+    },
+    {
+      "timestamp": 8.367,
+      "duration": 0.033,
+      "bytes": 3012
+    },
+    {
+      "timestamp": 8.4,
+      "duration": 0.033,
+      "bytes": 2465
+    },
+    {
+      "timestamp": 8.433,
+      "duration": 0.034,
+      "bytes": 5411
+    },
+    {
+      "timestamp": 8.467,
+      "duration": 0.033,
+      "bytes": 5478
+    },
+    {
+      "timestamp": 8.5,
+      "duration": 0.033,
+      "bytes": 5320
+    },
+    {
+      "timestamp": 8.533,
+      "duration": 0.034,
+      "bytes": 5154
+    },
+    {
+      "timestamp": 8.567,
+      "duration": 0.033,
+      "bytes": 5717
+    },
+    {
+      "timestamp": 8.6,
+      "duration": 0.033,
+      "bytes": 6148
+    },
+    {
+      "timestamp": 8.633,
+      "duration": 0.034,
+      "bytes": 6392
+    },
+    {
+      "timestamp": 8.667,
+      "duration": 0.033,
+      "bytes": 7046
+    },
+    {
+      "timestamp": 8.7,
+      "duration": 0.033,
+      "bytes": 6858
+    },
+    {
+      "timestamp": 8.733,
+      "duration": 0.034,
+      "bytes": 6120
+    },
+    {
+      "timestamp": 8.767,
+      "duration": 0.033,
+      "bytes": 6618
+    },
+    {
+      "timestamp": 8.8,
+      "duration": 0.033,
+      "bytes": 5670
+    },
+    {
+      "timestamp": 8.833,
+      "duration": 0.034,
+      "bytes": 5738
+    },
+    {
+      "timestamp": 8.867,
+      "duration": 0.033,
+      "bytes": 5480
+    },
+    {
+      "timestamp": 8.9,
+      "duration": 0.033,
+      "bytes": 3843
+    },
+    {
+      "timestamp": 8.933,
+      "duration": 0.034,
+      "bytes": 4304
+    },
+    {
+      "timestamp": 8.967,
+      "duration": 0.033,
+      "bytes": 4432
+    },
+    {
+      "timestamp": 9,
+      "duration": 0.033,
+      "bytes": 4532
+    },
+    {
+      "timestamp": 9.033,
+      "duration": 0.034,
+      "bytes": 3296
+    },
+    {
+      "timestamp": 9.067,
+      "duration": 0.033,
+      "bytes": 2870
+    },
+    {
+      "timestamp": 9.1,
+      "duration": 0.033,
+      "bytes": 2574
+    },
+    {
+      "timestamp": 9.133,
+      "duration": 0.034,
+      "bytes": 5407
+    },
+    {
+      "timestamp": 9.167,
+      "duration": 0.033,
+      "bytes": 5041
+    },
+    {
+      "timestamp": 9.2,
+      "duration": 0.033,
+      "bytes": 5199
+    },
+    {
+      "timestamp": 9.233,
+      "duration": 0.034,
+      "bytes": 3776
+    },
+    {
+      "timestamp": 9.267,
+      "duration": 0.033,
+      "bytes": 5819
+    },
+    {
+      "timestamp": 9.3,
+      "duration": 0.033,
+      "bytes": 6249
+    },
+    {
+      "timestamp": 9.333,
+      "duration": 0.034,
+      "bytes": 6370
+    },
+    {
+      "timestamp": 9.367,
+      "duration": 0.033,
+      "bytes": 5792
+    },
+    {
+      "timestamp": 9.4,
+      "duration": 0.033,
+      "bytes": 5138
+    },
+    {
+      "timestamp": 9.433,
+      "duration": 0.034,
+      "bytes": 5227
+    },
+    {
+      "timestamp": 9.467,
+      "duration": 0.033,
+      "bytes": 5359
+    },
+    {
+      "timestamp": 9.5,
+      "duration": 0.033,
+      "bytes": 4847
+    },
+    {
+      "timestamp": 9.533,
+      "duration": 0.034,
+      "bytes": 4817
+    },
+    {
+      "timestamp": 9.567,
+      "duration": 0.033,
+      "bytes": 4123
+    },
+    {
+      "timestamp": 9.6,
+      "duration": 0.033,
+      "bytes": 3097
+    },
+    {
+      "timestamp": 9.633,
+      "duration": 0.034,
+      "bytes": 2881
+    },
+    {
+      "timestamp": 9.667,
+      "duration": 0.033,
+      "bytes": 2657
+    },
+    {
+      "timestamp": 9.7,
+      "duration": 0.033,
+      "bytes": 3092
+    },
+    {
+      "timestamp": 9.733,
+      "duration": 0.034,
+      "bytes": 2670
+    },
+    {
+      "timestamp": 9.767,
+      "duration": 0.033,
+      "bytes": 2316
+    },
+    {
+      "timestamp": 9.8,
+      "duration": 0.033,
+      "bytes": 3285
+    },
+    {
+      "timestamp": 9.833,
+      "duration": 0.034,
+      "bytes": 5978
+    },
+    {
+      "timestamp": 9.867,
+      "duration": 0.033,
+      "bytes": 6597
+    },
+    {
+      "timestamp": 9.9,
+      "duration": 0.033,
+      "bytes": 6185
+    },
+    {
+      "timestamp": 9.933,
+      "duration": 0.034,
+      "bytes": 6288
+    },
+    {
+      "timestamp": 9.967,
+      "duration": 0.03333333300000001,
+      "bytes": 5997
+    },
+    {
+      "timestamp": 10,
+      "duration": 0.033,
+      "bytes": 26035
+    },
+    {
+      "timestamp": 10.033,
+      "duration": 0.034,
+      "bytes": 7005
+    },
+    {
+      "timestamp": 10.067,
+      "duration": 0.033,
+      "bytes": 5707
+    },
+    {
+      "timestamp": 10.1,
+      "duration": 0.033,
+      "bytes": 5819
+    },
+    {
+      "timestamp": 10.133,
+      "duration": 0.034,
+      "bytes": 5969
+    },
+    {
+      "timestamp": 10.167,
+      "duration": 0.033,
+      "bytes": 6219
+    },
+    {
+      "timestamp": 10.2,
+      "duration": 0.033,
+      "bytes": 5761
+    },
+    {
+      "timestamp": 10.233,
+      "duration": 0.034,
+      "bytes": 4801
+    },
+    {
+      "timestamp": 10.267,
+      "duration": 0.033,
+      "bytes": 3212
+    },
+    {
+      "timestamp": 10.3,
+      "duration": 0.033,
+      "bytes": 2515
+    },
+    {
+      "timestamp": 10.333,
+      "duration": 0.034,
+      "bytes": 2450
+    },
+    {
+      "timestamp": 10.367,
+      "duration": 0.033,
+      "bytes": 2908
+    },
+    {
+      "timestamp": 10.4,
+      "duration": 0.033,
+      "bytes": 2779
+    },
+    {
+      "timestamp": 10.433,
+      "duration": 0.034,
+      "bytes": 1876
+    },
+    {
+      "timestamp": 10.467,
+      "duration": 0.033,
+      "bytes": 1585
+    },
+    {
+      "timestamp": 10.5,
+      "duration": 0.033,
+      "bytes": 1789
+    },
+    {
+      "timestamp": 10.533,
+      "duration": 0.034,
+      "bytes": 3951
+    },
+    {
+      "timestamp": 10.567,
+      "duration": 0.033,
+      "bytes": 4321
+    },
+    {
+      "timestamp": 10.6,
+      "duration": 0.033,
+      "bytes": 3633
+    },
+    {
+      "timestamp": 10.633,
+      "duration": 0.034,
+      "bytes": 5247
+    },
+    {
+      "timestamp": 10.667,
+      "duration": 0.033,
+      "bytes": 6024
+    },
+    {
+      "timestamp": 10.7,
+      "duration": 0.033,
+      "bytes": 6191
+    },
+    {
+      "timestamp": 10.733,
+      "duration": 0.034,
+      "bytes": 5958
+    },
+    {
+      "timestamp": 10.767,
+      "duration": 0.033,
+      "bytes": 6323
+    },
+    {
+      "timestamp": 10.8,
+      "duration": 0.033,
+      "bytes": 6103
+    },
+    {
+      "timestamp": 10.833,
+      "duration": 0.034,
+      "bytes": 6329
+    },
+    {
+      "timestamp": 10.867,
+      "duration": 0.033,
+      "bytes": 6319
+    },
+    {
+      "timestamp": 10.9,
+      "duration": 0.033,
+      "bytes": 6064
+    },
+    {
+      "timestamp": 10.933,
+      "duration": 0.034,
+      "bytes": 5710
+    },
+    {
+      "timestamp": 10.967,
+      "duration": 0.033,
+      "bytes": 5200
+    },
+    {
+      "timestamp": 11,
+      "duration": 0.033,
+      "bytes": 3714
+    },
+    {
+      "timestamp": 11.033,
+      "duration": 0.034,
+      "bytes": 3934
+    },
+    {
+      "timestamp": 11.067,
+      "duration": 0.033,
+      "bytes": 3871
+    },
+    {
+      "timestamp": 11.1,
+      "duration": 0.033,
+      "bytes": 3877
+    },
+    {
+      "timestamp": 11.133,
+      "duration": 0.034,
+      "bytes": 3682
+    },
+    {
+      "timestamp": 11.167,
+      "duration": 0.033,
+      "bytes": 4359
+    },
+    {
+      "timestamp": 11.2,
+      "duration": 0.033,
+      "bytes": 5281
+    },
+    {
+      "timestamp": 11.233,
+      "duration": 0.034,
+      "bytes": 5484
+    },
+    {
+      "timestamp": 11.267,
+      "duration": 0.033,
+      "bytes": 5772
+    },
+    {
+      "timestamp": 11.3,
+      "duration": 0.033,
+      "bytes": 6179
+    },
+    {
+      "timestamp": 11.333,
+      "duration": 0.034,
+      "bytes": 7036
+    },
+    {
+      "timestamp": 11.367,
+      "duration": 0.033,
+      "bytes": 6587
+    },
+    {
+      "timestamp": 11.4,
+      "duration": 0.033,
+      "bytes": 5861
+    },
+    {
+      "timestamp": 11.433,
+      "duration": 0.034,
+      "bytes": 5773
+    },
+    {
+      "timestamp": 11.467,
+      "duration": 0.033,
+      "bytes": 5489
+    },
+    {
+      "timestamp": 11.5,
+      "duration": 0.033,
+      "bytes": 5566
+    },
+    {
+      "timestamp": 11.533,
+      "duration": 0.034,
+      "bytes": 5420
+    },
+    {
+      "timestamp": 11.567,
+      "duration": 0.033,
+      "bytes": 5873
+    },
+    {
+      "timestamp": 11.6,
+      "duration": 0.033,
+      "bytes": 3794
+    },
+    {
+      "timestamp": 11.633,
+      "duration": 0.034,
+      "bytes": 3181
+    },
+    {
+      "timestamp": 11.667,
+      "duration": 0.033,
+      "bytes": 3098
+    },
+    {
+      "timestamp": 11.7,
+      "duration": 0.033,
+      "bytes": 2583
+    },
+    {
+      "timestamp": 11.733,
+      "duration": 0.034,
+      "bytes": 2707
+    },
+    {
+      "timestamp": 11.767,
+      "duration": 0.033,
+      "bytes": 2261
+    },
+    {
+      "timestamp": 11.8,
+      "duration": 0.033,
+      "bytes": 3125
+    },
+    {
+      "timestamp": 11.833,
+      "duration": 0.034,
+      "bytes": 3265
+    },
+    {
+      "timestamp": 11.867,
+      "duration": 0.033,
+      "bytes": 4937
+    },
+    {
+      "timestamp": 11.9,
+      "duration": 0.033,
+      "bytes": 4653
+    },
+    {
+      "timestamp": 11.933,
+      "duration": 0.034,
+      "bytes": 4864
+    },
+    {
+      "timestamp": 11.967,
+      "duration": 0.03333333300000001,
+      "bytes": 5557
+    },
+    {
+      "timestamp": 12,
+      "duration": 0.033,
+      "bytes": 27865
+    },
+    {
+      "timestamp": 12.033,
+      "duration": 0.034,
+      "bytes": 5944
+    },
+    {
+      "timestamp": 12.067,
+      "duration": 0.033,
+      "bytes": 5384
+    },
+    {
+      "timestamp": 12.1,
+      "duration": 0.033,
+      "bytes": 4231
+    },
+    {
+      "timestamp": 12.133,
+      "duration": 0.034,
+      "bytes": 4848
+    },
+    {
+      "timestamp": 12.167,
+      "duration": 0.033,
+      "bytes": 2930
+    },
+    {
+      "timestamp": 12.2,
+      "duration": 0.033,
+      "bytes": 3364
+    },
+    {
+      "timestamp": 12.233,
+      "duration": 0.034,
+      "bytes": 3174
+    },
+    {
+      "timestamp": 12.267,
+      "duration": 0.033,
+      "bytes": 3859
+    },
+    {
+      "timestamp": 12.3,
+      "duration": 0.033,
+      "bytes": 1885
+    },
+    {
+      "timestamp": 12.333,
+      "duration": 0.034,
+      "bytes": 2290
+    },
+    {
+      "timestamp": 12.367,
+      "duration": 0.033,
+      "bytes": 2275
+    },
+    {
+      "timestamp": 12.4,
+      "duration": 0.033,
+      "bytes": 4635
+    },
+    {
+      "timestamp": 12.433,
+      "duration": 0.034,
+      "bytes": 4165
+    },
+    {
+      "timestamp": 12.467,
+      "duration": 0.033,
+      "bytes": 4097
+    },
+    {
+      "timestamp": 12.5,
+      "duration": 0.033,
+      "bytes": 3464
+    },
+    {
+      "timestamp": 12.533,
+      "duration": 0.034,
+      "bytes": 4856
+    },
+    {
+      "timestamp": 12.567,
+      "duration": 0.033,
+      "bytes": 5394
+    },
+    {
+      "timestamp": 12.6,
+      "duration": 0.033,
+      "bytes": 5943
+    },
+    {
+      "timestamp": 12.633,
+      "duration": 0.034,
+      "bytes": 6210
+    },
+    {
+      "timestamp": 12.667,
+      "duration": 0.033,
+      "bytes": 6029
+    },
+    {
+      "timestamp": 12.7,
+      "duration": 0.033,
+      "bytes": 4923
+    },
+    {
+      "timestamp": 12.733,
+      "duration": 0.034,
+      "bytes": 4512
+    },
+    {
+      "timestamp": 12.767,
+      "duration": 0.033,
+      "bytes": 4089
+    },
+    {
+      "timestamp": 12.8,
+      "duration": 0.033,
+      "bytes": 4300
+    },
+    {
+      "timestamp": 12.833,
+      "duration": 0.034,
+      "bytes": 3180
+    },
+    {
+      "timestamp": 12.867,
+      "duration": 0.033,
+      "bytes": 1895
+    },
+    {
+      "timestamp": 12.9,
+      "duration": 0.033,
+      "bytes": 2073
+    },
+    {
+      "timestamp": 12.933,
+      "duration": 0.034,
+      "bytes": 2044
+    },
+    {
+      "timestamp": 12.967,
+      "duration": 0.033,
+      "bytes": 2150
+    },
+    {
+      "timestamp": 13,
+      "duration": 0.033,
+      "bytes": 1938
+    },
+    {
+      "timestamp": 13.033,
+      "duration": 0.034,
+      "bytes": 2731
+    },
+    {
+      "timestamp": 13.067,
+      "duration": 0.033,
+      "bytes": 1684
+    },
+    {
+      "timestamp": 13.1,
+      "duration": 0.033,
+      "bytes": 4770
+    },
+    {
+      "timestamp": 13.133,
+      "duration": 0.034,
+      "bytes": 4371
+    },
+    {
+      "timestamp": 13.167,
+      "duration": 0.033,
+      "bytes": 4339
+    },
+    {
+      "timestamp": 13.2,
+      "duration": 0.033,
+      "bytes": 4048
+    },
+    {
+      "timestamp": 13.233,
+      "duration": 0.034,
+      "bytes": 5068
+    },
+    {
+      "timestamp": 13.267,
+      "duration": 0.033,
+      "bytes": 5539
+    },
+    {
+      "timestamp": 13.3,
+      "duration": 0.033,
+      "bytes": 6679
+    },
+    {
+      "timestamp": 13.333,
+      "duration": 0.034,
+      "bytes": 7390
+    },
+    {
+      "timestamp": 13.367,
+      "duration": 0.033,
+      "bytes": 6883
+    },
+    {
+      "timestamp": 13.4,
+      "duration": 0.033,
+      "bytes": 6171
+    },
+    {
+      "timestamp": 13.433,
+      "duration": 0.034,
+      "bytes": 6849
+    },
+    {
+      "timestamp": 13.467,
+      "duration": 0.033,
+      "bytes": 5280
+    },
+    {
+      "timestamp": 13.5,
+      "duration": 0.033,
+      "bytes": 5965
+    },
+    {
+      "timestamp": 13.533,
+      "duration": 0.034,
+      "bytes": 4742
+    },
+    {
+      "timestamp": 13.567,
+      "duration": 0.033,
+      "bytes": 4786
+    },
+    {
+      "timestamp": 13.6,
+      "duration": 0.033,
+      "bytes": 4772
+    },
+    {
+      "timestamp": 13.633,
+      "duration": 0.034,
+      "bytes": 4808
+    },
+    {
+      "timestamp": 13.667,
+      "duration": 0.033,
+      "bytes": 5338
+    },
+    {
+      "timestamp": 13.7,
+      "duration": 0.033,
+      "bytes": 3167
+    },
+    {
+      "timestamp": 13.733,
+      "duration": 0.034,
+      "bytes": 2615
+    },
+    {
+      "timestamp": 13.767,
+      "duration": 0.033,
+      "bytes": 1879
+    },
+    {
+      "timestamp": 13.8,
+      "duration": 0.033,
+      "bytes": 5023
+    },
+    {
+      "timestamp": 13.833,
+      "duration": 0.034,
+      "bytes": 4881
+    },
+    {
+      "timestamp": 13.867,
+      "duration": 0.033,
+      "bytes": 4316
+    },
+    {
+      "timestamp": 13.9,
+      "duration": 0.033,
+      "bytes": 4679
+    },
+    {
+      "timestamp": 13.933,
+      "duration": 0.034,
+      "bytes": 4746
+    },
+    {
+      "timestamp": 13.967,
+      "duration": 0.03333333300000001,
+      "bytes": 5943
+    },
+    {
+      "timestamp": 14,
+      "duration": 0.033,
+      "bytes": 27791
+    },
+    {
+      "timestamp": 14.033,
+      "duration": 0.034,
+      "bytes": 5324
+    },
+    {
+      "timestamp": 14.067,
+      "duration": 0.033,
+      "bytes": 5180
+    },
+    {
+      "timestamp": 14.1,
+      "duration": 0.033,
+      "bytes": 4164
+    },
+    {
+      "timestamp": 14.133,
+      "duration": 0.034,
+      "bytes": 4636
+    },
+    {
+      "timestamp": 14.167,
+      "duration": 0.033,
+      "bytes": 2193
+    },
+    {
+      "timestamp": 14.2,
+      "duration": 0.033,
+      "bytes": 1757
+    },
+    {
+      "timestamp": 14.233,
+      "duration": 0.034,
+      "bytes": 1144
+    },
+    {
+      "timestamp": 14.267,
+      "duration": 0.033,
+      "bytes": 277
+    },
+    {
+      "timestamp": 14.3,
+      "duration": 0.033,
+      "bytes": 633
+    },
+    {
+      "timestamp": 14.333,
+      "duration": 0.034,
+      "bytes": 588
+    },
+    {
+      "timestamp": 14.367,
+      "duration": 0.033,
+      "bytes": 965
+    },
+    {
+      "timestamp": 14.4,
+      "duration": 0.033,
+      "bytes": 260
+    },
+    {
+      "timestamp": 14.433,
+      "duration": 0.034,
+      "bytes": 717
+    },
+    {
+      "timestamp": 14.467,
+      "duration": 0.033,
+      "bytes": 2161
+    },
+    {
+      "timestamp": 14.5,
+      "duration": 0.033,
+      "bytes": 5397
+    },
+    {
+      "timestamp": 14.533,
+      "duration": 0.034,
+      "bytes": 4187
+    },
+    {
+      "timestamp": 14.567,
+      "duration": 0.033,
+      "bytes": 4515
+    },
+    {
+      "timestamp": 14.6,
+      "duration": 0.033,
+      "bytes": 4208
+    },
+    {
+      "timestamp": 14.633,
+      "duration": 0.034,
+      "bytes": 5202
+    },
+    {
+      "timestamp": 14.667,
+      "duration": 0.033,
+      "bytes": 5825
+    },
+    {
+      "timestamp": 14.7,
+      "duration": 0.033,
+      "bytes": 5774
+    },
+    {
+      "timestamp": 14.733,
+      "duration": 0.034,
+      "bytes": 4974
+    },
+    {
+      "timestamp": 14.767,
+      "duration": 0.033,
+      "bytes": 4825
+    },
+    {
+      "timestamp": 14.8,
+      "duration": 0.033,
+      "bytes": 4670
+    },
+    {
+      "timestamp": 14.833,
+      "duration": 0.034,
+      "bytes": 5137
+    },
+    {
+      "timestamp": 14.867,
+      "duration": 0.033,
+      "bytes": 3208
+    },
+    {
+      "timestamp": 14.9,
+      "duration": 0.033,
+      "bytes": 2455
+    },
+    {
+      "timestamp": 14.933,
+      "duration": 0.034,
+      "bytes": 1984
+    },
+    {
+      "timestamp": 14.967,
+      "duration": 0.033,
+      "bytes": 1385
+    },
+    {
+      "timestamp": 15,
+      "duration": 0.033,
+      "bytes": 1062
+    },
+    {
+      "timestamp": 15.033,
+      "duration": 0.034,
+      "bytes": 1595
+    },
+    {
+      "timestamp": 15.067,
+      "duration": 0.033,
+      "bytes": 1479
+    },
+    {
+      "timestamp": 15.1,
+      "duration": 0.033,
+      "bytes": 759
+    },
+    {
+      "timestamp": 15.133,
+      "duration": 0.034,
+      "bytes": 1958
+    },
+    {
+      "timestamp": 15.167,
+      "duration": 0.033,
+      "bytes": 3618
+    },
+    {
+      "timestamp": 15.2,
+      "duration": 0.033,
+      "bytes": 5940
+    },
+    {
+      "timestamp": 15.233,
+      "duration": 0.034,
+      "bytes": 5465
+    },
+    {
+      "timestamp": 15.267,
+      "duration": 0.033,
+      "bytes": 5235
+    },
+    {
+      "timestamp": 15.3,
+      "duration": 0.033,
+      "bytes": 5670
+    },
+    {
+      "timestamp": 15.333,
+      "duration": 0.034,
+      "bytes": 5114
+    },
+    {
+      "timestamp": 15.367,
+      "duration": 0.033,
+      "bytes": 5137
+    },
+    {
+      "timestamp": 15.4,
+      "duration": 0.033,
+      "bytes": 3814
+    },
+    {
+      "timestamp": 15.433,
+      "duration": 0.034,
+      "bytes": 3052
+    },
+    {
+      "timestamp": 15.467,
+      "duration": 0.033,
+      "bytes": 3168
+    },
+    {
+      "timestamp": 15.5,
+      "duration": 0.033,
+      "bytes": 2924
+    },
+    {
+      "timestamp": 15.533,
+      "duration": 0.034,
+      "bytes": 3319
+    },
+    {
+      "timestamp": 15.567,
+      "duration": 0.033,
+      "bytes": 2010
+    },
+    {
+      "timestamp": 15.6,
+      "duration": 0.033,
+      "bytes": 2201
+    },
+    {
+      "timestamp": 15.633,
+      "duration": 0.034,
+      "bytes": 1918
+    },
+    {
+      "timestamp": 15.667,
+      "duration": 0.033,
+      "bytes": 2109
+    },
+    {
+      "timestamp": 15.7,
+      "duration": 0.033,
+      "bytes": 2055
+    },
+    {
+      "timestamp": 15.733,
+      "duration": 0.034,
+      "bytes": 2234
+    },
+    {
+      "timestamp": 15.767,
+      "duration": 0.033,
+      "bytes": 2180
+    },
+    {
+      "timestamp": 15.8,
+      "duration": 0.033,
+      "bytes": 747
+    },
+    {
+      "timestamp": 15.833,
+      "duration": 0.034,
+      "bytes": 2957
+    },
+    {
+      "timestamp": 15.867,
+      "duration": 0.033,
+      "bytes": 4570
+    },
+    {
+      "timestamp": 15.9,
+      "duration": 0.033,
+      "bytes": 5378
+    },
+    {
+      "timestamp": 15.933,
+      "duration": 0.034,
+      "bytes": 5253
+    },
+    {
+      "timestamp": 15.967,
+      "duration": 0.03333333300000001,
+      "bytes": 5832
+    },
+    {
+      "timestamp": 16,
+      "duration": 0.033,
+      "bytes": 27200
+    },
+    {
+      "timestamp": 16.033,
+      "duration": 0.034,
+      "bytes": 5715
+    },
+    {
+      "timestamp": 16.067,
+      "duration": 0.033,
+      "bytes": 5274
+    },
+    {
+      "timestamp": 16.1,
+      "duration": 0.033,
+      "bytes": 4240
+    },
+    {
+      "timestamp": 16.133,
+      "duration": 0.034,
+      "bytes": 4495
+    },
+    {
+      "timestamp": 16.167,
+      "duration": 0.033,
+      "bytes": 4978
+    },
+    {
+      "timestamp": 16.2,
+      "duration": 0.033,
+      "bytes": 4662
+    },
+    {
+      "timestamp": 16.233,
+      "duration": 0.034,
+      "bytes": 4856
+    },
+    {
+      "timestamp": 16.267,
+      "duration": 0.033,
+      "bytes": 3479
+    },
+    {
+      "timestamp": 16.3,
+      "duration": 0.033,
+      "bytes": 3230
+    },
+    {
+      "timestamp": 16.333,
+      "duration": 0.034,
+      "bytes": 3205
+    },
+    {
+      "timestamp": 16.367,
+      "duration": 0.033,
+      "bytes": 3659
+    },
+    {
+      "timestamp": 16.4,
+      "duration": 0.033,
+      "bytes": 3146
+    },
+    {
+      "timestamp": 16.433,
+      "duration": 0.034,
+      "bytes": 3223
+    },
+    {
+      "timestamp": 16.467,
+      "duration": 0.033,
+      "bytes": 3687
+    },
+    {
+      "timestamp": 16.5,
+      "duration": 0.033,
+      "bytes": 2731
+    },
+    {
+      "timestamp": 16.533,
+      "duration": 0.034,
+      "bytes": 2739
+    },
+    {
+      "timestamp": 16.567,
+      "duration": 0.033,
+      "bytes": 3446
+    },
+    {
+      "timestamp": 16.6,
+      "duration": 0.033,
+      "bytes": 3809
+    },
+    {
+      "timestamp": 16.633,
+      "duration": 0.034,
+      "bytes": 3589
+    },
+    {
+      "timestamp": 16.667,
+      "duration": 0.033,
+      "bytes": 3462
+    },
+    {
+      "timestamp": 16.7,
+      "duration": 0.033,
+      "bytes": 4060
+    },
+    {
+      "timestamp": 16.733,
+      "duration": 0.034,
+      "bytes": 2165
+    },
+    {
+      "timestamp": 16.767,
+      "duration": 0.033,
+      "bytes": 431
+    },
+    {
+      "timestamp": 16.8,
+      "duration": 0.033,
+      "bytes": 584
+    },
+    {
+      "timestamp": 16.833,
+      "duration": 0.034,
+      "bytes": 253
+    },
+    {
+      "timestamp": 16.867,
+      "duration": 0.033,
+      "bytes": 410
+    },
+    {
+      "timestamp": 16.9,
+      "duration": 0.033,
+      "bytes": 129
+    },
+    {
+      "timestamp": 16.933,
+      "duration": 0.034,
+      "bytes": 188
+    },
+    {
+      "timestamp": 16.967,
+      "duration": 0.033,
+      "bytes": 273
+    },
+    {
+      "timestamp": 17,
+      "duration": 0.033,
+      "bytes": 273
+    },
+    {
+      "timestamp": 17.033,
+      "duration": 0.034,
+      "bytes": 458
+    },
+    {
+      "timestamp": 17.067,
+      "duration": 0.033,
+      "bytes": 583
+    },
+    {
+      "timestamp": 17.1,
+      "duration": 0.033,
+      "bytes": 294
+    },
+    {
+      "timestamp": 17.133,
+      "duration": 0.034,
+      "bytes": 364
+    },
+    {
+      "timestamp": 17.167,
+      "duration": 0.033,
+      "bytes": 285
+    },
+    {
+      "timestamp": 17.2,
+      "duration": 0.033,
+      "bytes": 352
+    },
+    {
+      "timestamp": 17.233,
+      "duration": 0.034,
+      "bytes": 435
+    },
+    {
+      "timestamp": 17.267,
+      "duration": 0.033,
+      "bytes": 380
+    },
+    {
+      "timestamp": 17.3,
+      "duration": 0.033,
+      "bytes": 182
+    },
+    {
+      "timestamp": 17.333,
+      "duration": 0.034,
+      "bytes": 378
+    },
+    {
+      "timestamp": 17.367,
+      "duration": 0.033,
+      "bytes": 503
+    },
+    {
+      "timestamp": 17.4,
+      "duration": 0.033,
+      "bytes": 601
+    },
+    {
+      "timestamp": 17.433,
+      "duration": 0.034,
+      "bytes": 165
+    },
+    {
+      "timestamp": 17.467,
+      "duration": 0.033,
+      "bytes": 408
+    },
+    {
+      "timestamp": 17.5,
+      "duration": 0.033,
+      "bytes": 397
+    },
+    {
+      "timestamp": 17.533,
+      "duration": 0.034,
+      "bytes": 1112
+    },
+    {
+      "timestamp": 17.567,
+      "duration": 0.033,
+      "bytes": 987
+    },
+    {
+      "timestamp": 17.6,
+      "duration": 0.033,
+      "bytes": 929
+    },
+    {
+      "timestamp": 17.633,
+      "duration": 0.034,
+      "bytes": 1371
+    },
+    {
+      "timestamp": 17.667,
+      "duration": 0.033,
+      "bytes": 1340
+    },
+    {
+      "timestamp": 17.7,
+      "duration": 0.033,
+      "bytes": 2931
+    },
+    {
+      "timestamp": 17.733,
+      "duration": 0.034,
+      "bytes": 3579
+    },
+    {
+      "timestamp": 17.767,
+      "duration": 0.033,
+      "bytes": 2963
+    },
+    {
+      "timestamp": 17.8,
+      "duration": 0.033,
+      "bytes": 3269
+    },
+    {
+      "timestamp": 17.833,
+      "duration": 0.034,
+      "bytes": 3064
+    },
+    {
+      "timestamp": 17.867,
+      "duration": 0.033,
+      "bytes": 3238
+    },
+    {
+      "timestamp": 17.9,
+      "duration": 0.033,
+      "bytes": 3005
+    },
+    {
+      "timestamp": 17.933,
+      "duration": 0.034,
+      "bytes": 2943
+    },
+    {
+      "timestamp": 17.967,
+      "duration": 0.03333333300000001,
+      "bytes": 1982
+    },
+    {
+      "timestamp": 18,
+      "duration": 0.033,
+      "bytes": 26363
+    },
+    {
+      "timestamp": 18.033,
+      "duration": 0.034,
+      "bytes": 2144
+    },
+    {
+      "timestamp": 18.067,
+      "duration": 0.033,
+      "bytes": 2988
+    },
+    {
+      "timestamp": 18.1,
+      "duration": 0.033,
+      "bytes": 2178
+    },
+    {
+      "timestamp": 18.133,
+      "duration": 0.034,
+      "bytes": 2263
+    },
+    {
+      "timestamp": 18.167,
+      "duration": 0.033,
+      "bytes": 2215
+    },
+    {
+      "timestamp": 18.2,
+      "duration": 0.033,
+      "bytes": 2395
+    },
+    {
+      "timestamp": 18.233,
+      "duration": 0.034,
+      "bytes": 1872
+    },
+    {
+      "timestamp": 18.267,
+      "duration": 0.033,
+      "bytes": 2147
+    },
+    {
+      "timestamp": 18.3,
+      "duration": 0.033,
+      "bytes": 1661
+    },
+    {
+      "timestamp": 18.333,
+      "duration": 0.034,
+      "bytes": 1715
+    },
+    {
+      "timestamp": 18.367,
+      "duration": 0.033,
+      "bytes": 2301
+    },
+    {
+      "timestamp": 18.4,
+      "duration": 0.033,
+      "bytes": 1994
+    },
+    {
+      "timestamp": 18.433,
+      "duration": 0.034,
+      "bytes": 1286
+    },
+    {
+      "timestamp": 18.467,
+      "duration": 0.033,
+      "bytes": 4903
+    },
+    {
+      "timestamp": 18.5,
+      "duration": 0.033,
+      "bytes": 4973
+    },
+    {
+      "timestamp": 18.533,
+      "duration": 0.034,
+      "bytes": 4303
+    },
+    {
+      "timestamp": 18.567,
+      "duration": 0.033,
+      "bytes": 4558
+    },
+    {
+      "timestamp": 18.6,
+      "duration": 0.033,
+      "bytes": 4622
+    },
+    {
+      "timestamp": 18.633,
+      "duration": 0.034,
+      "bytes": 5343
+    },
+    {
+      "timestamp": 18.667,
+      "duration": 0.033,
+      "bytes": 5810
+    },
+    {
+      "timestamp": 18.7,
+      "duration": 0.033,
+      "bytes": 323
+    },
+    {
+      "timestamp": 18.733,
+      "duration": 0.034,
+      "bytes": 261
+    },
+    {
+      "timestamp": 18.767,
+      "duration": 0.033,
+      "bytes": 207
+    },
+    {
+      "timestamp": 18.8,
+      "duration": 0.033,
+      "bytes": 173
+    },
+    {
+      "timestamp": 18.833,
+      "duration": 0.034,
+      "bytes": 155
+    },
+    {
+      "timestamp": 18.867,
+      "duration": 0.033,
+      "bytes": 144
+    },
+    {
+      "timestamp": 18.9,
+      "duration": 0.033,
+      "bytes": 146
+    },
+    {
+      "timestamp": 18.933,
+      "duration": 0.034,
+      "bytes": 128
+    },
+    {
+      "timestamp": 18.967,
+      "duration": 0.033,
+      "bytes": 128
+    },
+    {
+      "timestamp": 19,
+      "duration": 0.033,
+      "bytes": 129
+    },
+    {
+      "timestamp": 19.033,
+      "duration": 0.034,
+      "bytes": 215
+    },
+    {
+      "timestamp": 19.067,
+      "duration": 0.033,
+      "bytes": 206
+    },
+    {
+      "timestamp": 19.1,
+      "duration": 0.033,
+      "bytes": 134
+    },
+    {
+      "timestamp": 19.133,
+      "duration": 0.034,
+      "bytes": 141
+    },
+    {
+      "timestamp": 19.167,
+      "duration": 0.033,
+      "bytes": 129
+    },
+    {
+      "timestamp": 19.2,
+      "duration": 0.033,
+      "bytes": 118
+    },
+    {
+      "timestamp": 19.233,
+      "duration": 0.034,
+      "bytes": 136
+    },
+    {
+      "timestamp": 19.267,
+      "duration": 0.033,
+      "bytes": 144
+    },
+    {
+      "timestamp": 19.3,
+      "duration": 0.033,
+      "bytes": 141
+    },
+    {
+      "timestamp": 19.333,
+      "duration": 0.034,
+      "bytes": 120
+    },
+    {
+      "timestamp": 19.367,
+      "duration": 0.033,
+      "bytes": 133
+    },
+    {
+      "timestamp": 19.4,
+      "duration": 0.033,
+      "bytes": 144
+    },
+    {
+      "timestamp": 19.433,
+      "duration": 0.034,
+      "bytes": 121
+    },
+    {
+      "timestamp": 19.467,
+      "duration": 0.033,
+      "bytes": 120
+    },
+    {
+      "timestamp": 19.5,
+      "duration": 0.033,
+      "bytes": 119
+    },
+    {
+      "timestamp": 19.533,
+      "duration": 0.034,
+      "bytes": 121
+    },
+    {
+      "timestamp": 19.567,
+      "duration": 0.033,
+      "bytes": 118
+    },
+    {
+      "timestamp": 19.6,
+      "duration": 0.033,
+      "bytes": 117
+    },
+    {
+      "timestamp": 19.633,
+      "duration": 0.034,
+      "bytes": 118
+    },
+    {
+      "timestamp": 19.667,
+      "duration": 0.033,
+      "bytes": 118
+    },
+    {
+      "timestamp": 19.7,
+      "duration": 0.033,
+      "bytes": 118
+    },
+    {
+      "timestamp": 19.733,
+      "duration": 0.034,
+      "bytes": 118
+    },
+    {
+      "timestamp": 19.767,
+      "duration": 0.033,
+      "bytes": 118
+    },
+    {
+      "timestamp": 19.8,
+      "duration": 0.033,
+      "bytes": 118
+    },
+    {
+      "timestamp": 19.833,
+      "duration": 0.034,
+      "bytes": 118
+    },
+    {
+      "timestamp": 19.867,
+      "duration": 0.033,
+      "bytes": 118
+    },
+    {
+      "timestamp": 19.9,
+      "duration": 0.033,
+      "bytes": 118
+    },
+    {
+      "timestamp": 19.933,
+      "duration": 0.034,
+      "bytes": 118
+    },
+    {
+      "timestamp": 19.967,
+      "duration": 0.03333333300000001,
+      "bytes": 118
+    },
+    {
+      "timestamp": 20,
+      "duration": 0.033,
+      "bytes": 25482
+    },
+    {
+      "timestamp": 20.033,
+      "duration": 0.034,
+      "bytes": 469
+    },
+    {
+      "timestamp": 20.067,
+      "duration": 0.033,
+      "bytes": 962
+    },
+    {
+      "timestamp": 20.1,
+      "duration": 0.03333333300000001,
+      "bytes": 196
+    }
+  ],
+  "audioPackets": [
+    {
+      "timestamp": 0,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 0.02,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 0.04,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 0.06,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 0.08,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 0.1,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 0.12,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 0.14,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 0.16,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 0.18,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 0.2,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 0.22,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 0.24,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 0.26,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 0.28,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 0.3,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 0.32,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 0.34,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 0.36,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 0.38,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 0.4,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 0.42,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 0.44,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 0.46,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 0.48,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 0.5,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 0.52,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 0.54,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 0.56,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 0.58,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 0.6,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 0.62,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 0.64,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 0.66,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 0.68,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 0.7,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 0.72,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 0.74,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 0.76,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 0.78,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 0.8,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 0.82,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 0.84,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 0.86,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 0.88,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 0.9,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 0.92,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 0.94,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 0.96,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 0.98,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 1,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 1.02,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 1.04,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 1.06,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 1.08,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 1.1,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 1.12,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 1.14,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 1.16,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 1.18,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 1.2,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 1.22,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 1.24,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 1.26,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 1.28,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 1.3,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 1.32,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 1.34,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 1.36,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 1.38,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 1.4,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 1.42,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 1.44,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 1.46,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 1.48,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 1.5,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 1.52,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 1.54,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 1.56,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 1.58,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 1.6,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 1.62,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 1.64,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 1.66,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 1.68,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 1.7,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 1.72,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 1.74,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 1.76,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 1.78,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 1.8,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 1.82,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 1.84,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 1.86,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 1.88,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 1.9,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 1.92,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 1.94,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 1.96,
+      "duration": 0,
+      "bytes": 3
+    },
+    {
+      "timestamp": 1.98,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 2,
+      "duration": 0.02,
+      "bytes": 765
+    },
+    {
+      "timestamp": 2.02,
+      "duration": 0.02,
+      "bytes": 503
+    },
+    {
+      "timestamp": 2.04,
+      "duration": 0.02,
+      "bytes": 504
+    },
+    {
+      "timestamp": 2.06,
+      "duration": 0.02,
+      "bytes": 496
+    },
+    {
+      "timestamp": 2.08,
+      "duration": 0.02,
+      "bytes": 497
+    },
+    {
+      "timestamp": 2.1,
+      "duration": 0.02,
+      "bytes": 498
+    },
+    {
+      "timestamp": 2.12,
+      "duration": 0.02,
+      "bytes": 499
+    },
+    {
+      "timestamp": 2.14,
+      "duration": 0.02,
+      "bytes": 497
+    },
+    {
+      "timestamp": 2.16,
+      "duration": 0.02,
+      "bytes": 492
+    },
+    {
+      "timestamp": 2.18,
+      "duration": 0.02,
+      "bytes": 491
+    },
+    {
+      "timestamp": 2.2,
+      "duration": 0.02,
+      "bytes": 497
+    },
+    {
+      "timestamp": 2.22,
+      "duration": 0.02,
+      "bytes": 494
+    },
+    {
+      "timestamp": 2.24,
+      "duration": 0.02,
+      "bytes": 491
+    },
+    {
+      "timestamp": 2.26,
+      "duration": 0.02,
+      "bytes": 490
+    },
+    {
+      "timestamp": 2.28,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 2.3,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 2.32,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 2.34,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 2.36,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 2.38,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 2.4,
+      "duration": 0.02,
+      "bytes": 470
+    },
+    {
+      "timestamp": 2.42,
+      "duration": 0.02,
+      "bytes": 465
+    },
+    {
+      "timestamp": 2.44,
+      "duration": 0.02,
+      "bytes": 467
+    },
+    {
+      "timestamp": 2.46,
+      "duration": 0.02,
+      "bytes": 465
+    },
+    {
+      "timestamp": 2.48,
+      "duration": 0.02,
+      "bytes": 445
+    },
+    {
+      "timestamp": 2.5,
+      "duration": 0.02,
+      "bytes": 454
+    },
+    {
+      "timestamp": 2.52,
+      "duration": 0.02,
+      "bytes": 458
+    },
+    {
+      "timestamp": 2.54,
+      "duration": 0.02,
+      "bytes": 467
+    },
+    {
+      "timestamp": 2.56,
+      "duration": 0.02,
+      "bytes": 460
+    },
+    {
+      "timestamp": 2.58,
+      "duration": 0.02,
+      "bytes": 452
+    },
+    {
+      "timestamp": 2.6,
+      "duration": 0.02,
+      "bytes": 456
+    },
+    {
+      "timestamp": 2.62,
+      "duration": 0.02,
+      "bytes": 458
+    },
+    {
+      "timestamp": 2.64,
+      "duration": 0.02,
+      "bytes": 444
+    },
+    {
+      "timestamp": 2.66,
+      "duration": 0.02,
+      "bytes": 691
+    },
+    {
+      "timestamp": 2.68,
+      "duration": 0.02,
+      "bytes": 440
+    },
+    {
+      "timestamp": 2.7,
+      "duration": 0.02,
+      "bytes": 484
+    },
+    {
+      "timestamp": 2.72,
+      "duration": 0.02,
+      "bytes": 500
+    },
+    {
+      "timestamp": 2.74,
+      "duration": 0.02,
+      "bytes": 484
+    },
+    {
+      "timestamp": 2.76,
+      "duration": 0.02,
+      "bytes": 495
+    },
+    {
+      "timestamp": 2.78,
+      "duration": 0.02,
+      "bytes": 499
+    },
+    {
+      "timestamp": 2.8,
+      "duration": 0.02,
+      "bytes": 505
+    },
+    {
+      "timestamp": 2.82,
+      "duration": 0.02,
+      "bytes": 511
+    },
+    {
+      "timestamp": 2.84,
+      "duration": 0.02,
+      "bytes": 493
+    },
+    {
+      "timestamp": 2.86,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 2.88,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 2.9,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 2.92,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 2.94,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 2.96,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 2.98,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 3,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 3.02,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 3.04,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 3.06,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 3.08,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 3.1,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 3.12,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 3.14,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 3.16,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 3.18,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 3.2,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 3.22,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 3.24,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 3.26,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 3.28,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 3.3,
+      "duration": 0.02,
+      "bytes": 480
+    },
+    {
+      "timestamp": 3.32,
+      "duration": 0.02,
+      "bytes": 482
+    },
+    {
+      "timestamp": 3.34,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 3.36,
+      "duration": 0.02,
+      "bytes": 461
+    },
+    {
+      "timestamp": 3.38,
+      "duration": 0.02,
+      "bytes": 468
+    },
+    {
+      "timestamp": 3.4,
+      "duration": 0.02,
+      "bytes": 465
+    },
+    {
+      "timestamp": 3.42,
+      "duration": 0.02,
+      "bytes": 464
+    },
+    {
+      "timestamp": 3.44,
+      "duration": 0.02,
+      "bytes": 467
+    },
+    {
+      "timestamp": 3.46,
+      "duration": 0.02,
+      "bytes": 511
+    },
+    {
+      "timestamp": 3.48,
+      "duration": 0.02,
+      "bytes": 492
+    },
+    {
+      "timestamp": 3.5,
+      "duration": 0.02,
+      "bytes": 476
+    },
+    {
+      "timestamp": 3.52,
+      "duration": 0.02,
+      "bytes": 473
+    },
+    {
+      "timestamp": 3.54,
+      "duration": 0.02,
+      "bytes": 467
+    },
+    {
+      "timestamp": 3.56,
+      "duration": 0.02,
+      "bytes": 471
+    },
+    {
+      "timestamp": 3.58,
+      "duration": 0.02,
+      "bytes": 469
+    },
+    {
+      "timestamp": 3.6,
+      "duration": 0.02,
+      "bytes": 468
+    },
+    {
+      "timestamp": 3.62,
+      "duration": 0.02,
+      "bytes": 469
+    },
+    {
+      "timestamp": 3.64,
+      "duration": 0.02,
+      "bytes": 468
+    },
+    {
+      "timestamp": 3.66,
+      "duration": 0.02,
+      "bytes": 472
+    },
+    {
+      "timestamp": 3.68,
+      "duration": 0.02,
+      "bytes": 472
+    },
+    {
+      "timestamp": 3.7,
+      "duration": 0.02,
+      "bytes": 471
+    },
+    {
+      "timestamp": 3.72,
+      "duration": 0.02,
+      "bytes": 474
+    },
+    {
+      "timestamp": 3.74,
+      "duration": 0.02,
+      "bytes": 476
+    },
+    {
+      "timestamp": 3.76,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 3.78,
+      "duration": 0.02,
+      "bytes": 471
+    },
+    {
+      "timestamp": 3.8,
+      "duration": 0.02,
+      "bytes": 470
+    },
+    {
+      "timestamp": 3.82,
+      "duration": 0.02,
+      "bytes": 471
+    },
+    {
+      "timestamp": 3.84,
+      "duration": 0.02,
+      "bytes": 473
+    },
+    {
+      "timestamp": 3.86,
+      "duration": 0.02,
+      "bytes": 473
+    },
+    {
+      "timestamp": 3.88,
+      "duration": 0.02,
+      "bytes": 472
+    },
+    {
+      "timestamp": 3.9,
+      "duration": 0.02,
+      "bytes": 465
+    },
+    {
+      "timestamp": 3.92,
+      "duration": 0.02,
+      "bytes": 472
+    },
+    {
+      "timestamp": 3.94,
+      "duration": 0.02,
+      "bytes": 470
+    },
+    {
+      "timestamp": 3.96,
+      "duration": 0,
+      "bytes": 463
+    },
+    {
+      "timestamp": 3.98,
+      "duration": 0.02,
+      "bytes": 468
+    },
+    {
+      "timestamp": 4,
+      "duration": 0.02,
+      "bytes": 672
+    },
+    {
+      "timestamp": 4.02,
+      "duration": 0.02,
+      "bytes": 478
+    },
+    {
+      "timestamp": 4.04,
+      "duration": 0.02,
+      "bytes": 482
+    },
+    {
+      "timestamp": 4.06,
+      "duration": 0.02,
+      "bytes": 524
+    },
+    {
+      "timestamp": 4.08,
+      "duration": 0.02,
+      "bytes": 528
+    },
+    {
+      "timestamp": 4.1,
+      "duration": 0.02,
+      "bytes": 491
+    },
+    {
+      "timestamp": 4.12,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 4.14,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 4.16,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 4.18,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 4.2,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 4.22,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 4.24,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 4.26,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 4.28,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 4.3,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 4.32,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 4.34,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 4.36,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 4.38,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 4.4,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 4.42,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 4.44,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 4.46,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 4.48,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 4.5,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 4.52,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 4.54,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 4.56,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 4.58,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 4.6,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 4.62,
+      "duration": 0.02,
+      "bytes": 473
+    },
+    {
+      "timestamp": 4.64,
+      "duration": 0.02,
+      "bytes": 463
+    },
+    {
+      "timestamp": 4.66,
+      "duration": 0.02,
+      "bytes": 507
+    },
+    {
+      "timestamp": 4.68,
+      "duration": 0.02,
+      "bytes": 436
+    },
+    {
+      "timestamp": 4.7,
+      "duration": 0.02,
+      "bytes": 485
+    },
+    {
+      "timestamp": 4.72,
+      "duration": 0.02,
+      "bytes": 491
+    },
+    {
+      "timestamp": 4.74,
+      "duration": 0.02,
+      "bytes": 495
+    },
+    {
+      "timestamp": 4.76,
+      "duration": 0.02,
+      "bytes": 494
+    },
+    {
+      "timestamp": 4.78,
+      "duration": 0.02,
+      "bytes": 485
+    },
+    {
+      "timestamp": 4.8,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 4.82,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 4.84,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 4.86,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 4.88,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 4.9,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 4.92,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 4.94,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 4.96,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 4.98,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 5,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 5.02,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 5.04,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 5.06,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 5.08,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 5.1,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 5.12,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 5.14,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 5.16,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 5.18,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 5.2,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 5.22,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 5.24,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 5.26,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 5.28,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 5.3,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 5.32,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 5.34,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 5.36,
+      "duration": 0.02,
+      "bytes": 471
+    },
+    {
+      "timestamp": 5.38,
+      "duration": 0.02,
+      "bytes": 491
+    },
+    {
+      "timestamp": 5.4,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 5.42,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 5.44,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 5.46,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 5.48,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 5.5,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 5.52,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 5.54,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 5.56,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 5.58,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 5.6,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 5.62,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 5.64,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 5.66,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 5.68,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 5.7,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 5.72,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 5.74,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 5.76,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 5.78,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 5.8,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 5.82,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 5.84,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 5.86,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 5.88,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 5.9,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 5.92,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 5.94,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 5.96,
+      "duration": 0,
+      "bytes": 479
+    },
+    {
+      "timestamp": 5.98,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 6,
+      "duration": 0.02,
+      "bytes": 483
+    },
+    {
+      "timestamp": 6.02,
+      "duration": 0.02,
+      "bytes": 449
+    },
+    {
+      "timestamp": 6.04,
+      "duration": 0.02,
+      "bytes": 460
+    },
+    {
+      "timestamp": 6.06,
+      "duration": 0.02,
+      "bytes": 458
+    },
+    {
+      "timestamp": 6.08,
+      "duration": 0.02,
+      "bytes": 460
+    },
+    {
+      "timestamp": 6.1,
+      "duration": 0.02,
+      "bytes": 455
+    },
+    {
+      "timestamp": 6.12,
+      "duration": 0.02,
+      "bytes": 453
+    },
+    {
+      "timestamp": 6.14,
+      "duration": 0.02,
+      "bytes": 456
+    },
+    {
+      "timestamp": 6.16,
+      "duration": 0.02,
+      "bytes": 475
+    },
+    {
+      "timestamp": 6.18,
+      "duration": 0.02,
+      "bytes": 475
+    },
+    {
+      "timestamp": 6.2,
+      "duration": 0.02,
+      "bytes": 471
+    },
+    {
+      "timestamp": 6.22,
+      "duration": 0.02,
+      "bytes": 470
+    },
+    {
+      "timestamp": 6.24,
+      "duration": 0.02,
+      "bytes": 463
+    },
+    {
+      "timestamp": 6.26,
+      "duration": 0.02,
+      "bytes": 465
+    },
+    {
+      "timestamp": 6.28,
+      "duration": 0.02,
+      "bytes": 458
+    },
+    {
+      "timestamp": 6.3,
+      "duration": 0.02,
+      "bytes": 457
+    },
+    {
+      "timestamp": 6.32,
+      "duration": 0.02,
+      "bytes": 459
+    },
+    {
+      "timestamp": 6.34,
+      "duration": 0.02,
+      "bytes": 458
+    },
+    {
+      "timestamp": 6.36,
+      "duration": 0.02,
+      "bytes": 465
+    },
+    {
+      "timestamp": 6.38,
+      "duration": 0.02,
+      "bytes": 467
+    },
+    {
+      "timestamp": 6.4,
+      "duration": 0.02,
+      "bytes": 467
+    },
+    {
+      "timestamp": 6.42,
+      "duration": 0.02,
+      "bytes": 468
+    },
+    {
+      "timestamp": 6.44,
+      "duration": 0.02,
+      "bytes": 468
+    },
+    {
+      "timestamp": 6.46,
+      "duration": 0.02,
+      "bytes": 472
+    },
+    {
+      "timestamp": 6.48,
+      "duration": 0.02,
+      "bytes": 462
+    },
+    {
+      "timestamp": 6.5,
+      "duration": 0.02,
+      "bytes": 462
+    },
+    {
+      "timestamp": 6.52,
+      "duration": 0.02,
+      "bytes": 462
+    },
+    {
+      "timestamp": 6.54,
+      "duration": 0.02,
+      "bytes": 472
+    },
+    {
+      "timestamp": 6.56,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 6.58,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 6.6,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 6.62,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 6.64,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 6.66,
+      "duration": 0.02,
+      "bytes": 666
+    },
+    {
+      "timestamp": 6.68,
+      "duration": 0.02,
+      "bytes": 437
+    },
+    {
+      "timestamp": 6.7,
+      "duration": 0.02,
+      "bytes": 483
+    },
+    {
+      "timestamp": 6.72,
+      "duration": 0.02,
+      "bytes": 482
+    },
+    {
+      "timestamp": 6.74,
+      "duration": 0.02,
+      "bytes": 474
+    },
+    {
+      "timestamp": 6.76,
+      "duration": 0.02,
+      "bytes": 480
+    },
+    {
+      "timestamp": 6.78,
+      "duration": 0.02,
+      "bytes": 486
+    },
+    {
+      "timestamp": 6.8,
+      "duration": 0.02,
+      "bytes": 493
+    },
+    {
+      "timestamp": 6.82,
+      "duration": 0.02,
+      "bytes": 499
+    },
+    {
+      "timestamp": 6.84,
+      "duration": 0.02,
+      "bytes": 497
+    },
+    {
+      "timestamp": 6.86,
+      "duration": 0.02,
+      "bytes": 496
+    },
+    {
+      "timestamp": 6.88,
+      "duration": 0.02,
+      "bytes": 488
+    },
+    {
+      "timestamp": 6.9,
+      "duration": 0.02,
+      "bytes": 479
+    },
+    {
+      "timestamp": 6.92,
+      "duration": 0.02,
+      "bytes": 482
+    },
+    {
+      "timestamp": 6.94,
+      "duration": 0.02,
+      "bytes": 489
+    },
+    {
+      "timestamp": 6.96,
+      "duration": 0.02,
+      "bytes": 493
+    },
+    {
+      "timestamp": 6.98,
+      "duration": 0.02,
+      "bytes": 501
+    },
+    {
+      "timestamp": 7,
+      "duration": 0.02,
+      "bytes": 490
+    },
+    {
+      "timestamp": 7.02,
+      "duration": 0.02,
+      "bytes": 495
+    },
+    {
+      "timestamp": 7.04,
+      "duration": 0.02,
+      "bytes": 483
+    },
+    {
+      "timestamp": 7.06,
+      "duration": 0.02,
+      "bytes": 477
+    },
+    {
+      "timestamp": 7.08,
+      "duration": 0.02,
+      "bytes": 480
+    },
+    {
+      "timestamp": 7.1,
+      "duration": 0.02,
+      "bytes": 493
+    },
+    {
+      "timestamp": 7.12,
+      "duration": 0.02,
+      "bytes": 495
+    },
+    {
+      "timestamp": 7.14,
+      "duration": 0.02,
+      "bytes": 499
+    },
+    {
+      "timestamp": 7.16,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 7.18,
+      "duration": 0.02,
+      "bytes": 497
+    },
+    {
+      "timestamp": 7.2,
+      "duration": 0.02,
+      "bytes": 480
+    },
+    {
+      "timestamp": 7.22,
+      "duration": 0.02,
+      "bytes": 475
+    },
+    {
+      "timestamp": 7.24,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 7.26,
+      "duration": 0.02,
+      "bytes": 496
+    },
+    {
+      "timestamp": 7.28,
+      "duration": 0.02,
+      "bytes": 478
+    },
+    {
+      "timestamp": 7.3,
+      "duration": 0.02,
+      "bytes": 471
+    },
+    {
+      "timestamp": 7.32,
+      "duration": 0.02,
+      "bytes": 638
+    },
+    {
+      "timestamp": 7.34,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 7.36,
+      "duration": 0.02,
+      "bytes": 430
+    },
+    {
+      "timestamp": 7.38,
+      "duration": 0.02,
+      "bytes": 461
+    },
+    {
+      "timestamp": 7.4,
+      "duration": 0.02,
+      "bytes": 452
+    },
+    {
+      "timestamp": 7.42,
+      "duration": 0.02,
+      "bytes": 466
+    },
+    {
+      "timestamp": 7.44,
+      "duration": 0.02,
+      "bytes": 452
+    },
+    {
+      "timestamp": 7.46,
+      "duration": 0.02,
+      "bytes": 455
+    },
+    {
+      "timestamp": 7.48,
+      "duration": 0.02,
+      "bytes": 447
+    },
+    {
+      "timestamp": 7.5,
+      "duration": 0.02,
+      "bytes": 443
+    },
+    {
+      "timestamp": 7.52,
+      "duration": 0.02,
+      "bytes": 438
+    },
+    {
+      "timestamp": 7.54,
+      "duration": 0.02,
+      "bytes": 440
+    },
+    {
+      "timestamp": 7.56,
+      "duration": 0.02,
+      "bytes": 460
+    },
+    {
+      "timestamp": 7.58,
+      "duration": 0.02,
+      "bytes": 457
+    },
+    {
+      "timestamp": 7.6,
+      "duration": 0.02,
+      "bytes": 451
+    },
+    {
+      "timestamp": 7.62,
+      "duration": 0.02,
+      "bytes": 450
+    },
+    {
+      "timestamp": 7.64,
+      "duration": 0.02,
+      "bytes": 462
+    },
+    {
+      "timestamp": 7.66,
+      "duration": 0.02,
+      "bytes": 463
+    },
+    {
+      "timestamp": 7.68,
+      "duration": 0.02,
+      "bytes": 483
+    },
+    {
+      "timestamp": 7.7,
+      "duration": 0.02,
+      "bytes": 476
+    },
+    {
+      "timestamp": 7.72,
+      "duration": 0.02,
+      "bytes": 473
+    },
+    {
+      "timestamp": 7.74,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 7.76,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 7.78,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 7.8,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 7.82,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 7.84,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 7.86,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 7.88,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 7.9,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 7.92,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 7.94,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 7.96,
+      "duration": 0,
+      "bytes": 481
+    },
+    {
+      "timestamp": 7.98,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 8,
+      "duration": 0.02,
+      "bytes": 776
+    },
+    {
+      "timestamp": 8.02,
+      "duration": 0.02,
+      "bytes": 455
+    },
+    {
+      "timestamp": 8.04,
+      "duration": 0.02,
+      "bytes": 460
+    },
+    {
+      "timestamp": 8.06,
+      "duration": 0.02,
+      "bytes": 459
+    },
+    {
+      "timestamp": 8.08,
+      "duration": 0.02,
+      "bytes": 462
+    },
+    {
+      "timestamp": 8.1,
+      "duration": 0.02,
+      "bytes": 458
+    },
+    {
+      "timestamp": 8.12,
+      "duration": 0.02,
+      "bytes": 454
+    },
+    {
+      "timestamp": 8.14,
+      "duration": 0.02,
+      "bytes": 457
+    },
+    {
+      "timestamp": 8.16,
+      "duration": 0.02,
+      "bytes": 477
+    },
+    {
+      "timestamp": 8.18,
+      "duration": 0.02,
+      "bytes": 475
+    },
+    {
+      "timestamp": 8.2,
+      "duration": 0.02,
+      "bytes": 472
+    },
+    {
+      "timestamp": 8.22,
+      "duration": 0.02,
+      "bytes": 470
+    },
+    {
+      "timestamp": 8.24,
+      "duration": 0.02,
+      "bytes": 465
+    },
+    {
+      "timestamp": 8.26,
+      "duration": 0.02,
+      "bytes": 466
+    },
+    {
+      "timestamp": 8.28,
+      "duration": 0.02,
+      "bytes": 460
+    },
+    {
+      "timestamp": 8.3,
+      "duration": 0.02,
+      "bytes": 458
+    },
+    {
+      "timestamp": 8.32,
+      "duration": 0.02,
+      "bytes": 460
+    },
+    {
+      "timestamp": 8.34,
+      "duration": 0.02,
+      "bytes": 474
+    },
+    {
+      "timestamp": 8.36,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 8.38,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 8.4,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 8.42,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 8.44,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 8.46,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 8.48,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 8.5,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 8.52,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 8.54,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 8.56,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 8.58,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 8.6,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 8.62,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 8.64,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 8.66,
+      "duration": 0.02,
+      "bytes": 667
+    },
+    {
+      "timestamp": 8.68,
+      "duration": 0.02,
+      "bytes": 433
+    },
+    {
+      "timestamp": 8.7,
+      "duration": 0.02,
+      "bytes": 482
+    },
+    {
+      "timestamp": 8.72,
+      "duration": 0.02,
+      "bytes": 486
+    },
+    {
+      "timestamp": 8.74,
+      "duration": 0.02,
+      "bytes": 493
+    },
+    {
+      "timestamp": 8.76,
+      "duration": 0.02,
+      "bytes": 491
+    },
+    {
+      "timestamp": 8.78,
+      "duration": 0.02,
+      "bytes": 504
+    },
+    {
+      "timestamp": 8.8,
+      "duration": 0.02,
+      "bytes": 508
+    },
+    {
+      "timestamp": 8.82,
+      "duration": 0.02,
+      "bytes": 502
+    },
+    {
+      "timestamp": 8.84,
+      "duration": 0.02,
+      "bytes": 494
+    },
+    {
+      "timestamp": 8.86,
+      "duration": 0.02,
+      "bytes": 512
+    },
+    {
+      "timestamp": 8.88,
+      "duration": 0.02,
+      "bytes": 493
+    },
+    {
+      "timestamp": 8.9,
+      "duration": 0.02,
+      "bytes": 497
+    },
+    {
+      "timestamp": 8.92,
+      "duration": 0.02,
+      "bytes": 518
+    },
+    {
+      "timestamp": 8.94,
+      "duration": 0.02,
+      "bytes": 505
+    },
+    {
+      "timestamp": 8.96,
+      "duration": 0.02,
+      "bytes": 493
+    },
+    {
+      "timestamp": 8.98,
+      "duration": 0.02,
+      "bytes": 495
+    },
+    {
+      "timestamp": 9,
+      "duration": 0.02,
+      "bytes": 491
+    },
+    {
+      "timestamp": 9.02,
+      "duration": 0.02,
+      "bytes": 492
+    },
+    {
+      "timestamp": 9.04,
+      "duration": 0.02,
+      "bytes": 500
+    },
+    {
+      "timestamp": 9.06,
+      "duration": 0.02,
+      "bytes": 502
+    },
+    {
+      "timestamp": 9.08,
+      "duration": 0.02,
+      "bytes": 492
+    },
+    {
+      "timestamp": 9.1,
+      "duration": 0.02,
+      "bytes": 489
+    },
+    {
+      "timestamp": 9.12,
+      "duration": 0.02,
+      "bytes": 485
+    },
+    {
+      "timestamp": 9.14,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 9.16,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 9.18,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 9.2,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 9.22,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 9.24,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 9.26,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 9.28,
+      "duration": 0.02,
+      "bytes": 480
+    },
+    {
+      "timestamp": 9.3,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 9.32,
+      "duration": 0.02,
+      "bytes": 482
+    },
+    {
+      "timestamp": 9.34,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 9.36,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 9.38,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 9.4,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 9.42,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 9.44,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 9.46,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 9.48,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 9.5,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 9.52,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 9.54,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 9.56,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 9.58,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 9.6,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 9.62,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 9.64,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 9.66,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 9.68,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 9.7,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 9.72,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 9.74,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 9.76,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 9.78,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 9.8,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 9.82,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 9.84,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 9.86,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 9.88,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 9.9,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 9.92,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 9.94,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 9.96,
+      "duration": 0,
+      "bytes": 481
+    },
+    {
+      "timestamp": 9.98,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 10,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 10.02,
+      "duration": 0.02,
+      "bytes": 464
+    },
+    {
+      "timestamp": 10.04,
+      "duration": 0.02,
+      "bytes": 485
+    },
+    {
+      "timestamp": 10.06,
+      "duration": 0.02,
+      "bytes": 468
+    },
+    {
+      "timestamp": 10.08,
+      "duration": 0.02,
+      "bytes": 473
+    },
+    {
+      "timestamp": 10.1,
+      "duration": 0.02,
+      "bytes": 471
+    },
+    {
+      "timestamp": 10.12,
+      "duration": 0.02,
+      "bytes": 474
+    },
+    {
+      "timestamp": 10.14,
+      "duration": 0.02,
+      "bytes": 470
+    },
+    {
+      "timestamp": 10.16,
+      "duration": 0.02,
+      "bytes": 477
+    },
+    {
+      "timestamp": 10.18,
+      "duration": 0.02,
+      "bytes": 476
+    },
+    {
+      "timestamp": 10.2,
+      "duration": 0.02,
+      "bytes": 470
+    },
+    {
+      "timestamp": 10.22,
+      "duration": 0.02,
+      "bytes": 467
+    },
+    {
+      "timestamp": 10.24,
+      "duration": 0.02,
+      "bytes": 463
+    },
+    {
+      "timestamp": 10.26,
+      "duration": 0.02,
+      "bytes": 465
+    },
+    {
+      "timestamp": 10.28,
+      "duration": 0.02,
+      "bytes": 456
+    },
+    {
+      "timestamp": 10.3,
+      "duration": 0.02,
+      "bytes": 455
+    },
+    {
+      "timestamp": 10.32,
+      "duration": 0.02,
+      "bytes": 457
+    },
+    {
+      "timestamp": 10.34,
+      "duration": 0.02,
+      "bytes": 456
+    },
+    {
+      "timestamp": 10.36,
+      "duration": 0.02,
+      "bytes": 463
+    },
+    {
+      "timestamp": 10.38,
+      "duration": 0.02,
+      "bytes": 465
+    },
+    {
+      "timestamp": 10.4,
+      "duration": 0.02,
+      "bytes": 464
+    },
+    {
+      "timestamp": 10.42,
+      "duration": 0.02,
+      "bytes": 465
+    },
+    {
+      "timestamp": 10.44,
+      "duration": 0.02,
+      "bytes": 465
+    },
+    {
+      "timestamp": 10.46,
+      "duration": 0.02,
+      "bytes": 470
+    },
+    {
+      "timestamp": 10.48,
+      "duration": 0.02,
+      "bytes": 459
+    },
+    {
+      "timestamp": 10.5,
+      "duration": 0.02,
+      "bytes": 459
+    },
+    {
+      "timestamp": 10.52,
+      "duration": 0.02,
+      "bytes": 459
+    },
+    {
+      "timestamp": 10.54,
+      "duration": 0.02,
+      "bytes": 459
+    },
+    {
+      "timestamp": 10.56,
+      "duration": 0.02,
+      "bytes": 462
+    },
+    {
+      "timestamp": 10.58,
+      "duration": 0.02,
+      "bytes": 460
+    },
+    {
+      "timestamp": 10.6,
+      "duration": 0.02,
+      "bytes": 458
+    },
+    {
+      "timestamp": 10.62,
+      "duration": 0.02,
+      "bytes": 476
+    },
+    {
+      "timestamp": 10.64,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 10.66,
+      "duration": 0.02,
+      "bytes": 665
+    },
+    {
+      "timestamp": 10.68,
+      "duration": 0.02,
+      "bytes": 431
+    },
+    {
+      "timestamp": 10.7,
+      "duration": 0.02,
+      "bytes": 479
+    },
+    {
+      "timestamp": 10.72,
+      "duration": 0.02,
+      "bytes": 483
+    },
+    {
+      "timestamp": 10.74,
+      "duration": 0.02,
+      "bytes": 490
+    },
+    {
+      "timestamp": 10.76,
+      "duration": 0.02,
+      "bytes": 488
+    },
+    {
+      "timestamp": 10.78,
+      "duration": 0.02,
+      "bytes": 502
+    },
+    {
+      "timestamp": 10.8,
+      "duration": 0.02,
+      "bytes": 505
+    },
+    {
+      "timestamp": 10.82,
+      "duration": 0.02,
+      "bytes": 499
+    },
+    {
+      "timestamp": 10.84,
+      "duration": 0.02,
+      "bytes": 491
+    },
+    {
+      "timestamp": 10.86,
+      "duration": 0.02,
+      "bytes": 507
+    },
+    {
+      "timestamp": 10.88,
+      "duration": 0.02,
+      "bytes": 490
+    },
+    {
+      "timestamp": 10.9,
+      "duration": 0.02,
+      "bytes": 494
+    },
+    {
+      "timestamp": 10.92,
+      "duration": 0.02,
+      "bytes": 515
+    },
+    {
+      "timestamp": 10.94,
+      "duration": 0.02,
+      "bytes": 502
+    },
+    {
+      "timestamp": 10.96,
+      "duration": 0.02,
+      "bytes": 490
+    },
+    {
+      "timestamp": 10.98,
+      "duration": 0.02,
+      "bytes": 492
+    },
+    {
+      "timestamp": 11,
+      "duration": 0.02,
+      "bytes": 488
+    },
+    {
+      "timestamp": 11.02,
+      "duration": 0.02,
+      "bytes": 489
+    },
+    {
+      "timestamp": 11.04,
+      "duration": 0.02,
+      "bytes": 497
+    },
+    {
+      "timestamp": 11.06,
+      "duration": 0.02,
+      "bytes": 499
+    },
+    {
+      "timestamp": 11.08,
+      "duration": 0.02,
+      "bytes": 489
+    },
+    {
+      "timestamp": 11.1,
+      "duration": 0.02,
+      "bytes": 486
+    },
+    {
+      "timestamp": 11.12,
+      "duration": 0.02,
+      "bytes": 486
+    },
+    {
+      "timestamp": 11.14,
+      "duration": 0.02,
+      "bytes": 489
+    },
+    {
+      "timestamp": 11.16,
+      "duration": 0.02,
+      "bytes": 490
+    },
+    {
+      "timestamp": 11.18,
+      "duration": 0.02,
+      "bytes": 499
+    },
+    {
+      "timestamp": 11.2,
+      "duration": 0.02,
+      "bytes": 492
+    },
+    {
+      "timestamp": 11.22,
+      "duration": 0.02,
+      "bytes": 485
+    },
+    {
+      "timestamp": 11.24,
+      "duration": 0.02,
+      "bytes": 487
+    },
+    {
+      "timestamp": 11.26,
+      "duration": 0.02,
+      "bytes": 486
+    },
+    {
+      "timestamp": 11.28,
+      "duration": 0.02,
+      "bytes": 477
+    },
+    {
+      "timestamp": 11.3,
+      "duration": 0.02,
+      "bytes": 479
+    },
+    {
+      "timestamp": 11.32,
+      "duration": 0.02,
+      "bytes": 493
+    },
+    {
+      "timestamp": 11.34,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 11.36,
+      "duration": 0.02,
+      "bytes": 434
+    },
+    {
+      "timestamp": 11.38,
+      "duration": 0.02,
+      "bytes": 452
+    },
+    {
+      "timestamp": 11.4,
+      "duration": 0.02,
+      "bytes": 449
+    },
+    {
+      "timestamp": 11.42,
+      "duration": 0.02,
+      "bytes": 457
+    },
+    {
+      "timestamp": 11.44,
+      "duration": 0.02,
+      "bytes": 445
+    },
+    {
+      "timestamp": 11.46,
+      "duration": 0.02,
+      "bytes": 443
+    },
+    {
+      "timestamp": 11.48,
+      "duration": 0.02,
+      "bytes": 439
+    },
+    {
+      "timestamp": 11.5,
+      "duration": 0.02,
+      "bytes": 439
+    },
+    {
+      "timestamp": 11.52,
+      "duration": 0.02,
+      "bytes": 433
+    },
+    {
+      "timestamp": 11.54,
+      "duration": 0.02,
+      "bytes": 433
+    },
+    {
+      "timestamp": 11.56,
+      "duration": 0.02,
+      "bytes": 463
+    },
+    {
+      "timestamp": 11.58,
+      "duration": 0.02,
+      "bytes": 456
+    },
+    {
+      "timestamp": 11.6,
+      "duration": 0.02,
+      "bytes": 450
+    },
+    {
+      "timestamp": 11.62,
+      "duration": 0.02,
+      "bytes": 461
+    },
+    {
+      "timestamp": 11.64,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 11.66,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 11.68,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 11.7,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 11.72,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 11.74,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 11.76,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 11.78,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 11.8,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 11.82,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 11.84,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 11.86,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 11.88,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 11.9,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 11.92,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 11.94,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 11.96,
+      "duration": 0,
+      "bytes": 481
+    },
+    {
+      "timestamp": 11.98,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 12,
+      "duration": 0.02,
+      "bytes": 647
+    },
+    {
+      "timestamp": 12.02,
+      "duration": 0.02,
+      "bytes": 449
+    },
+    {
+      "timestamp": 12.04,
+      "duration": 0.02,
+      "bytes": 492
+    },
+    {
+      "timestamp": 12.06,
+      "duration": 0.02,
+      "bytes": 479
+    },
+    {
+      "timestamp": 12.08,
+      "duration": 0.02,
+      "bytes": 472
+    },
+    {
+      "timestamp": 12.1,
+      "duration": 0.02,
+      "bytes": 491
+    },
+    {
+      "timestamp": 12.12,
+      "duration": 0.02,
+      "bytes": 498
+    },
+    {
+      "timestamp": 12.14,
+      "duration": 0.02,
+      "bytes": 498
+    },
+    {
+      "timestamp": 12.16,
+      "duration": 0.02,
+      "bytes": 505
+    },
+    {
+      "timestamp": 12.18,
+      "duration": 0.02,
+      "bytes": 490
+    },
+    {
+      "timestamp": 12.2,
+      "duration": 0.02,
+      "bytes": 504
+    },
+    {
+      "timestamp": 12.22,
+      "duration": 0.02,
+      "bytes": 478
+    },
+    {
+      "timestamp": 12.24,
+      "duration": 0.02,
+      "bytes": 474
+    },
+    {
+      "timestamp": 12.26,
+      "duration": 0.02,
+      "bytes": 497
+    },
+    {
+      "timestamp": 12.28,
+      "duration": 0.02,
+      "bytes": 503
+    },
+    {
+      "timestamp": 12.3,
+      "duration": 0.02,
+      "bytes": 503
+    },
+    {
+      "timestamp": 12.32,
+      "duration": 0.02,
+      "bytes": 496
+    },
+    {
+      "timestamp": 12.34,
+      "duration": 0.02,
+      "bytes": 484
+    },
+    {
+      "timestamp": 12.36,
+      "duration": 0.02,
+      "bytes": 502
+    },
+    {
+      "timestamp": 12.38,
+      "duration": 0.02,
+      "bytes": 475
+    },
+    {
+      "timestamp": 12.4,
+      "duration": 0.02,
+      "bytes": 473
+    },
+    {
+      "timestamp": 12.42,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 12.44,
+      "duration": 0.02,
+      "bytes": 503
+    },
+    {
+      "timestamp": 12.46,
+      "duration": 0.02,
+      "bytes": 502
+    },
+    {
+      "timestamp": 12.48,
+      "duration": 0.02,
+      "bytes": 486
+    },
+    {
+      "timestamp": 12.5,
+      "duration": 0.02,
+      "bytes": 477
+    },
+    {
+      "timestamp": 12.52,
+      "duration": 0.02,
+      "bytes": 499
+    },
+    {
+      "timestamp": 12.54,
+      "duration": 0.02,
+      "bytes": 473
+    },
+    {
+      "timestamp": 12.56,
+      "duration": 0.02,
+      "bytes": 479
+    },
+    {
+      "timestamp": 12.58,
+      "duration": 0.02,
+      "bytes": 482
+    },
+    {
+      "timestamp": 12.6,
+      "duration": 0.02,
+      "bytes": 492
+    },
+    {
+      "timestamp": 12.62,
+      "duration": 0.02,
+      "bytes": 479
+    },
+    {
+      "timestamp": 12.64,
+      "duration": 0.02,
+      "bytes": 467
+    },
+    {
+      "timestamp": 12.66,
+      "duration": 0.02,
+      "bytes": 604
+    },
+    {
+      "timestamp": 12.68,
+      "duration": 0.02,
+      "bytes": 450
+    },
+    {
+      "timestamp": 12.7,
+      "duration": 0.02,
+      "bytes": 452
+    },
+    {
+      "timestamp": 12.72,
+      "duration": 0.02,
+      "bytes": 454
+    },
+    {
+      "timestamp": 12.74,
+      "duration": 0.02,
+      "bytes": 456
+    },
+    {
+      "timestamp": 12.76,
+      "duration": 0.02,
+      "bytes": 461
+    },
+    {
+      "timestamp": 12.78,
+      "duration": 0.02,
+      "bytes": 462
+    },
+    {
+      "timestamp": 12.8,
+      "duration": 0.02,
+      "bytes": 455
+    },
+    {
+      "timestamp": 12.82,
+      "duration": 0.02,
+      "bytes": 453
+    },
+    {
+      "timestamp": 12.84,
+      "duration": 0.02,
+      "bytes": 454
+    },
+    {
+      "timestamp": 12.86,
+      "duration": 0.02,
+      "bytes": 458
+    },
+    {
+      "timestamp": 12.88,
+      "duration": 0.02,
+      "bytes": 457
+    },
+    {
+      "timestamp": 12.9,
+      "duration": 0.02,
+      "bytes": 457
+    },
+    {
+      "timestamp": 12.92,
+      "duration": 0.02,
+      "bytes": 458
+    },
+    {
+      "timestamp": 12.94,
+      "duration": 0.02,
+      "bytes": 453
+    },
+    {
+      "timestamp": 12.96,
+      "duration": 0.02,
+      "bytes": 461
+    },
+    {
+      "timestamp": 12.98,
+      "duration": 0.02,
+      "bytes": 457
+    },
+    {
+      "timestamp": 13,
+      "duration": 0.02,
+      "bytes": 456
+    },
+    {
+      "timestamp": 13.02,
+      "duration": 0.02,
+      "bytes": 456
+    },
+    {
+      "timestamp": 13.04,
+      "duration": 0.02,
+      "bytes": 456
+    },
+    {
+      "timestamp": 13.06,
+      "duration": 0.02,
+      "bytes": 474
+    },
+    {
+      "timestamp": 13.08,
+      "duration": 0.02,
+      "bytes": 487
+    },
+    {
+      "timestamp": 13.1,
+      "duration": 0.02,
+      "bytes": 485
+    },
+    {
+      "timestamp": 13.12,
+      "duration": 0.02,
+      "bytes": 486
+    },
+    {
+      "timestamp": 13.14,
+      "duration": 0.02,
+      "bytes": 483
+    },
+    {
+      "timestamp": 13.16,
+      "duration": 0.02,
+      "bytes": 484
+    },
+    {
+      "timestamp": 13.18,
+      "duration": 0.02,
+      "bytes": 475
+    },
+    {
+      "timestamp": 13.2,
+      "duration": 0.02,
+      "bytes": 472
+    },
+    {
+      "timestamp": 13.22,
+      "duration": 0.02,
+      "bytes": 476
+    },
+    {
+      "timestamp": 13.24,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 13.26,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 13.28,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 13.3,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 13.32,
+      "duration": 0.02,
+      "bytes": 607
+    },
+    {
+      "timestamp": 13.34,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 13.36,
+      "duration": 0.02,
+      "bytes": 465
+    },
+    {
+      "timestamp": 13.38,
+      "duration": 0.02,
+      "bytes": 504
+    },
+    {
+      "timestamp": 13.4,
+      "duration": 0.02,
+      "bytes": 510
+    },
+    {
+      "timestamp": 13.42,
+      "duration": 0.02,
+      "bytes": 517
+    },
+    {
+      "timestamp": 13.44,
+      "duration": 0.02,
+      "bytes": 524
+    },
+    {
+      "timestamp": 13.46,
+      "duration": 0.02,
+      "bytes": 523
+    },
+    {
+      "timestamp": 13.48,
+      "duration": 0.02,
+      "bytes": 522
+    },
+    {
+      "timestamp": 13.5,
+      "duration": 0.02,
+      "bytes": 522
+    },
+    {
+      "timestamp": 13.52,
+      "duration": 0.02,
+      "bytes": 521
+    },
+    {
+      "timestamp": 13.54,
+      "duration": 0.02,
+      "bytes": 522
+    },
+    {
+      "timestamp": 13.56,
+      "duration": 0.02,
+      "bytes": 515
+    },
+    {
+      "timestamp": 13.58,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 13.6,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 13.62,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 13.64,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 13.66,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 13.68,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 13.7,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 13.72,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 13.74,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 13.76,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 13.78,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 13.8,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 13.82,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 13.84,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 13.86,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 13.88,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 13.9,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 13.92,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 13.94,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 13.96,
+      "duration": 0,
+      "bytes": 478
+    },
+    {
+      "timestamp": 13.98,
+      "duration": 0.02,
+      "bytes": 477
+    },
+    {
+      "timestamp": 14,
+      "duration": 0.02,
+      "bytes": 488
+    },
+    {
+      "timestamp": 14.02,
+      "duration": 0.02,
+      "bytes": 456
+    },
+    {
+      "timestamp": 14.04,
+      "duration": 0.02,
+      "bytes": 483
+    },
+    {
+      "timestamp": 14.06,
+      "duration": 0.02,
+      "bytes": 488
+    },
+    {
+      "timestamp": 14.08,
+      "duration": 0.02,
+      "bytes": 489
+    },
+    {
+      "timestamp": 14.1,
+      "duration": 0.02,
+      "bytes": 489
+    },
+    {
+      "timestamp": 14.12,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 14.14,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 14.16,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 14.18,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 14.2,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 14.22,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 14.24,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 14.26,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 14.28,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 14.3,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 14.32,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 14.34,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 14.36,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 14.38,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 14.4,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 14.42,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 14.44,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 14.46,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 14.48,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 14.5,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 14.52,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 14.54,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 14.56,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 14.58,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 14.6,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 14.62,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 14.64,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 14.66,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 14.68,
+      "duration": 0.02,
+      "bytes": 445
+    },
+    {
+      "timestamp": 14.7,
+      "duration": 0.02,
+      "bytes": 462
+    },
+    {
+      "timestamp": 14.72,
+      "duration": 0.02,
+      "bytes": 461
+    },
+    {
+      "timestamp": 14.74,
+      "duration": 0.02,
+      "bytes": 477
+    },
+    {
+      "timestamp": 14.76,
+      "duration": 0.02,
+      "bytes": 460
+    },
+    {
+      "timestamp": 14.78,
+      "duration": 0.02,
+      "bytes": 474
+    },
+    {
+      "timestamp": 14.8,
+      "duration": 0.02,
+      "bytes": 470
+    },
+    {
+      "timestamp": 14.82,
+      "duration": 0.02,
+      "bytes": 465
+    },
+    {
+      "timestamp": 14.84,
+      "duration": 0.02,
+      "bytes": 476
+    },
+    {
+      "timestamp": 14.86,
+      "duration": 0.02,
+      "bytes": 473
+    },
+    {
+      "timestamp": 14.88,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 14.9,
+      "duration": 0.02,
+      "bytes": 480
+    },
+    {
+      "timestamp": 14.92,
+      "duration": 0.02,
+      "bytes": 475
+    },
+    {
+      "timestamp": 14.94,
+      "duration": 0.02,
+      "bytes": 475
+    },
+    {
+      "timestamp": 14.96,
+      "duration": 0.02,
+      "bytes": 476
+    },
+    {
+      "timestamp": 14.98,
+      "duration": 0.02,
+      "bytes": 483
+    },
+    {
+      "timestamp": 15,
+      "duration": 0.02,
+      "bytes": 482
+    },
+    {
+      "timestamp": 15.02,
+      "duration": 0.02,
+      "bytes": 476
+    },
+    {
+      "timestamp": 15.04,
+      "duration": 0.02,
+      "bytes": 476
+    },
+    {
+      "timestamp": 15.06,
+      "duration": 0.02,
+      "bytes": 476
+    },
+    {
+      "timestamp": 15.08,
+      "duration": 0.02,
+      "bytes": 482
+    },
+    {
+      "timestamp": 15.1,
+      "duration": 0.02,
+      "bytes": 482
+    },
+    {
+      "timestamp": 15.12,
+      "duration": 0.02,
+      "bytes": 477
+    },
+    {
+      "timestamp": 15.14,
+      "duration": 0.02,
+      "bytes": 477
+    },
+    {
+      "timestamp": 15.16,
+      "duration": 0.02,
+      "bytes": 475
+    },
+    {
+      "timestamp": 15.18,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 15.2,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 15.22,
+      "duration": 0.02,
+      "bytes": 475
+    },
+    {
+      "timestamp": 15.24,
+      "duration": 0.02,
+      "bytes": 476
+    },
+    {
+      "timestamp": 15.26,
+      "duration": 0.02,
+      "bytes": 475
+    },
+    {
+      "timestamp": 15.28,
+      "duration": 0.02,
+      "bytes": 478
+    },
+    {
+      "timestamp": 15.3,
+      "duration": 0.02,
+      "bytes": 471
+    },
+    {
+      "timestamp": 15.32,
+      "duration": 0.02,
+      "bytes": 675
+    },
+    {
+      "timestamp": 15.34,
+      "duration": 0.02,
+      "bytes": 420
+    },
+    {
+      "timestamp": 15.36,
+      "duration": 0.02,
+      "bytes": 483
+    },
+    {
+      "timestamp": 15.38,
+      "duration": 0.02,
+      "bytes": 492
+    },
+    {
+      "timestamp": 15.4,
+      "duration": 0.02,
+      "bytes": 495
+    },
+    {
+      "timestamp": 15.42,
+      "duration": 0.02,
+      "bytes": 510
+    },
+    {
+      "timestamp": 15.44,
+      "duration": 0.02,
+      "bytes": 486
+    },
+    {
+      "timestamp": 15.46,
+      "duration": 0.02,
+      "bytes": 492
+    },
+    {
+      "timestamp": 15.48,
+      "duration": 0.02,
+      "bytes": 495
+    },
+    {
+      "timestamp": 15.5,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 15.52,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 15.54,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 15.56,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 15.58,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 15.6,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 15.62,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 15.64,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 15.66,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 15.68,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 15.7,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 15.72,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 15.74,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 15.76,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 15.78,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 15.8,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 15.82,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 15.84,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 15.86,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 15.88,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 15.9,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 15.92,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 15.94,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 15.96,
+      "duration": 0,
+      "bytes": 481
+    },
+    {
+      "timestamp": 15.98,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 16,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 16.02,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 16.04,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 16.06,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 16.08,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 16.1,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 16.12,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 16.14,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 16.16,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 16.18,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 16.2,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 16.22,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 16.24,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 16.26,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 16.28,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 16.3,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 16.32,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 16.34,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 16.36,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 16.38,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 16.4,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 16.42,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 16.44,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 16.46,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 16.48,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 16.5,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 16.52,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 16.54,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 16.56,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 16.58,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 16.6,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 16.62,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 16.64,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 16.66,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 16.68,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 16.7,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 16.72,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 16.74,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 16.76,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 16.78,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 16.8,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 16.82,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 16.84,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 16.86,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 16.88,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 16.9,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 16.92,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 16.94,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 16.96,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 16.98,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 17,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 17.02,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 17.04,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 17.06,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 17.08,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 17.1,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 17.12,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 17.14,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 17.16,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 17.18,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 17.2,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 17.22,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 17.24,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 17.26,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 17.28,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 17.3,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 17.32,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 17.34,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 17.36,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 17.38,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 17.4,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 17.42,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 17.44,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 17.46,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 17.48,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 17.5,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 17.52,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 17.54,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 17.56,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 17.58,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 17.6,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 17.62,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 17.64,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 17.66,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 17.68,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 17.7,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 17.72,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 17.74,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 17.76,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 17.78,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 17.8,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 17.82,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 17.84,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 17.86,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 17.88,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 17.9,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 17.92,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 17.94,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 17.96,
+      "duration": 0,
+      "bytes": 481
+    },
+    {
+      "timestamp": 17.98,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 18,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 18.02,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 18.04,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 18.06,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 18.08,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 18.1,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 18.12,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 18.14,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 18.16,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 18.18,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 18.2,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 18.22,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 18.24,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 18.26,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 18.28,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 18.3,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 18.32,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 18.34,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 18.36,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 18.38,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 18.4,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 18.42,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 18.44,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 18.46,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 18.48,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 18.5,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 18.52,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 18.54,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 18.56,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 18.58,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 18.6,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 18.62,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 18.64,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 18.66,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 18.68,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 18.7,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 18.72,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 18.74,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 18.76,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 18.78,
+      "duration": 0.02,
+      "bytes": 476
+    },
+    {
+      "timestamp": 18.8,
+      "duration": 0.02,
+      "bytes": 475
+    },
+    {
+      "timestamp": 18.82,
+      "duration": 0.02,
+      "bytes": 472
+    },
+    {
+      "timestamp": 18.84,
+      "duration": 0.02,
+      "bytes": 467
+    },
+    {
+      "timestamp": 18.86,
+      "duration": 0.02,
+      "bytes": 459
+    },
+    {
+      "timestamp": 18.88,
+      "duration": 0.02,
+      "bytes": 460
+    },
+    {
+      "timestamp": 18.9,
+      "duration": 0.02,
+      "bytes": 460
+    },
+    {
+      "timestamp": 18.92,
+      "duration": 0.02,
+      "bytes": 458
+    },
+    {
+      "timestamp": 18.94,
+      "duration": 0.02,
+      "bytes": 462
+    },
+    {
+      "timestamp": 18.96,
+      "duration": 0.02,
+      "bytes": 455
+    },
+    {
+      "timestamp": 18.98,
+      "duration": 0.02,
+      "bytes": 457
+    },
+    {
+      "timestamp": 19,
+      "duration": 0.02,
+      "bytes": 445
+    },
+    {
+      "timestamp": 19.02,
+      "duration": 0.02,
+      "bytes": 445
+    },
+    {
+      "timestamp": 19.04,
+      "duration": 0.02,
+      "bytes": 430
+    },
+    {
+      "timestamp": 19.06,
+      "duration": 0.02,
+      "bytes": 425
+    },
+    {
+      "timestamp": 19.08,
+      "duration": 0.02,
+      "bytes": 419
+    },
+    {
+      "timestamp": 19.1,
+      "duration": 0.02,
+      "bytes": 432
+    },
+    {
+      "timestamp": 19.12,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 19.14,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 19.16,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 19.18,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 19.2,
+      "duration": 0.02,
+      "bytes": 481
+    },
+    {
+      "timestamp": 19.22,
+      "duration": 0.02,
+      "bytes": 537
+    },
+    {
+      "timestamp": 19.24,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 19.26,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 19.28,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 19.3,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 19.32,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 19.34,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 19.36,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 19.38,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 19.4,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 19.42,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 19.44,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 19.46,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 19.48,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 19.5,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 19.52,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 19.54,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 19.56,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 19.58,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 19.6,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 19.62,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 19.64,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 19.66,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 19.68,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 19.7,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 19.72,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 19.74,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 19.76,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 19.78,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 19.8,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 19.82,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 19.84,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 19.86,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 19.88,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 19.9,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 19.92,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 19.94,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 19.96,
+      "duration": 0,
+      "bytes": 3
+    },
+    {
+      "timestamp": 19.98,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 20,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 20.02,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 20.04,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 20.06,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 20.08,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 20.1,
+      "duration": 0.02,
+      "bytes": 3
+    },
+    {
+      "timestamp": 20.12,
+      "duration": 0,
+      "bytes": 3
+    }
+  ],
+  "native": {
+    "width": 1280,
+    "height": 720,
+    "duration": 20.14,
+    "pixelDifferenceCount": 1026,
+    "handRegionDifferenceCount": 29,
+    "audioRms": 0.30196864277191343
+  }
+}

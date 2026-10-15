@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const SCHEMA_VERSION = 1 as const;
-export const PACKAGE_VERSION = 1 as const;
+export const PACKAGE_VERSION = 2 as const;
 export const TRANSPORT_LEAD_IN_SECONDS = 2;
 const EXPLICIT_GLISSANDO_MAX_GAP_SECONDS = 0.5;
 
@@ -578,8 +578,13 @@ export const MotionPlanSchema = object({
 });
 export type MotionPlan = z.infer<typeof MotionPlanSchema>;
 
-export const ProjectPackageSchema = object({
-  packageVersion: z.literal(PACKAGE_VERSION),
+export const ProjectSourceContextSchema = object({
+  fixtureId: id,
+  keyStyle: z.enum(["realistic", "equal"]),
+});
+export type ProjectSourceContext = z.infer<typeof ProjectSourceContextSchema>;
+
+const projectPackageFields = {
   projectId: id,
   document: SongDocumentSchema,
   profiles: z.array(PianistProfileSchema),
@@ -596,7 +601,10 @@ export const ProjectPackageSchema = object({
   fingeringPlan: FingeringPlanSchema.nullable().optional(),
   performancePlan: PerformancePlanSchema.nullable().optional(),
   motionPlan: MotionPlanSchema.nullable().optional(),
-}).superRefine((pkg, ctx) => {
+};
+type ProjectPackageFields = z.infer<ReturnType<typeof object<typeof projectPackageFields>>>;
+
+function refineProjectPackage(pkg: ProjectPackageFields, ctx: z.RefinementCtx): void {
   if (pkg.document.projectId !== pkg.projectId) {
     ctx.addIssue({ code: "custom", path: ["document", "projectId"], message: "does not match package projectId" });
   }
@@ -686,8 +694,70 @@ export const ProjectPackageSchema = object({
   if (planProfile && pkg.activeProfileId && pkg.activeProfileId !== planProfile.profileId) {
     ctx.addIssue({ code: "custom", path: ["activeProfileId"], message: "must match the profile used by the packaged plans" });
   }
-});
+}
+
+export const ProjectPackageV1Schema = object({
+  packageVersion: z.literal(1),
+  ...projectPackageFields,
+}).superRefine(refineProjectPackage);
+export type ProjectPackageV1 = z.infer<typeof ProjectPackageV1Schema>;
+
+export const ProjectPackageSchema = object({
+  packageVersion: z.literal(PACKAGE_VERSION),
+  ...projectPackageFields,
+  sourceContext: ProjectSourceContextSchema,
+}).superRefine(refineProjectPackage);
 export type ProjectPackage = z.infer<typeof ProjectPackageSchema>;
+
+/** Recover the canonical source namespace from every persisted source ID. */
+export function recoverLegacySourceContext(
+  pkg: ProjectPackageV1,
+  keyStyle?: ProjectSourceContext["keyStyle"],
+): ProjectSourceContext | null {
+  if (!keyStyle) return null;
+  return inferProjectSourceContext(pkg.document, keyStyle);
+}
+
+export function inferProjectFixtureId(document: SongDocument): string | null {
+  const notes = document.notes;
+  if (notes.length === 0 || notes.some((note) => !note.sourceNoteIds?.length)) return null;
+  const sourceIds = notes.flatMap((note) => note.sourceNoteIds ?? []);
+  const prefixes = new Set<string>();
+  const identityPattern = /^([A-Za-z0-9._-]+)\/instrument-(?:0|[1-9]\d*)\/note-\d{6}$/;
+  for (const sourceId of sourceIds) {
+    const match = identityPattern.exec(sourceId);
+    if (!match) return null;
+    prefixes.add(match[1]!);
+  }
+  if (prefixes.size !== 1) return null;
+  return [...prefixes][0]!;
+}
+
+export function inferProjectSourceContext(
+  document: SongDocument,
+  keyStyle?: ProjectSourceContext["keyStyle"],
+): ProjectSourceContext | null {
+  if (!keyStyle) return null;
+  const fixtureId = inferProjectFixtureId(document);
+  if (!fixtureId) return null;
+  return ProjectSourceContextSchema.parse({ fixtureId, keyStyle });
+}
+
+/** Explicitly migrate a validated v1 package to v2 source-context metadata. */
+export function migrateProjectPackageV1(
+  input: unknown,
+  sourceContext?: ProjectSourceContext,
+): ProjectPackage {
+  const legacy = ProjectPackageV1Schema.parse(input);
+  const context = sourceContext ?? recoverLegacySourceContext(legacy);
+  if (!context) {
+    if (!inferProjectFixtureId(legacy.document)) {
+      throw new Error("Legacy package source identity is ambiguous; source context cannot be recovered safely.");
+    }
+    throw new Error("Legacy package has no saved keyboard geometry. Choose Realistic or Equal before opening it.");
+  }
+  return ProjectPackageSchema.parse({ ...legacy, packageVersion: PACKAGE_VERSION, sourceContext: context });
+}
 
 const RequestBaseShape = {
   schemaVersion: z.literal(SCHEMA_VERSION),
@@ -916,8 +986,8 @@ export type M1ExportMidiResult = z.infer<typeof M1ExportMidiResultSchema>;
 export const M1SampleMotionRequestSchema = object({
   type: z.literal("sample-motion"),
   ...M1IdentityShape,
-  startTimeSeconds: TransportTimeSchema,
-  endTimeSeconds: TransportTimeSchema,
+  startTimeSeconds: sourceTime,
+  endTimeSeconds: sourceTime,
   maxPoses: z.number().int().positive().max(500).default(200),
 }).superRefine((req, ctx) => {
   if (req.endTimeSeconds <= req.startTimeSeconds) {
@@ -927,15 +997,54 @@ export const M1SampleMotionRequestSchema = object({
       message: "endTimeSeconds must be greater than startTimeSeconds",
     });
   }
+  if (req.endTimeSeconds - req.startTimeSeconds > 5) {
+    ctx.addIssue({ code: "custom", path: ["endTimeSeconds"], message: "motion window must span at most five seconds" });
+  }
 });
 export type M1SampleMotionRequest = z.infer<typeof M1SampleMotionRequestSchema>;
+
+export const HandCoverageSchema = object({
+  coveredStartTimeSeconds: TransportTimeSchema,
+  coveredEndTimeSeconds: TransportTimeSchema,
+  isComplete: z.boolean(),
+  poseCount: z.number().int().nonnegative(),
+});
+export type HandCoverage = z.infer<typeof HandCoverageSchema>;
+
+/** Runtime-only first playback window; portable musical packages remain v2. */
+export const InitialMotionWindowSchema = object({
+  startTimeSeconds: sourceTime,
+  endTimeSeconds: sourceTime,
+  poses: z.array(MotionPoseSchema).max(200),
+  coverage: object({
+    left: HandCoverageSchema.optional(),
+    right: HandCoverageSchema.optional(),
+  }),
+  truncated: z.boolean(),
+  continuationTimeSeconds: TransportTimeSchema.optional(),
+}).superRefine((window, ctx) => {
+  if (window.endTimeSeconds < window.startTimeSeconds || window.endTimeSeconds - window.startTimeSeconds > 4.000001) {
+    ctx.addIssue({ code: "custom", path: ["endTimeSeconds"], message: "initial playback window must span at most four seconds" });
+  }
+});
+export type InitialMotionWindow = z.infer<typeof InitialMotionWindowSchema>;
 
 export const M1SampleMotionResultSchema = object({
   type: z.literal("sample-motion-result"),
   ...M1IdentityShape,
-  startTimeSeconds: TransportTimeSchema,
-  endTimeSeconds: TransportTimeSchema,
-  poses: z.array(MotionPoseSchema),
+  startTimeSeconds: sourceTime,
+  endTimeSeconds: sourceTime,
+  poses: z.array(MotionPoseSchema).max(500),
+  coverage: object({
+    left: HandCoverageSchema.optional(),
+    right: HandCoverageSchema.optional(),
+  }).optional(),
+  truncated: z.boolean().optional(),
+  continuationTimeSeconds: TransportTimeSchema.optional(),
+}).superRefine((result, ctx) => {
+  if (result.endTimeSeconds <= result.startTimeSeconds || result.endTimeSeconds - result.startTimeSeconds > 5) {
+    ctx.addIssue({ code: "custom", path: ["endTimeSeconds"], message: "motion result must span a positive window of at most five seconds" });
+  }
 });
 export type M1SampleMotionResult = z.infer<typeof M1SampleMotionResultSchema>;
 
@@ -993,6 +1102,7 @@ const M1AnalysisResultShape = {
   fingeringPlan: FingeringPlanSchema.nullable(),
   performancePlan: PerformancePlanSchema.nullable(),
   motionPlan: MotionPlanSchema.nullable(),
+  initialMotionWindow: InitialMotionWindowSchema.optional(),
   diagnostics: z.array(PlanDiagnosticSchema),
   rawBaseline: M1RawBaselineSchema,
 };

@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import type { SongDocument, ResourceDescriptor, PianistProfile } from "@handthesia/contracts";
-import { SCHEMA_VERSION } from "@handthesia/contracts";
+import { PACKAGE_VERSION, SCHEMA_VERSION } from "@handthesia/contracts";
 import {
   MAX_MIDI_FILE_SIZE_BYTES,
   MAX_AUDIO_FILE_SIZE_BYTES,
@@ -503,10 +503,13 @@ describe("Security: Package Import Hardening & Attack Defense", () => {
       rawMidiBytes,
       profile: createValidProfile("prof_1"),
       resources: [source],
+      sourceContext: { fixtureId: "checksum-fixture", keyStyle: "realistic" },
     };
 
     const validJson = await exportProjectPackageJson(project);
     const parsed = JSON.parse(validJson);
+    expect(parsed.packageVersion).toBe(PACKAGE_VERSION);
+    expect(parsed.sourceContext).toEqual({ fixtureId: "checksum-fixture", keyStyle: "realistic" });
 
     // Tamper with payload bytes
     parsed.resourcePayloads[source.path] = "QUJDREVGR0g="; // "ABCDEFGH" (different hash)

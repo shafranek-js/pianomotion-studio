@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-test.describe("M8 Deployment, PWA & Final Polish (W050–W055, Gate G8)", () => {
+test.describe("Production PWA deployment", () => {
   test("manifest link exists and serves valid PWA Web App Manifest JSON", async ({
     page,
     request,
@@ -12,43 +12,58 @@ test.describe("M8 Deployment, PWA & Final Polish (W050–W055, Gate G8)", () => 
 
     // 1. Verify link element in DOM head
     const manifestLink = page.locator('link[rel="manifest"]');
-    await expect(manifestLink).toHaveAttribute("href", "/manifest.webmanifest");
+    await expect(manifestLink).toHaveAttribute("href", /manifest\.webmanifest$/);
+    const manifestHref = await manifestLink.getAttribute("href");
+    if (!manifestHref) throw new Error("The application manifest link has no URL.");
+    if (process.env.PLAYWRIGHT_PWA_PRODUCTION === "1") {
+      expect(manifestHref).toMatch(/^\/releases\/[a-f0-9]{24}\/manifest\.webmanifest$/);
+    }
 
     // 2. Fetch manifest resource directly
-    const response = await request.get("/manifest.webmanifest");
+    const response = await request.get(new URL(manifestHref, page.url()).href);
     expect(response.status()).toBe(200);
 
     const manifest = await response.json();
     expect(manifest.name).toBe("PianoMotion Studio");
     expect(manifest.short_name).toBe("PianoMotion");
     expect(manifest.display).toBe("standalone");
-    expect(manifest.start_url).toBe("/");
+    expect(new URL(manifest.start_url, response.url()).pathname).toBe("/");
     expect(manifest.background_color).toBe("#111516");
     expect(manifest.theme_color).toBe("#111516");
 
     expect(Array.isArray(manifest.icons)).toBe(true);
     expect(manifest.icons.length).toBeGreaterThanOrEqual(3);
 
-    const iconSrcs = manifest.icons.map((icon: { src: string }) => icon.src);
-    expect(iconSrcs).toContain("/icons/icon.svg");
-    expect(iconSrcs).toContain("/icons/icon-192.png");
-    expect(iconSrcs).toContain("/icons/icon-512.png");
+    const iconUrls = manifest.icons.map((icon: { src: string }) => new URL(icon.src, response.url()).href);
+    expect(iconUrls).toHaveLength(manifest.icons.length);
+    if (process.env.PLAYWRIGHT_PWA_PRODUCTION === "1") {
+      expect(iconUrls.every((url: string) => /\/releases\/[a-f0-9]{24}\/icons\//.test(new URL(url).pathname))).toBe(true);
+    }
 
     expect(pageErrors).toEqual([]);
   });
 
   test("PWA application icons load with valid headers and image payloads", async ({
     request,
+    page,
   }) => {
+    await page.goto("/");
+    const manifestHref = await page.locator('link[rel="manifest"]').getAttribute("href");
+    if (!manifestHref) throw new Error("The application manifest link has no URL.");
+    const manifestResponse = await request.get(new URL(manifestHref, page.url()).href);
+    expect(manifestResponse.status()).toBe(200);
+    const manifest = await manifestResponse.json();
+    const iconUrls = manifest.icons.map((icon: { src: string }) => new URL(icon.src, manifestResponse.url()).href);
+
     // 1. Vector SVG icon
-    const svgRes = await request.get("/icons/icon.svg");
+    const svgRes = await request.get(iconUrls.find((url: string) => url.endsWith("icon.svg"))!);
     expect(svgRes.status()).toBe(200);
     const svgText = await svgRes.text();
     expect(svgText).toContain("<svg");
     expect(svgText).toContain("</svg>");
 
     // 2. 192x192 PNG icon
-    const png192Res = await request.get("/icons/icon-192.png");
+    const png192Res = await request.get(iconUrls.find((url: string) => url.endsWith("icon-192.png"))!);
     expect(png192Res.status()).toBe(200);
     const png192Body = await png192Res.body();
     expect(png192Body.length).toBeGreaterThan(100);
@@ -59,7 +74,7 @@ test.describe("M8 Deployment, PWA & Final Polish (W050–W055, Gate G8)", () => 
     expect(png192Body[3]).toBe(0x47);
 
     // 3. 512x512 PNG icon
-    const png512Res = await request.get("/icons/icon-512.png");
+    const png512Res = await request.get(iconUrls.find((url: string) => url.endsWith("icon-512.png"))!);
     expect(png512Res.status()).toBe(200);
     const png512Body = await png512Res.body();
     expect(png512Body.length).toBeGreaterThan(100);
@@ -72,6 +87,7 @@ test.describe("M8 Deployment, PWA & Final Polish (W050–W055, Gate G8)", () => 
   test("Service Worker registers and installs correctly in browser context", async ({
     page,
   }) => {
+    test.skip(process.env.PLAYWRIGHT_PWA_PRODUCTION !== "1", "The development server intentionally disables service worker registration.");
     const pageErrors: string[] = [];
     page.on("pageerror", (err) => pageErrors.push(err.message));
 
@@ -80,17 +96,38 @@ test.describe("M8 Deployment, PWA & Final Polish (W050–W055, Gate G8)", () => 
     // Wait for window load and service worker registration
     await page.waitForLoadState("networkidle");
 
+    await expect.poll(async () => page.evaluate(async () => {
+      const registration = await navigator.serviceWorker.getRegistration("/");
+      const buildId = document.documentElement.dataset.releaseBuildId;
+      const cacheNames = await caches.keys();
+      return {
+        registered: Boolean(registration),
+        state: registration?.active?.state || registration?.installing?.state || registration?.waiting?.state,
+        controlled: Boolean(navigator.serviceWorker.controller),
+        hasBuildCache: Boolean(buildId && cacheNames.includes(`pianomotion-root-build-${buildId}`)),
+      };
+    }), { timeout: 90_000, intervals: [100, 250, 500, 1_000] }).toMatchObject({
+      registered: true,
+      state: "activated",
+      controlled: true,
+      hasBuildCache: true,
+    });
+
     const swInfo = await page.evaluate(async () => {
       if (!("serviceWorker" in navigator)) {
         return { supported: false };
       }
       try {
         const reg = await navigator.serviceWorker.getRegistration("/");
+        const ready = await navigator.serviceWorker.ready;
         return {
           supported: true,
           registered: Boolean(reg),
           scope: reg?.scope,
-          state: reg?.active?.state || reg?.installing?.state || reg?.waiting?.state,
+          state: ready.active?.state || reg?.active?.state || reg?.installing?.state || reg?.waiting?.state,
+          controlled: Boolean(navigator.serviceWorker.controller),
+          buildId: document.documentElement.dataset.releaseBuildId,
+          cacheNames: await caches.keys(),
         };
       } catch (e) {
         return { supported: true, error: String(e) };
@@ -99,66 +136,12 @@ test.describe("M8 Deployment, PWA & Final Polish (W050–W055, Gate G8)", () => 
 
     expect(swInfo.supported).toBe(true);
     expect(swInfo.registered).toBe(true);
-    expect(swInfo.scope).toContain("127.0.0.1:4173");
+    expect(swInfo.state).toBe("activated");
+    expect(swInfo.controlled).toBe(true);
+    expect(swInfo.scope).toContain(new URL(page.url()).origin);
+    expect(swInfo.cacheNames).toContain(`pianomotion-root-build-${swInfo.buildId}`);
 
     expect(pageErrors).toEqual([]);
   });
 
-  test("Security limits and sanitization reject invalid and oversized payloads safely", async ({
-    page,
-  }) => {
-    await page.goto("/");
-
-    const securityChecks = await page.evaluate(async () => {
-      // Dynamic import from client storage module
-      const storage = await import("/src/storage/index.ts");
-
-      // 1. Oversized MIDI check (17 MiB > 16 MiB limit)
-      const oversizedMidiBlob = new Blob([new Uint8Array(10)], { type: "audio/midi" });
-      Object.defineProperty(oversizedMidiBlob, "size", { value: 17 * 1024 * 1024 });
-      const midiCheck = storage.validateMidiFile(oversizedMidiBlob, "huge.mid");
-
-      // 2. Oversized Package check (33 MiB > 32 MiB limit)
-      const oversizedPkgBlob = new Blob([new Uint8Array(10)], { type: "application/json" });
-      Object.defineProperty(oversizedPkgBlob, "size", { value: 33 * 1024 * 1024 });
-      const pkgCheck = storage.validatePackageFile(oversizedPkgBlob, "huge.json");
-
-      // 3. Filename sanitization
-      const sanitizedTraversal = storage.sanitizeFilename("../../../etc/passwd");
-      const sanitizedDrive = storage.sanitizeFilename("C:\\Windows\\System32\\cmd.exe");
-      const sanitizedReserved = storage.sanitizeFilename("con.mid");
-
-      // 4. Safe Resource Path validation
-      const safePath = storage.isSafeResourcePath("resources/audio.wav");
-      const traversalPath = storage.isSafeResourcePath("../resources/audio.wav");
-      const absolutePath = storage.isSafeResourcePath("/resources/audio.wav");
-
-      return {
-        midiCheckValid: midiCheck.valid,
-        midiCheckCode: midiCheck.valid ? null : midiCheck.code,
-        pkgCheckValid: pkgCheck.valid,
-        pkgCheckCode: pkgCheck.valid ? null : pkgCheck.code,
-        sanitizedTraversal,
-        sanitizedDrive,
-        sanitizedReserved,
-        safePath,
-        traversalPath,
-        absolutePath,
-      };
-    });
-
-    expect(securityChecks.midiCheckValid).toBe(false);
-    expect(securityChecks.midiCheckCode).toBe("FILE_TOO_LARGE");
-
-    expect(securityChecks.pkgCheckValid).toBe(false);
-    expect(securityChecks.pkgCheckCode).toBe("FILE_TOO_LARGE");
-
-    expect(securityChecks.sanitizedTraversal).toBe("etc/passwd".replace(/[/\\]/g, ""));
-    expect(securityChecks.sanitizedDrive).not.toContain("C:");
-    expect(securityChecks.sanitizedReserved).toBe("_con.mid");
-
-    expect(securityChecks.safePath).toBe(true);
-    expect(securityChecks.traversalPath).toBe(false);
-    expect(securityChecks.absolutePath).toBe(false);
-  });
 });

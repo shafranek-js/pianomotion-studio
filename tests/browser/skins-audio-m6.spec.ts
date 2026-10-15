@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { loadStudioSong, openStudioInspector } from "./studio-helpers";
 
 function createTestWavBuffer(durationSec = 2, sampleRate = 8000): Buffer {
   const numSamples = Math.floor(sampleRate * durationSec);
@@ -40,26 +41,16 @@ test.describe("M6 Visual Hand Skins & Audio Sync (W039–W044)", () => {
     const pageErrors: string[] = [];
     page.on("pageerror", (err) => pageErrors.push(err.message));
 
-    await page.goto("/");
-
-    // 1. Select a fixture and analyze
-    await page.locator("#fixture-select").selectOption("tracked-right-hand");
-    await page.locator("#analyze-button").click();
-
-    // 2. Wait for player card to appear
-    await expect(page.locator(".player-card")).toBeVisible({ timeout: 30_000 });
-    await expect(page.locator("#piano-canvas-container canvas")).toBeVisible({
-      timeout: 5_000,
-    });
+    await loadStudioSong(page);
 
     // 3. Open Settings Modal
-    const settingsBtn = page.locator("#settings-modal-btn");
+    const settingsBtn = page.getByRole("button", {name: "Open preferences", exact: true});
     await settingsBtn.click();
     await expect(page.locator("#settings-modal-title")).toBeVisible();
 
     // 4. Test Hand Skin Style Selection
     const skinStyleSelect = page.locator("#settings-skin-style");
-    await expect(skinStyleSelect).toHaveValue("photo-segmented");
+    await expect(skinStyleSelect).toHaveValue("realistic");
 
     await skinStyleSelect.selectOption("gloves");
     await expect(skinStyleSelect).toHaveValue("gloves");
@@ -82,15 +73,24 @@ test.describe("M6 Visual Hand Skins & Audio Sync (W039–W044)", () => {
     const soundOutputSelect = page.locator("#settings-sound-output");
     await expect(soundOutputSelect).toHaveValue("synth");
 
+    await expect(soundOutputSelect.locator('option[value="soundfont"]')).toBeEnabled();
+    await expect(soundOutputSelect.locator('option[value="webmidi"]')).toBeEnabled();
     await soundOutputSelect.selectOption("soundfont");
-    await expect(soundOutputSelect).toHaveValue("soundfont");
-
-    await soundOutputSelect.selectOption("synth");
-    await expect(soundOutputSelect).toHaveValue("synth");
+    await expect(page.getByText("No SoundFonts installed. Please upload an SF2 file to enable SoundFont playback.")).toBeVisible();
+    await expect(page.getByTestId("studio-status")).toContainText("SoundFont was not activated");
 
     // Close settings modal
     await page.locator('button[aria-label="Close"]').click();
     await expect(page.locator("#settings-modal-title")).not.toBeVisible();
+
+    await page.getByRole("button", {name: "Fingering", exact: true}).click();
+    await openStudioInspector(page, "Audio");
+    await expect(page.getByText("Active output: Built-in synthesizer", {exact:true})).toBeVisible();
+    // A failed preparation must leave the previous backend active. Restore the
+    // requested preference before continuing with the real recording scenario.
+    await settingsBtn.click();
+    await page.locator("#settings-sound-output").selectOption("synth");
+    await page.locator('button[aria-label="Close"]').click();
 
     // 7. Test External Audio Sync Recording Upload
     const uploadInput = page.locator("#audio-track-file-input");

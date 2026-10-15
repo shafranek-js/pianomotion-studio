@@ -88,6 +88,7 @@ export {
   validateProjectPackage,
   safeValidateProjectPackage,
   parseProjectPackageJson,
+  inspectLegacyProjectPackageFile,
   importProjectPackageFile,
   projectPackageToSavedProject,
   importProjectOrPackage,

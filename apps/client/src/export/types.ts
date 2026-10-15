@@ -1,4 +1,4 @@
-import type { PerformancePlan, SongDocument, M1KeyStyle } from "@handthesia/contracts";
+import type { PerformancePlan, SongDocument, M1KeyStyle, MotionPlan, FingeringPlan, M1RawBaseline, ProjectSourceContext, ResourceDescriptor } from "@handthesia/contracts";
 import type { DecodedAudioRecording } from "../audio";
 import type { AppSettings } from "../settings";
 import type { PianistProfile } from "../profiles";
@@ -17,9 +17,14 @@ export interface VideoExportOptions {
   height: number;
   fps: 30 | 60;
   speed: number;
+  format?: "mp4" | "webm";
   includeAudio: boolean;
-  audioSource: "synth" | "recording" | "none";
+  audioSource: "synth" | "soundfont" | "recording" | "none";
   tailSeconds?: number; // default 1.5s VIDEO_TAIL_S
+  /** Tests may force the bounded in-memory output. Normal exports use a save-file stream when available. */
+  outputMode?: "auto" | "file" | "bounded-blob";
+  /** Override the normal 128 MiB Blob cap for focused unit tests only. */
+  blobLimitBytes?: number;
 }
 
 export type ExportPhase =
@@ -45,17 +50,36 @@ export interface VideoExportProgress {
   previewCanvas?: HTMLCanvasElement | null;
   error?: string | null;
   outputBlob?: Blob | null;
+  outputSavedFile?: { name: string; sizeBytes: number; mimeType: string } | null;
   outputFilename?: string | null;
   audioWavBlob?: Blob | null;
   outputMimeType?: string | null;
 }
 
 export interface ExportSceneDataSource {
+  /** Required by the production exporter; optional only for legacy view/test callers. */
+  sourceIdentity?: ExportSourceIdentity;
   document: SongDocument;
   performancePlan: PerformancePlan;
+  motionPlan?: MotionPlan | null;
   keyStyle: M1KeyStyle;
   profile: PianistProfile;
   settings: AppSettings;
   audioRecording?: DecodedAudioRecording | null;
   audioOffset?: number;
+}
+
+export interface ExportSourceIdentity {
+  projectId: string;
+  revision: number;
+  engineVersion: string;
+  originalMidiBytes: ArrayBuffer;
+  fingeringPlan: FingeringPlan;
+  rawBaseline: M1RawBaseline;
+  sourceContext: ProjectSourceContext;
+  resource: ResourceDescriptor;
+  activeOutputId: "synth" | "soundfont" | "webmidi";
+  soundFontAssetId: string | null;
+  /** Loaded SF2 bytes are frozen with the export snapshot; they are never written to a project package. */
+  soundFontAssetBytes?: ArrayBuffer | null;
 }

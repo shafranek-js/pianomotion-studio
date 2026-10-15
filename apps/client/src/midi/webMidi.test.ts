@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { WebMidiOutputManager } from "./webMidiOutput";
 
 describe("WebMidiOutputManager (W044)", () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.restoreAllMocks();
+    vi.resetModules();
   });
 
   it("handles environment without Web MIDI API gracefully", async () => {
@@ -12,6 +12,7 @@ describe("WebMidiOutputManager (W044)", () => {
     // @ts-expect-error test stub
     delete navigator.requestMIDIAccess;
 
+    const { WebMidiOutputManager } = await import("./webMidiOutput");
     const manager = new WebMidiOutputManager();
     const status = await manager.init();
 
@@ -31,8 +32,12 @@ describe("WebMidiOutputManager (W044)", () => {
       writable: true,
     });
 
+    const { WebMidiOutputManager } = await import("./webMidiOutput");
     const manager = new WebMidiOutputManager();
-    const status = await manager.init();
+    const initStatus = await manager.init();
+    expect(initStatus.permission).toBe("prompt");
+    expect(navigator.requestMIDIAccess).not.toHaveBeenCalled();
+    const status = await manager.requestPermissionFromUserGesture();
 
     expect(status.supported).toBe(true);
     expect(status.permission).toBe("denied");
@@ -61,12 +66,22 @@ describe("WebMidiOutputManager (W044)", () => {
       writable: true,
     });
 
+    const { WebMidiOutputManager } = await import("./webMidiOutput");
     const manager = new WebMidiOutputManager();
-    const status = await manager.init();
+    const initStatus = await manager.init();
+    expect(initStatus.permission).toBe("prompt");
+    const status = await manager.requestPermissionFromUserGesture();
 
     expect(status.permission).toBe("granted");
     expect(status.devices).toHaveLength(1);
     expect(status.devices[0]?.name).toBe("Roland Digital Piano");
+
+    const secondManager = new WebMidiOutputManager();
+    const reused = await secondManager.init();
+    expect(reused.permission).toBe("granted");
+    expect(reused.devices).toHaveLength(1);
+    expect(navigator.requestMIDIAccess).toHaveBeenCalledTimes(1);
+    secondManager.dispose();
 
     // Select device
     const selectResult = manager.selectDevice("device-1");
@@ -117,8 +132,9 @@ describe("WebMidiOutputManager (W044)", () => {
       writable: true,
     });
 
+    const { WebMidiOutputManager } = await import("./webMidiOutput");
     const manager = new WebMidiOutputManager();
-    await manager.init();
+    await manager.requestPermissionFromUserGesture();
     manager.selectDevice("device-2");
 
     // Simulate device disconnect

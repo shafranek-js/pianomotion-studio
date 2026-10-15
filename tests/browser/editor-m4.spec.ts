@@ -1,144 +1,56 @@
 import { expect, test } from "@playwright/test";
+import { focusStudioScene, loadStudioSong, openStudioInspector, settledStudio } from "./studio-helpers";
 
-test.describe("M4 Fingering Editor & Dense UI (W028–W033, Gate G4)", () => {
-  test("complete editor journey: view modes, piano roll selection, editing, undo/redo, difficulty metrics, playback sync, and fingered MIDI export", async ({
-    page,
-  }) => {
-    const pageErrors: string[] = [];
-    page.on("pageerror", (err) => pageErrors.push(err.message));
-
-    await page.goto("/");
-
-    // 1. Initial page header verification
-    await expect(page).toHaveTitle("PianoMotion Studio · MIDI diagnostics");
-
-    // 2. Select fixture and run analysis
-    await page.locator("#fixture-select").selectOption("tracked-right-hand");
-    await page.locator("#analyze-button").click();
-
-    // 3. Wait for analysis to finish and player to mount
-    await expect(page.locator(".player-card")).toBeVisible({ timeout: 35_000 });
-    await expect(page.locator("#piano-canvas-container canvas")).toBeVisible({
-      timeout: 5_000,
-    });
-
-    // 4. Verify view mode switcher tabs
-    const perfTab = page.locator("#tab-btn-performance");
-    const editorTab = page.locator("#tab-btn-editor");
-    const splitTab = page.locator("#tab-btn-split");
-
-    await expect(perfTab).toBeVisible();
-    await expect(editorTab).toBeVisible();
-    await expect(splitTab).toBeVisible();
-    await expect(perfTab).toHaveClass(/is-active/);
-
-    // 5. Switch to Fingering Editor View
-    await editorTab.click();
-    await expect(editorTab).toHaveClass(/is-active/);
-
-    // Pixi 3D canvas is hidden in Editor-only view
-    const pixiContainer = page.locator("#piano-canvas-container");
-    await expect(pixiContainer).toBeHidden();
-
-    // Editor viewport and canvas are visible
-    const editor = page.locator('[data-testid="fingering-editor"]');
-    await expect(editor).toBeVisible();
-    const pianoRollCanvas = page.locator(
-      '[data-testid="piano-roll-viewport"] canvas',
-    );
-    await expect(pianoRollCanvas).toBeVisible();
-
-    // Diagnostics / Difficulty panel is visible
-    await expect(page.locator(".diagnostics-panel")).toBeVisible();
-    await expect(page.locator(".difficulty-card")).toContainText(
-      "Piece Difficulty",
-    );
-
-    // 6. Test Editor Toolbar components
-    const toolbar = page.locator(".fingering-toolbar");
-    await expect(toolbar).toBeVisible();
-
-    // Finger buttons 1..5
-    for (let f = 1; f <= 5; f += 1) {
-      await expect(
-        toolbar.getByRole("button", { name: `Finger ${f}`, exact: false }),
-      ).toBeVisible();
-    }
-
-    // Hand buttons
-    const leftHandBtn = toolbar.getByRole("button", { name: /Left/i });
-    const rightHandBtn = toolbar.getByRole("button", { name: /Right/i });
-    await expect(leftHandBtn).toBeVisible();
-    await expect(rightHandBtn).toBeVisible();
-
-    // Undo / Redo buttons (initially disabled)
-    const undoBtn = toolbar.getByRole("button", { name: /Undo/i });
-    const redoBtn = toolbar.getByRole("button", { name: /Redo/i });
-    await expect(undoBtn).toBeDisabled();
-    await expect(redoBtn).toBeDisabled();
-
-    // 7. Select a note via diagnostic jump or keyboard navigation (ArrowRight selects first note)
-    const jumpBtn = page.locator(".diagnostics-panel button").first();
-    if (await jumpBtn.isVisible()) {
-      await jumpBtn.click();
-    } else {
-      await pianoRollCanvas.click();
-      await page.keyboard.press("ArrowRight");
-    }
-
-    // 8. Assign finger 4 via toolbar
-    const finger4Btn = toolbar.getByRole("button", { name: "Finger 4" });
-    await finger4Btn.click();
-
-    // Undo button should now be enabled
-    await expect(undoBtn).toBeEnabled({ timeout: 2_000 });
-
-    // 9. Test Undo -> Redo
-    await undoBtn.click();
-    await expect(undoBtn).toBeDisabled();
-    await expect(redoBtn).toBeEnabled();
-
-    await redoBtn.click();
-    await expect(undoBtn).toBeEnabled();
-    await expect(redoBtn).toBeDisabled();
-
-    // 10. Switch to Split View (both canvas views visible simultaneously)
-    await splitTab.click();
-    await expect(splitTab).toHaveClass(/is-active/);
-    await expect(pixiContainer).toBeVisible();
-    await expect(editor).toBeVisible();
-
-    // 11. Test Playback in Split View
-    const playBtn = page.locator("#player-play-button");
-    const seekSlider = page.locator("#player-seek-slider");
-
-    await playBtn.click();
-    await expect(playBtn).toContainText("Pause");
-    await page.waitForTimeout(1200);
-
-    const timeAfterPlay = parseFloat(await seekSlider.inputValue());
-    expect(timeAfterPlay).toBeGreaterThan(-2.0);
-
-    await playBtn.click(); // Pause
-    await expect(playBtn).toContainText("Play");
-
-    // 12. Test Fingered MIDI Export (W026, Gate G4)
-    const exportMidiBtn = page.locator("#player-export-midi-button");
-    await expect(exportMidiBtn).toBeVisible();
-
-    const downloadPromise = page.waitForEvent("download");
-    await exportMidiBtn.click();
-    const download = await downloadPromise;
-
-    expect(download.suggestedFilename()).toMatch(/\.fingered\.mid$/);
-
-    // 13. Verify status confirmation in UI
-    await expect(page.locator(".save-status-msg")).toContainText(
-      "Exported",
-      { timeout: 8_000 },
-    );
-
-    // 14. Assert zero browser runtime errors
-    expect(pageErrors).toEqual([]);
-  });
+test("unified fingering scene retains history, contextual tools and live playback", async ({page}) => {
+  test.setTimeout(180_000);
+  const errors: string[] = [];
+  page.on("pageerror", error => errors.push(error.message));
+  const initial = await loadStudioSong(page);
+  const canvas = page.locator("#piano-canvas-container canvas");
+  await canvas.evaluate(element => element.setAttribute("data-identity-probe", "original-scene"));
+  await expect(page.locator(".fingering-toolbar")).toBeHidden();
+  await expect(page.getByRole("button", {name: "Split", exact: true})).toHaveCount(0);
+  await page.getByRole("button", {name: "Fingering", exact: true}).click();
+  await expect(canvas).toBeVisible();
+  await expect(page.getByTestId("studio-workspace").locator("canvas")).toHaveCount(1);
+  const toolbar = page.locator(".fingering-toolbar");
+  await expect(toolbar).toBeVisible();
+  const undo = toolbar.getByRole("button", {name: /Undo/i});
+  const redo = toolbar.getByRole("button", {name: /Redo/i});
+  await expect(undo).toBeDisabled();
+  await expect(redo).toBeDisabled();
+  await focusStudioScene(page);
+  await page.keyboard.press("ArrowRight");
+  await page.getByTestId("studio-header").getByRole("button", {name: "Finger 4", exact: true}).click();
+  const edited = await settledStudio(page, initial.result.revision + 1);
+  const pin = edited.result.fingeringPlan!.assignments.find(a => a.fingerMode === "manual" && a.finger === 4);
+  expect(pin).toBeDefined();
+  await expect(undo).toBeEnabled();
+  await page.keyboard.press("Control+z"); // Assignment button still has focus.
+  const undone = await settledStudio(page, edited.result.revision + 1);
+  expect(undone.result.fingeringPlan!.assignments.find(a => a.noteId === pin!.noteId)?.fingerMode).not.toBe("manual");
+  await expect(redo).toBeEnabled();
+  await page.keyboard.press("Control+Shift+z");
+  const redone = await settledStudio(page, undone.result.revision + 1);
+  expect(redone.result.fingeringPlan!.assignments.find(a => a.noteId === pin!.noteId)?.finger).toBe(4);
+  await page.getByRole("button", {name: "Performance", exact: true}).click();
+  await expect(toolbar).toBeHidden();
+  await expect(canvas).toHaveAttribute("data-identity-probe", "original-scene");
+  await page.locator("#player-play-button").click();
+  await expect(page.locator("#player-play-button")).toContainText("Pause");
+  await expect.poll(async () => Number(await page.locator("#player-seek-slider").inputValue())).toBeGreaterThan(-1.5);
+  await page.getByRole("button", {name: "Fingering", exact: true}).click();
+  await expect(page.locator("#player-play-button")).toContainText("Pause");
+  await expect(undo).toBeEnabled();
+  await expect(canvas).toHaveAttribute("data-identity-probe", "original-scene");
+  await page.locator("#player-play-button").click();
+  await openStudioInspector(page, "Diagnostics");
+  await expect(page.locator(".difficulty-card")).toContainText("Piece Difficulty");
+  await page.getByRole("button", {name: "Close panel", exact: true}).click();
+  await page.getByRole("button", {name: "Export", exact: true}).click();
+  const downloadEvent = page.waitForEvent("download");
+  await page.getByRole("menuitem", {name: "Fingered MIDI (.mid)", exact: true}).click();
+  const download = await downloadEvent;
+  expect(download.suggestedFilename()).toMatch(/\.fingered\.mid$/);
+  expect(errors).toEqual([]);
 });

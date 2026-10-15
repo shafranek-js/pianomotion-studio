@@ -1,0 +1,194 @@
+{
+  "config": {
+    "argv": [
+      "C:\\nvm4w\\nodejs\\node.exe",
+      "C:\\Projects\\pianomotion-studio\\node_modules\\@playwright\\test\\cli.js",
+      "test",
+      "--config",
+      "playwright.preview.config.ts",
+      "--grep",
+      "exact /pianomotion/"
+    ],
+    "configFile": "C:\\Projects\\pianomotion-studio\\playwright.preview.config.ts",
+    "rootDir": "C:/Projects/pianomotion-studio/tests/browser",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "C:/Projects/pianomotion-studio/test-results/pwa-chrome",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "",
+        "name": "",
+        "testDir": "C:/Projects/pianomotion-studio/tests/browser",
+        "testIgnore": [],
+        "testMatch": [
+          "**/offline-pwa.spec.ts",
+          "**/pwa-deployment-m8.spec.ts"
+        ],
+        "timeout": 120000
+      }
+    ],
+    "filteredProjects": [
+      {
+        "grep": {},
+        "grepInvert": null,
+        "outputDir": "C:\\Projects\\pianomotion-studio\\test-results\\pwa-chrome",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "name": "",
+        "testDir": "C:\\Projects\\pianomotion-studio\\tests\\browser",
+        "snapshotDir": "C:\\Projects\\pianomotion-studio\\tests\\browser",
+        "testIgnore": [],
+        "testMatch": [
+          "**/offline-pwa.spec.ts",
+          "**/pwa-deployment-m8.spec.ts"
+        ],
+        "timeout": 120000,
+        "use": {
+          "baseURL": "http://127.0.0.1:4174",
+          "browserName": "chromium",
+          "channel": "chrome",
+          "headless": true
+        },
+        "dependencies": [],
+        "ignoreSnapshots": false,
+        "__projectId": ""
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "list",
+        null
+      ],
+      [
+        "json",
+        {
+          "outputFile": "test-results/reports/pwa-chrome.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "default",
+    "updateSourceMethod": "patch",
+    "version": "1.64.0",
+    "workers": 1,
+    "webServer": {
+      "command": "npm run preview -- --host 127.0.0.1 --port 4174 --strictPort",
+      "url": "http://127.0.0.1:4174",
+      "reuseExistingServer": false,
+      "timeout": 60000
+    }
+  },
+  "suites": [
+    {
+      "title": "offline-pwa.spec.ts",
+      "file": "offline-pwa.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "the exact /pianomotion/ base imports, saves, and restores a project offline",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 300000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 17285,
+                  "errors": [],
+                  "stdout": [
+                    {
+                      "buffer": "QnVpbGRpbmcgUGlhbm9Nb3Rpb24gcmVsZWFzZSBhMmI1ZWI3ODU5ODgyZGVmYTQyZDU3ZTAgKGFwcCBiYXNlIC9waWFub21vdGlvbi8sIGFzc2V0IGJhc2UgL3BpYW5vbW90aW9uL3JlbGVhc2VzL2EyYjVlYjc4NTk4ODJkZWZhNDJkNTdlMC8pLgo="
+                    },
+                    {
+                      "buffer": "dml0ZSB2OC4zLjQgYnVpbGRpbmcgY2xpZW50IGVudmlyb25tZW50IGZvciBwcm9kdWN0aW9uLi4uCg=="
+                    },
+                    {
+                      "buffer": "dHJhbnNmb3JtaW5nLi4uCg=="
+                    },
+                    {
+                      "buffer": "G1szMm3inJMbWzBtIDI5NTUgbW9kdWxlcyB0cmFuc2Zvcm1lZC4K"
+                    },
+                    {
+                      "buffer": "cmVuZGVyaW5nIGNodW5rcy4uLgo="
+                    },
+                    {
+                      "buffer": "Y29tcHV0aW5nIGd6aXAgc2l6ZS4uLgo="
+                    },
+                    {
+                      "buffer": "G1sybS4uLy4uL1VzZXJzL3BhdmVsL0FwcERhdGEvTG9jYWwvVGVtcC9waWFub21vdGlvbi1wd2EtcmVsZWFzZXMtYmFzZXBhdGgtNXV0eUxnL3JlbGVhc2UtcGlhbm9tb3Rpb24vG1swbRtbMzJtaW5kZXguaHRtbCAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgG1swbRtbMTsybSAgICAyLjM5IGtCG1swbRtbMm0g4pSCIGd6aXA6ICAgMC43MSBrQhtbMG0KG1sybS4uLy4uL1VzZXJzL3BhdmVsL0FwcERhdGEvTG9jYWwvVGVtcC9waWFub21vdGlvbi1wd2EtcmVsZWFzZXMtYmFzZXBhdGgtNXV0eUxnL3JlbGVhc2UtcGlhbm9tb3Rpb24vG1swbRtbMm1hc3NldHMvG1swbRtbMzJtc2YyUGFyc2Uud29ya2VyLUQtdTNlellRLmpzICAgICAgICAgICAbWzBtG1sxOzJtICAgIDYuODYga0IbWzBtChtbMm0uLi8uLi9Vc2Vycy9wYXZlbC9BcHBEYXRhL0xvY2FsL1RlbXAvcGlhbm9tb3Rpb24tcHdhLXJlbGVhc2VzLWJhc2VwYXRoLTV1dHlMZy9yZWxlYXNlLXBpYW5vbW90aW9uLxtbMG0bWzJtYXNzZXRzLxtbMG0bWzMybW1pZGktYW5hbHlzaXMud29ya2VyLUR2bWNoRXhaLmpzICAgICAgG1swbRtbMTsybSAgMTYxLjExIGtCG1swbQobWzJtLi4vLi4vVXNlcnMvcGF2ZWwvQXBwRGF0YS9Mb2NhbC9UZW1wL3BpYW5vbW90aW9uLXB3YS1yZWxlYXNlcy1iYXNlcGF0aC01dXR5TGcvcmVsZWFzZS1waWFub21vdGlvbi8bWzBtG1sybWFzc2V0cy8bWzBtG1szNW1pbmRleC1KMjYtV3lfMS5jc3MgICAgICAgICAgICAgICAgICAgIBtbMG0bWzE7Mm0gICA0My43MCBrQhtbMG0bWzJtIOKUgiBnemlwOiAgIDkuNTUga0IbWzBtChtbMm0uLi8uLi9Vc2Vycy9wYXZlbC9BcHBEYXRhL0xvY2FsL1RlbXAvcGlhbm9tb3Rpb24tcHdhLXJlbGVhc2VzLWJhc2VwYXRoLTV1dHlMZy9yZWxlYXNlLXBpYW5vbW90aW9uLxtbMG0bWzJtYXNzZXRzLxtbMG0bWzM2bXdlYndvcmtlckFsbC1RSGl5ZEtLRy5qcyAgICAgICAgICAgICAgG1swbRtbMTsybSAgICAwLjA1IGtCG1swbRtbMm0g4pSCIGd6aXA6ICAgMC4wNiBrQhtbMG0KG1sybS4uLy4uL1VzZXJzL3BhdmVsL0FwcERhdGEvTG9jYWwvVGVtcC9waWFub21vdGlvbi1wd2EtcmVsZWFzZXMtYmFzZXBhdGgtNXV0eUxnL3JlbGVhc2UtcGlhbm9tb3Rpb24vG1swbRtbMm1hc3NldHMvG1swbRtbMzZtZ2V0VGV4dHVyZUJhdGNoQmluZEdyb3VwLUNMSWZmRzQwLmpzICAbWzBtG1sxOzJtICAgIDAuMzQga0IbWzBtG1sybSDilIIgZ3ppcDogICAwLjI2IGtCG1swbQobWzJtLi4vLi4vVXNlcnMvcGF2ZWwvQXBwRGF0YS9Mb2NhbC9UZW1wL3BpYW5vbW90aW9uLXB3YS1yZWxlYXNlcy1iYXNlcGF0aC01dXR5TGcvcmVsZWFzZS1waWFub21vdGlvbi8bWzBtG1sybWFzc2V0cy8bWzBtG1szNm1DYWNoZS04X1dUZGtBWS5qcyAgICAgICAgICAgICAgICAgICAgIBtbMG0bWzE7Mm0gICAgMS4xMCBrQhtbMG0bWzJtIOKUgiBnemlwOiAgIDAuNTYga0IbWzBtChtbMm0uLi8uLi9Vc2Vycy9wYXZlbC9BcHBEYXRhL0xvY2FsL1RlbXAvcGlhbm9tb3Rpb24tcHdhLXJlbGVhc2VzLWJhc2VwYXRoLTV1dHlMZy9yZWxlYXNlLXBpYW5vbW90aW9uLxtbMG0bWzJtYXNzZXRzLxtbMG0bWzM2bWNhbnZhc1V0aWxzLUR5ZE5pbWFLLmpzICAgICAgICAgICAgICAgG1swbRtbMTsybSAgICA2LjAxIGtCG1swbRtbMm0g4pSCIGd6aXA6ICAgMi4wNCBrQhtbMG0KG1sybS4uLy4uL1VzZXJzL3BhdmVsL0FwcERhdGEvTG9jYWwvVGVtcC9waWFub21vdGlvbi1wd2EtcmVsZWFzZXMtYmFzZXBhdGgtNXV0eUxnL3JlbGVhc2UtcGlhbm9tb3Rpb24vG1swbRtbMm1hc3NldHMvG1swbRtbMzZtZ2V0VGV4ZWxSYW5nZVJlY3RzLUNONEVvRDY1LmpzICAgICAgICAbWzBtG1sxOzJtICAgMTEuMzUga0IbWzBtG1sybSDilIIgZ3ppcDogICAyLjk5IGtCG1swbQobWzJtLi4vLi4vVXNlcnMvcGF2ZWwvQXBwRGF0YS9Mb2NhbC9UZW1wL3BpYW5vbW90aW9uLXB3YS1yZWxlYXNlcy1iYXNlcGF0aC01dXR5TGcvcmVsZWFzZS1waWFub21vdGlvbi8bWzBtG1sybWFzc2V0cy8bWzBtG1szNm1pbml0LURMaXBmdFBaLmpzICAgICAgICAgICAgICAgICAgICAgIBtbMG0bWzE7Mm0gICAxNC44NCBrQhtbMG0bWzJtIOKUgiBnemlwOiAgIDQuNTkga0IbWzBtChtbMm0uLi8uLi9Vc2Vycy9wYXZlbC9BcHBEYXRhL0xvY2FsL1RlbXAvcGlhbm9tb3Rpb24tcHdhLXJlbGVhc2VzLWJhc2VwYXRoLTV1dHlMZy9yZWxlYXNlLXBpYW5vbW90aW9uLxtbMG0bWzJtYXNzZXRzLxtbMG0bWzM2bUdDTWFuYWdlZEhhc2gtYU02elluN24uanMgICAgICAgICAgICAgG1swbRtbMTsybSAgIDE5LjMzIGtCG1swbRtbMm0g4pSCIGd6aXA6ICAgNi4yOCBrQhtbMG0KG1sybS4uLy4uL1VzZXJzL3BhdmVsL0FwcERhdGEvTG9jYWwvVGVtcC9waWFub21vdGlvbi1wd2EtcmVsZWFzZXMtYmFzZXBhdGgtNXV0eUxnL3JlbGVhc2UtcGlhbm9tb3Rpb24vG1swbRtbMm1hc3NldHMvG1swbRtbMzZtRmlsdGVyLUMyYldXaHR1LmpzICAgICAgICAgICAgICAgICAgICAbWzBtG1sxOzJtICAgNDEuOTUga0IbWzBtG1sybSDilIIgZ3ppcDogIDEyLjAyIGtCG1swbQobWzJtLi4vLi4vVXNlcnMvcGF2ZWwvQXBwRGF0YS9Mb2NhbC9UZW1wL3BpYW5vbW90aW9uLXB3YS1yZWxlYXNlcy1iYXNlcGF0aC01dXR5TGcvcmVsZWFzZS1waWFub21vdGlvbi8bWzBtG1sybWFzc2V0cy8bWzBtG1szNm1icm93c2VyQWxsLUNRb2tQLUx2LmpzICAgICAgICAgICAgICAgIBtbMG0bWzE7Mm0gICA0My41MSBrQhtbMG0bWzJtIOKUgiBnemlwOiAgMTEuMjUga0IbWzBtChtbMm0uLi8uLi9Vc2Vycy9wYXZlbC9BcHBEYXRhL0xvY2FsL1RlbXAvcGlhbm9tb3Rpb24tcHdhLXJlbGVhc2VzLWJhc2VwYXRoLTV1dHlMZy9yZWxlYXNlLXBpYW5vbW90aW9uLxtbMG0bWzJtYXNzZXRzLxtbMG0bWzM2bVJlbmRlclRhcmdldFN5c3RlbS1EUzg2RmRlRy5qcyAgICAgICAgG1swbRtbMTsybSAgIDU4LjgwIGtCG1swbRtbMm0g4pSCIGd6aXA6ICAxNi40NyBrQhtbMG0KG1sybS4uLy4uL1VzZXJzL3BhdmVsL0FwcERhdGEvTG9jYWwvVGVtcC9waWFub21vdGlvbi1wd2EtcmVsZWFzZXMtYmFzZXBhdGgtNXV0eUxnL3JlbGVhc2UtcGlhbm9tb3Rpb24vG1swbRtbMm1hc3NldHMvG1swbRtbMzZtR3JhcGhpY3NDb250ZXh0LWZMNFVBanlOLmpzICAgICAgICAgICAbWzBtG1sxOzJtICAgNjEuNjgga0IbWzBtG1sybSDilIIgZ3ppcDogIDIwLjYyIGtCG1swbQobWzJtLi4vLi4vVXNlcnMvcGF2ZWwvQXBwRGF0YS9Mb2NhbC9UZW1wL3BpYW5vbW90aW9uLXB3YS1yZWxlYXNlcy1iYXNlcGF0aC01dXR5TGcvcmVsZWFzZS1waWFub21vdGlvbi8bWzBtG1sybWFzc2V0cy8bWzBtG1szNm1DYW52YXNQb29sLUJhMzNUT1k5LmpzICAgICAgICAgICAgICAgIBtbMG0bWzE7Mm0gICA3MS4yMCBrQhtbMG0bWzJtIOKUgiBnemlwOiAgMjMuMzAga0IbWzBtChtbMm0uLi8uLi9Vc2Vycy9wYXZlbC9BcHBEYXRhL0xvY2FsL1RlbXAvcGlhbm9tb3Rpb24tcHdhLXJlbGVhc2VzLWJhc2VwYXRoLTV1dHlMZy9yZWxlYXNlLXBpYW5vbW90aW9uLxtbMG0bWzJtYXNzZXRzLxtbMG0bWzM2bWluZGV4LUM2cUI5ZnZHLmpzICAgICAgICAgICAgICAgICAgICAgG1swbRtbMzM7MW0xLDQxMi4wMyBrQhtbMG0bWzJtIOKUgiBnemlwOiA0MTQuNzYga0IbWzBtCgo="
+                    },
+                    {
+                      "buffer": "4pyTIGJ1aWx0IGluIDIuNTdzCg=="
+                    },
+                    {
+                      "buffer": "R2VuZXJhdGVkIGRpc3Qvb2ZmbGluZS1tYW5pZmVzdC5qc29uIGZvciByZWxlYXNlIGEyYjVlYjc4NTk4ODJkZWZhNDJkNTdlMDogODUgZmlsZXMsIDMwLjQwIE1pQi4K"
+                    }
+                  ],
+                  "stderr": [
+                    {
+                      "buffer": "KG5vZGU6Nzg2MzYpIFdhcm5pbmc6IFRoZSAnTk9fQ09MT1InIGVudiBpcyBpZ25vcmVkIGR1ZSB0byB0aGUgJ0ZPUkNFX0NPTE9SJyBlbnYgYmVpbmcgc2V0LgooVXNlIGBub2RlIC0tdHJhY2Utd2FybmluZ3MgLi4uYCB0byBzaG93IHdoZXJlIHRoZSB3YXJuaW5nIHdhcyBjcmVhdGVkKQo="
+                    },
+                    {
+                      "buffer": "W3BsdWdpbiBidWlsdGluOnZpdGUtcmVwb3J0ZXJdIBtbMzM7MW0KKCEpIFNvbWUgY2h1bmtzIGFyZSBsYXJnZXIgdGhhbiA1MDAga0IgYWZ0ZXIgbWluaWZpY2F0aW9uLiBDb25zaWRlcjoKLSBVc2luZyBkeW5hbWljIGltcG9ydCgpIHRvIGNvZGUtc3BsaXQgdGhlIGFwcGxpY2F0aW9uCi0gVXNlIGJ1aWxkLnJvbGxkb3duT3B0aW9ucy5vdXRwdXQuY29kZVNwbGl0dGluZyB0byBpbXByb3ZlIGNodW5raW5nOiBodHRwczovL3JvbGxkb3duLnJzL3JlZmVyZW5jZS9PdXRwdXRPcHRpb25zLmNvZGVTcGxpdHRpbmcKLSBBZGp1c3QgY2h1bmsgc2l6ZSBsaW1pdCBmb3IgdGhpcyB3YXJuaW5nIHZpYSBidWlsZC5jaHVua1NpemVXYXJuaW5nTGltaXQuG1swbQo="
+                    }
+                  ],
+                  "retry": 0,
+                  "startTime": "2026-10-15T12:58:40.531Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "5d9772746f853bc72232-58f6ceabbeb311ecf466",
+          "file": "offline-pwa.spec.ts",
+          "line": 641,
+          "column": 1
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-10-15T12:58:37.551Z",
+    "duration": 21727.307999999997,
+    "expected": 1,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}

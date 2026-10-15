@@ -1,91 +1,33 @@
-import { expect, test } from "@playwright/test";
+import {expect,test} from "@playwright/test";
+import {loadStudioSong,openStudioInspector,saveStudioProject,settledStudio} from "./studio-helpers";
 
-test.describe("M2 Vertical Browser Player MVP (W015–W022)", () => {
-  test("end-to-end user journey: analysis, player rendering, playback, and persistence", async ({
-    page,
-  }) => {
-    const pageErrors: string[] = [];
-    page.on("pageerror", (err) => pageErrors.push(err.message));
-
-    await page.goto("/");
-
-    // 1. Check title & page header
-    await expect(page).toHaveTitle("PianoMotion Studio · MIDI diagnostics");
-    await expect(page.getByRole("heading", { level: 1 })).toContainText(
-      "MIDI analysis diagnostics",
-    );
-
-    // 2. Select a fixture and run analysis
-    await page.locator("#fixture-select").selectOption("tracked-right-hand");
-    await page.locator("#analyze-button").click();
-
-    // 3. Wait for analysis to complete and player card to appear
-    await expect(page.locator(".player-card")).toBeVisible({ timeout: 30_000 });
-    await expect(page.locator("#piano-canvas-container canvas")).toBeVisible({
-      timeout: 5_000,
-    });
-
-    // 4. Verify transport controls
-    const playButton = page.locator("#player-play-button");
-    const stopButton = page.locator("#player-stop-button");
-    const seekSlider = page.locator("#player-seek-slider");
-
-    await expect(playButton).toContainText("Play");
-
-    // Click Play -> starts playback
-    await playButton.click();
-    await expect(playButton).toContainText("Pause");
-
-    // Wait 1.5 seconds and assert time has advanced
-    await page.waitForTimeout(1500);
-    const timeVal = await seekSlider.inputValue();
-    expect(parseFloat(timeVal)).toBeGreaterThan(-2.0);
-
-    // Click Pause
-    await playButton.click();
-    await expect(playButton).toContainText("Play");
-
-    // Seek to 1.0s
-    await seekSlider.evaluate((el: HTMLInputElement) => {
-      el.value = "1.0";
-      el.dispatchEvent(new Event("change", { bubbles: true }));
-    });
-
-    // Click Stop
-    await stopButton.click();
-    const stoppedTime = await seekSlider.inputValue();
-    expect(parseFloat(stoppedTime)).toBeLessThanOrEqual(-1.9);
-
-    // 5. Change Speed & KeyStyle
-    await page.locator("#player-speed-select").selectOption("1.25");
-    await page.locator("#player-keystyle-select").selectOption("equal");
-
-    // 6. Test Persistence: Save to IndexedDB
-    const saveButton = page.locator("#player-save-db-button");
-    await saveButton.click();
-    await expect(page.locator(".save-status-msg")).toContainText(
-      "Project saved to IndexedDB",
-      { timeout: 5_000 },
-    );
-
-    // Verify record in IndexedDB via browser evaluate
-    const dbRecordExists = await page.evaluate(async () => {
-      return new Promise<boolean>((resolve) => {
-        const req = indexedDB.open("handthesia_db");
-        req.onsuccess = () => {
-          const db = req.result;
-          const tx = db.transaction("projects", "readonly");
-          const store = tx.objectStore("projects");
-          const countReq = store.count();
-          countReq.onsuccess = () => resolve(countReq.result > 0);
-          countReq.onerror = () => resolve(false);
-        };
-        req.onerror = () => resolve(false);
-      });
-    });
-    expect(dbRecordExists).toBe(true);
-
-    // 7. Verify zero unhandled browser errors occurred
-    expect(pageErrors).toEqual([]);
-  });
+test("studio playback, geometry replan and committed project persistence",async({page})=>{
+  test.setTimeout(180_000);
+  const errors:string[]=[];
+  page.on("pageerror",error=>errors.push(error.message));
+  const initial=await loadStudioSong(page);
+  const play=page.locator("#player-play-button");
+  const seek=page.locator("#player-seek-slider");
+  await play.click();
+  await expect(play).toContainText("Pause");
+  await expect.poll(async()=>Number(await seek.inputValue())).toBeGreaterThan(-1.5);
+  await play.click();
+  await expect(play).toContainText("Play");
+  await page.locator("#player-stop-button").click();
+  expect(Number(await seek.inputValue())).toBeLessThanOrEqual(-1.9);
+  await page.locator("#player-speed-select").selectOption("1.25");
+  await openStudioInspector(page,"Scene");
+  await page.locator("#studio-key-style").selectOption("equal");
+  const applied=await settledStudio(page,initial.result.revision);
+  await expect.poll(()=>page.evaluate(()=>window.__playerSnapshot!.keyStyle)).toBe("equal");
+  await page.getByRole("button",{name:"Close panel",exact:true}).click();
+  await saveStudioProject(page);
+  const record=await page.evaluate(async id=>{
+    const db=await new Promise<IDBDatabase>((resolve,reject)=>{const r=indexedDB.open("handthesia_db",2);r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});
+    try{return await new Promise<{projectId:string;sourceContext:{keyStyle:string}}>((resolve,reject)=>{const r=db.transaction("projects").objectStore("projects").get(id);r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});}
+    finally{db.close();}
+  },applied.result.projectId);
+  expect(record.projectId).toBe(applied.result.projectId);
+  expect(record.sourceContext.keyStyle).toBe("equal");
+  expect(errors).toEqual([]);
 });

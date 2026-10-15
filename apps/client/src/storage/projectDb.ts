@@ -14,6 +14,8 @@ import {
   validateFingeringPlanReferences,
   validatePerformancePlanReferences,
   type ResourceDescriptor,
+  ProjectSourceContextSchema,
+  type ProjectSourceContext,
 } from "@handthesia/contracts";
 
 export const DB_NAME = "handthesia_db";
@@ -93,6 +95,7 @@ export interface SavedProject {
   profile?: PianistProfile | null;
   resources?: ResourceDescriptor[];
   resourcePayloads?: Record<string, ArrayBuffer>;
+  sourceContext?: ProjectSourceContext;
 }
 
 /**
@@ -125,6 +128,7 @@ export const SavedProjectSchema = z.object({
     z.string(),
     z.custom<ArrayBuffer>((value) => value instanceof ArrayBuffer, "Expected resource ArrayBuffer"),
   ).optional(),
+  sourceContext: ProjectSourceContextSchema.optional(),
 });
 
 /**
@@ -359,9 +363,7 @@ export async function saveProject(project: SavedProject): Promise<void> {
       return;
     }
 
-    request.onsuccess = () => {
-      safeResolve();
-    };
+    request.onsuccess = () => undefined;
 
     request.onerror = () => {
       safeReject(request.error, `Failed to save project "${project.projectId}"`);
@@ -374,6 +376,7 @@ export async function saveProject(project: SavedProject): Promise<void> {
     tx.onabort = () => {
       safeReject(tx.error, `Transaction aborted while saving project "${project.projectId}"`);
     };
+    tx.oncomplete = safeResolve;
   });
 }
 
@@ -449,9 +452,7 @@ export async function deleteProject(projectId: string): Promise<void> {
     const store = tx.objectStore(PROJECTS_STORE);
     const request = store.delete(projectId);
 
-    request.onsuccess = () => {
-      resolve();
-    };
+    request.onsuccess = () => undefined;
 
     request.onerror = () => {
       reject(request.error ?? new Error(`Failed to delete project "${projectId}"`));
@@ -460,6 +461,8 @@ export async function deleteProject(projectId: string): Promise<void> {
     tx.onerror = () => {
       reject(tx.error ?? new Error(`Transaction failed while deleting project "${projectId}"`));
     };
+    tx.onabort = () => reject(tx.error ?? new Error(`Transaction aborted while deleting project "${projectId}"`));
+    tx.oncomplete = () => resolve();
   });
 }
 
@@ -474,9 +477,7 @@ export async function clearAllProjects(): Promise<void> {
     const store = tx.objectStore(PROJECTS_STORE);
     const request = store.clear();
 
-    request.onsuccess = () => {
-      resolve();
-    };
+    request.onsuccess = () => undefined;
 
     request.onerror = () => {
       reject(request.error ?? new Error("Failed to clear projects store."));
@@ -485,6 +486,8 @@ export async function clearAllProjects(): Promise<void> {
     tx.onerror = () => {
       reject(tx.error ?? new Error("Transaction failed while clearing projects."));
     };
+    tx.onabort = () => reject(tx.error ?? new Error("Transaction aborted while clearing projects."));
+    tx.oncomplete = () => resolve();
   });
 }
 
@@ -525,9 +528,7 @@ export async function saveProfile(profile: PianistProfile): Promise<void> {
       return;
     }
 
-    request.onsuccess = () => {
-      safeResolve();
-    };
+    request.onsuccess = () => undefined;
 
     request.onerror = () => {
       safeReject(request.error, `Failed to save profile "${profile.profileId}"`);
@@ -540,6 +541,7 @@ export async function saveProfile(profile: PianistProfile): Promise<void> {
     tx.onabort = () => {
       safeReject(tx.error, `Transaction aborted while saving profile "${profile.profileId}"`);
     };
+    tx.oncomplete = safeResolve;
   });
 }
 
@@ -607,9 +609,7 @@ export async function deleteProfile(profileId: string): Promise<void> {
     const store = tx.objectStore(PROFILES_STORE);
     const request = store.delete(profileId);
 
-    request.onsuccess = () => {
-      resolve();
-    };
+    request.onsuccess = () => undefined;
 
     request.onerror = () => {
       reject(request.error ?? new Error(`Failed to delete profile "${profileId}"`));
@@ -618,6 +618,8 @@ export async function deleteProfile(profileId: string): Promise<void> {
     tx.onerror = () => {
       reject(tx.error ?? new Error(`Transaction failed while deleting profile "${profileId}"`));
     };
+    tx.onabort = () => reject(tx.error ?? new Error(`Transaction aborted while deleting profile "${profileId}"`));
+    tx.oncomplete = () => resolve();
   });
 }
 
@@ -665,9 +667,7 @@ export async function clearAllProfiles(): Promise<void> {
     const store = tx.objectStore(PROFILES_STORE);
     const request = store.clear();
 
-    request.onsuccess = () => {
-      resolve();
-    };
+    request.onsuccess = () => undefined;
 
     request.onerror = () => {
       reject(request.error ?? new Error("Failed to clear profiles store."));
@@ -676,6 +676,8 @@ export async function clearAllProfiles(): Promise<void> {
     tx.onerror = () => {
       reject(tx.error ?? new Error("Transaction failed while clearing profiles."));
     };
+    tx.onabort = () => reject(tx.error ?? new Error("Transaction aborted while clearing profiles."));
+    tx.oncomplete = () => resolve();
   });
 }
 
@@ -726,10 +728,11 @@ export async function saveDbSetting<T>(key: string, value: T): Promise<void> {
       return;
     }
 
-    request.onsuccess = () => safeResolve();
+    request.onsuccess = () => undefined;
     request.onerror = () => safeReject(request.error, `Failed to save setting "${key}"`);
     tx.onerror = () => safeReject(tx.error, `Transaction failed while saving setting "${key}"`);
     tx.onabort = () => safeReject(tx.error, `Transaction aborted while saving setting "${key}"`);
+    tx.oncomplete = safeResolve;
   });
 }
 
@@ -770,8 +773,10 @@ export async function deleteDbSetting(key: string): Promise<void> {
     const store = tx.objectStore(SETTINGS_STORE);
     const request = store.delete(key);
 
-    request.onsuccess = () => resolve();
+    request.onsuccess = () => undefined;
     request.onerror = () => reject(request.error ?? new Error(`Failed to delete setting "${key}"`));
     tx.onerror = () => reject(tx.error ?? new Error(`Transaction failed while deleting setting "${key}"`));
+    tx.onabort = () => reject(tx.error ?? new Error(`Transaction aborted while deleting setting "${key}"`));
+    tx.oncomplete = () => resolve();
   });
 }

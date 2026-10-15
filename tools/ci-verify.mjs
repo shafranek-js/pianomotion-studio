@@ -5,10 +5,15 @@ import process from "node:process";
 
 /**
  * PianoMotion Studio CI Verification Pipeline.
- * Runs typecheck, scoped lint, unit tests, and production build.
+ * Runs core, client, production PWA and decoded-media acceptance in sequence.
  */
 
 const steps = [
+  {
+    name: "Python Core and Frozen Goldens",
+    command: process.platform === "win32" ? "npm.cmd" : "npm",
+    args: ["run", "test:python"],
+  },
   {
     name: "TypeScript Typecheck",
     command: process.platform === "win32" ? "npm.cmd" : "npm",
@@ -28,6 +33,11 @@ const steps = [
     name: "Production Build",
     command: process.platform === "win32" ? "npm.cmd" : "npm",
     args: ["run", "build"],
+  },
+  {
+    name: "Browser, Worker, PWA and Media",
+    command: process.platform === "win32" ? "npm.cmd" : "npm",
+    args: ["run", "test:browser:all"],
   },
 ];
 

@@ -1,0 +1,169 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-10-15T06:52:55.272Z",
+  "baseUrl": "http://127.0.0.1:4173",
+  "browserVersion": "156.0.8078.4",
+  "runtimeEngineVersion": "83fde5039dd70360c29aa5a3edbb07fc2f024528c76330b42bc55e195cb8fbc7",
+  "timeoutMsPerCase": 120000,
+  "noteCounts": [
+    50000
+  ],
+  "sourceMidi": "deterministic sequential note-on/off events, type 0, 120 PPQ, 120 BPM; 250 ms note-on spacing, 125 ms note duration",
+  "workloadScope": "Worker analyze-midi only, with a blank manifest page main-thread heartbeat and requestAnimationFrame probe; does not render the full Pixi/editor/player UI.",
+  "measurementNotes": [
+    "Worker analysis timing includes runtime initialization for each fresh Worker.",
+    "Heartbeat and animation-frame gaps measure responsiveness of the blank manifest page while work runs in a separate real Worker; they do not establish full-UI responsiveness at these note counts.",
+    "User-agent-specific memory is preferred; the performance.memory fallback only describes the page realm and does not claim Worker heap usage.",
+    "Windows process memory sums PrivateMemorySize64 and WorkingSet64 for only the PIDs reported by the launched Chromium instance's CDP SystemInfo.getProcessInfo; this includes Worker/WASM but is aggregate browser-process memory, not an isolated Worker measurement.",
+    "Timed-out note loads are labeled timeout_unsupported, terminated at the configured bound, and are not a pass or scalability claim."
+  ],
+  "status": "incomplete_timeout_unsupported",
+  "cases": [
+    {
+      "status": "timeout_unsupported",
+      "requestedNotes": 50000,
+      "midiBytes": 400033,
+      "elapsedMs": 120002.2,
+      "heartbeatIntervalMs": 50,
+      "heartbeatTicks": 2402,
+      "expectedHeartbeatTicks": 2400,
+      "heartbeatRatio": 1.001,
+      "maxHeartbeatGapMs": 56.3,
+      "animationFrames": 7208,
+      "maxAnimationFrameGapMs": 18.8,
+      "memory": {
+        "measurementScope": "main-realm-js-heap-only",
+        "beforeBytes": 19300000,
+        "peakBytes": 19300000,
+        "atTerminalBytes": 19300000,
+        "afterTerminationBytes": 19300000,
+        "fallbackScopeExcludesWorkerHeap": true,
+        "measurementError": null
+      },
+      "reason": "Worker analysis exceeded the 120000ms bounded timeout and was terminated.",
+      "browserProcessMemory": {
+        "status": "measured",
+        "measurementScope": "sum of PrivateMemorySize64 and WorkingSet64 for PIDs reported by this launched Chromium CDP session",
+        "includesWorkerAndWasmButDoesNotIsolateWorker": true,
+        "before": {
+          "stage": "before",
+          "sampledAt": "2026-10-15T06:50:54.403Z",
+          "processTypes": {
+            "browser": 1,
+            "renderer": 1,
+            "GPU": 1,
+            "network.mojom.NetworkService": 1
+          },
+          "status": "measured",
+          "requestedProcessCount": 4,
+          "sampledProcessCount": 4,
+          "privateBytes": 88195072,
+          "workingSetBytes": 219914240,
+          "processes": [
+            {
+              "pid": 22676,
+              "privateBytes": 20762624,
+              "workingSetBytes": 61390848
+            },
+            {
+              "pid": 48312,
+              "privateBytes": 14467072,
+              "workingSetBytes": 39526400
+            },
+            {
+              "pid": 67392,
+              "privateBytes": 23093248,
+              "workingSetBytes": 64053248
+            },
+            {
+              "pid": 73064,
+              "privateBytes": 29872128,
+              "workingSetBytes": 54943744
+            }
+          ]
+        },
+        "peakPrivateBytes": 549330944,
+        "peakPrivateMiB": 523.9,
+        "peakWorkingSetBytes": 657596416,
+        "peakWorkingSetMiB": 627.1,
+        "peakSnapshot": {
+          "stage": "during",
+          "sampledAt": "2026-10-15T06:52:04.363Z",
+          "processTypes": {
+            "browser": 1,
+            "renderer": 1,
+            "GPU": 1,
+            "network.mojom.NetworkService": 1
+          },
+          "status": "measured",
+          "requestedProcessCount": 4,
+          "sampledProcessCount": 4,
+          "privateBytes": 549330944,
+          "workingSetBytes": 650055680,
+          "processes": [
+            {
+              "pid": 22676,
+              "privateBytes": 22155264,
+              "workingSetBytes": 63881216
+            },
+            {
+              "pid": 48312,
+              "privateBytes": 32055296,
+              "workingSetBytes": 58269696
+            },
+            {
+              "pid": 67392,
+              "privateBytes": 465321984,
+              "workingSetBytes": 472956928
+            },
+            {
+              "pid": 73064,
+              "privateBytes": 29798400,
+              "workingSetBytes": 54947840
+            }
+          ]
+        },
+        "afterWorkerTermination": {
+          "stage": "after",
+          "sampledAt": "2026-10-15T06:52:55.187Z",
+          "processTypes": {
+            "browser": 1,
+            "renderer": 1,
+            "GPU": 1,
+            "network.mojom.NetworkService": 1
+          },
+          "status": "measured",
+          "requestedProcessCount": 4,
+          "sampledProcessCount": 4,
+          "privateBytes": 538181632,
+          "workingSetBytes": 657596416,
+          "processes": [
+            {
+              "pid": 22676,
+              "privateBytes": 22159360,
+              "workingSetBytes": 63967232
+            },
+            {
+              "pid": 48312,
+              "privateBytes": 32055296,
+              "workingSetBytes": 58269696
+            },
+            {
+              "pid": 67392,
+              "privateBytes": 454168576,
+              "workingSetBytes": 480231424
+            },
+            {
+              "pid": 73064,
+              "privateBytes": 29798400,
+              "workingSetBytes": 55128064
+            }
+          ]
+        },
+        "sampleCount": 121,
+        "errors": []
+      },
+      "midiGenerationMs": 14.16
+    }
+  ]
+}

@@ -5,8 +5,10 @@ import {
   setMasterVolume,
 } from "./audioContext.ts";
 import { PianoSampler } from "./sampler.ts";
-import type { PedalState, RestoredPianoVoice } from "./sampler.ts";
+import { derivePerformanceStateAt } from "./performancePlan.ts";
 import type { SyncedAudioSource } from "./recording/syncedAudioSource.ts";
+import type { PerformanceOutput, PerformanceOutputId } from "./output/index.ts";
+import { SynthPerformanceOutput } from "./output/index.ts";
 
 export type TransportState = "idle" | "playing" | "paused";
 
@@ -23,81 +25,6 @@ const DEFAULT_SCHEDULE_INTERVAL_MS = 25; // 25ms polling tick
 const MIN_SPEED = 0.25;
 const MAX_SPEED = 2.0;
 
-type PlaybackVoiceState = RestoredPianoVoice;
-
-interface PlaybackState {
-  voices: PlaybackVoiceState[];
-  pedals: PedalState;
-}
-
-function derivePlaybackState(plan: PerformancePlan | null, songTime: number): PlaybackState {
-  const pedals: PedalState = { sustain: false, sostenuto: false, soft: false };
-  const voices = new Map<string, PlaybackVoiceState>();
-  if (!plan) return { voices: [], pedals };
-
-  for (const event of plan.events) {
-    if (event.timeSeconds > songTime) break;
-    if (event.type === "press") {
-      voices.set(event.noteId, {
-        noteId: event.noteId,
-        pitch: event.pitch,
-        velocity: event.velocity,
-        keyState: "down",
-        heldBySostenuto: false,
-        sustainedBySustain: false,
-        softPedalAtPress: pedals.soft,
-      });
-      continue;
-    }
-
-    if (event.type === "release") {
-      const voice = voices.get(event.noteId);
-      if (!voice) continue;
-      voice.keyState = "up";
-      if (pedals.sustain) {
-        voice.sustainedBySustain = true;
-      } else if (!(voice.heldBySostenuto && pedals.sostenuto)) {
-        voices.delete(event.noteId);
-      }
-      continue;
-    }
-
-    const engaged = event.value >= 64;
-    if (event.controller === 64) {
-      const wasEngaged = pedals.sustain;
-      pedals.sustain = engaged;
-      if (wasEngaged && !engaged) {
-        for (const [noteId, voice] of voices) {
-          if (voice.keyState !== "up") continue;
-          if (voice.heldBySostenuto && pedals.sostenuto) continue;
-          voice.sustainedBySustain = false;
-          voices.delete(noteId);
-        }
-      }
-    } else if (event.controller === 66) {
-      const wasEngaged = pedals.sostenuto;
-      pedals.sostenuto = engaged;
-      if (!wasEngaged && engaged) {
-        for (const voice of voices.values()) {
-          if (voice.keyState === "down") voice.heldBySostenuto = true;
-        }
-      } else if (wasEngaged && !engaged) {
-        for (const [noteId, voice] of voices) {
-          if (!voice.heldBySostenuto) continue;
-          voice.heldBySostenuto = false;
-          if (voice.keyState !== "up") continue;
-          if (pedals.sustain) voice.sustainedBySustain = true;
-          else voices.delete(noteId);
-        }
-      }
-    } else {
-      pedals.soft = engaged;
-    }
-  }
-
-  return { voices: [...voices.values()], pedals };
-}
-
 /**
  * Transport controller driven by AudioContext clock.
  * Implements high-precision lookahead event scheduling (~100ms ahead every 25ms),
@@ -107,6 +34,8 @@ export class Transport {
   private readonly audioContext: AudioContext;
   private readonly sampler: PianoSampler;
   private readonly ownsSampler: boolean;
+  private readonly defaultSynthOutput: SynthPerformanceOutput;
+  private output: PerformanceOutput;
 
   private leadInSeconds: number;
   private readonly scheduleAheadSeconds: number;
@@ -126,13 +55,19 @@ export class Transport {
 
   private nextEventIndex = 0;
   private schedulerTimer: ReturnType<typeof setInterval> | null = null;
+  private playRequestGeneration = 0;
+  private disposed = false;
   private syncedAudio: SyncedAudioSource | null = null;
+  private unsubscribeSyncedAudioError: (() => void) | null = null;
+  private unsubscribeOutputUnavailable: (() => void) | null = null;
+  private fatalOutputError: Error | null = null;
 
   // Listeners
   private readonly timeListeners = new Set<(timeSeconds: number) => void>();
   private readonly stateListeners = new Set<(state: TransportState) => void>();
   private readonly speedListeners = new Set<(speed: number) => void>();
   private readonly endedListeners = new Set<() => void>();
+  private readonly outputErrorListeners = new Set<(error: Error) => void>();
 
   constructor(options: TransportOptions = {}) {
     this.audioContext = options.audioContext ?? getAudioContext();
@@ -143,6 +78,8 @@ export class Transport {
       this.sampler = new PianoSampler({ audioContext: this.audioContext });
       this.ownsSampler = true;
     }
+    this.defaultSynthOutput = new SynthPerformanceOutput(this.sampler);
+    this.output = this.defaultSynthOutput;
 
     this.leadInSeconds = options.leadInSeconds ?? TRANSPORT_LEAD_IN_SECONDS;
     this.scheduleAheadSeconds = options.scheduleAheadSeconds ?? DEFAULT_SCHEDULE_AHEAD_SECONDS;
@@ -153,12 +90,64 @@ export class Transport {
   }
 
   /**
+   * Sets the active playback output engine (synth, soundfont, or webmidi).
+   * Seamlessly transfers sounding voices and pedal state during active playback.
+   */
+  public setOutput(output: PerformanceOutput | null): void {
+    const nextOutput = output ?? this.defaultSynthOutput;
+    if (this.output === nextOutput) return;
+
+    const prevOutput = this.output;
+    this.unsubscribeOutputUnavailable?.();
+    this.unsubscribeOutputUnavailable = null;
+    prevOutput.panic();
+    if (prevOutput !== this.defaultSynthOutput) prevOutput.dispose();
+
+    this.output = nextOutput;
+    this.fatalOutputError = null;
+    this.unsubscribeOutputUnavailable = this.output.subscribeUnavailable?.((error) => {
+      this.fatalOutputError = error;
+      this.playRequestGeneration += 1;
+      if (this.state === "playing") this.pause();
+      for (const listener of this.outputErrorListeners) listener(error);
+    }) ?? null;
+
+    // Apply current master volume to the new output
+    this.output.setVolume?.(getMasterVolume());
+
+    if (this.state === "playing" && this.plan) {
+      this.output.restoreState(derivePerformanceStateAt(this.plan, this.getCurrentTime()));
+    } else if (this.plan) {
+      this.restorePedalStateAt(this.currentTime);
+    }
+  }
+
+  /**
+   * Returns currently active playback output.
+   */
+  public getOutput(): PerformanceOutput {
+    return this.output;
+  }
+
+  /**
+   * Returns the ID of the currently active output engine ("synth" | "soundfont" | "webmidi").
+   */
+  public getOutputId(): PerformanceOutputId {
+    return this.output.id;
+  }
+
+  /** Returns an active-output error until a replacement output is activated. */
+  public getOutputError(): Error | null {
+    return this.fatalOutputError;
+  }
+
+  /**
    * Loads a PerformancePlan into the transport.
    * Resets position to -leadInSeconds and clears active playback.
    */
   public loadPlan(plan: PerformancePlan, explicitDurationSeconds?: number): void {
     this.pause();
-    this.sampler.silenceAll();
+    this.output.panic();
 
     this.plan = plan;
 
@@ -182,7 +171,7 @@ export class Transport {
     const position = wasPlaying ? this.getCurrentTime() : this.currentTime;
 
     this.stopScheduler();
-    if (!wasPlaying) this.sampler.silenceAll();
+    if (!wasPlaying) this.output.panic();
     this.plan = plan;
     this.durationSeconds = this.resolveDuration(plan, explicitDurationSeconds);
     this.currentTime = this.clampSongTime(position);
@@ -260,12 +249,31 @@ export class Transport {
    * Starts or resumes playback.
    */
   public async play(): Promise<void> {
-    if (this.state === "playing") {
+    if (this.disposed || this.state === "playing") {
       return;
+    }
+
+    // A disconnected hardware output remains fatal until setOutput activates
+    // a newly prepared backend; retrying the same device would be silent.
+    if (this.fatalOutputError) return;
+
+    const requestGeneration = ++this.playRequestGeneration;
+
+    // A fresh Play gesture is the only way to retry a fatal recording-DSP
+    // schedule after Transport reported it and paused.
+    if (this.syncedAudio?.getError()) {
+      this.syncedAudio.clearPlaybackErrorForUserRetry();
     }
 
     if (this.audioContext.state === "suspended") {
       await this.audioContext.resume();
+    }
+
+    // Resume is asynchronous. Explicit pause/stop/dispose or a backend/DSP
+    // failure while it is pending invalidates this play intent.
+    if (this.disposed || requestGeneration !== this.playRequestGeneration ||
+        this.fatalOutputError || this.syncedAudio?.getError()) {
+      return;
     }
 
     const now = this.audioContext.currentTime;
@@ -291,6 +299,7 @@ export class Transport {
    * Pauses playback.
    */
   public pause(): void {
+    this.playRequestGeneration += 1;
     if (this.state !== "playing") {
       return;
     }
@@ -299,7 +308,7 @@ export class Transport {
     this.state = "paused";
 
     this.stopScheduler();
-    this.sampler.silenceAll();
+    this.output.panic();
     this.syncedAudio?.pause();
 
     this.emitState();
@@ -310,8 +319,9 @@ export class Transport {
    * Stops playback and resets playhead to start (-leadInSeconds).
    */
   public stop(): void {
+    this.playRequestGeneration += 1;
     this.stopScheduler();
-    this.sampler.silenceAll();
+    this.output.panic();
     this.syncedAudio?.pause();
 
     this.currentTime = -this.leadInSeconds;
@@ -341,7 +351,7 @@ export class Transport {
       this.syncedAudio?.seek(clampedTime, this.speed);
       this.tickScheduler();
     } else {
-      this.sampler.silenceAll();
+      this.output.panic();
       this.currentTime = clampedTime;
       this.updateNextEventIndex(clampedTime);
       this.restorePedalStateAt(clampedTime);
@@ -369,10 +379,10 @@ export class Transport {
       this.audioStartTime = now;
       this.speed = clampedSpeed;
 
-      // Silence any scheduled notes beyond current time and reschedule at new speed
+      // Reschedule future events at new speed without silencing or re-triggering active notes (A15)
       this.updateNextEventIndex(currentSongTime);
-      this.restorePlaybackStateAt(currentSongTime);
-      this.syncedAudio?.seek(currentSongTime, clampedSpeed);
+      this.output.cancelScheduledFutureEvents(now);
+      this.syncedAudio?.setSpeed(clampedSpeed, currentSongTime);
       this.tickScheduler();
     } else {
       this.speed = clampedSpeed;
@@ -393,7 +403,7 @@ export class Transport {
    */
   public setVolume(volume: number): void {
     setMasterVolume(volume);
-    this.syncedAudio?.setVolume(volume);
+    this.output.setVolume?.(volume);
   }
 
   /**
@@ -407,10 +417,13 @@ export class Transport {
    * Attaches or clears the synchronized external audio recording source.
    */
   public setSyncedAudio(syncedAudio: SyncedAudioSource | null): void {
+    this.unsubscribeSyncedAudioError?.();
+    this.unsubscribeSyncedAudioError = null;
     if (this.syncedAudio && this.syncedAudio !== syncedAudio) {
       this.syncedAudio.pause();
     }
     this.syncedAudio = syncedAudio;
+    this.unsubscribeSyncedAudioError = syncedAudio?.subscribeError((error) => this.handlePlaybackError(error)) ?? null;
     if (syncedAudio && this.state === "playing") {
       syncedAudio.play(this.getCurrentTime(), this.speed);
     }
@@ -474,6 +487,12 @@ export class Transport {
     };
   }
 
+  /** Receives backend errors such as a disconnected hardware MIDI output. */
+  public subscribeOutputError(callback: (error: Error) => void): () => void {
+    this.outputErrorListeners.add(callback);
+    return () => this.outputErrorListeners.delete(callback);
+  }
+
   /**
    * Lookahead scheduler tick running every ~25ms.
    * Schedules events in [audioNow, audioNow + scheduleAheadSeconds].
@@ -513,13 +532,13 @@ export class Transport {
 
       switch (event.type) {
         case "press":
-          this.sampler.noteOn(event.noteId, event.pitch, event.velocity, clampedAudioTime);
+          this.output.noteOn(event.noteId, event.pitch, event.velocity, clampedAudioTime);
           break;
         case "release":
-          this.sampler.noteOff(event.noteId, clampedAudioTime);
+          this.output.noteOff(event.noteId, undefined, clampedAudioTime);
           break;
         case "pedal":
-          this.sampler.pedal(event.controller, event.value, clampedAudioTime);
+          this.output.pedal(event.controller, event.value, clampedAudioTime);
           break;
       }
 
@@ -576,7 +595,8 @@ export class Transport {
    * preserves equal-time release → pedal → press ordering from PerformancePlan.
    */
   private restorePlaybackStateAt(songTime: number): void {
-    this.sampler.restoreState(derivePlaybackState(this.plan, songTime));
+    const state = derivePerformanceStateAt(this.plan, songTime);
+    this.output.restoreState(state);
   }
 
   private restorePedalStateAt(songTime: number): void {
@@ -592,9 +612,9 @@ export class Transport {
       else soft = event.value;
     }
     const now = this.audioContext.currentTime;
-    this.sampler.pedal(64, sustain, now);
-    this.sampler.pedal(66, sostenuto, now);
-    this.sampler.pedal(67, soft, now);
+    this.output.pedal(64, sustain, now);
+    this.output.pedal(66, sostenuto, now);
+    this.output.pedal(67, soft, now);
   }
 
   private resolveDuration(plan: PerformancePlan, explicitDurationSeconds?: number): number {
@@ -636,10 +656,25 @@ export class Transport {
     }
   }
 
+  private handlePlaybackError(error: Error): void {
+    this.playRequestGeneration += 1;
+    if (this.state === "playing") {
+      this.currentTime = this.getCurrentTime();
+      this.state = "paused";
+      this.stopScheduler();
+      this.output.panic();
+      this.emitState();
+      this.emitTime();
+    }
+    for (const listener of this.outputErrorListeners) listener(error);
+  }
+
   /**
    * Disposes transport and any owned resources.
    */
   public dispose(): void {
+    this.disposed = true;
+    this.playRequestGeneration += 1;
     this.pause();
     this.timeListeners.clear();
     this.stateListeners.clear();
@@ -649,8 +684,15 @@ export class Transport {
       this.syncedAudio.dispose();
       this.syncedAudio = null;
     }
-    if (this.ownsSampler) {
-      this.sampler.dispose();
+    this.unsubscribeSyncedAudioError?.();
+    this.unsubscribeSyncedAudioError = null;
+    this.unsubscribeOutputUnavailable?.();
+    this.unsubscribeOutputUnavailable = null;
+    this.output.panic();
+    if (this.output !== this.defaultSynthOutput) {
+      this.output.dispose();
     }
+    this.defaultSynthOutput.dispose();
+    this.outputErrorListeners.clear();
   }
 }

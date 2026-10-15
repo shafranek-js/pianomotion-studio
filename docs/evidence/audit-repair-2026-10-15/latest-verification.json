@@ -1,0 +1,140 @@
+{
+  "capturedAtUtc": "2026-10-15T13:11:23.7533673Z",
+  "timezone": "Europe/Prague",
+  "version": "0.1.0-dev.2",
+  "head": "dc7eb963ff793110c586b4e86129cb22282cd452",
+  "dirty": true,
+  "commitPushPublicationPerformed": false,
+  "platform": "Windows 10.0.26200 x64",
+  "nodeVersion": "v24.14.0",
+  "chromeVersion": "154.0.8037.98",
+  "edgeVersion": "155.0.4283.45",
+  "normalBuild": {
+    "buildId": "312c85de84dd46900f62db63",
+    "engineVersion": "83fde5039dd70360c29aa5a3edbb07fc2f024528c76330b42bc55e195cb8fbc7",
+    "runtimeVersion": "314.0.7",
+    "fileCount": 85,
+    "totalBytes": 31881540,
+    "allSizesAndSha256Verified": true
+  },
+  "core": {
+    "unitPassed": 397,
+    "unitFiles": 27,
+    "pythonPassed": 28,
+    "pythonSkipped": 0,
+    "numericalFixtures": 13,
+    "expectedGoldenValuesChanged": false,
+    "typecheck": "passed",
+    "lint": "passed",
+    "build": "passed",
+    "diffCheck": "passed"
+  },
+  "browserRuns": [
+    {
+      "name": "ui-chrome",
+      "passed": 17,
+      "failed": 0,
+      "skipped": 0,
+      "durationMs": 180533.53699999998,
+      "report": "browser/ui-chrome.json"
+    },
+    {
+      "name": "ui-msedge",
+      "passed": 17,
+      "failed": 0,
+      "skipped": 0,
+      "durationMs": 190994.95400000003,
+      "report": "browser/ui-msedge.json"
+    },
+    {
+      "name": "worker-chrome",
+      "passed": 16,
+      "failed": 0,
+      "skipped": 0,
+      "durationMs": 116831.839,
+      "report": "browser/worker-chrome.json"
+    },
+    {
+      "name": "worker-msedge",
+      "passed": 16,
+      "failed": 0,
+      "skipped": 0,
+      "durationMs": 165058.497,
+      "report": "browser/worker-msedge.json"
+    },
+    {
+      "name": "audio-chrome",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0,
+      "durationMs": 22531.606,
+      "report": "browser/audio-chrome.json"
+    },
+    {
+      "name": "audio-msedge",
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0,
+      "durationMs": 25025.035,
+      "report": "browser/audio-msedge.json"
+    },
+    {
+      "name": "media-chrome",
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0,
+      "durationMs": 72267.028,
+      "report": "browser/media-chrome.json"
+    },
+    {
+      "name": "media-msedge",
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0,
+      "durationMs": 74178.278,
+      "report": "browser/media-msedge.json"
+    },
+    {
+      "name": "pwa-msedge",
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0,
+      "durationMs": 68600.001,
+      "report": "browser/pwa-msedge.json"
+    }
+  ],
+  "chromePwa": {
+    "acceptedDistinctCases": 8,
+    "fullRunPassed": 7,
+    "fullRunSupersededFailure": "New test used a temporary directory prefix rejected by the existing safe output guard; corrected prefix, then exact case passed.",
+    "fullRun": "browser/pwa-chrome-before-basepath-helper-fix.json",
+    "focusedPassed": 1,
+    "focusedFailed": 0,
+    "focusedSkipped": 0,
+    "focusedReport": "browser/pwa-chrome-pianomotion.json"
+  },
+  "mediaBuildId": "3b3bb27fd95bb6516fbaa81b",
+  "mediaVersusFinalBuildDifference": "Release builder now pins production NODE_ENV and validates the default dist path as well as explicit output paths. Export/audio/render code is unchanged; final-build root offline lifecycle is checked separately.",
+  "remoteCiRun": false,
+  "manualGates": [
+    "Representative user SF2 bank/preset acceptance",
+    "Physical MIDI device, channel, pedals and disconnect",
+    "Subjective listening and full motion review",
+    "Public redistribution rights for original source/assets"
+  ],
+  "loadLimits": {
+    "worker2k": "completed approximately 28.94 s; not a full Pixi/editor load run",
+    "worker10k": "120 s timeout; not accepted",
+    "worker50k": "valid MIDI, 120 s timeout; not accepted",
+    "fullScene50k": "not measured"
+  },
+  "pwaMatrixBuildId": "0dbd4b3742fc7e9294466f60",
+  "finalBuildOfflineSmoke": {
+    "channel": "chrome",
+    "buildId": "312c85de84dd46900f62db63",
+    "passed": 1,
+    "failed": 0,
+    "skipped": 0,
+    "report": "browser/pwa-chrome-final-build-offline.json"
+  }
+}

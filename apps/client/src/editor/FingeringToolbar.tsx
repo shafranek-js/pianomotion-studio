@@ -1,4 +1,6 @@
-import React, { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { Ban, Eraser, Keyboard, Redo2, Undo2, Waves, X } from "lucide-react";
 import type { Hand } from "./types";
 
 export interface FingeringToolbarProps {
@@ -16,6 +18,8 @@ export interface FingeringToolbarProps {
   onUndo?: () => void;
   onRedo?: () => void;
   onToggleStepEntry?: () => void;
+  assignmentControlsHost?: HTMLElement | null;
+  active?: boolean;
   className?: string;
 }
 
@@ -48,31 +52,56 @@ export function FingeringToolbar({
   onUndo,
   onRedo,
   onToggleStepEntry,
+  assignmentControlsHost,
+  active = true,
   className = "",
 }: FingeringToolbarProps) {
   const [showShortcutsModal, setShowShortcutsModal] = useState(false);
+  const [popoverPosition, setPopoverPosition] = useState({ top: 12, left: 12 });
+  const shortcutsButtonRef = useRef<HTMLButtonElement | null>(null);
+  const shortcutsCloseRef = useRef<HTMLButtonElement | null>(null);
 
-  return (
-    <div
-      className={`fingering-toolbar ${className}`}
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        flexWrap: "wrap",
-        gap: "0.6rem",
-        padding: "0.6rem 0.8rem",
-        background: "var(--panel, #19211d)",
-        border: "1px solid var(--border, #33423a)",
-        borderRadius: "0.6rem",
-        color: "#edf2ed",
-        fontSize: "0.85rem",
-        position: "relative",
-      }}
-    >
-      {/* Left group: Hands & Fingers */}
-      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
-        {/* Hand selection */}
+  const closeShortcuts = () => {
+    setShowShortcutsModal(false);
+    shortcutsButtonRef.current?.focus({ preventScroll: true });
+  };
+
+  const toggleShortcuts = () => {
+    if (showShortcutsModal) {
+      closeShortcuts();
+      return;
+    }
+    if (shortcutsButtonRef.current && typeof window !== "undefined") {
+      const bounds = shortcutsButtonRef.current.getBoundingClientRect();
+      const width = Math.min(320, Math.max(0, window.innerWidth - 24));
+      const height = Math.min(420, Math.max(0, window.innerHeight * 0.7));
+      const left = Math.min(Math.max(12, bounds.right - width), Math.max(12, window.innerWidth - width - 12));
+      const top = bounds.bottom + 8 + height <= window.innerHeight - 12
+        ? bounds.bottom + 8
+        : Math.max(12, bounds.top - height - 8);
+      setPopoverPosition({ top, left });
+    }
+    setShowShortcutsModal(true);
+  };
+
+  useEffect(() => {
+    if (!showShortcutsModal || typeof window === "undefined") return;
+    const handleShortcutPopoverEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+      closeShortcuts();
+    };
+    window.addEventListener("keydown", handleShortcutPopoverEscape, true);
+    shortcutsCloseRef.current?.focus({ preventScroll: true });
+    return () => window.removeEventListener("keydown", handleShortcutPopoverEscape, true);
+  }, [showShortcutsModal]);
+
+  const assignmentControls = (
+    <div className="fingering-assignment-controls">
+      {/* Hands and finger assignment */}
+      <div className="fingering-assignment-controls__groups">
         <div
           role="group"
           aria-label="Hand selection"
@@ -86,6 +115,7 @@ export function FingeringToolbar({
         >
           <button
             type="button"
+            aria-pressed={selectedHand === "left"}
             onClick={() => onAssignHand?.("left")}
             style={{
               padding: "0.3rem 0.6rem",
@@ -94,10 +124,7 @@ export function FingeringToolbar({
               cursor: "pointer",
               fontWeight: 600,
               fontSize: "0.78rem",
-              background:
-                selectedHand === "left"
-                  ? "var(--left-hand, #3b82f6)"
-                  : "transparent",
+              background: selectedHand === "left" ? "var(--left-hand, #3b82f6)" : "transparent",
               color: selectedHand === "left" ? "#ffffff" : "var(--muted, #9fac9f)",
               transition: "background 0.15s, color 0.15s",
             }}
@@ -107,6 +134,7 @@ export function FingeringToolbar({
           </button>
           <button
             type="button"
+            aria-pressed={selectedHand === "right"}
             onClick={() => onAssignHand?.("right")}
             style={{
               padding: "0.3rem 0.6rem",
@@ -115,10 +143,7 @@ export function FingeringToolbar({
               cursor: "pointer",
               fontWeight: 600,
               fontSize: "0.78rem",
-              background:
-                selectedHand === "right"
-                  ? "var(--right-hand, #10b981)"
-                  : "transparent",
+              background: selectedHand === "right" ? "var(--right-hand, #10b981)" : "transparent",
               color: selectedHand === "right" ? "#ffffff" : "var(--muted, #9fac9f)",
               transition: "background 0.15s, color 0.15s",
             }}
@@ -128,7 +153,6 @@ export function FingeringToolbar({
           </button>
         </div>
 
-        {/* Finger buttons: 1..5 */}
         <div
           role="group"
           aria-label="Finger assignment"
@@ -148,6 +172,7 @@ export function FingeringToolbar({
                 key={f}
                 type="button"
                 aria-label={`Finger ${f}`}
+                aria-pressed={isSelected}
                 onClick={() => onAssignFinger?.(f)}
                 style={{
                   width: "1.9rem",
@@ -159,9 +184,7 @@ export function FingeringToolbar({
                   cursor: "pointer",
                   fontWeight: 700,
                   fontSize: "0.82rem",
-                  background: isSelected
-                    ? "var(--mint, #a9d3bb)"
-                    : "rgba(255, 255, 255, 0.05)",
+                  background: isSelected ? "var(--mint, #a9d3bb)" : "rgba(255, 255, 255, 0.05)",
                   color: isSelected ? "#111714" : "#edf2ed",
                   transition: "background 0.15s, color 0.15s",
                 }}
@@ -172,7 +195,6 @@ export function FingeringToolbar({
             );
           })}
 
-          {/* Clear Fingering (0) */}
           <button
             type="button"
             onClick={() => {
@@ -195,7 +217,7 @@ export function FingeringToolbar({
             }}
             title="Clear manual fingering and replan automatically (Shortcut: 0)"
           >
-            Clear (0)
+            <Eraser aria-hidden="true" size={14} /> Clear (0)
           </button>
 
           <button
@@ -217,10 +239,9 @@ export function FingeringToolbar({
             }}
             title="Omit selected notes from the performance (Shortcut: Delete or Backspace)"
           >
-            Unplayable (Del)
+            <Ban aria-hidden="true" size={14} /> Unplayable (Del)
           </button>
 
-          {/* Glissando toggle (G) */}
           <button
             type="button"
             onClick={() => onToggleGlissando?.()}
@@ -239,10 +260,37 @@ export function FingeringToolbar({
             }}
             title="Toggle glissando disposition (Shortcut: G)"
           >
-            Gliss (G)
+            <Waves aria-hidden="true" size={14} /> Gliss (G)
           </button>
         </div>
       </div>
+    </div>
+  );
+
+  const assignmentControlsPortal = assignmentControlsHost && active
+    ? createPortal(assignmentControls, assignmentControlsHost)
+    : null;
+
+  return (
+    <div
+      className={`fingering-toolbar ${className}`}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: assignmentControlsHost !== undefined ? "flex-end" : "space-between",
+        flexWrap: "wrap",
+        gap: "0.6rem",
+        padding: "0.6rem 0.8rem",
+        background: "var(--panel, #19211d)",
+        border: "1px solid var(--border, #33423a)",
+        borderRadius: "0.6rem",
+        color: "#edf2ed",
+        fontSize: "0.85rem",
+        position: "relative",
+      }}
+    >
+      {assignmentControlsPortal}
+      {assignmentControlsHost === undefined && assignmentControls}
 
       {/* Middle/Right group: History, Step-entry, Rebuilding indicator */}
       <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
@@ -275,7 +323,7 @@ export function FingeringToolbar({
             }}
             title="Undo (Shortcut: Ctrl+Z)"
           >
-            ↶ Undo
+            <Undo2 aria-hidden="true" size={15} /> Undo
           </button>
           <button
             type="button"
@@ -293,7 +341,7 @@ export function FingeringToolbar({
             }}
             title="Redo (Shortcut: Ctrl+Y)"
           >
-            ↷ Redo
+            <Redo2 aria-hidden="true" size={15} /> Redo
           </button>
         </div>
 
@@ -322,8 +370,11 @@ export function FingeringToolbar({
 
         {/* Shortcuts cheat sheet trigger */}
         <button
+          ref={shortcutsButtonRef}
           type="button"
-          onClick={() => setShowShortcutsModal(!showShortcutsModal)}
+          onClick={toggleShortcuts}
+          aria-expanded={showShortcutsModal}
+          aria-controls="fingering-shortcuts-popover"
           style={{
             padding: "0.3rem 0.55rem",
             borderRadius: "0.4rem",
@@ -336,7 +387,7 @@ export function FingeringToolbar({
           }}
           title="Keyboard shortcuts cheat sheet"
         >
-          ⌨ Shortcuts
+          <Keyboard aria-hidden="true" size={15} /> Shortcuts
         </button>
 
         {/* Rebuilding motion indicator */}
@@ -371,21 +422,25 @@ export function FingeringToolbar({
       </div>
 
       {/* Shortcuts Modal / Popover */}
-      {showShortcutsModal && (
+      {showShortcutsModal && (() => {
+        const popover = (
         <div
-          role="dialog"
+          id="fingering-shortcuts-popover"
+          role="region"
           aria-label="Keyboard shortcuts"
           style={{
-            position: "absolute",
-            top: "calc(100% + 0.5rem)",
-            right: 0,
+            position: "fixed",
+            top: `${popoverPosition.top}px`,
+            left: `${popoverPosition.left}px`,
             zIndex: 100,
             background: "var(--panel-raised, #202b25)",
             border: "1px solid var(--border, #33423a)",
             borderRadius: "0.6rem",
             padding: "0.8rem 1rem",
             boxShadow: "0 10px 25px rgba(0, 0, 0, 0.5)",
-            width: "320px",
+            width: "min(320px, calc(100vw - 24px))",
+            maxHeight: "min(70dvh, 420px)",
+            overflow: "auto",
             display: "flex",
             flexDirection: "column",
             gap: "0.5rem",
@@ -394,18 +449,23 @@ export function FingeringToolbar({
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span style={{ fontWeight: 700, fontSize: "0.85rem" }}>Keyboard Shortcuts</span>
             <button
+              ref={shortcutsCloseRef}
               type="button"
-              onClick={() => setShowShortcutsModal(false)}
+              onClick={closeShortcuts}
               style={{
                 background: "transparent",
                 border: "none",
                 color: "var(--muted, #9fac9f)",
                 cursor: "pointer",
-                fontSize: "1rem",
+                width: "44px",
+                height: "44px",
+                display: "grid",
+                placeItems: "center",
               }}
               title="Close"
+              aria-label="Close keyboard shortcuts"
             >
-              ×
+              <X aria-hidden="true" size={16} />
             </button>
           </div>
 
@@ -440,7 +500,9 @@ export function FingeringToolbar({
             ))}
           </div>
         </div>
-      )}
+        );
+        return typeof document !== "undefined" ? createPortal(popover, document.body) : popover;
+      })()}
     </div>
   );
 }

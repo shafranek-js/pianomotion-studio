@@ -1,0 +1,24 @@
+{
+  "date": "2026-10-15",
+  "check": "Signalsmith 1.3.2 AudioWorklet module loading under the deployed Content-Security-Policy",
+  "method": "Chromium headless, local Vite dev server at http://127.0.0.1:5176, with the exact policy injected as an early CSP meta element",
+  "originalPolicy": {
+    "exact": "default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'unsafe-eval'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob: data:; connect-src 'self' blob:; object-src 'none'; base-uri 'self';",
+    "script-src": "'self' 'wasm-unsafe-eval' 'unsafe-eval'",
+    "worker-src": "'self' blob:",
+    "result": "failed",
+    "observedError": "AbortError: Failed to load worklet module script: blob:http://127.0.0.1:5176/<uuid> (a dependency or cross-origin script failed to load)",
+    "finding": "worker-src blob: did not authorize the blob URL used to load the AudioWorklet module; script-src also needed blob:."
+  },
+  "repairedPolicy": {
+    "exact": "default-src 'self'; script-src 'self' blob: 'wasm-unsafe-eval' 'unsafe-eval'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob: data:; connect-src 'self' blob:; object-src 'none'; base-uri 'self';",
+    "script-src": "'self' blob: 'wasm-unsafe-eval' 'unsafe-eval'",
+    "worker-src": "'self' blob:",
+    "result": "passed",
+    "evidence": "The real-worklet pitch/marker and synthetic-SF2 browser harness completed successfully with the repaired policy. See audio-dsp.json for measured metrics."
+  },
+  "limitations": [
+    "The passing run used a local Vite server with the deployed policy injected as a meta policy; it was not a hosted production deployment test.",
+    "Browser testing is automated and headless; it does not establish manual device or listening acceptance."
+  ]
+}

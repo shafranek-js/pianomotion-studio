@@ -25,6 +25,23 @@ export interface PianoRollViewOptions {
   initialPixelsPerSecond?: number;
   initialPitchHeight?: number;
   rulerHeight?: number;
+  active?: boolean;
+}
+
+export function shouldCaptureSpaceForPanning(
+  active: boolean,
+  isSpacePressed: boolean,
+  event: Pick<KeyboardEvent, "code" | "target">,
+  canvas: HTMLCanvasElement,
+  focusedElement: Element | null,
+): boolean {
+  return (
+    active &&
+    !isSpacePressed &&
+    event.code === "Space" &&
+    event.target === canvas &&
+    focusedElement === canvas
+  );
 }
 
 /**
@@ -56,12 +73,14 @@ export class PianoRollView {
   private rafId: number | null = null;
   private isDestroyed = false;
   private resizeObserver: ResizeObserver | null = null;
+  private active: boolean;
 
   public constructor(
     containerOrCanvas: HTMLElement | HTMLCanvasElement,
     options: PianoRollViewOptions = {}
   ) {
     this.options = options;
+    this.active = options.active ?? true;
     this.renderer = new PianoRollCanvasRenderer();
 
     if (
@@ -115,6 +134,14 @@ export class PianoRollView {
 
   public getViewport(): ViewportState {
     return { ...this.viewport };
+  }
+
+  public setActive(active: boolean): void {
+    this.active = active;
+    if (!active) {
+      this.isSpacePressed = false;
+      if (!this.isPanning) this.canvas.style.cursor = "default";
+    }
   }
 
   public setNotes(notes: Note[], assignments?: Map<string, FingeringAssignment>): void {
@@ -403,7 +430,10 @@ export class PianoRollView {
   };
 
   private handleKeyDown = (e: KeyboardEvent): void => {
-    if (e.code === "Space" && !this.isSpacePressed) {
+    if (
+      typeof document !== "undefined" &&
+      shouldCaptureSpaceForPanning(this.active, this.isSpacePressed, e, this.canvas, document.activeElement)
+    ) {
       this.isSpacePressed = true;
       if (!this.isPanning) {
         this.canvas.style.cursor = "grab";
@@ -413,7 +443,7 @@ export class PianoRollView {
   };
 
   private handleKeyUp = (e: KeyboardEvent): void => {
-    if (e.code === "Space") {
+    if (e.code === "Space" && this.isSpacePressed) {
       this.isSpacePressed = false;
       if (!this.isPanning) {
         this.canvas.style.cursor = "default";

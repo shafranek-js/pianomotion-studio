@@ -217,6 +217,11 @@ export function listProfiles(): PianistProfile[] {
 export async function saveProfile(profile: PianistProfile): Promise<PianistProfile> {
   await initializeProfiles();
   const toSave = structuredClone(PianistProfileSchema.parse(profile));
+  if (isCanonicalProfile(toSave.profileId)) {
+    throw new Error(
+      `Canonical built-in profile '${toSave.profileId}' cannot be modified or overwritten. Please clone or save as a copy.`,
+    );
+  }
   const existing = profilesMap.get(toSave.profileId);
   if (existing) toSave.revision = Math.max(toSave.revision, existing.revision + 1);
   const now = Date.now() / 1000;

@@ -1,0 +1,457 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-10-15T06:45:09.764Z",
+  "baseUrl": "http://127.0.0.1:4173",
+  "browserVersion": "156.0.8078.4",
+  "runtimeEngineVersion": "83fde5039dd70360c29aa5a3edbb07fc2f024528c76330b42bc55e195cb8fbc7",
+  "timeoutMsPerCase": 120000,
+  "noteCounts": [
+    2000,
+    10000,
+    50000
+  ],
+  "sourceMidi": "deterministic sequential note-on/off events, type 0, 480 PPQ, 120 BPM",
+  "measurementNotes": [
+    "Worker analysis timing includes runtime initialization for each fresh Worker.",
+    "Heartbeat and animation-frame gaps measure responsiveness of the blank manifest page while work runs in a separate real Worker; they do not establish full-UI responsiveness at these note counts.",
+    "User-agent-specific memory is preferred; the performance.memory fallback only describes the page realm and does not claim Worker heap usage.",
+    "Windows process memory sums PrivateMemorySize64 and WorkingSet64 for only the PIDs reported by the launched Chromium instance CDP SystemInfo.getProcessInfo; this includes Worker/WASM but is aggregate browser-process memory, not an isolated Worker measurement.",
+    "The 10,000-note Worker request timed out at the configured 120-second bound and was terminated; timeout_unsupported is not a pass or scalability claim.",
+    "The 50,000-note Worker returned invalid. A direct Python replay of the exact generated MIDI bytes against the same source engine reported midi-load-failed because the largest tick was 11,999,881 and considered likely corrupt; this is an invalid stress input, not a valid 50,000-note performance result or evidence of an engine failure."
+  ],
+  "status": "incomplete_timeout_and_worker_error_or_invalid",
+  "cases": [
+    {
+      "status": "completed",
+      "requestedNotes": 2000,
+      "midiBytes": 16033,
+      "elapsedMs": 28936.2,
+      "heartbeatIntervalMs": 50,
+      "heartbeatTicks": 580,
+      "expectedHeartbeatTicks": 578.7,
+      "heartbeatRatio": 1.002,
+      "maxHeartbeatGapMs": 136.1,
+      "animationFrames": 1738,
+      "maxAnimationFrameGapMs": 127.7,
+      "memory": {
+        "measurementScope": "main-realm-js-heap-only",
+        "beforeBytes": 10000000,
+        "peakBytes": 10000000,
+        "atTerminalBytes": 10000000,
+        "afterTerminationBytes": 10000000,
+        "fallbackScopeExcludesWorkerHeap": true,
+        "measurementError": null
+      },
+      "resultStatus": "loaded",
+      "normalizedNoteCount": 2000,
+      "sparseDiagnosticPoseCount": 230,
+      "initialMotionPoseCount": 136,
+      "initialMotionEndSeconds": 4,
+      "initialMotionTruncated": false,
+      "browserProcessMemory": {
+        "status": "measured",
+        "measurementScope": "sum of PrivateMemorySize64 and WorkingSet64 for PIDs reported by this launched Chromium CDP session",
+        "includesWorkerAndWasmButDoesNotIsolateWorker": true,
+        "before": null,
+        "peakPrivateBytes": 356216832,
+        "peakWorkingSetBytes": 488558592,
+        "peakSnapshot": {
+          "stage": "during",
+          "sampledAt": "2026-10-15T06:42:58.955Z",
+          "processTypes": {
+            "browser": 1,
+            "renderer": 1,
+            "GPU": 1,
+            "network.mojom.NetworkService": 1
+          },
+          "status": "measured",
+          "requestedProcessCount": 4,
+          "sampledProcessCount": 4,
+          "privateBytes": 356216832,
+          "workingSetBytes": 488558592,
+          "processes": [
+            {
+              "pid": 35328,
+              "privateBytes": 29966336,
+              "workingSetBytes": 55046144
+            },
+            {
+              "pid": 58864,
+              "privateBytes": 22175744,
+              "workingSetBytes": 62881792
+            },
+            {
+              "pid": 71940,
+              "privateBytes": 33390592,
+              "workingSetBytes": 63320064
+            },
+            {
+              "pid": 73488,
+              "privateBytes": 270684160,
+              "workingSetBytes": 307310592
+            }
+          ]
+        },
+        "afterWorkerTermination": {
+          "stage": "after",
+          "sampledAt": "2026-10-15T06:43:00.410Z",
+          "processTypes": {
+            "browser": 1,
+            "renderer": 1,
+            "GPU": 1,
+            "network.mojom.NetworkService": 1
+          },
+          "status": "measured",
+          "requestedProcessCount": 4,
+          "sampledProcessCount": 4,
+          "privateBytes": 222912512,
+          "workingSetBytes": 375894016,
+          "processes": [
+            {
+              "pid": 35328,
+              "privateBytes": 29966336,
+              "workingSetBytes": 55046144
+            },
+            {
+              "pid": 58864,
+              "privateBytes": 22175744,
+              "workingSetBytes": 62976000
+            },
+            {
+              "pid": 71940,
+              "privateBytes": 33390592,
+              "workingSetBytes": 63397888
+            },
+            {
+              "pid": 73488,
+              "privateBytes": 137379840,
+              "workingSetBytes": 194473984
+            }
+          ]
+        },
+        "sampleCount": 29,
+        "errors": [
+          "Command failed: powershell.exe -NoLogo -NoProfile -NonInteractive -Command $pids = @(58864,73488,35328,71940); $rows = @(Get-Process -Id $pids -ErrorAction SilentlyContinue | ForEach-Object { [pscustomobject]@{ pid = [int]$_.Id; privateBytes = [long]$_.PrivateMemorySize64; workingSetBytes = [long]$_.WorkingSet64 } }); ConvertTo-Json -InputObject $rows -Compress\n"
+        ],
+        "peakPrivateMiB": 339.7,
+        "peakWorkingSetMiB": 465.9,
+        "errorsNote": "The first before-case PowerShell process snapshot failed; during and after-worker-termination snapshots were measured."
+      },
+      "midiGenerationMs": 1.2
+    },
+    {
+      "status": "timeout_unsupported",
+      "requestedNotes": 10000,
+      "midiBytes": 80033,
+      "elapsedMs": 120012.9,
+      "heartbeatIntervalMs": 50,
+      "heartbeatTicks": 2402,
+      "expectedHeartbeatTicks": 2400.3,
+      "heartbeatRatio": 1.001,
+      "maxHeartbeatGapMs": 65.7,
+      "animationFrames": 7208,
+      "maxAnimationFrameGapMs": 18.7,
+      "memory": {
+        "measurementScope": "main-realm-js-heap-only",
+        "beforeBytes": 10000000,
+        "peakBytes": 10000000,
+        "atTerminalBytes": 10000000,
+        "afterTerminationBytes": 10000000,
+        "fallbackScopeExcludesWorkerHeap": true,
+        "measurementError": null
+      },
+      "reason": "Worker analysis exceeded the 120000ms bounded timeout and was terminated.",
+      "browserProcessMemory": {
+        "status": "measured",
+        "measurementScope": "sum of PrivateMemorySize64 and WorkingSet64 for PIDs reported by this launched Chromium CDP session",
+        "includesWorkerAndWasmButDoesNotIsolateWorker": true,
+        "before": {
+          "stage": "before",
+          "sampledAt": "2026-10-15T06:43:00.878Z",
+          "processTypes": {
+            "browser": 1,
+            "renderer": 1,
+            "GPU": 1,
+            "network.mojom.NetworkService": 1
+          },
+          "status": "measured",
+          "requestedProcessCount": 4,
+          "sampledProcessCount": 4,
+          "privateBytes": 222912512,
+          "workingSetBytes": 375894016,
+          "processes": [
+            {
+              "pid": 35328,
+              "privateBytes": 29966336,
+              "workingSetBytes": 55046144
+            },
+            {
+              "pid": 58864,
+              "privateBytes": 22175744,
+              "workingSetBytes": 62976000
+            },
+            {
+              "pid": 71940,
+              "privateBytes": 33390592,
+              "workingSetBytes": 63397888
+            },
+            {
+              "pid": 73488,
+              "privateBytes": 137379840,
+              "workingSetBytes": 194473984
+            }
+          ]
+        },
+        "peakPrivateBytes": 454238208,
+        "peakWorkingSetBytes": 590065664,
+        "peakSnapshot": {
+          "stage": "during",
+          "sampledAt": "2026-10-15T06:43:09.322Z",
+          "processTypes": {
+            "browser": 1,
+            "renderer": 1,
+            "GPU": 1,
+            "network.mojom.NetworkService": 1
+          },
+          "status": "measured",
+          "requestedProcessCount": 4,
+          "sampledProcessCount": 4,
+          "privateBytes": 454238208,
+          "workingSetBytes": 590000128,
+          "processes": [
+            {
+              "pid": 35328,
+              "privateBytes": 29966336,
+              "workingSetBytes": 55046144
+            },
+            {
+              "pid": 58864,
+              "privateBytes": 22573056,
+              "workingSetBytes": 63328256
+            },
+            {
+              "pid": 71940,
+              "privateBytes": 33439744,
+              "workingSetBytes": 63459328
+            },
+            {
+              "pid": 73488,
+              "privateBytes": 368259072,
+              "workingSetBytes": 408166400
+            }
+          ]
+        },
+        "afterWorkerTermination": {
+          "stage": "after",
+          "sampledAt": "2026-10-15T06:45:01.581Z",
+          "processTypes": {
+            "browser": 1,
+            "renderer": 1,
+            "GPU": 1,
+            "network.mojom.NetworkService": 1
+          },
+          "status": "measured",
+          "requestedProcessCount": 4,
+          "sampledProcessCount": 4,
+          "privateBytes": 444571648,
+          "workingSetBytes": 572215296,
+          "processes": [
+            {
+              "pid": 35328,
+              "privateBytes": 29659136,
+              "workingSetBytes": 55021568
+            },
+            {
+              "pid": 58864,
+              "privateBytes": 21823488,
+              "workingSetBytes": 62820352
+            },
+            {
+              "pid": 71940,
+              "privateBytes": 31973376,
+              "workingSetBytes": 62267392
+            },
+            {
+              "pid": 73488,
+              "privateBytes": 361115648,
+              "workingSetBytes": 392105984
+            }
+          ]
+        },
+        "sampleCount": 121,
+        "errors": [],
+        "peakPrivateMiB": 433.2,
+        "peakWorkingSetMiB": 562.7
+      },
+      "midiGenerationMs": 4.75
+    },
+    {
+      "status": "invalid_result",
+      "requestedNotes": 50000,
+      "midiBytes": 400033,
+      "elapsedMs": 6779,
+      "heartbeatIntervalMs": 50,
+      "heartbeatTicks": 137,
+      "expectedHeartbeatTicks": 135.6,
+      "heartbeatRatio": 1.01,
+      "maxHeartbeatGapMs": 64.6,
+      "animationFrames": 414,
+      "maxAnimationFrameGapMs": 22.7,
+      "memory": {
+        "measurementScope": "main-realm-js-heap-only",
+        "beforeBytes": 10000000,
+        "peakBytes": 10000000,
+        "atTerminalBytes": 10000000,
+        "afterTerminationBytes": 10000000,
+        "fallbackScopeExcludesWorkerHeap": true,
+        "measurementError": null
+      },
+      "resultStatus": "invalid",
+      "normalizedNoteCount": null,
+      "sparseDiagnosticPoseCount": 0,
+      "initialMotionPoseCount": 0,
+      "initialMotionEndSeconds": null,
+      "initialMotionTruncated": null,
+      "browserProcessMemory": {
+        "status": "measured",
+        "measurementScope": "sum of PrivateMemorySize64 and WorkingSet64 for PIDs reported by this launched Chromium CDP session",
+        "includesWorkerAndWasmButDoesNotIsolateWorker": true,
+        "before": {
+          "stage": "before",
+          "sampledAt": "2026-10-15T06:45:02.076Z",
+          "processTypes": {
+            "browser": 1,
+            "renderer": 1,
+            "GPU": 1,
+            "network.mojom.NetworkService": 1
+          },
+          "status": "measured",
+          "requestedProcessCount": 4,
+          "sampledProcessCount": 4,
+          "privateBytes": 444571648,
+          "workingSetBytes": 572420096,
+          "processes": [
+            {
+              "pid": 35328,
+              "privateBytes": 29659136,
+              "workingSetBytes": 55021568
+            },
+            {
+              "pid": 58864,
+              "privateBytes": 21823488,
+              "workingSetBytes": 62820352
+            },
+            {
+              "pid": 71940,
+              "privateBytes": 31973376,
+              "workingSetBytes": 62267392
+            },
+            {
+              "pid": 73488,
+              "privateBytes": 361115648,
+              "workingSetBytes": 392310784
+            }
+          ]
+        },
+        "peakPrivateBytes": 444571648,
+        "peakWorkingSetBytes": 572420096,
+        "peakSnapshot": {
+          "stage": "before",
+          "sampledAt": "2026-10-15T06:45:02.076Z",
+          "processTypes": {
+            "browser": 1,
+            "renderer": 1,
+            "GPU": 1,
+            "network.mojom.NetworkService": 1
+          },
+          "status": "measured",
+          "requestedProcessCount": 4,
+          "sampledProcessCount": 4,
+          "privateBytes": 444571648,
+          "workingSetBytes": 572420096,
+          "processes": [
+            {
+              "pid": 35328,
+              "privateBytes": 29659136,
+              "workingSetBytes": 55021568
+            },
+            {
+              "pid": 58864,
+              "privateBytes": 21823488,
+              "workingSetBytes": 62820352
+            },
+            {
+              "pid": 71940,
+              "privateBytes": 31973376,
+              "workingSetBytes": 62267392
+            },
+            {
+              "pid": 73488,
+              "privateBytes": 361115648,
+              "workingSetBytes": 392310784
+            }
+          ]
+        },
+        "afterWorkerTermination": {
+          "stage": "after",
+          "sampledAt": "2026-10-15T06:45:09.524Z",
+          "processTypes": {
+            "browser": 1,
+            "renderer": 1,
+            "GPU": 1,
+            "network.mojom.NetworkService": 1
+          },
+          "status": "measured",
+          "requestedProcessCount": 4,
+          "sampledProcessCount": 4,
+          "privateBytes": 170733568,
+          "workingSetBytes": 327581696,
+          "processes": [
+            {
+              "pid": 35328,
+              "privateBytes": 29659136,
+              "workingSetBytes": 55021568
+            },
+            {
+              "pid": 58864,
+              "privateBytes": 23310336,
+              "workingSetBytes": 64319488
+            },
+            {
+              "pid": 71940,
+              "privateBytes": 32018432,
+              "workingSetBytes": 62316544
+            },
+            {
+              "pid": 73488,
+              "privateBytes": 85745664,
+              "workingSetBytes": 145924096
+            }
+          ]
+        },
+        "sampleCount": 8,
+        "errors": [],
+        "peakPrivateMiB": 424,
+        "peakWorkingSetMiB": 545.9
+      },
+      "midiGenerationMs": 24.08,
+      "diagnosticReplay": {
+        "source": "direct Python analyze_midi replay of the exact generated MIDI byte sequence; same packaged source engineVersion",
+        "resultStatus": "invalid",
+        "diagnostic": {
+          "severity": "error",
+          "code": "midi-load-failed",
+          "message": "MIDI file has a largest tick of 11999881, it is likely corrupt"
+        },
+        "rawBaselineStatus": "invalid-or-rejected",
+        "sourceParseError": {
+          "phase": "pretty_midi source inventory",
+          "type": "ValueError",
+          "message": "MIDI file has a largest tick of 11999881, it is likely corrupt"
+        },
+        "note": "The browser Worker returned status invalid, but the initial browser harness did not serialize diagnostics; this direct-source replay records the reason without claiming it was captured from the Worker message."
+      }
+    }
+  ],
+  "workloadScope": "Worker analyze-midi only, with a blank manifest page main-thread heartbeat and requestAnimationFrame probe; does not render the full Pixi/editor/player UI."
+}
