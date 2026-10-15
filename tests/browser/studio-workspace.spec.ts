@@ -66,13 +66,25 @@ test("six responsive sizes preserve one scene, all keys, contextual tools and pa
       expect([g.keyCount,g.minPitch,g.maxPitch]).toEqual([88,21,108]);
       expect(g.keyboardRect!.x).toBeLessThanOrEqual(2);
       expect(Math.abs(g.keyboardRect!.width-g.rendererSize.width)).toBeLessThanOrEqual(2);
+      const workspaceBounds=await page.getByTestId("studio-workspace").boundingBox();
+      const sceneBounds=await page.getByTestId("studio-scene-pane").boundingBox();
+      expect(Math.abs(sceneBounds!.y-workspaceBounds!.y)).toBeLessThanOrEqual(1);
       const header = page.getByTestId("studio-header");
+      for (const name of ["Edit", "Help"]) {
+        const trigger=header.getByRole("button", {name, exact:true});
+        await expect(trigger).toBeInViewport();
+        const bounds=await trigger.boundingBox();
+        expect(bounds!.x).toBeGreaterThanOrEqual(0);
+        expect(bounds!.x+bounds!.width).toBeLessThanOrEqual(size.width+1);
+        await trigger.click({trial:true});
+      }
       const handSelection = header.getByRole("group", {name: "Hand selection", exact: true});
       if(mode==="Performance") {
-        await expect(page.locator(".fingering-toolbar")).toBeHidden();
+        await expect(page.getByTestId("studio-editor-toolbar")).toHaveCount(0);
         await expect(handSelection).toBeHidden();
+        await expect(header.getByRole("button", {name:/^Auto-advance/})).toBeHidden();
       } else {
-        await expect(page.locator(".fingering-toolbar")).toBeVisible();
+        await expect(page.getByTestId("studio-editor-toolbar")).toHaveCount(0);
         await expect(handSelection).toBeVisible();
         for (const name of ["Left Hand (L)", "Right Hand (R)", ...[1,2,3,4,5].map(f=>`Finger ${f}`), "Clear (0)", "Unplayable (Del)", "Gliss (G)"]) {
           const control = header.getByRole("button", {name, exact: true});
@@ -86,6 +98,10 @@ test("six responsive sizes preserve one scene, all keys, contextual tools and pa
           await control.click({trial: true}); // Visible controls must also receive pointer input.
         }
         await expect(page.getByTestId("studio-workspace").getByRole("group", {name: "Hand selection", exact: true})).toHaveCount(0);
+        const autoAdvance=header.getByRole("button", {name:/^Auto-advance/});
+        await expect(autoAdvance).toBeInViewport();
+        await expect(autoAdvance).toHaveAttribute("aria-pressed", "false");
+        await autoAdvance.click({trial:true});
       }
       await page.screenshot({path:info.outputPath(`${size.width}x${size.height}-${mode.toLowerCase()}.png`)});
     }

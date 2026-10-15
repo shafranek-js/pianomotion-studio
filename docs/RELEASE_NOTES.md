@@ -1,15 +1,23 @@
 # PianoMotion Studio — Release Notes
 
-**Version**: 0.1.0-dev.3
+**Version**: 0.1.0-dev.4
 
 **Date**: 2026-10-15
 
-**Status**: R01–R14 implementation and automatic verification completed; manual hardware/listening and load limits remain open. No release, commit, push or publication performed.
+**Status**: Development preview. Manual hardware/listening and load limits remain open. Previous dev.3 was published to GitHub Pages; current UI verification is recorded separately below.
 **Architecture**: Offline-First Progressive Web Application (SPA + Web Workers + WebAssembly)
 
 ---
 
-## Fingering header controls — dev.3
+## Editor command menus and Auto-advance — dev.4
+
+The secondary toolbar above the scene is removed. Undo/Redo move into the Edit menu while retaining keyboard shortcuts. Help (?) opens a menu with Keyboard shortcuts. Auto-advance replaces Step Entry and sits with finger assignments in the header, visible only in Fingering and off by default. Only numeric finger assignments advance selection; hand assignment, Clear, Unplayable and Gliss retain selection. Confirming an already assigned finger can advance without adding an edit or history entry.
+
+The same editor session owns menu actions and keyboard shortcuts. The portable project format remains v2. Validation: 401 unit tests, typecheck, lint and project-path production build passed. Edge passed all 13 changed UI scenarios; Chrome passed 11 initially, followed by all 3 focused scenarios after responsive-header and Escape fixes. Ten viewport sizes/boundaries and keyboard access to the scrolled mobile scene were checked. Exact runs, screenshots and limits are in [dev.4 evidence](evidence/editor-command-menus-2026-10-15/VERIFICATION.md).
+
+The deliberately invalid, text-like MIDI fixture is now marked binary in Git attributes so Windows autocrlf cannot change its byte-exact checksum. A fresh autocrlf checkout preserves the expected hash. The previous Windows CI run stopped at that checksum before browser tests; its result is not a browser pass.
+
+## Historical UI change: fingering header controls — dev.3
 
 Hand, finger, Clear, Unplayable and Gliss assignments move next to the workspace mode switch in the top header, visible only in Fingering. Smaller windows wrap these controls into additional header rows. Undo/Redo, Step Entry and Shortcuts stay above the shared scene. The editor session and canvas stay mounted when switching modes. The package format remains v2.
 

@@ -87,5 +87,9 @@ export interface EditorAction {
     | "SET_SELECTION"
     | "BATCH_ASSIGN";
   description: string;
+  fingerAssignment?: {
+    noteIds: readonly string[];
+    finger: number | null;
+  };
   apply(plan: FingeringPlan): FingeringPlan;
 }

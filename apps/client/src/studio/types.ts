@@ -32,6 +32,13 @@ export interface StudioWorkspaceLayout {
   focusMode: boolean;
 }
 
+export interface StudioEditActions {
+  canUndo: boolean;
+  canRedo: boolean;
+  undo(): void;
+  redo(): void;
+}
+
 export interface StudioShellProps {
   projectName: string;
   hasProject: boolean;
@@ -50,6 +57,7 @@ export interface StudioShellProps {
   canExport?: boolean;
   onOpenPreferences?: () => void;
   onOpenPianist?: () => void;
+  editActions?: StudioEditActions;
   projectsPanel: ReactNode;
   inspector: ReactNode | ((tab: InspectorTab) => ReactNode);
   workspace: ReactNode | ((layout: StudioWorkspaceLayout) => ReactNode);

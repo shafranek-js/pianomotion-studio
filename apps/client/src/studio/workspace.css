@@ -71,48 +71,8 @@
   outline-offset: -3px;
 }
 
-.studio-workspace-layout__editor-toolbar {
-  z-index: 2;
-  flex: 0 0 auto;
-  min-width: 0;
-  padding: 7px 9px;
-  border-bottom: 1px solid var(--studio-border);
-  background: var(--studio-panel);
-}
-
-.studio-workspace-layout__editor-toolbar[hidden] { display: none !important; }
-
-.studio-workspace-layout__editor-toolbar .fingering-toolbar {
-  padding: 0 !important;
-  border: 0 !important;
-  border-radius: 0 !important;
-  background: transparent !important;
-  color: var(--studio-text) !important;
-}
-
-.studio-workspace-layout__editor-toolbar .fingering-toolbar button {
-  box-sizing: border-box;
-  min-height: 44px;
-}
-
-.studio-workspace-layout__editor-toolbar .fingering-toolbar [role="group"] {
-  flex-wrap: wrap;
-  min-width: 0;
-  max-width: 100%;
-}
-
-.studio-workspace-layout__editor-toolbar .fingering-toolbar [aria-label="Finger assignment"] button {
-  min-width: 44px;
-}
-
-.studio-workspace-layout__editor-toolbar .fingering-toolbar [role="group"] {
-  background: #12151a !important;
-  border-color: var(--studio-border) !important;
-}
-
-.studio-workspace-layout__editor-toolbar .fingering-toolbar button:hover:not(:disabled) {
-  filter: brightness(1.12);
-}
+.studio-workspace-layout__editor-state,
+.studio-workspace-layout__editor-state[hidden] { display: none !important; }
 
 .studio-workspace-layout__time-anchor {
   position: absolute;

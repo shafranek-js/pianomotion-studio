@@ -37,7 +37,7 @@ function samePlan(left: FingeringPlan, right: FingeringPlan): boolean {
  * - Current fingering plan
  * - 50-step undo / redo history stack
  * - Active note selection (Set<string>)
- * - Sequential step-entry mode (auto-advance upon note edit)
+ * - Auto-advance after assigning a valid finger to a selected note
  * - Keyboard shortcut routing
  */
 export class EditorStateManager {
@@ -242,7 +242,30 @@ export class EditorStateManager {
    */
   public executeCommand(cmd: EditorAction): FingeringPlan {
     const candidate = cmd.apply(this._currentPlan);
+    const candidateAssignments = new Map(
+      candidate.assignments.map((assignment) => [assignment.noteId, assignment]),
+    );
+    const fingerAssignment = cmd.type === "ASSIGN_FINGER" ? cmd.fingerAssignment : undefined;
+    const shouldAutoAdvance =
+      this._stepEntryMode &&
+      fingerAssignment !== undefined &&
+      typeof fingerAssignment.finger === "number" &&
+      Number.isInteger(fingerAssignment.finger) &&
+      fingerAssignment.finger >= 1 &&
+      fingerAssignment.finger <= 5 &&
+      fingerAssignment.noteIds.some((noteId) => {
+        const next = candidateAssignments.get(noteId);
+        return Boolean(
+          this._selectedNoteIds.has(noteId) &&
+          next &&
+          next.finger === fingerAssignment.finger &&
+          next.fingerMode === "manual",
+        );
+      });
     if (samePlanContent(candidate, this._currentPlan)) {
+      if (shouldAutoAdvance) {
+        this.advanceSelection("next", false);
+      }
       this.notify("view");
       return this._currentPlan;
     }
@@ -260,15 +283,9 @@ export class EditorStateManager {
     this._revision = Math.max(this._revision, this._currentPlan.inputRevision) + 1;
     this._currentPlan = { ...candidate, inputRevision: this._revision };
 
-    // 4. Sequential step entry advancement
-    if (
-      this._stepEntryMode &&
-      this._selectedNoteIds.size > 0 &&
-      (cmd.type === "ASSIGN_FINGER" ||
-        cmd.type === "ASSIGN_HAND" ||
-        cmd.type === "CLEAR_FINGERING" ||
-        cmd.type === "MARK_UNPLAYABLE")
-    ) {
+    // 4. Auto-advance only after assigning a valid manual finger. ASSIGN_FINGER
+    // with null clears the manual override and must not advance.
+    if (shouldAutoAdvance) {
       this.advanceSelection("next", false);
     }
     this.notify("edit");

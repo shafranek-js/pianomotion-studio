@@ -8,17 +8,21 @@ import {
   CircleAlert,
   CircleCheck,
   CircleDot,
+  CircleHelp,
   Download,
   FileUp,
   FolderOpen,
+  Keyboard,
   LoaderCircle,
   PanelLeft,
   PanelRight,
   Pin,
   PinOff,
   Piano,
+  Redo2,
   Save,
   Settings2,
+  Undo2,
   UserRound,
   X,
 } from "lucide-react";
@@ -59,6 +63,20 @@ const viewOptions: Array<{ id: StudioView; label: string }> = [
   { id: "editor", label: "Fingering" },
 ];
 
+const editorShortcuts = [
+  { key: "Ctrl / Cmd + A", description: "Select all notes" },
+  { key: "Escape", description: "Clear the current selection" },
+  { key: "← / →", description: "Select the previous or next note by time" },
+  { key: "1 – 5", description: "Assign a finger to selected notes" },
+  { key: "0", description: "Clear manual fingering for automatic replanning" },
+  { key: "Delete / Backspace", description: "Mark selected notes unplayable" },
+  { key: "L / R", description: "Assign the left or right hand" },
+  { key: "G", description: "Toggle glissando" },
+  { key: "Ctrl / Cmd + Z", description: "Undo the last edit" },
+  { key: "Ctrl / Cmd + Y", description: "Redo the last edit" },
+  { key: "Ctrl / Cmd + Shift + Z", description: "Redo the last edit" },
+];
+
 const studioPackageVersion = clientPackage.version;
 
 type PanelKind = "projects" | "inspector";
@@ -90,6 +108,7 @@ export function StudioShell(props: StudioShellProps) {
     footerAddon,
     dialogs,
     headerAddon,
+    editActions,
   } = props;
   const [preferences, setPreferences] = useState<StudioLayoutPreferences>({
     ...DEFAULT_STUDIO_LAYOUT_PREFERENCES,
@@ -99,16 +118,26 @@ export function StudioShell(props: StudioShellProps) {
   const [viewportWidth, setViewportWidth] = useState(() =>
     typeof window === "undefined" ? 1280 : window.innerWidth,
   );
-  const [menu, setMenu] = useState<"file" | "export" | null>(null);
+  const [menu, setMenu] = useState<"file" | "edit" | "export" | "help" | null>(null);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [preferenceSaveError, setPreferenceSaveError] = useState(false);
   const resizeRef = useRef<{ side: ResizeSide; startX: number; startWidth: number } | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const fileMenuTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const editMenuTriggerRef = useRef<HTMLButtonElement | null>(null);
   const exportMenuTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const helpMenuTriggerRef = useRef<HTMLButtonElement | null>(null);
   const panelReturnFocusRef = useRef<HTMLElement | null>(null);
   const responsiveSheetTransitionRef = useRef(false);
   const mobileStateRef = useRef(viewportWidth < 900);
   const panelTriggersRef = useRef<Record<PanelKind, HTMLButtonElement | null>>({ projects: null, inspector: null });
+
+  const menuTriggerRef = useCallback((target: NonNullable<typeof menu>) => {
+    if (target === "file") return fileMenuTriggerRef;
+    if (target === "edit") return editMenuTriggerRef;
+    if (target === "export") return exportMenuTriggerRef;
+    return helpMenuTriggerRef;
+  }, []);
 
   const isMobileSheet = viewportWidth < 900;
   const effectiveView: StudioView = normalizeStudioView(viewMode);
@@ -173,9 +202,12 @@ export function StudioShell(props: StudioShellProps) {
   }, []);
 
   useEffect(() => {
-    if (menu || isMobileSheet || !desktopPanel) return;
+    if (shortcutsOpen || menu || isMobileSheet || !desktopPanel) return;
     const onKeyDown = (event: globalThis.KeyboardEvent) => {
-      if (event.key !== "Escape") return;
+      if (event.key !== "Escape" || event.defaultPrevented) return;
+      if (event.target instanceof Element && event.target.closest(
+        '[role="dialog"], [aria-modal="true"], [role="menu"]',
+      )) return;
       event.preventDefault();
       updatePreferences((current) => ({ ...current, activePanel: null }));
       window.requestAnimationFrame(() => {
@@ -185,7 +217,7 @@ export function StudioShell(props: StudioShellProps) {
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [menu, isMobileSheet, desktopPanel, updatePreferences]);
+  }, [shortcutsOpen, menu, isMobileSheet, desktopPanel, updatePreferences]);
 
   useEffect(() => {
     const onPointerMove = (event: globalThis.PointerEvent) => {
@@ -213,8 +245,9 @@ export function StudioShell(props: StudioShellProps) {
     });
     const onKeyDown = (event: globalThis.KeyboardEvent) => {
       if (event.key === "Escape") {
+        event.preventDefault();
         setMenu(null);
-        (menu === "file" ? fileMenuTriggerRef : exportMenuTriggerRef).current?.focus();
+        menuTriggerRef(menu).current?.focus({ preventScroll: true });
       }
     };
     const onPointerDown = (event: globalThis.PointerEvent) => {
@@ -227,7 +260,7 @@ export function StudioShell(props: StudioShellProps) {
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("pointerdown", onPointerDown);
     };
-  }, [menu]);
+  }, [menu, menuTriggerRef]);
 
   const openPanel = (panel: PanelKind, opener?: HTMLElement) => {
     if (opener) panelReturnFocusRef.current = opener;
@@ -348,10 +381,14 @@ export function StudioShell(props: StudioShellProps) {
 
   const canSaveProject = Boolean(onSave && hasProject && !busy && canSave !== false);
   const canExportProject = Boolean(hasProject && !busy && canExport !== false);
-  const toggleMenu = (next: "file" | "export") => setMenu((current) => current === next ? null : next);
-  const chooseFromMenu = (action: () => void) => {
+  const toggleMenu = (next: NonNullable<typeof menu>) => setMenu((current) => current === next ? null : next);
+  const chooseFromMenu = (action: () => void, restoreFocus = true) => {
+    const closingMenu = menu;
     setMenu(null);
     action();
+    if (restoreFocus && closingMenu) {
+      window.requestAnimationFrame(() => menuTriggerRef(closingMenu).current?.focus({ preventScroll: true }));
+    }
   };
   const handleMenuKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     const keys = ["ArrowDown", "ArrowUp", "Home", "End"];
@@ -378,6 +415,8 @@ export function StudioShell(props: StudioShellProps) {
   const progressPercent = typeof status.progress === "number" && Number.isFinite(status.progress)
     ? Math.round(Math.min(1, Math.max(0, status.progress)) * 100)
     : 0;
+  const canUndo = effectiveView === "editor" && Boolean(editActions?.canUndo);
+  const canRedo = effectiveView === "editor" && Boolean(editActions?.canRedo);
 
   return (
     <div className="studio-shell" data-focus-mode={preferences.focusMode ? "on" : "off"} data-layout-ready={preferencesReady ? "true" : "false"} data-testid="studio-shell">
@@ -410,6 +449,30 @@ export function StudioShell(props: StudioShellProps) {
           )}
         </div>
 
+        <div className="studio-menu-group studio-edit-menu" ref={menu === "edit" ? activeMenuRef : undefined}>
+          <button
+            type="button"
+            className={`studio-header-button studio-menu-trigger ${menu === "edit" ? "is-open" : ""}`}
+            aria-label="Edit"
+            aria-haspopup="menu"
+            aria-expanded={menu === "edit"}
+            ref={editMenuTriggerRef}
+            onClick={() => toggleMenu("edit")}
+          ><span>Edit</span><ChevronDown size={14} />
+          </button>
+          {menu === "edit" && (
+            <div className="studio-menu-popover studio-menu-edit" role="menu" aria-label="Edit" onKeyDown={handleMenuKeyDown}>
+              <span className="studio-menu-label">History</span>
+              <MenuItem icon={<Undo2 />} disabled={!canUndo} onClick={() => chooseFromMenu(() => editActions?.undo())}>
+                Undo <kbd className="studio-menu-shortcut">Ctrl+Z</kbd>
+              </MenuItem>
+              <MenuItem icon={<Redo2 />} disabled={!canRedo} onClick={() => chooseFromMenu(() => editActions?.redo())}>
+                Redo <kbd className="studio-menu-shortcut">Ctrl+Y</kbd>
+              </MenuItem>
+            </div>
+          )}
+        </div>
+
         <div className="studio-project-name" title={projectName || "Untitled project"}>
           <span className="studio-project-dot" data-has-project={hasProject ? "true" : "false"} aria-hidden="true" />
           <span>{projectName || "Untitled project"}</span>
@@ -428,7 +491,7 @@ export function StudioShell(props: StudioShellProps) {
           ))}
         </div>
 
-        {headerAddon && <div className="studio-header-addon">{headerAddon}</div>}
+        {headerAddon && <div className="studio-header-addon" hidden={effectiveView !== "editor"}>{headerAddon}</div>}
 
         <div className="studio-header-spacer" />
         <div className="studio-save-state" data-kind={status.kind} aria-label={`Project status: ${status.message}`}>
@@ -469,6 +532,26 @@ export function StudioShell(props: StudioShellProps) {
         </div>
 
         {onOpenPianist && <button className="studio-icon-button studio-pianist-button" type="button" onClick={onOpenPianist} aria-label="Open pianist settings" title="Pianist"><UserRound size={17} /></button>}
+        <div className="studio-menu-group studio-help-menu" ref={menu === "help" ? activeMenuRef : undefined}>
+          <button
+            className={`studio-icon-button studio-help-button ${menu === "help" ? "is-open" : ""}`}
+            type="button"
+            onClick={() => toggleMenu("help")}
+            aria-label="Help"
+            aria-haspopup="menu"
+            aria-expanded={menu === "help"}
+            ref={helpMenuTriggerRef}
+            title="Help"
+          ><CircleHelp size={18} aria-hidden="true" /></button>
+          {menu === "help" && (
+            <div className="studio-menu-popover studio-menu-right" role="menu" aria-label="Help" onKeyDown={handleMenuKeyDown}>
+              <span className="studio-menu-label">Help</span>
+              <MenuItem icon={<Keyboard />} onClick={() => chooseFromMenu(() => setShortcutsOpen(true), false)}>
+                Keyboard shortcuts
+              </MenuItem>
+            </div>
+          )}
+        </div>
         {onOpenPreferences && <button className="studio-icon-button studio-preferences-button" type="button" onClick={onOpenPreferences} aria-label="Open preferences" title="Preferences"><Settings2 size={17} /></button>}
       </header>
 
@@ -562,6 +645,11 @@ export function StudioShell(props: StudioShellProps) {
         {footerAddon && <div className="studio-footer-addon">{footerAddon}</div>}
       </footer>
       {dialogs && <div className="studio-fullscreen-screen">{dialogs}</div>}
+      <KeyboardShortcutsDialog
+        open={shortcutsOpen}
+        onOpenChange={setShortcutsOpen}
+        onReturnFocus={() => helpMenuTriggerRef.current?.focus({ preventScroll: true })}
+      />
     </div>
   );
 }
@@ -579,8 +667,53 @@ function MenuItem({
 }) {
   return (
     <button className="studio-menu-item" type="button" role="menuitem" disabled={disabled} onClick={onClick}>
-      <span className="studio-menu-item-icon">{icon}</span><span>{children}</span>
+      <span className="studio-menu-item-icon" aria-hidden="true">{icon}</span><span>{children}</span>
     </button>
+  );
+}
+
+function KeyboardShortcutsDialog({
+  open,
+  onOpenChange,
+  onReturnFocus,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onReturnFocus: () => void;
+}) {
+  return (
+    <Dialog.Root open={open} onOpenChange={onOpenChange}>
+      <Dialog.Portal>
+        <Dialog.Overlay className="studio-shortcuts-overlay" />
+        <Dialog.Content
+          className="studio-shortcuts-dialog"
+          onCloseAutoFocus={(event) => {
+            event.preventDefault();
+            window.requestAnimationFrame(onReturnFocus);
+          }}
+        >
+          <div className="studio-shortcuts-dialog__heading">
+            <Dialog.Title>Keyboard shortcuts</Dialog.Title>
+            <Dialog.Close asChild>
+              <button type="button" className="studio-icon-button" aria-label="Close keyboard shortcuts" title="Close">
+                <X size={17} aria-hidden="true" />
+              </button>
+            </Dialog.Close>
+          </div>
+          <Dialog.Description className="studio-shortcuts-dialog__description">
+            Editing shortcuts work in Fingering mode. This help is available in both views.
+          </Dialog.Description>
+          <dl className="studio-shortcuts-list">
+            {editorShortcuts.map((shortcut) => (
+              <div key={shortcut.key} className="studio-shortcuts-list__row">
+                <dt><kbd>{shortcut.key}</kbd></dt>
+                <dd>{shortcut.description}</dd>
+              </div>
+            ))}
+          </dl>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }
 
@@ -649,7 +782,7 @@ export function StudioReleaseDetails({
 
   useEffect(() => {
     const onKeyDown = (event: globalThis.KeyboardEvent) => {
-      if (event.key !== "Escape" || !detailsRef.current?.open) return;
+      if (event.key !== "Escape" || !detailsRef.current?.open || document.querySelector('[role="dialog"][aria-modal="true"]')) return;
       event.preventDefault();
       event.stopImmediatePropagation();
       detailsRef.current.open = false;

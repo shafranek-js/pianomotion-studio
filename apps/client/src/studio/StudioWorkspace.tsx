@@ -6,8 +6,8 @@ export interface StudioWorkspaceProps {
   viewMode: StudioView;
   /** The single persistent Pixi scene containing notes, piano, and hands. */
   scene: ReactNode;
-  /** Fingering actions shown above the shared scene only in editor mode. */
-  editorToolbar?: ReactNode;
+  /** Persistent editor state host, kept mounted without adding a visible row. */
+  editorState?: ReactNode;
   editorViewTime?: number | null;
   transportTime?: number;
   onReturnToPlayhead?(): void;
@@ -24,7 +24,7 @@ function formatAnchorTime(seconds: number): string {
 export function StudioWorkspace({
   viewMode,
   scene,
-  editorToolbar,
+  editorState,
   editorViewTime = null,
   transportTime = 0,
   onReturnToPlayhead,
@@ -36,14 +36,14 @@ export function StudioWorkspace({
       data-testid="studio-workspace"
       data-view={viewMode}
     >
-      {editorToolbar && (
+      {editorState && (
         <div
-          className="studio-workspace-layout__editor-toolbar"
-          data-testid="studio-editor-toolbar"
-          aria-hidden={viewMode !== "editor"}
-          hidden={viewMode !== "editor"}
+          className="studio-workspace-layout__editor-state"
+          data-testid="studio-editor-state"
+          aria-hidden="true"
+          hidden
         >
-          {editorToolbar}
+          {editorState}
         </div>
       )}
       <div

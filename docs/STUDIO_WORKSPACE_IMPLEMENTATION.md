@@ -19,8 +19,12 @@ No commit, push or deployment is authorized by this implementation request.
   history is retained; a mode switch is a presentation change, not a new session.
 - As of dev.3 (2026-10-15), the hand/finger/Clear/Unplayable/Gliss assignment
   group belongs in the application header after the mode switch, visible only
-  in Fingering. Narrow windows wrap it into additional header rows. History,
-  Step Entry and Shortcuts remain in the contextual toolbar above the scene.
+  in Fingering. Narrow windows wrap it into additional header rows.
+- In dev.4, the remaining contextual row is removed: Undo/Redo live in Edit,
+  Keyboard shortcuts in Help (?), and Auto-advance beside finger assignments.
+  The editor stays mounted headlessly and retains its state. Auto-advance is
+  off by default and advances only after a numeric finger assignment; confirming
+  the same finger can advance without a new history entry or musical replan.
 - Diagnostics, application version and change descriptions live in a compact
   bottom status bar, with details available on demand. Long logs stay collapsed.
 - Legacy saved `split` mode is accepted and normalized to Performance; obsolete

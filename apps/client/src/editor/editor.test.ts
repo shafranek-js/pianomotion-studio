@@ -246,31 +246,129 @@ describe("EditorStateManager History (Undo / Redo)", () => {
   });
 });
 
-describe("EditorStateManager Sequential Step Entry & Keyboard Shortcuts", () => {
-  it("advances selection to the next chronological note when stepEntryMode is ON", () => {
+describe("EditorStateManager Auto-advance & Keyboard Shortcuts", () => {
+  it("advances after a valid non-null finger assignment for fingers 1 through 5", () => {
+    for (const finger of [1, 2, 3, 4, 5]) {
+      const song = createTestSong([
+        { noteId: "n1", finger: null },
+        { noteId: "n2", finger: null, startSeconds: 1 },
+      ]);
+      const manager = new EditorStateManager({
+        initialPlan: createTestPlan(song),
+        document: song,
+        stepEntryMode: true,
+      });
+
+      manager.selectNote("n1");
+      manager.executeCommand(createAssignFingerCommand(["n1"], finger));
+
+      expect(manager.selectedNoteIds.has("n2"), `finger ${finger}`).toBe(true);
+      expect(manager.currentPlan.assignments[0]!.finger).toBe(finger);
+    }
+  });
+
+  it("does not advance for hand, clear, unplayable, glissando, or automatic-finger commands", () => {
+    const commands = [
+      createAssignHandCommand(["n1"], "left"),
+      createClearFingeringCommand(["n1"]),
+      createMarkUnplayableCommand(["n1"]),
+      createToggleGlissandoCommand(["n1"]),
+      createAssignFingerCommand(["n1"], null),
+    ];
+
+    for (const command of commands) {
+      const song = createTestSong([
+        { noteId: "n1" },
+        { noteId: "n2", startSeconds: 1 },
+      ]);
+      const manager = new EditorStateManager({
+        initialPlan: createTestPlan(song),
+        document: song,
+        stepEntryMode: true,
+      });
+      manager.selectNote("n1");
+
+      manager.executeCommand(command);
+
+      expect(manager.selectedNoteIds.has("n1")).toBe(true);
+      expect(manager.selectedNoteIds.has("n2")).toBe(false);
+    }
+  });
+
+  it("advances only when a valid finger command targets a selected note", () => {
     const song = createTestSong([
-      { noteId: "n1", startSeconds: 0.0, pitch: 60 },
-      { noteId: "n2", startSeconds: 0.5, pitch: 62 },
-      { noteId: "n3", startSeconds: 1.0, pitch: 64 },
+      { noteId: "n1" },
+      { noteId: "n2", startSeconds: 1 },
     ]);
-    const plan = createTestPlan(song);
     const manager = new EditorStateManager({
-      initialPlan: plan,
+      initialPlan: createTestPlan(song),
       document: song,
       stepEntryMode: true,
     });
 
     manager.selectNote("n1");
+    manager.executeCommand(createAssignFingerCommand(["n2"], 5));
     expect(manager.selectedNoteIds.has("n1")).toBe(true);
 
-    // Assign finger 3 to n1 -> should auto advance to n2!
-    manager.executeCommand(createAssignFingerCommand(["n1"], 3));
-    expect(manager.selectedNoteIds.has("n2")).toBe(true);
-    expect(manager.selectedNoteIds.has("n1")).toBe(false);
+    manager.executeCommand(createAssignFingerCommand(["n1"], 0));
+    expect(manager.selectedNoteIds.has("n1")).toBe(true);
 
-    // Assign finger 4 to n2 -> should auto advance to n3!
+    manager.clearSelection();
+    manager.executeCommand(createAssignFingerCommand(["n1"], 3));
+    expect(manager.selectedNoteIds.size).toBe(0);
+  });
+
+  it("advances after confirming the same manual finger without creating an edit", () => {
+    const song = createTestSong([
+      { noteId: "n1", finger: 3 },
+      { noteId: "n2", startSeconds: 1 },
+    ]);
+    const basePlan = createTestPlan(song);
+    const initialPlan: FingeringPlan = {
+      ...basePlan,
+      assignments: basePlan.assignments.map((assignment) => assignment.noteId === "n1"
+        ? { ...assignment, fingerMode: "manual", glissMode: "manual" }
+        : assignment),
+    };
+    const manager = new EditorStateManager({
+      initialPlan,
+      document: song,
+      stepEntryMode: true,
+    });
+    const events: string[] = [];
+    manager.subscribe((_plan, kind) => events.push(kind));
     manager.executeCommand(createAssignFingerCommand(["n2"], 4));
-    expect(manager.selectedNoteIds.has("n3")).toBe(true);
+    manager.undo();
+    expect(manager.canRedo).toBe(true);
+    manager.selectNote("n1");
+    events.length = 0;
+    const planBeforeConfirmation = manager.currentPlan;
+
+    manager.executeCommand(createAssignFingerCommand(["n1"], 3));
+
+    expect(manager.selectedNoteIds.has("n2")).toBe(true);
+    expect(manager.currentPlan).toBe(planBeforeConfirmation);
+    expect(manager.currentPlan.inputRevision).toBe(planBeforeConfirmation.inputRevision);
+    expect(manager.canRedo).toBe(true);
+    expect(events).toEqual(["view"]);
+  });
+
+  it("does not wrap selection after assigning a finger to the last note", () => {
+    const song = createTestSong([
+      { noteId: "n1" },
+      { noteId: "n2", startSeconds: 1 },
+    ]);
+    const manager = new EditorStateManager({
+      initialPlan: createTestPlan(song),
+      document: song,
+      stepEntryMode: true,
+    });
+
+    manager.selectNote("n2");
+    manager.executeCommand(createAssignFingerCommand(["n2"], 4));
+
+    expect(manager.selectedNoteIds.has("n2")).toBe(true);
+    expect(manager.selectedNoteIds.size).toBe(1);
   });
 
   it("does not advance selection when stepEntryMode is OFF", () => {

@@ -1,5 +1,13 @@
 # PianoMotion Studio: журнал оркестрации
 
+## UI-цикл dev.4: меню команд и автопереход
+
+Пользователь одобрил удаление второй строки инструментов: Undo/Redo в Edit, Keyboard shortcuts в Help (?), Auto-advance около пальцев в шапке. Исполнители GPT-6 Luna Extra High: `editor_commands_ui` владеет editor UI/Player/studio shell и их локальными интерфейсами; `editor_autoadvance` — editorState, команды, типы EditorAction и семантические unit-тесты. Оркестратор владеет npm manifests/lockfile (dev.4), browser-проверками, документацией и интеграционной приёмкой. Состояние сессии, история, Worker и canvas должны сохраняться. Результаты проверок записываются после интеграции.
+
+Результат: 401 unit, typecheck/lint и project-path build PASS; Edge 13/13, Chrome 11 первоначальных PASS + 3/3 финальных focused. Независимая проверка выявила переполнение шапки при 900 px и закрытие нижней панели по Escape из справки; исполнитель исправил оба дефекта, повторные проверки прошли. Проверена доступность всех 88 клавиш через вертикальную прокрутку на 390×844. Версия синхронизирована до dev.4. [Полное свидетельство](evidence/editor-command-menus-2026-10-15/VERIFICATION.md).
+
+Отдельный read-only исполнитель `pages_release` установил причину остановки Windows CI после прежнего исправления Python LF: autocrlf менял текстоподобную invalid MIDI fixture. Оркестратор добавил узкий `-text` атрибут и проверил SHA-256 в свежем autocrlf checkout. Содержимое fixture и эталоны не изменены; полный удалённый CI требует собственного результата.
+
 ## Цикл публикации GitHub Pages: 2026-10-15
 
 Добавлен `.github/workflows/deploy-pages.yml` для push в `main` и ручного запуска. Build job устанавливает Node.js 24 и зависимости, выполняет `npm run typecheck`, `npm run lint`, `npm run test:unit`, затем `APP_BASE=/pianomotion-studio/ npm run build` и загружает `apps/client/dist/`. Полные Windows Chrome/Edge suites остаются в отдельном `verify.yml`; они не входят в Pages deploy gate.

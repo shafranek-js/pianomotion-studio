@@ -16,6 +16,10 @@ export interface FingeringEditorDiagnosticsReport {
 export interface FingeringEditorSceneBridge {
   plan: FingeringPlan;
   selectedNoteIds: ReadonlySet<string>;
+  canUndo: boolean;
+  canRedo: boolean;
+  undo(): void;
+  redo(): void;
   selectNote(noteId: string, toggle?: boolean): void;
   setSelection(noteIds: Iterable<string>): void;
   clearSelection(): void;
@@ -196,6 +200,10 @@ function FingeringEditorSession({
   const sceneBridge = useMemo<FingeringEditorSceneBridge>(() => ({
     plan: currentPlan,
     selectedNoteIds,
+    canUndo,
+    canRedo,
+    undo: () => { stateManager.undo(); },
+    redo: () => { stateManager.redo(); },
     selectNote: (noteId, toggle = false) => {
       if (!document.notes.some((note) => note.noteId === noteId)) return;
       if (toggle) stateManager.toggleNoteSelection(noteId);
@@ -207,7 +215,7 @@ function FingeringEditorSession({
     },
     clearSelection: () => stateManager.clearSelection(),
     selectAll: () => stateManager.setSelection(document.notes.map((note) => note.noteId)),
-  }), [currentPlan, document.notes, selectedNoteIds, stateManager]);
+  }), [canUndo, canRedo, currentPlan, document.notes, selectedNoteIds, stateManager]);
 
   useEffect(() => {
     if (externalScene) onSceneBridgeChangeRef.current?.(sceneBridge);
@@ -234,16 +242,12 @@ function FingeringEditorSession({
       <FingeringToolbar
         selectedHand={activeAssignment?.hand ?? null}
         selectedFinger={activeAssignment?.finger ?? null}
-        canUndo={canUndo}
-        canRedo={canRedo}
         stepEntryMode={stepEntryMode}
         onAssignHand={(hand) => stateManager.assignHand(hand)}
         onAssignFinger={(finger) => stateManager.assignFinger(finger)}
         onToggleGlissando={() => stateManager.toggleGlissando()}
         onClearFingering={() => stateManager.clearFingering()}
         onMarkUnplayable={() => stateManager.markUnplayable()}
-        onUndo={() => stateManager.undo()}
-        onRedo={() => stateManager.redo()}
         onToggleStepEntry={() => stateManager.toggleStepEntryMode()}
         assignmentControlsHost={assignmentControlsHost}
         active={active}

@@ -57,6 +57,7 @@ export function createAssignFingerCommand(
   return {
     type: "ASSIGN_FINGER",
     description: `Assign finger ${finger ?? "none"} to ${noteIds.length} note(s)`,
+    fingerAssignment: { noteIds: [...noteIds], finger },
     apply(plan: FingeringPlan): FingeringPlan {
       const assignments: FingeringAssignment[] = plan.assignments.map(
         (assignment) => {

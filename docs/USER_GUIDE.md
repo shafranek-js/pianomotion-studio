@@ -16,14 +16,17 @@ This guide covers navigating, editing, and using **PianoMotion Studio**.
 
 ## 2. Keyboard Shortcuts & Controls
 
-Select **Fingering** in the top header to show hand and finger assignments, **Clear**, **Unplayable**, and **Gliss** next to the mode switch. On smaller windows these controls wrap into extra header rows. **Undo/Redo**, **Step Entry**, and **Shortcuts** remain above the scene. Switching back to **Performance** hides editing controls and keeps your selection and undo history.
+Select **Fingering** in the top header to show hand/finger assignments, **Clear**, **Unplayable**, **Gliss**, and **Auto-advance**. On smaller windows these controls wrap into extra header rows. **Edit → Undo/Redo** retains keyboard shortcuts; **Help (?) → Keyboard shortcuts** opens the shortcut reference. Switching back to **Performance** hides assignments and keeps your selection and undo history.
+
+**Auto-advance** is off by default. When enabled, assigning a finger selects the next note in chronological order (ascending pitch for simultaneous notes). Choosing a hand, clearing fingering or marking a note unplayable keeps your selection. Confirming the same finger can advance without creating another edit or history entry.
 
 | Action | Shortcut | Mode / Scope |
 |---|---|---|
 | **Play / Pause** | `Spacebar` | Global |
 | **Seek Backward / Forward** | `Left` / `Right` Arrow keys | Global |
 | **Assign Finger 1–5** | Number keys `1`–`5` | Editor Mode |
-| **Clear Fingering** | `0` or `Delete` | Editor Mode |
+| **Clear Fingering** | `0` | Editor Mode |
+| **Mark Unplayable** | `Delete` / `Backspace` | Editor Mode |
 | **Assign Left Hand** | `L` | Editor Mode |
 | **Assign Right Hand** | `R` | Editor Mode |
 | **Toggle Glissando** | `G` | Editor Mode |

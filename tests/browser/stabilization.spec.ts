@@ -2,7 +2,7 @@ import {expect,test} from "@playwright/test";
 import {readFile} from "node:fs/promises";
 import {createHash} from "node:crypto";
 import {ProjectPackageSchema} from "@handthesia/contracts";
-import {exportStudioPackage,focusStudioScene,loadStudioSong,openStudioInspector,saveStudioProject,settledStudio} from "./studio-helpers";
+import {exportStudioPackage,focusStudioScene,loadStudioSong,openStudioEditMenu,openStudioInspector,saveStudioProject,settledStudio} from "./studio-helpers";
 
 test("selection does not calculate; edits preserve IDs/history and exported MIDI markers",async({page})=>{
   test.setTimeout(240_000);
@@ -15,7 +15,6 @@ test("selection does not calculate; edits preserve IDs/history and exported MIDI
   await page.waitForTimeout(650); // Longer than the real edit debounce.
   expect(workers).toBe(count);
   expect((await settledStudio(page,0)).result.revision).toBe(initial.result.revision);
-  const toolbar=page.locator(".fingering-toolbar");
   await page.getByTestId("studio-header").getByRole("button",{name:"Finger 4",exact:true}).click();
   const edited=await settledStudio(page,initial.result.revision+1);
   expect(edited.result.document!.notes.map(n=>n.noteId)).toEqual(initial.result.document!.notes.map(n=>n.noteId));
@@ -28,7 +27,8 @@ test("selection does not calculate; edits preserve IDs/history and exported MIDI
   expect(second.result.document!.notes.find(n=>n.noteId===pin.noteId)?.finger).toBe(3);
   await page.locator("#player-play-button").click();
   const paused=Number(await page.locator("#player-seek-slider").inputValue());
-  await toolbar.getByRole("button",{name:"Undo",exact:true}).click();
+  await openStudioEditMenu(page);
+  await page.getByRole("menuitem",{name:/^Undo/}).click();
   const undone=await settledStudio(page,second.result.revision+1);
   expect(undone.result.document!.notes.find(n=>n.noteId===pin.noteId)?.finger).toBe(4);
   expect(Math.abs(Number(await page.locator("#player-seek-slider").inputValue())-paused)).toBeLessThan(.1);

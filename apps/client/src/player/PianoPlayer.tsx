@@ -1077,7 +1077,7 @@ export function PianoPlayer({
     editorReport, handleDiagnosticNote, handleKeyStyleChange, onOpenPianist, handleAudioFileChange, handleClearAudio,
     handleAudioOffsetChange, handleRetryCalculation, onStatusChange, status, preparingOutput, activeOutputId, playbackError]);
 
-  const editorToolbar = <FingeringEditor
+  const editorState = <FingeringEditor
     document={document ?? result.document!}
     initialFingeringPlan={draftPlan}
     active={viewMode === "editor"}
@@ -1089,12 +1089,18 @@ export function PianoPlayer({
     onDiagnosticsChange={setEditorReport}
     onSceneBridgeChange={onSceneBridgeChange}
   />;
+  const editActions = editorBridge ? {
+    canUndo: editorBridge.canUndo,
+    canRedo: editorBridge.canRedo,
+    undo: editorBridge.undo,
+    redo: editorBridge.redo,
+  } : undefined;
   const scene = <div id="piano-canvas-container" ref={containerRef} className="piano-canvas-container" data-testid="piano-canvas" />;
   const workspace = ({ effectiveView }: { effectiveView: StudioView; focusMode: boolean }) => (
     <StudioWorkspace
       viewMode={effectiveView}
       scene={scene}
-      editorToolbar={editorToolbar}
+      editorState={editorState}
       editorViewTime={editorViewTime}
       transportTime={currentTime}
       onReturnToPlayhead={handleReturnToPlayhead}
@@ -1172,12 +1178,13 @@ export function PianoPlayer({
     canExport={!needsReplan && Boolean(rawMidiBytes)}
     onOpenPreferences={onOpenPreferences}
     onOpenPianist={onOpenPianist}
+    editActions={editActions}
     projectsPanel={<ProjectsPanel onOpenProject={onOpenProject} activeProjectId={analysis.projectId} />}
     inspector={inspector}
     workspace={workspace}
     transport={transport}
-    headerAddon={viewMode === "editor" ? <div ref={setAssignmentControlsHost} className="studio-fingering-assignment-host" /> : undefined}
-    footerAddon={footerAddon ?? <StudioReleaseDetails description="0.1.0-dev.3 preview: fingering assignments in the contextual header, protected saves and offline updates, bounded animation streaming, pitch-preserving recording playback, local SF2/MIDI outputs and MP4/WebM export. Physical device and listening acceptance remains separate." />}
+    headerAddon={<div ref={setAssignmentControlsHost} className="studio-fingering-assignment-host" />}
+    footerAddon={footerAddon ?? <StudioReleaseDetails description="0.1.0-dev.4 preview: Edit and Help command menus, contextual fingering assignments and auto-advance, protected saves and offline updates, bounded animation streaming, pitch-preserving recording playback, local SF2/MIDI outputs and MP4/WebM export. Physical device and listening acceptance remains separate." />}
     dialogs={<>
       {dialogs}
       <VideoExportModal

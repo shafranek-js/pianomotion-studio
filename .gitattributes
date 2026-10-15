@@ -1,2 +1,4 @@
 # Source-manifest hashes are byte-exact; keep these Python sources LF on Windows too.
 python-core/handthesia_core/*.py text eol=lf
+# This deliberately invalid MIDI is text-like but its fixture hash is byte-exact.
+tests/fixtures/midi/synthetic-invalid-non-midi.mid -text
