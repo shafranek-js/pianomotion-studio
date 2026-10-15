@@ -1,0 +1,13 @@
+{
+  "checkedAtUtc": "2026-10-15T15:46:27.612Z",
+  "url": "https://shafranek-js.github.io/pianomotion-studio/",
+  "httpStatus": 200,
+  "browser": "Edge",
+  "version": "0.1.0-dev.3",
+  "realDemoRendered": true,
+  "headerFingerAssignment": true,
+  "undo": true,
+  "modeSwitchPreservesCanvas": true,
+  "playPause": true,
+  "errors": []
+}

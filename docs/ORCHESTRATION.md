@@ -6,7 +6,9 @@
 
 Deploy job требует успешную сборку, ветку `main` и Actions variable репозитория `PAGES_ENABLED=true`. У него только `pages: write` и `id-token: write`; используется environment `github-pages`. При выключенном gate проверки и артефакт сборки всё ещё выполняются, публикация пропускается. Ручной запуск с другой ветки также не публикует сайт.
 
-Состояние на 2026-10-15: workflow подготовлен, но deployment не выполнен. При проверке GitHub отклонил создание Pages из-за тарифа текущего private-репозитория (HTTP 422: текущий план не поддерживает Pages для этого репозитория). Не меняя видимость или тариф, дальнейшее действие зависит от настройки репозитория; после появления Pages выбрать GitHub Actions в Settings → Pages и установить `PAGES_ENABLED=true`. Наличие workflow и локальная сборка не подтверждают удалённый CI или публикацию.
+Итог на 2026-10-15: после явного разрешения пользователя репозиторий сделан публичным, GitHub Pages включён, а `PAGES_ENABLED=true`. Deployment run [38762695870](https://github.com/shafranek-js/pianomotion-studio/actions/runs/38762695870) успешно собрал сайт за 38 секунд и выполнил deploy за 50 секунд на commit `07cae1c`; опубликованный адрес — https://shafranek-js.github.io/pianomotion-studio/. Первая попытка настройки Pages до смены видимости получила HTTP 422 из-за плана private-репозитория; этот отказ сохранён как исторический.
+
+Отдельный Verify run [38744216820](https://github.com/shafranek-js/pianomotion-studio/actions/runs/38744216820) завершился одинаково в Chrome и Edge на первом шаге `Python Core and Frozen Goldens`: SHA-256 `handthesia_core/__init__.py` был другим после Windows CRLF checkout. CRLF bytes дают именно хэш из лога, тогда как Git blob и manifest используют LF. Добавлен `.gitattributes` с LF для `python-core/handthesia_core/*.py`. CI rerun после этой правки ожидается; прежний run остановился до typecheck, lint, unit, build и browser suites и не является результатом этих проверок.
 
 ## UI-цикл 2026-10-15: назначения в верхней панели
 

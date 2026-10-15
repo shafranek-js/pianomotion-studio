@@ -1,0 +1,15 @@
+{
+  "checkedAtUtc": "2026-10-15T15:45:05.707Z",
+  "url": "https://shafranek-js.github.io/pianomotion-studio/",
+  "httpStatus": 200,
+  "title": "PianoMotion Studio",
+  "version": "0.1.0-dev.3",
+  "buildId": "a8ca51923d2a070431201243",
+  "engineVersion": "83fde5039dd70360c29aa5a3edbb07fc2f024528c76330b42bc55e195cb8fbc7",
+  "verifiedResources": 85,
+  "realDemoWorkerRendered": true,
+  "workers": 18,
+  "fingeringHeader": true,
+  "overflow": false,
+  "errors": []
+}

@@ -1,0 +1,2 @@
+# Source-manifest hashes are byte-exact; keep these Python sources LF on Windows too.
+python-core/handthesia_core/*.py text eol=lf

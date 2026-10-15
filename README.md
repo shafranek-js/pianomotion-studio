@@ -187,9 +187,9 @@ npm run build
 Собранные статические файлы будут помещены в директорию `apps/client/dist/`.
 
 ### Публикация на GitHub Pages
-`.github/workflows/deploy-pages.yml` собирает и проверяет сайт при push в `main` или ручном запуске workflow. Для проекта GitHub Pages сборка использует базовый путь `/pianomotion-studio/`; workflow запускает typecheck, lint, unit-тесты и production build, затем передаёт `apps/client/dist/` в Pages. Публикация выполняется только для `main` и только при включённой GitHub Pages и переменной репозитория `PAGES_ENABLED=true`. Windows-проверки Chrome и Edge продолжают выполняться отдельным workflow `verify.yml`.
+Опубликованный сайт: [shafranek-js.github.io/pianomotion-studio](https://shafranek-js.github.io/pianomotion-studio/). Deployment workflow run [38762695870](https://github.com/shafranek-js/pianomotion-studio/actions/runs/38762695870) завершился успешно на commit `07cae1c`. Сборка использует базовый путь `/pianomotion-studio/`.
 
-Пока тариф и настройки репозитория не разрешают GitHub Pages, сборка и проверки проходят отдельно, а deploy job пропускается. Перед публикацией в Settings → Pages выберите GitHub Actions как источник; после включения Pages задайте Actions variable `PAGES_ENABLED` со значением `true`. Настройка workflow сама по себе не означает, что сайт уже опубликован.
+`.github/workflows/deploy-pages.yml` запускает typecheck, lint, unit-тесты и production build при push в `main` или ручном запуске workflow, затем передаёт `apps/client/dist/` в Pages. Публикация выполняется только для `main` при включённой GitHub Pages и Actions variable `PAGES_ENABLED=true`. Windows-проверки Chrome и Edge запускаются отдельно через `verify.yml`.
 
 ### Создание автономного zip-архива
 ```bash
