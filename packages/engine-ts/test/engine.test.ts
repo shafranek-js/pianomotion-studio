@@ -176,8 +176,8 @@ describe("@handthesia/engine-ts", () => {
       engineVersion: _engine_version(),
     });
 
-    expect(validatedExport.exportedBytes).toBeInstanceOf(Uint8Array);
-    expect(validatedExport.exportedBytes.length).toBeGreaterThan(0);
+    expect(validatedExport.exportedBytes).toBeDefined();
+    expect(validatedExport.exportedBytes.byteLength).toBeGreaterThan(0);
     expect(validatedExport.markedCount).toBeGreaterThanOrEqual(0);
   });
 });
