@@ -3,6 +3,9 @@ import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./app.css";
 import { applicationBuildId, registerServiceWorker, unregisterDevelopmentServiceWorker } from "./pwa";
+import { initializeDiagnosticLog } from "./diagnostics/eventLog";
+
+initializeDiagnosticLog();
 
 const rootElement = document.getElementById("root");
 

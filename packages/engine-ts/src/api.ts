@@ -11,9 +11,9 @@ import { KeyboardGeometry, NumericRect } from "./geometry.ts";
 import * as pianist_module from "./pianist.ts";
 import { default_pianist, from_profile_dto, DEFAULT_ID } from "./pianist.ts";
 import * as hands from "./hands.ts";
-import { build_hands, crossing_episodes, arrange_crossing } from "./hands.ts";
+import { build_hands, crossing_episodes, arrange_crossing, pyId } from "./hands.ts";
 import * as midi_loader from "./midiLoader.ts";
-import { Note, MidiSong, LOWEST_PIANO_KEY, save_fingered_midi_bytes, LEFT, RIGHT, pyId } from "./midiLoader.ts";
+import { Note, MidiSong, LOWEST_PIANO_KEY, save_fingered_midi_bytes, LEFT, RIGHT } from "./midiLoader.ts";
 import * as identity from "./identity.ts";
 import { observe_source } from "./identity.ts";
 import * as fingering from "./fingering.ts";
@@ -62,9 +62,13 @@ export function _manifest(): any {
 export function _engine_version(manifest: any = null): any {
   return (manifest || EMBEDDED_MANIFEST).engineVersion;
 }
-export function _rounded(value: any = null, digits: any = 8): any {
+export function _rounded(value: any, digits: any = 8): any {
   let result: any;
-  result = pyRound(Number(value), digits);
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) {
+    throw ValueError('Cannot serialize a non-finite engine coordinate or time');
+  }
+  result = pyRound(numeric, digits);
   return ((pyEq(result, 0)) ? 0.0 : result);
 }
 export function _finite(value: any = null, label: any = null): any {
@@ -77,8 +81,6 @@ export function _finite(value: any = null, label: any = null): any {
 }
 export let _global_progress_callback: any = null;
 export function set_progress_callback(callback: any = null): any {
-  let _global_progress_callback: any;
-
   _global_progress_callback = callback;
 }
 export function _report_progress(fraction: any = null, message: any = null): any {
@@ -514,7 +516,7 @@ export function analyze_midi(data: any = null, options: any = null): any {
     entry_by_id = Object.fromEntries(Array.from(pyIter(pyItems(entry_by_object))).map(([identity, entry]: any) => [note_id_by_object[identity], entry]));
     for ([note_id, source_note] of pyIter(pyItems(source_notes_by_id))) {
       dto = edited_notes[note_id];
-      edited_note = new Note(note.pitch, note.start, note.end, note.velocity, note.track, ((pyEq(dto['hand'], 'left')) ? midi_loader.LEFT : midi_loader.RIGHT), dto['finger'], dto['glissando'], note.source_ids, note.source_events);
+      edited_note = new Note(source_note.pitch, source_note.start, source_note.end, source_note.velocity, source_note.track, ((pyEq(dto['hand'], 'left')) ? midi_loader.LEFT : midi_loader.RIGHT), dto['finger'], dto['glissando'], source_note.source_ids, source_note.source_events);
       updated_notes.push(edited_note);
       updated_entries[pyId(edited_note)] = entry_by_id[note_id];
       updated_note_ids[pyId(edited_note)] = note_id;
@@ -881,8 +883,8 @@ export function sample_motion_window(data: any = null, document: any = null, fin
   }
   [profile_dto, profile_context] = _resolve_profile(pyGet(options, 'profile', null));
   profile_id = profile_dto['profileId'];
-  project_id = String((bool(pyGet(options, 'projectId', null)) ? (pyGet(options, 'projectId', null)) : ((bool((bool(document) && bool(pyGet(document, 'projectId', null)))) ? ((bool(document) && bool(pyGet(document, 'projectId', null)))) : ((bool((bool(fingering_plan) && bool(pyGet(fingering_plan, 'projectId', null)))) ? ((bool(fingering_plan) && bool(pyGet(fingering_plan, 'projectId', null)))) : ('default-project'))))))).trim();
-  revision = Math.trunc(((pyGet(options, 'revision', null) !== null) ? pyGet(options, 'revision', null) : ((bool(document) && ((pyGet(document, 'revision', null) !== null))) ? (bool(document) && bool(pyGet(document, 'revision', null))) : ((bool(fingering_plan) && ((pyGet(fingering_plan, 'inputRevision', null) !== null))) ? (bool(fingering_plan) && bool(pyGet(fingering_plan, 'inputRevision', null))) : 0))));
+  project_id = String((bool(pyGet(options, 'projectId', null)) ? pyGet(options, 'projectId', null) : null) || (bool(document) ? pyGet(document, 'projectId', null) : null) || (bool(fingering_plan) ? pyGet(fingering_plan, 'projectId', null) : null) || 'default-project').trim();
+  revision = Math.trunc(pyGet(options, 'revision', null) !== null ? pyGet(options, 'revision', null) : pyGet(document, 'revision', null) !== null ? pyGet(document, 'revision', null) : pyGet(fingering_plan, 'inputRevision', null) !== null ? pyGet(fingering_plan, 'inputRevision', null) : 0);
   session_key = [project_id, revision, profile_id];
   key_style = pyGet(options, 'keyStyle', 'realistic');
   if (((!pyIn(key_style, ['realistic', 'equal'])))) {
@@ -928,9 +930,9 @@ export function sample_motion_window(data: any = null, document: any = null, fin
         nid = pyGet(note_id_by_object, pyId(note), null);
         doc_note = pyGet(notes_by_id, nid, null);
         assign = pyGet(assignments_by_id, nid, null);
-        hand_val = (bool((bool(assign) && bool(pyGet(assign, 'hand', null)))) ? ((bool(assign) && bool(pyGet(assign, 'hand', null)))) : ((bool((bool(doc_note) && bool(pyGet(doc_note, 'hand', null)))) ? ((bool(doc_note) && bool(pyGet(doc_note, 'hand', null)))) : (((pyEq(note.hand, midi_loader.LEFT)) ? 'left' : 'right')))));
+        hand_val = (bool(assign) ? pyGet(assign, 'hand', null) : null) || (bool(doc_note) ? pyGet(doc_note, 'hand', null) : null) || (pyEq(note.hand, midi_loader.LEFT) ? 'left' : 'right');
         hand = ((pyEq(hand_val, 'left')) ? midi_loader.LEFT : midi_loader.RIGHT);
-        raw_finger = (bool((bool(assign) && bool(pyGet(assign, 'finger', null)))) ? ((bool(assign) && bool(pyGet(assign, 'finger', null)))) : ((bool(doc_note) && bool(pyGet(doc_note, 'finger', null)))));
+        raw_finger = (bool(assign) ? pyGet(assign, 'finger', null) : null) || (bool(doc_note) ? pyGet(doc_note, 'finger', null) : null);
         finger = (bool((typeof raw_finger === 'number' && Number.isInteger(raw_finger))) ? Math.trunc(raw_finger) : null);
         is_gliss = (bool((bool(assign) && ((pyEq(pyGet(assign, 'disposition', null), 'glissando'))))) ? ((bool(assign) && ((pyEq(pyGet(assign, 'disposition', null), 'glissando'))))) : ((bool(doc_note) && bool(pyGet(doc_note, 'glissando', false)))));
         disposition = (bool(assign) ? pyGet(assign, 'disposition', null) : null);
@@ -1026,7 +1028,7 @@ export function sample_motion_window(data: any = null, document: any = null, fin
   motion_poses = [];
   for (t of pyIter(sorted_times)) {
     poses_for_t = [];
-    if ((pyEq((animators).length, 2))) {
+    if ((pyEq(pyLen(animators), 2))) {
       sampled = {  };
       for (h of pyIter([midi_loader.RIGHT, midi_loader.LEFT])) {
         if ((pyIn(h, animators))) {
@@ -1056,7 +1058,7 @@ export function sample_motion_window(data: any = null, document: any = null, fin
     }
     motion_poses.push(...poses_for_t);
   }
-  motion_poses.sort((a: any, b: any) => { const ka = ((item) => [item['transportTimeSeconds'], item['hand']]) ? (((item) => [item['transportTimeSeconds'], item['hand']]))(a) : a; const kb = ((item) => [item['transportTimeSeconds'], item['hand']]) ? (((item) => [item['transportTimeSeconds'], item['hand']]))(b) : b; return ka < kb ? (false ? 1 : -1) : (ka > kb ? (false ? -1 : 1) : 0); });
+  motion_poses.sort((a: any, b: any) => pyCmp([a['transportTimeSeconds'], a['hand']], [b['transportTimeSeconds'], b['hand']]));
   coverage = {  };
   for (raw_hand of pyIter(animators)) {
     hand_key = ((pyEq(raw_hand, midi_loader.LEFT)) ? 'left' : 'right');

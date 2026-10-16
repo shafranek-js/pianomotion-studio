@@ -9,6 +9,7 @@ import { derivePerformanceStateAt } from "./performancePlan.ts";
 import type { SyncedAudioSource } from "./recording/syncedAudioSource.ts";
 import type { PerformanceOutput, PerformanceOutputId } from "./output/index.ts";
 import { SynthPerformanceOutput } from "./output/index.ts";
+import { recordDiagnostic } from "../diagnostics/eventLog";
 
 export type TransportState = "idle" | "playing" | "paused";
 
@@ -103,6 +104,7 @@ export class Transport {
   public setOutput(output: PerformanceOutput | null): void {
     const nextOutput = output ?? this.defaultSynthOutput;
     if (this.output === nextOutput) return;
+    recordDiagnostic("transport.output", { fromOutput: this.output.id, toOutput: nextOutput.id, timeSeconds: this.getCurrentTime() });
     const resumePreparation = this.preparingOutput;
     this.playRequestGeneration += 1;
     this.cancelSamplePreparation();
@@ -276,6 +278,7 @@ export class Transport {
    * Starts or resumes playback.
    */
   public async play(): Promise<void> {
+    recordDiagnostic("transport.play-requested", { state: this.state, timeSeconds: this.getCurrentTime(), speed: this.speed, output: this.output.id });
     if (this.disposed || this.state === "playing") {
       return;
     }
@@ -341,6 +344,7 @@ export class Transport {
    * Pauses playback.
    */
   public pause(): void {
+    recordDiagnostic("transport.pause-requested", { state: this.state, timeSeconds: this.getCurrentTime(), preparingOutput: this.preparingOutput });
     this.playRequestGeneration += 1;
     this.cancelSamplePreparation();
     if (this.state !== "playing") {
@@ -362,6 +366,7 @@ export class Transport {
    * Stops playback and resets playhead to start (-leadInSeconds).
    */
   public stop(): void {
+    recordDiagnostic("transport.stop", { state: this.state, timeSeconds: this.getCurrentTime() });
     this.playRequestGeneration += 1;
     this.cancelSamplePreparation();
     this.stopScheduler();
@@ -382,6 +387,7 @@ export class Transport {
    * Instantly chokes active audio and updates scheduler pointer.
    */
   public seek(timeSeconds: number): void {
+    recordDiagnostic("transport.seek", { fromTimeSeconds: this.getCurrentTime(), toTimeSeconds: timeSeconds, state: this.state });
     if (!Number.isFinite(timeSeconds)) return;
     const clampedTime = this.clampSongTime(timeSeconds);
     const resumePreparation = this.preparingOutput;
@@ -419,6 +425,7 @@ export class Transport {
    * Seamlessly re-anchors clock to avoid any audio jumps or gaps.
    */
   public setSpeed(speed: number): void {
+    recordDiagnostic("transport.speed", { fromSpeed: this.speed, toSpeed: speed, timeSeconds: this.getCurrentTime() });
     const clampedSpeed = Math.max(MIN_SPEED, Math.min(MAX_SPEED, speed));
     if (Math.abs(this.speed - clampedSpeed) < 1e-6) {
       return;
@@ -557,6 +564,7 @@ export class Transport {
 
   private setPreparingOutput(preparing: boolean): void {
     if (this.preparingOutput === preparing) return;
+    recordDiagnostic("transport.preparing-output", { preparing, output: this.output.id, timeSeconds: this.getCurrentTime() });
     this.preparingOutput = preparing;
     for (const listener of this.preparationListeners) listener(preparing);
   }
@@ -760,6 +768,7 @@ export class Transport {
   }
 
   private emitState(): void {
+    recordDiagnostic("transport.state", { state: this.state, timeSeconds: this.getCurrentTime(), speed: this.speed });
     for (const listener of this.stateListeners) {
       listener(this.state);
     }
@@ -778,6 +787,7 @@ export class Transport {
   }
 
   private handlePlaybackError(error: Error): void {
+    recordDiagnostic("transport.error", { error, output: this.output.id, timeSeconds: this.getCurrentTime() }, "error");
     this.playRequestGeneration += 1;
     this.cancelSamplePreparation();
     if (this.state === "playing") {

@@ -1,0 +1,457 @@
+{
+  "targetPythonEngineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a",
+  "nativeSourceSha256": "c8a6673eb79fa701cd1f4666ad72772105cdbfc13a91c8ddbc26dae5aa0be52c",
+  "generatedAt": "2026-10-16T16:51:44.109Z",
+  "fixtures": [
+    {
+      "fixtureId": "synthetic-crossing-wide-chord",
+      "valid": true,
+      "categories": {
+        "raw-pose": 3185
+      },
+      "expectedStatus": "loaded",
+      "actualStatus": "loaded",
+      "expectedCounts": {
+        "sourceNotes": 14,
+        "normalizedNotes": 14,
+        "assignments": 14,
+        "performanceEvents": 13,
+        "rawPedals": 0,
+        "pedals": 0,
+        "sourcePedals": 0,
+        "sampledPoses": 16
+      },
+      "actualCounts": {
+        "sourceNotes": 14,
+        "normalizedNotes": 14,
+        "assignments": 14,
+        "performanceEvents": 26,
+        "rawPedals": 0,
+        "pedals": 0,
+        "sourcePedals": 0,
+        "sampledPoses": 16
+      },
+      "checkedPosePairs": 16,
+      "numericTolerance": {
+        "timeSeconds": 0.001,
+        "rawCoordinatesInWhiteKeys": 0.01,
+        "physicalCoordinatesInWhiteKeys": 0.01
+      }
+    },
+    {
+      "fixtureId": "synthetic-duplicate-identities",
+      "valid": true,
+      "categories": {},
+      "expectedStatus": "loaded",
+      "actualStatus": "loaded",
+      "expectedCounts": {
+        "sourceNotes": 4,
+        "normalizedNotes": 3,
+        "assignments": 3,
+        "performanceEvents": 3,
+        "rawPedals": 0,
+        "pedals": 0,
+        "sourcePedals": 0,
+        "sampledPoses": 8
+      },
+      "actualCounts": {
+        "sourceNotes": 4,
+        "normalizedNotes": 3,
+        "assignments": 3,
+        "performanceEvents": 6,
+        "rawPedals": 0,
+        "pedals": 0,
+        "sourcePedals": 0,
+        "sampledPoses": 8
+      },
+      "checkedPosePairs": 8,
+      "numericTolerance": {
+        "timeSeconds": 0.001,
+        "rawCoordinatesInWhiteKeys": 0.01,
+        "physicalCoordinatesInWhiteKeys": 0.01
+      }
+    },
+    {
+      "fixtureId": "synthetic-invalid-empty",
+      "valid": true,
+      "categories": {},
+      "expectedStatus": "invalid",
+      "actualStatus": "invalid",
+      "expectedCounts": {
+        "sourceNotes": 0,
+        "normalizedNotes": 0,
+        "assignments": 0,
+        "performanceEvents": 0,
+        "rawPedals": 0,
+        "pedals": 0,
+        "sourcePedals": 0,
+        "sampledPoses": 0
+      },
+      "actualCounts": {
+        "sourceNotes": 0,
+        "normalizedNotes": 0,
+        "assignments": 0,
+        "performanceEvents": 0,
+        "rawPedals": 0,
+        "pedals": 0,
+        "sourcePedals": 0,
+        "sampledPoses": 0
+      },
+      "checkedPosePairs": 0,
+      "numericTolerance": {
+        "timeSeconds": 0.001,
+        "rawCoordinatesInWhiteKeys": 0.01,
+        "physicalCoordinatesInWhiteKeys": 0.01
+      }
+    },
+    {
+      "fixtureId": "synthetic-invalid-non-midi",
+      "valid": true,
+      "categories": {},
+      "expectedStatus": "invalid",
+      "actualStatus": "invalid",
+      "expectedCounts": {
+        "sourceNotes": 0,
+        "normalizedNotes": 0,
+        "assignments": 0,
+        "performanceEvents": 0,
+        "rawPedals": 0,
+        "pedals": 0,
+        "sourcePedals": 0,
+        "sampledPoses": 0
+      },
+      "actualCounts": {
+        "sourceNotes": 0,
+        "normalizedNotes": 0,
+        "assignments": 0,
+        "performanceEvents": 0,
+        "rawPedals": 0,
+        "pedals": 0,
+        "sourcePedals": 0,
+        "sampledPoses": 0
+      },
+      "checkedPosePairs": 0,
+      "numericTolerance": {
+        "timeSeconds": 0.001,
+        "rawCoordinatesInWhiteKeys": 0.01,
+        "physicalCoordinatesInWhiteKeys": 0.01
+      }
+    },
+    {
+      "fixtureId": "synthetic-invalid-truncated",
+      "valid": true,
+      "categories": {},
+      "expectedStatus": "repaired",
+      "actualStatus": "repaired",
+      "expectedCounts": {
+        "sourceNotes": 0,
+        "normalizedNotes": 0,
+        "assignments": 0,
+        "performanceEvents": 0,
+        "rawPedals": 0,
+        "pedals": 0,
+        "sourcePedals": 0,
+        "sampledPoses": 0
+      },
+      "actualCounts": {
+        "sourceNotes": 0,
+        "normalizedNotes": 0,
+        "assignments": 0,
+        "performanceEvents": 0,
+        "rawPedals": 0,
+        "pedals": 0,
+        "sourcePedals": 0,
+        "sampledPoses": 0
+      },
+      "checkedPosePairs": 0,
+      "numericTolerance": {
+        "timeSeconds": 0.001,
+        "rawCoordinatesInWhiteKeys": 0.01,
+        "physicalCoordinatesInWhiteKeys": 0.01
+      }
+    },
+    {
+      "fixtureId": "synthetic-manual-fingering-gliss",
+      "valid": true,
+      "categories": {},
+      "expectedStatus": "loaded",
+      "actualStatus": "loaded",
+      "expectedCounts": {
+        "sourceNotes": 8,
+        "normalizedNotes": 8,
+        "assignments": 8,
+        "performanceEvents": 8,
+        "rawPedals": 0,
+        "pedals": 0,
+        "sourcePedals": 0,
+        "sampledPoses": 3
+      },
+      "actualCounts": {
+        "sourceNotes": 8,
+        "normalizedNotes": 8,
+        "assignments": 8,
+        "performanceEvents": 16,
+        "rawPedals": 0,
+        "pedals": 0,
+        "sourcePedals": 0,
+        "sampledPoses": 3
+      },
+      "checkedPosePairs": 3,
+      "numericTolerance": {
+        "timeSeconds": 0.001,
+        "rawCoordinatesInWhiteKeys": 0.01,
+        "physicalCoordinatesInWhiteKeys": 0.01
+      }
+    },
+    {
+      "fixtureId": "synthetic-mismatched-track-labels",
+      "valid": true,
+      "categories": {
+        "raw-pose": 535
+      },
+      "expectedStatus": "loaded",
+      "actualStatus": "loaded",
+      "expectedCounts": {
+        "sourceNotes": 6,
+        "normalizedNotes": 6,
+        "assignments": 6,
+        "performanceEvents": 6,
+        "rawPedals": 0,
+        "pedals": 0,
+        "sourcePedals": 0,
+        "sampledPoses": 10
+      },
+      "actualCounts": {
+        "sourceNotes": 6,
+        "normalizedNotes": 6,
+        "assignments": 6,
+        "performanceEvents": 12,
+        "rawPedals": 0,
+        "pedals": 0,
+        "sourcePedals": 0,
+        "sampledPoses": 10
+      },
+      "checkedPosePairs": 10,
+      "numericTolerance": {
+        "timeSeconds": 0.001,
+        "rawCoordinatesInWhiteKeys": 0.01,
+        "physicalCoordinatesInWhiteKeys": 0.01
+      }
+    },
+    {
+      "fixtureId": "synthetic-scale-chords",
+      "valid": true,
+      "categories": {
+        "performance": 1,
+        "raw-pose": 324
+      },
+      "expectedStatus": "loaded",
+      "actualStatus": "loaded",
+      "expectedCounts": {
+        "sourceNotes": 19,
+        "normalizedNotes": 19,
+        "assignments": 19,
+        "performanceEvents": 19,
+        "rawPedals": 0,
+        "pedals": 0,
+        "sourcePedals": 0,
+        "sampledPoses": 4
+      },
+      "actualCounts": {
+        "sourceNotes": 19,
+        "normalizedNotes": 19,
+        "assignments": 19,
+        "performanceEvents": 38,
+        "rawPedals": 0,
+        "pedals": 0,
+        "sourcePedals": 0,
+        "sampledPoses": 4
+      },
+      "checkedPosePairs": 4,
+      "numericTolerance": {
+        "timeSeconds": 0.001,
+        "rawCoordinatesInWhiteKeys": 0.01,
+        "physicalCoordinatesInWhiteKeys": 0.01
+      }
+    },
+    {
+      "fixtureId": "synthetic-stress-512",
+      "valid": true,
+      "categories": {
+        "performance": 17,
+        "raw-pose": 1207
+      },
+      "expectedStatus": "loaded",
+      "actualStatus": "loaded",
+      "expectedCounts": {
+        "sourceNotes": 512,
+        "normalizedNotes": 512,
+        "assignments": 512,
+        "performanceEvents": 512,
+        "rawPedals": 0,
+        "pedals": 0,
+        "sourcePedals": 0,
+        "sampledPoses": 8
+      },
+      "actualCounts": {
+        "sourceNotes": 512,
+        "normalizedNotes": 512,
+        "assignments": 512,
+        "performanceEvents": 1024,
+        "rawPedals": 0,
+        "pedals": 0,
+        "sourcePedals": 0,
+        "sampledPoses": 8
+      },
+      "checkedPosePairs": 8,
+      "numericTolerance": {
+        "timeSeconds": 0.001,
+        "rawCoordinatesInWhiteKeys": 0.01,
+        "physicalCoordinatesInWhiteKeys": 0.01
+      }
+    },
+    {
+      "fixtureId": "synthetic-tempo-pedals-overlap",
+      "valid": true,
+      "categories": {
+        "raw-pose": 108
+      },
+      "expectedStatus": "loaded",
+      "actualStatus": "loaded",
+      "expectedCounts": {
+        "sourceNotes": 5,
+        "normalizedNotes": 5,
+        "assignments": 5,
+        "performanceEvents": 5,
+        "rawPedals": 7,
+        "pedals": 6,
+        "sourcePedals": 7,
+        "sampledPoses": 12
+      },
+      "actualCounts": {
+        "sourceNotes": 5,
+        "normalizedNotes": 5,
+        "assignments": 5,
+        "performanceEvents": 16,
+        "rawPedals": 7,
+        "pedals": 6,
+        "sourcePedals": 7,
+        "sampledPoses": 12
+      },
+      "checkedPosePairs": 12,
+      "numericTolerance": {
+        "timeSeconds": 0.001,
+        "rawCoordinatesInWhiteKeys": 0.01,
+        "physicalCoordinatesInWhiteKeys": 0.01
+      }
+    },
+    {
+      "fixtureId": "tracked-demo-song",
+      "valid": true,
+      "categories": {
+        "performance": 1,
+        "raw-pose": 984
+      },
+      "expectedStatus": "loaded",
+      "actualStatus": "loaded",
+      "expectedCounts": {
+        "sourceNotes": 193,
+        "normalizedNotes": 193,
+        "assignments": 193,
+        "performanceEvents": 193,
+        "rawPedals": 0,
+        "pedals": 0,
+        "sourcePedals": 0,
+        "sampledPoses": 10
+      },
+      "actualCounts": {
+        "sourceNotes": 193,
+        "normalizedNotes": 193,
+        "assignments": 193,
+        "performanceEvents": 386,
+        "rawPedals": 0,
+        "pedals": 0,
+        "sourcePedals": 0,
+        "sampledPoses": 10
+      },
+      "checkedPosePairs": 10,
+      "numericTolerance": {
+        "timeSeconds": 0.001,
+        "rawCoordinatesInWhiteKeys": 0.01,
+        "physicalCoordinatesInWhiteKeys": 0.01
+      }
+    },
+    {
+      "fixtureId": "tracked-right-hand-octaves",
+      "valid": true,
+      "categories": {
+        "performance": 15,
+        "raw-pose": 829
+      },
+      "expectedStatus": "loaded",
+      "actualStatus": "loaded",
+      "expectedCounts": {
+        "sourceNotes": 44,
+        "normalizedNotes": 44,
+        "assignments": 44,
+        "performanceEvents": 44,
+        "rawPedals": 0,
+        "pedals": 0,
+        "sourcePedals": 0,
+        "sampledPoses": 4
+      },
+      "actualCounts": {
+        "sourceNotes": 44,
+        "normalizedNotes": 44,
+        "assignments": 44,
+        "performanceEvents": 88,
+        "rawPedals": 0,
+        "pedals": 0,
+        "sourcePedals": 0,
+        "sampledPoses": 4
+      },
+      "checkedPosePairs": 4,
+      "numericTolerance": {
+        "timeSeconds": 0.001,
+        "rawCoordinatesInWhiteKeys": 0.01,
+        "physicalCoordinatesInWhiteKeys": 0.01
+      }
+    },
+    {
+      "fixtureId": "tracked-right-hand",
+      "valid": true,
+      "categories": {
+        "raw-pose": 195
+      },
+      "expectedStatus": "loaded",
+      "actualStatus": "loaded",
+      "expectedCounts": {
+        "sourceNotes": 22,
+        "normalizedNotes": 22,
+        "assignments": 22,
+        "performanceEvents": 22,
+        "rawPedals": 0,
+        "pedals": 0,
+        "sourcePedals": 0,
+        "sampledPoses": 4
+      },
+      "actualCounts": {
+        "sourceNotes": 22,
+        "normalizedNotes": 22,
+        "assignments": 22,
+        "performanceEvents": 44,
+        "rawPedals": 0,
+        "pedals": 0,
+        "sourcePedals": 0,
+        "sampledPoses": 4
+      },
+      "checkedPosePairs": 4,
+      "numericTolerance": {
+        "timeSeconds": 0.001,
+        "rawCoordinatesInWhiteKeys": 0.01,
+        "physicalCoordinatesInWhiteKeys": 0.01
+      }
+    }
+  ],
+  "passed": false
+}

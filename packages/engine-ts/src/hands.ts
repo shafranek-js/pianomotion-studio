@@ -10,7 +10,7 @@ import * as midi_loader from "./midiLoader.ts";
 import { LEFT, RIGHT, is_black_key, Note, MidiSong } from "./midiLoader.ts";
 import * as progress from "./progress.ts";
 import { KEY_LEN_WW, KeyboardGeometry, NumericRect } from "./geometry.ts";
-import { group_notes, is_crossing, key_pos, mirror_pitch, plan_fingering, double_ok, MAX_SPAN } from "./fingering.ts";
+import { group_notes, is_crossing, key_pos, mirror_pitch, plan_fingering, double_ok, MAX_SPAN, objId } from "./fingering.ts";
 import type { Pianist } from "./pianist.ts";
 import { DEFAULT_ANATOMY, WRIST, clamp_wrist } from "./pianist.ts";
 import * as pianist_module from "./pianist.ts";
@@ -21,17 +21,19 @@ const pianists = pianist_module;
 const glissando = glissando_module;
 const fg = fingering_module;
 
-// Runtime identity helpers
-let _nextObjId = 1;
-const _objIdMap = new WeakMap<object, number>();
+// Share the same object identity space as MIDI parsing and fingering. The
+// planner's HybridNoteMap is keyed by figures.objId(note), so a private map
+// here silently loses its assignments when its allocation order differs.
 export function pyId(obj: any): number {
   if (obj === null || obj === undefined || typeof obj !== 'object') return 0;
-  let id = _objIdMap.get(obj);
-  if (id === undefined) {
-    id = _nextObjId++;
-    _objIdMap.set(obj, id);
-  }
-  return id;
+  return objId(obj);
+}
+
+// Python's finger-indexed dicts use integer keys. Object.entries() necessarily
+// turns those keys into strings, so recover the numeric key only at the hand
+// engine's known finger-map boundaries (never in the shared Python helpers).
+function fingerItems(mapping: any): Array<[number, any]> {
+  return Object.entries(mapping).map(([key, value]) => [Number(key), value]);
 }
 
 // 
@@ -355,7 +357,9 @@ export function build_hands(song: any = null, kw: any = {}): any {
   [out, done] = [{  }, 0];
   for (h of pyIter([RIGHT, LEFT])) {
     if (bool(counts[h])) {
-      out[h] = new HandAnimator(song, h, kw);
+      // Always pass an options-shaped third argument. An empty kwargs object
+      // otherwise looks like an explicit empty fingering map to the constructor.
+      out[h] = new HandAnimator(song, h, { ...kw, key_style: kw.key_style ?? 'realistic' });
       done = pyAugAdd(done, counts[h]);
     }
   }
@@ -733,7 +737,7 @@ export class HandAnimator {
   //       * finally every fingertip is clamped to its finger's splay/reach range
   //         before the bones are solved, so no finger ever bends out of the hand.
   //     
-  constructor(song: any = null, hand: any = null, fingering: any = null, pianist: any = null, repair: any = null, key_style: any = null) {
+  constructor(song: any = null, hand: any = null, fingering: any = null, pianist: any = null, repair: any = true, key_style: any = null) {
     let _: any, a: any, b: any, e: any, ends: any, eo: any, f: any, g: any, gi: any, i: any, j: any, lift: any, m: any, n: any, notes: any, ns: any, nx: any, pk: any, s0: any, s1: any, sm: any, so: any, starts: any, vm: any, vn: any;
     if (fingering && typeof fingering === 'object' && !Array.isArray(fingering) && ('pianist' in fingering || 'key_style' in fingering || 'repair' in fingering)) {
       pianist = fingering.pianist ?? pianist;
@@ -793,12 +797,12 @@ export class HandAnimator {
     this._ref_kb = null;
     this._layout_sig = null;
     this._roll_wide_chords();
-    for (f of pyIter(this.by_finger)) {
+    for (f of pyIter(Object.keys(this.by_finger).map(Number))) {
       this.by_finger[f].sort((a: any, b: any) => { const ka = ((n) => so[pyId(n)]) ? (((n) => so[pyId(n)]))(a) : a; const kb = ((n) => so[pyId(n)]) ? (((n) => so[pyId(n)]))(b) : b; return ka < kb ? (false ? 1 : -1) : (ka > kb ? (false ? -1 : 1) : 0); });
     }
-    this.finger_starts = Object.fromEntries(Array.from(pyIter(pyItems(this.by_finger))).map(([f, ns]: any) => [f, Array.from(pyIter(ns)).map((n: any) => so[pyId(n)])]));
+    this.finger_starts = Object.fromEntries(fingerItems(this.by_finger).map(([f, ns]: any) => [f, Array.from(pyIter(ns)).map((n: any) => so[pyId(n)])]));
     this.finger_ends = {  };
-    for ([f, ns] of pyIter(pyItems(this.by_finger))) {
+    for ([f, ns] of pyIter(fingerItems(this.by_finger))) {
       ends = [];
       for ([i, n] of pyIter(enumerate(ns))) {
         [e, s0] = [eo[pyId(n)], so[pyId(n)]];
@@ -820,7 +824,7 @@ export class HandAnimator {
     }
 
     starts = Array.from(pyIter(this.groups)).map((g: any) => g[0]);
-    for ([f, ns] of pyIter(pyItems(this.by_finger))) {
+    for ([f, ns] of pyIter(fingerItems(this.by_finger))) {
       for ([i, n] of pyIter(enumerate(ns))) {
         s0 = so[pyId(n)];
         gi = bisectRight(starts, pyAdd(n.start, 1e-06));
@@ -858,7 +862,7 @@ export class HandAnimator {
     }
     this._speed_schedule();
     this.white_up = this._white_up();
-    this.performance = Array.from(pyIter(pyItems(this.by_finger))).flatMap(([f, ns]: any) => Array.from(pyIter(enumerate(ns))).map(([i, n]: any) => [this.finger_starts[f][i], this.finger_ends[f][i], n]));
+    this.performance = Array.from(pyIter(fingerItems(this.by_finger))).flatMap(([f, ns]: any) => Array.from(pyIter(enumerate(ns))).map(([i, n]: any) => [this.finger_starts[f][i], this.finger_ends[f][i], n]));
     this.performance = pyAugAdd(this.performance, this._gliss_performance());
     this.spans = busy_spans(Array.from(pyIter(this.performance)).map(([s0, e, _0]: any) => [s0, e]));
     this.span_starts = Array.from(pyIter(this.spans)).map(([a, _0]: any) => a);
@@ -905,7 +909,7 @@ export class HandAnimator {
           step = (bool(((1 <= d) && (d <= 2))) ? (((1 <= d) && (d <= 2))) : ((((pyEq(d, 3))) && (((cur).length > 1)) && ((pyEq((cur[cur.length - 2][1]).length, 1))) && (((1 <= Math.abs((prev[0] - cur[cur.length - 2][1][0]))) && (Math.abs((prev[0] - cur[cur.length - 2][1][0])) <= 2))))));
         } else {
           ds = ((pyEq((ps).length, (prev).length)) ? new Set(Array.from(pyIter(zip(ps, prev))).map(([a, b]: any) => (a - b))) : new Set());
-          step = (((pyEq((ds).length, 1))) && (((1 <= Math.abs(next(iter(ds)))) && (Math.abs(next(iter(ds))) <= 2))));
+          step = (((pyEq(pyLen(ds), 1))) && (((1 <= Math.abs(next(iter(ds)))) && (Math.abs(next(iter(ds))) <= 2))));
         }
         if ((bool((!bool(step))) ? ((!bool(step))) : (((t - cur[cur.length - 1][0]) > RUN_GAP_T)))) {
           close();
@@ -951,7 +955,7 @@ export class HandAnimator {
           }
           continue;
         }
-        if ((((lo !== null)) && (((i - lo) >= TREM_MIN_NOTES)) && (((new Set(sets.slice(lo, i))).length >= 2)))) {
+        if ((((lo !== null)) && (((i - lo) >= TREM_MIN_NOTES)) && ((pyLen(new Set(sets.slice(lo, i))) >= 2)))) {
           spans.push([lo, (i - 1)]);
         }
         lo = ((((i < n)) && bool(ok[i])) ? i : null);
@@ -987,7 +991,7 @@ export class HandAnimator {
     }
     out = [];
     for ([lo, hi] of pyIter(pieces)) {
-      if ((bool((pyAdd((hi - lo), 1) < TREM_MIN_NOTES)) ? ((pyAdd((hi - lo), 1) < TREM_MIN_NOTES)) : (((new Set(sets.slice(lo, pyAdd(hi, 1)))).length < 2)))) {
+      if ((bool((pyAdd((hi - lo), 1) < TREM_MIN_NOTES)) ? ((pyAdd((hi - lo), 1) < TREM_MIN_NOTES)) : ((pyLen(new Set(sets.slice(lo, pyAdd(hi, 1)))) < 2)))) {
         continue;
       }
       kp = Array.from(pyIter(sets.slice(lo, pyAdd(hi, 1)))).map((s_: any) => Array.from(pyIter(s_)).map((p: any) => key_pos(this.vp(p))));
@@ -1081,8 +1085,10 @@ export class HandAnimator {
     flat = pyMult(_smooth(((span - FLAT_SPAN_WK[0]) / (FLAT_SPAN_WK[1] - FLAT_SPAN_WK[0]))), pyMin(w0, w1));
     return (1.0 - pyMult(FLAT_DROP, flat));
   }
-  _splay_at(f: any = null, comp: any = null, stretch: any = null): any {
+  _splay_at(f: any = null, comp: any = 0.0, stretch: any = 1.0): any {
     let chi: any, clo: any, ehi: any, elo: any, hi: any, lo: any;
+    comp = comp ?? 0.0;
+    stretch = stretch ?? 1.0;
     // 
     //         Finger f's splay limits (rad): its full stretch (`stretch` 1, for a key
     //         it holds or strikes) or its comfortable spread in the air (0), widened
@@ -1278,7 +1284,7 @@ export class HandAnimator {
     }
     this.bounce_runs = runs;
     if (bool(runs)) {
-      this.performance = Array.from(pyIter(pyItems(this.by_finger))).flatMap(([f, ns]: any) => Array.from(pyIter(enumerate(ns))).map(([i, n]: any) => [this.finger_starts[f][i], this.finger_ends[f][i], n]));
+      this.performance = Array.from(pyIter(fingerItems(this.by_finger))).flatMap(([f, ns]: any) => Array.from(pyIter(enumerate(ns))).map(([i, n]: any) => [this.finger_starts[f][i], this.finger_ends[f][i], n]));
       this.performance = pyAugAdd(this.performance, this._gliss_performance());
     }
     this._bounce_starts = Array.from(pyIter(this.bounce_runs)).map((r: any) => r[0][0]);
@@ -1619,7 +1625,7 @@ export class HandAnimator {
       mid = grids[n][1];
       q = {  };
       cache[k] = q;
-      for (f of pyIter(mid)) {
+      for ([f] of pyIter(fingerItems(mid))) {
         if (bool(this._pressing(f, pyMult(k, LIMIT_GRID_T)))) {
           q[f] = mid[f];
         } else {
@@ -1649,7 +1655,7 @@ export class HandAnimator {
     for (j of pyIter(reversed(todo))) {
       tips = this._tips_at(pyMult(j, g), this._smooth_hand_grid(j));
       q = {  };
-      for ([f, [x, y, z]] of pyIter(pyItems(tips))) {
+      for ([f, [x, y, z]] of pyIter(fingerItems(tips))) {
         if ((prev !== null)) {
           [px, py, _] = prev[f];
           d = Math.hypot((x - px), (y - py));
@@ -1772,7 +1778,7 @@ export class HandAnimator {
     r0 = residuals(q);
     cost = (Array.from(pyIter(r0)).map((v: any) => pyMult(v, v))).reduce((a: any, b: any) => a + b, 0);
     eps = [0.5, 0.5, 0.001];
-    for (_ = 0; _ < KEY_FIX_ITERS; _ += 1) {
+    for (let iter = 0; iter < KEY_FIX_ITERS; iter += 1) {
       if (((Array.from(pyIter(r0.slice(3))).map((v: any) => pyMult(v, v))).reduce((a: any, b: any) => a + b, 0) < 1e-06)) {
         break;
       }
@@ -1788,7 +1794,7 @@ export class HandAnimator {
         A[i][i] *= pyAdd(1.0, GN_DAMPING);
       }
       dq = _solve3(A, g);
-      for (_ = 0; _ < 6; _ += 1) {
+      for (let stepIdx = 0; stepIdx < 6; stepIdx += 1) {
         qn = Array.from(pyIter(pyRange(3))).map((i: any) => pyAdd(q[i], dq[i]));
         rn = residuals(qn);
         cn = (Array.from(pyIter(rn)).map((v: any) => pyMult(v, v))).reduce((a: any, b: any) => a + b, 0);
@@ -1890,9 +1896,9 @@ export class HandAnimator {
     //         
 
     so = this.start_of;
-    fe = Object.fromEntries(Array.from(pyIter(pyItems(this.by_finger))).flatMap(([f, ns]: any) => Array.from(pyIter(enumerate(ns))).map(([i, n]: any) => [pyId(n), this.finger_ends[f][i]])));
+    fe = Object.fromEntries(Array.from(pyIter(fingerItems(this.by_finger))).flatMap(([f, ns]: any) => Array.from(pyIter(enumerate(ns))).map(([i, n]: any) => [pyId(n), this.finger_ends[f][i]])));
     prev_of = {  };
-    for ([f, ns] of pyIter(pyItems(this.by_finger))) {
+    for ([f, ns] of pyIter(fingerItems(this.by_finger))) {
       for ([i, n] of pyIter(enumerate(ns))) {
         j = (i - 1);
         while ((((j >= 0)) && (((so[pyId(n)] - so[pyId(ns[j])]) < 0.01)))) {
@@ -1981,7 +1987,7 @@ export class HandAnimator {
         fe[pyId(n)] = pyMax(floor, pyMin(fe[pyId(n)], (s1 - lead)), pyAdd(so[pyId(n)], 0.001));
       }
     }
-    for ([f, ns] of pyIter(pyItems(this.by_finger))) {
+    for ([f, ns] of pyIter(fingerItems(this.by_finger))) {
       ns.sort((a: any, b: any) => { const ka = ((n) => so[pyId(n)]) ? (((n) => so[pyId(n)]))(a) : a; const kb = ((n) => so[pyId(n)]) ? (((n) => so[pyId(n)]))(b) : b; return ka < kb ? (false ? 1 : -1) : (ka > kb ? (false ? -1 : 1) : 0); });
       this.finger_starts[f] = Array.from(pyIter(ns)).map((n: any) => so[pyId(n)]);
       ends = Array.from(pyIter(ns)).map((n: any) => pyMax(fe[pyId(n)], pyAdd(so[pyId(n)], 0.001)));
@@ -2307,7 +2313,12 @@ export class HandAnimator {
     }
     return [lo, hi];
   }
-  _clamp_tip(f: any = null, x: any = null, y: any = null, z: any = null, wx: any = null, wy: any = null, psi: any = null, slack: any = null, margin: any = null, comp: any = null, stretch: any = null, low: any = null): any {
+  _clamp_tip(f: any = null, x: any = null, y: any = null, z: any = null, wx: any = null, wy: any = null, psi: any = null, slack: any = 0.0, margin: any = 0.0, comp: any = 0.0, stretch: any = 1.0, low: any = 1.0): any {
+    slack = slack ?? 0.0;
+    margin = margin ?? 0.0;
+    comp = comp ?? 0.0;
+    stretch = stretch ?? 1.0;
+    low = low ?? 1.0;
     // 
     //         (x, y) clamped into finger f's splay and reach range (shrunk by
     //         `margin` share, widened by `slack` rad): the reachable point closest
@@ -2317,8 +2328,13 @@ export class HandAnimator {
     //         
     return _clamp_apply(this._clamp_prep(f, z, wx, wy, psi, slack, margin, comp, stretch, low), x, y);
   }
-  _clamp_prep(f: any = null, z: any = null, wx: any = null, wy: any = null, psi: any = null, slack: any = null, margin: any = null, comp: any = null, stretch: any = null, low: any = null): any {
+  _clamp_prep(f: any = null, z: any = null, wx: any = null, wy: any = null, psi: any = null, slack: any = 0.0, margin: any = 0.0, comp: any = 0.0, stretch: any = 1.0, low: any = 1.0): any {
     let blx: any, bly: any, blz: any, bx: any, by: any, dm: any, hi: any, hmax: any, hmin: any, lo: any, m: any, rot: any;
+    slack = slack ?? 0.0;
+    margin = margin ?? 0.0;
+    comp = comp ?? 0.0;
+    stretch = stretch ?? 1.0;
+    low = low ?? 1.0;
     // What _clamp_tip needs for finger f at this hand and height, worked out once (_clamp_apply).
     rot = this._rot;
     [blx, bly, blz] = this.base_local[f];
@@ -2335,8 +2351,11 @@ export class HandAnimator {
     [hmin, hmax] = [pyAdd(hmin, dm), pyMax(pyAdd(hmin, dm), (hmax - dm))];
     return [bx, by, Math.cos((-psi)), Math.sin((-psi)), Math.cos(psi), Math.sin(psi), lo, hi, hmin, hmax];
   }
-  _key_spot(pk: any = null, f: any = null, hand: any = null, z: any = null, note: any = null, soft: any = null, comp: any = null, low: any = null): any {
+  _key_spot(pk: any = null, f: any = null, hand: any = null, z: any = null, note: any = null, soft: any = 0.0, comp: any = 0.0, low: any = 1.0): any {
     let best: any, cands: any, cx: any, cy: any, e0: any, far: any, hi: any, i: any, kk: any, kx: any, ky: any, lo: any, prep: any, span: any, tau: any, ws: any, y: any;
+    soft = soft ?? 0.0;
+    comp = comp ?? 0.0;
+    low = low ?? 1.0;
     // 
     //         Where finger f plays key(s) pk with the hand at `hand` (wx, wy, psi):
     //         squarely across the key, and along it where it aims (key_target:
@@ -2461,8 +2480,10 @@ export class HandAnimator {
     }
     return Array.from(pyIter(items)).filter((it: any) => this._has_key(it[0])).map((it: any) => it);
   }
-  _solve_hand(items: any = null, comp: any = null, low: any = null): any {
+  _solve_hand(items: any = null, comp: any = 0.0, low: any = 1.0): any {
     let A: any, G: any, S: any, _: any, a: any, arm: any, arriving: any, bias: any, c: any, cols: any, dev_hi: any, dev_lo: any, dq: any, eps: any, f: any, fit: any, fits: any, g: any, hi: any, hmax: any, hmin: any, i: any, imp: any, j: any, k: any, k_dev: any, k_prior: any, k_soft: any, keep: any, lam: any, lim: any, lims: any, lo: any, lst: any, n: any, over: any, p: any, per: any, psi0: any, q: any, qq: any, r: any, r0: any, rel: any, rshare: any, s1: any, sc: any, scale: any, sf: any, soft: any, st: any, th: any, tx: any, tx1: any, ty: any, under: any, v: any, w: any, w1: any, wi: any, wj: any, wk: any, ws: any, wsum: any, x: any, y: any;
+    comp = comp ?? 0.0;
+    low = low ?? 1.0;
     // 
     //         Wrist (x, y) and hand turn psi serving the weighted items:
     //           1. a weighted rigid fit of the natural fingertip spots onto the keys
@@ -2491,7 +2512,7 @@ export class HandAnimator {
       a[1] = pyAugAdd(a[1], w);
     }
     [fit, lim, imp] = [[], [], {  }];
-    for ([f, lst] of pyIter(pyItems(per))) {
+    for ([f, lst] of pyIter(fingerItems(per))) {
       ws = (Array.from(pyIter(lst)).map(([_0, _1, w, _2]: any) => w)).reduce((a: any, b: any) => a + b, 0);
       if ((ws > 0)) {
         imp[f] = pyAdd(ws, pyMult(2.0, pyMax(Array.from(pyIter(lst)).map(([_0, _1, _2, c]: any) => c))));
@@ -2655,8 +2676,10 @@ export class HandAnimator {
     }
     return q;
   }
-  _hand_avg(t: any = null, span: any = null, lo: any = null, hi: any = null): any {
+  _hand_avg(t: any = null, span: any = null, lo: any = -Infinity, hi: any = Infinity): any {
     let g: any, k: any, k0: any, k1: any, p: any, sp: any, sw: any, sx: any, sy: any, w: any, x: any, y: any;
+    lo = (lo === null || lo === undefined) ? -Infinity : lo;
+    hi = (hi === null || hi === undefined) ? Infinity : hi;
     // The solved hand averaged over t +- span (triangular), only from poses within lo..hi.
     g = HAND_GRID_T;
     k0 = Math.ceil(((t - span) / g));
@@ -2747,9 +2770,9 @@ export class HandAnimator {
     raw = this._hand_at(t)[0];
     span = pyMult(this.geo.span_units(), this.S);
     i1 = Math.floor((t / IDLE_TICK_T));
-    ticks = pyRange((i1 - Math.trunc(Math.round((IDLE_TRAIL_T / IDLE_TICK_T)))), pyAdd(i1, 1));
+    ticks = pyRange((i1 - pyRound((IDLE_TRAIL_T / IDLE_TICK_T))), pyAdd(i1, 1));
     trail = ((Array.from(pyIter(ticks)).map((i: any) => this._partner_x(i))).reduce((a: any, b: any) => a + b, 0) / (ticks).length);
-    lo = pyAdd(this._clear_line(Math.trunc(Math.round((t / IDLE_GRID_T)))), pyMult(IDLE_CLEAR_SPAN, span));
+    lo = pyAdd(this._clear_line(pyRound((t / IDLE_GRID_T))), pyMult(IDLE_CLEAR_SPAN, span));
     hi = pyMax(lo, pyAdd(trail, pyMult(IDLE_FAR_SPAN, span)));
     target = pyMin(pyMax(raw, lo), hi);
     if ((target > raw)) {
@@ -2808,7 +2831,7 @@ export class HandAnimator {
         pyClear(this._path_cache);
       }
       p = this.partner;
-      x = this._mx(p._mx(p._grid_pose(Math.trunc(Math.round((pyMult(i, IDLE_TICK_T) / HAND_GRID_T))))[0]));
+      x = this._mx(p._mx(p._grid_pose(pyRound((pyMult(i, IDLE_TICK_T) / HAND_GRID_T)))[0]));
       this._path_cache[i] = x;
     }
     return x;
@@ -3046,8 +3069,11 @@ export class HandAnimator {
     }
     return out;
   }
-  _limit_tip(f: any = null, tip: any = null, wx: any = null, wy: any = null, psi: any = null, comp: any = null, stretch: any = null, low: any = null): any {
+  _limit_tip(f: any = null, tip: any = null, wx: any = null, wy: any = null, psi: any = null, comp: any = 0.0, stretch: any = 1.0, low: any = 1.0): any {
     let slack: any, x: any, y: any, z: any;
+    comp = comp ?? 0.0;
+    stretch = stretch ?? 1.0;
+    low = low ?? 1.0;
     // 
     //         Clamp a fingertip target to the finger's splay and reach range (widened
     //         inward in a run, `comp`; the full stretch only as far as `stretch`).
@@ -3355,12 +3381,12 @@ export class HandAnimator {
     // [(struck, let go)] of the hand's fingered notes, by when struck.
     if ((this._strike_list === null)) {
       out = [];
-      for ([f, ns] of pyIter(pyItems(this.by_finger))) {
+      for ([f, ns] of pyIter(fingerItems(this.by_finger))) {
         for ([n, e] of pyIter(zip(ns, this.finger_ends[f]))) {
           out.push([this.start_of[pyId(n)], e]);
         }
       }
-      out.sort((a: any, b: any) => { const ka = null ? (null)(a) : a; const kb = null ? (null)(b) : b; return ka < kb ? (false ? 1 : -1) : (ka > kb ? (false ? -1 : 1) : 0); });
+      out.sort((a: any, b: any) => pyCmp(a, b));
       this._strike_list = out;
       this._strike_starts = Array.from(pyIter(out)).map((p: any) => p[0]);
     }
@@ -3737,21 +3763,21 @@ export class HandAnimator {
       return [pyAdd(wx, x), pyAdd(wy, y), pyAdd(pyMult(pyAdd(pyMult(p[2], S), this.z_off), low), pyMult(gw, pyAdd(hb[0], droll(lx))))];
     };
     [comp, low] = [this._run_w(t), this._low(t)];
-    tips = Object.fromEntries(Array.from(pyIter(pyItems(this._limited_tips(t)))).map(([f, p]: any) => [f, this._limit_tip(f, p, wx, wy, psi, comp, this._key_weight(f, t)[0], low)]));
+    tips = Object.fromEntries(fingerItems(this._limited_tips(t)).map(([f, p]: any) => [f, this._limit_tip(f, p, wx, wy, psi, comp, this._key_weight(f, t)[0], low)]));
     tips = this._separate(tips, wx, wy, psi, t, comp);
     if ((gw > 0)) {
       travel = this.travel;
-      lxs = Object.fromEntries(Array.from(pyIter(tips)).map((f: any) => [f, rot((tips[f][0] - wx), (tips[f][1] - wy), (-psi))[0]]));
-      press = Object.fromEntries(Array.from(pyIter(tips)).map((f: any) => [f, this._press_amount(f, t)]));
+      lxs = Object.fromEntries(fingerItems(tips).map(([f]: any) => [f, rot((tips[f][0] - wx), (tips[f][1] - wy), (-psi))[0]]));
+      press = Object.fromEntries(fingerItems(tips).map(([f]: any) => [f, this._press_amount(f, t)]));
       ps = (pyValues(press)).reduce((a: any, b: any) => a + b, 0);
       if ((ps > 1e-06)) {
-        held = ((Array.from(pyIter(pyItems(press))).map(([f, w]: any) => pyMult(w, ((-travel) - droll(lxs[f]))))).reduce((a: any, b: any) => a + b, 0) / ps);
+        held = ((Array.from(pyIter(fingerItems(press))).map(([f, w]: any) => pyMult(w, ((-travel) - droll(lxs[f]))))).reduce((a: any, b: any) => a + b, 0) / ps);
         pw = pyMin(1.0, ps);
         hb[0] = pyAdd(pyMult((1.0 - pw), lift), pyMult(pw, held));
       } else {
         hb[0] = lift;
       }
-      for (f of pyIter(tips)) {
+      for ([f] of pyIter(fingerItems(tips))) {
         if (bool(this._pressing(f, t))) {
           continue;
         }
@@ -3821,7 +3847,7 @@ export let NATURAL_THUMB_REACH: any = 0.93;
 export function _within(base: any = null, target: any = null, reach: any = null): any {
   let d: any;
   // target, pulled in toward base to at most reach away.
-  d = Math.dist(base, target);
+  d = _norm(_sub(base, target));
   if ((bool((d <= reach)) ? ((d <= reach)) : ((d < 1e-09)))) {
     return target;
   }
@@ -4011,10 +4037,10 @@ export function depth_scale(z: any = null, ppi: any = null): any {
   return pyMin(1.6, pyMax(0.8, pyAdd(1.0, (pyMult(0.25, z) / ppi))));
 }
 export function bone_width(kind: any = null, z: any = null, ppi: any = null): any {
-  return pyMax(2, Math.trunc(Math.round(pyMult(pyMult(BONE_WIDTH_IN[kind], ppi), depth_scale(z, ppi)))));
+  return pyMax(2, pyRound(pyMult(pyMult(BONE_WIDTH_IN[kind], ppi), depth_scale(z, ppi))));
 }
 export function joint_radius(kind: any = null, z: any = null, ppi: any = null): any {
-  return pyMax(2, Math.trunc(Math.round(pyMult(pyMult(JOINT_RADIUS_IN[kind], ppi), depth_scale(z, ppi)))));
+  return pyMax(2, pyRound(pyMult(pyMult(JOINT_RADIUS_IN[kind], ppi), depth_scale(z, ppi))));
 }
 export let CROSS_GROUP: any = 0.035;
 export let CROSS_MERGE: any = 0.35;
@@ -4157,7 +4183,7 @@ export function crossing_episodes(song: any = null): any {
           return null;
         }
         inside = new Set(Array.from(pyIter(by_hand[h].slice(bisectLeft(note_ts[h], (t0 - CROSS_GROUP)), bisectRight(note_ts[h], t1)))).map(([s, _0]: any) => s));
-        if (((new Set(Array.from(pyIter(inside)).map((s: any) => Math.round((s / CROSS_GROUP))))).length < 2)) {
+        if ((pyLen(new Set(Array.from(pyIter(inside)).map((s: any) => pyRound((s / CROSS_GROUP))))) < 2)) {
           return null;
         }
         got[h] = [pyMin(ps), pyMax(ps), ((Array.from(pyIter(ps)).map((p: any) => is_black_key(p))).reduce((a: any, b: any) => a + b, 0) / (ps).length)];
@@ -4187,7 +4213,7 @@ export function crossing_episodes(song: any = null): any {
         held[top] = pyAdd(pyGet(held, top, 0.0), (t1 - t0));
       }
       main_top = pyMax(held, held.get);
-      runs = pyAugAdd(runs, Array.from(pyIter(cl)).map(([t0, t1, top, d, f]: any) => [t0, t1, (((((t1 - t0) < INTERLOCK_BLIP)) && (((held).length > 1))) ? main_top : top), d, f, deep]));
+      runs = pyAugAdd(runs, Array.from(pyIter(cl)).map(([t0, t1, top, d, f]: any) => [t0, t1, (((((t1 - t0) < INTERLOCK_BLIP)) && ((pyLen(held) > 1))) ? main_top : top), d, f, deep]));
     }
     for ([t0, t1, top, d, f, deeper] of pyIter(runs)) {
       if ((deeper !== null)) {
@@ -4269,7 +4295,7 @@ export function contact_overlap(right: any = null, left: any = null, k: any = nu
   cache = pySetDefault(right.__dict__, '_contact_cache', {  });
   v = pyGet(cache, k, null);
   if ((v === null)) {
-    if (((cache).length > 20000)) {
+    if ((pyLen(cache) > 20000)) {
       pyClear(cache);
     }
     t = pyMult(k, CONTACT_GRID);
@@ -4291,12 +4317,12 @@ export function _layer_top(right: any = null, left: any = null, episodes: any = 
   //     comes where the hands overlap least between them. None: not in contact,
   //     or no episode in the stretch.
   //     
-  g = Math.trunc(Math.round((CONTACT_BRIDGE / CONTACT_GRID)));
+  g = pyRound((CONTACT_BRIDGE / CONTACT_GRID));
   const touching = (j: any = null): any => {
     // In contact at step j, or within CONTACT_BRIDGE of it (gaps bridged, contact seen a little early).
     return Array.from(Array.from(pyIter(pyRange((j - g), pyAdd(pyAdd(j, g), 1)))).map((i: any) => (contact_overlap(right, left, i) > 0))).some(Boolean);
   };
-  k = Math.round((t / CONTACT_GRID));
+  k = pyRound((t / CONTACT_GRID));
   if (bool((!bool(touching(k))))) {
     return null;
   }
@@ -4312,7 +4338,7 @@ export function _layer_top(right: any = null, left: any = null, episodes: any = 
     while ((((b < pyAdd(k, n))) && bool(touching(pyAdd(b, 1))))) {
       b = pyAugAdd(b, 1);
     }
-    if (((spans).length > 20000)) {
+    if ((pyLen(spans) > 20000)) {
       pyClear(spans);
     }
     for (j = a; j < pyAdd(b, 1); j += 1) {
@@ -4331,7 +4357,7 @@ export function _layer_top(right: any = null, left: any = null, episodes: any = 
     if ((pyEq(nxt[2], prev[2]))) {
       continue;
     }
-    [lo, hi] = [Math.round((prev[1] / CONTACT_GRID)), pyMax(Math.round((prev[1] / CONTACT_GRID)), Math.round((nxt[0] / CONTACT_GRID)))];
+    [lo, hi] = [pyRound((prev[1] / CONTACT_GRID)), pyMax(pyRound((prev[1] / CONTACT_GRID)), pyRound((nxt[0] / CONTACT_GRID)))];
     cut = pyMin(pyRange(pyMax(lo, a), pyAdd(pyMin(hi, b), 1)), ((j) => contact_overlap(right, left, j)), hi);
     if ((k < cut)) {
       break;
@@ -4349,7 +4375,7 @@ export function arrange_crossing(poses: any = null): any {
   //     poses pass through unchanged.
   //     
   hands_ = Object.fromEntries(Array.from(pyIter(poses)).map((p: any) => [pyGet(p, 'hand', null), p]));
-  if ((bool((pyNotEq((poses).length, 2))) ? ((pyNotEq((poses).length, 2))) : ((bool((pyNotEq((hands_).length, 2))) ? ((pyNotEq((hands_).length, 2))) : ((bool(((!pyIn('song', poses[0])))) ? (((!pyIn('song', poses[0])))) : ((poses[0]['song'] === null)))))))) {
+  if ((bool((pyNotEq((poses).length, 2))) ? ((pyNotEq((poses).length, 2))) : ((bool((pyNotEq(pyLen(hands_), 2))) ? ((pyNotEq(pyLen(hands_), 2))) : ((bool(((!pyIn('song', poses[0])))) ? (((!pyIn('song', poses[0])))) : ((poses[0]['song'] === null)))))))) {
     return poses;
   }
   t = pyGet(poses[0], 't', 0.0);

@@ -5,6 +5,7 @@ import {
   type M1SampleMotionResult,
 } from "@handthesia/contracts";
 import { postM1SampleMotionRequest } from "../m1WorkerClient";
+import { recordDiagnostic } from "../diagnostics/eventLog";
 
 export interface MotionStreamIdentity {
   projectId: string;
@@ -146,6 +147,7 @@ export class MotionStreamController {
   /** Invalidate all pending output for a source revision or seek epoch change. */
   public reset(identity: MotionStreamIdentity, seekEpoch: number): void {
     if (this.disposed) return;
+    recordDiagnostic("motion.reset", { ...identity, seekEpoch });
     this.identity = { ...identity };
     this.seekEpoch = seekEpoch;
     this.generation += 1;
@@ -157,6 +159,7 @@ export class MotionStreamController {
   /** Abandon the current logical request while allowing its Worker terminal to drain. */
   public cancel(): void {
     if (this.disposed) return;
+    recordDiagnostic("motion.cancelled", { ...this.identity, seekEpoch: this.seekEpoch, generation: this.generation });
     this.generation += 1;
     this.queuedDemand = null;
     this.blockedDemand = null;
@@ -358,6 +361,10 @@ export class MotionStreamController {
   }
 
   private reportError(error: MotionStreamError, flight: MotionStreamFlight | null, retryable: boolean): void {
+    recordDiagnostic("motion.error", { ...this.identity, requestId: flight?.request.requestId,
+      seekEpoch: flight?.seekEpoch, generation: flight?.generation, retryable, code: error.code, error,
+      startTimeSeconds: flight?.request.startTimeSeconds, endTimeSeconds: flight?.request.endTimeSeconds,
+      demandStartTimeSeconds: flight?.demandStartTimeSeconds, demandEndTimeSeconds: flight?.demandEndTimeSeconds }, "error");
     if (!this.disposed) this.onError(error, flight, retryable);
   }
 

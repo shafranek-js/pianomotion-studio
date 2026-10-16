@@ -22,6 +22,7 @@ import {
   _engine_version,
   _manifest,
 } from "@handthesia/engine-ts";
+import enginePackage from "../../../../packages/engine-ts/package.json";
 
 const workerScope = self as unknown as {
   location: Location;
@@ -51,7 +52,7 @@ workerScope.addEventListener("message", (event: MessageEvent<unknown>) => {
   operationQueue = operationQueue.then(() => handleMessage(message)).catch((error) => {
     const request = M1EngineMessageSchema.safeParse(message);
     if (request.success) {
-      postError(request.data, "compute", "WORKER_OPERATION_FAILED", errorMessage(error), true);
+      postError(request.data, "compute", "WORKER_OPERATION_FAILED", errorMessage(error), true, error);
     }
   });
 });
@@ -69,16 +70,16 @@ async function handleMessage(message: unknown): Promise<void> {
           ...parsed.data,
           type: "engine-loaded",
           runtime: "typescript",
-          runtimeVersion: "1.0.0",
+          runtimeVersion: enginePackage.version,
           pythonVersion: "N/A (Pure TypeScript)",
           packageVersions: {
-            "@handthesia/engine-ts": "1.0.0",
+            "@handthesia/engine-ts": enginePackage.version,
           },
           engineVersion,
         }),
       );
     } catch (error) {
-      postError(parsed.data, "init", "RUNTIME_INITIALIZATION_FAILED", errorMessage(error), true);
+      postError(parsed.data, "init", "RUNTIME_INITIALIZATION_FAILED", errorMessage(error), true, error);
     }
     return;
   }
@@ -109,7 +110,7 @@ async function handleMessage(message: unknown): Promise<void> {
       });
       workerScope.postMessage(result, [responseBuffer]);
     } catch (error) {
-      postError(request, "compute", "EXPORT_FAILED", errorMessage(error), false);
+      postError(request, "compute", "EXPORT_FAILED", errorMessage(error), false, error);
     }
     return;
   }
@@ -186,7 +187,7 @@ async function handleMessage(message: unknown): Promise<void> {
 
       workerScope.postMessage(result);
     } catch (error) {
-      postError(request, "compute", "REPLAN_FAILED", errorMessage(error), false);
+      postError(request, "compute", "REPLAN_FAILED", errorMessage(error), false, error);
     } finally {
       analysisRunning = false;
     }
@@ -242,7 +243,7 @@ async function handleMessage(message: unknown): Promise<void> {
 
       workerScope.postMessage(result);
     } catch (error) {
-      postError(request, "compute", "SAMPLE_MOTION_FAILED", errorMessage(error), false);
+      postError(request, "compute", "SAMPLE_MOTION_FAILED", errorMessage(error), false, error);
     } finally {
       analysisRunning = false;
     }
@@ -315,7 +316,7 @@ async function handleMessage(message: unknown): Promise<void> {
 
     workerScope.postMessage(result);
   } catch (error) {
-    postError(request, "compute", "ANALYSIS_FAILED", errorMessage(error), false);
+    postError(request, "compute", "ANALYSIS_FAILED", errorMessage(error), false, error);
   } finally {
     analysisRunning = false;
   }
@@ -347,6 +348,7 @@ function postError(
   code: string,
   message: string,
   retryable: boolean,
+  cause?: unknown,
 ): void {
   workerScope.postMessage(
     M1EngineErrorSchema.parse({
@@ -356,7 +358,7 @@ function postError(
       engineVersion: identity.engineVersion,
       type: "worker-error",
       stage,
-      error: { code, message, retryable },
+      error: { code, message, retryable, ...(cause instanceof Error && cause.stack ? { stack: cause.stack.slice(0, 8_000) } : {}) },
     }),
   );
 }

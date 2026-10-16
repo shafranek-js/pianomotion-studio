@@ -74,7 +74,7 @@ workerScope.addEventListener("message", (event: MessageEvent<unknown>) => {
   // Serialize operations even when the UI supersedes a previous request.
   operationQueue = operationQueue.then(() => handleMessage(message)).catch(error => {
     const request = M1EngineMessageSchema.safeParse(message);
-    if (request.success) postError(request.data, "compute", "WORKER_OPERATION_FAILED", errorMessage(error), true);
+    if (request.success) postError(request.data, "compute", "WORKER_OPERATION_FAILED", errorMessage(error), true, error);
   });
 });
 
@@ -94,7 +94,7 @@ async function handleMessage(message: unknown): Promise<void> {
         packageVersions: runtime.packageVersions,
       }));
     } catch (error) {
-      postError(parsed.data, "init", "RUNTIME_INITIALIZATION_FAILED", errorMessage(error), true);
+      postError(parsed.data, "init", "RUNTIME_INITIALIZATION_FAILED", errorMessage(error), true, error);
     }
     return;
   }
@@ -151,7 +151,7 @@ __export_marked_count = __res["markedCount"]
         }
       }
     } catch (error) {
-      postError(request, "compute", "EXPORT_FAILED", errorMessage(error), false);
+      postError(request, "compute", "EXPORT_FAILED", errorMessage(error), false, error);
     }
     return;
   }
@@ -257,7 +257,7 @@ json.dumps(__m1_replan_result, separators=(",", ":"), allow_nan=False)
     } catch (error) {
       const stage = error instanceof WorkerStageError ? error.stage : "compute";
       const code = error instanceof WorkerStageError ? error.code : "REPLAN_FAILED";
-      postError(request, stage, code, errorMessage(error), error instanceof WorkerStageError ? error.retryable : false);
+      postError(request, stage, code, errorMessage(error), error instanceof WorkerStageError ? error.retryable : false, error);
     } finally {
       analysisRunning = false;
     }
@@ -368,7 +368,7 @@ json.dumps(__sm_result, separators=(",", ":"), allow_nan=False)
     } catch (error) {
       const stage = error instanceof WorkerStageError ? error.stage : "compute";
       const code = error instanceof WorkerStageError ? error.code : "SAMPLE_MOTION_FAILED";
-      postError(request, stage, code, errorMessage(error), error instanceof WorkerStageError ? error.retryable : false);
+      postError(request, stage, code, errorMessage(error), error instanceof WorkerStageError ? error.retryable : false, error);
     } finally {
       analysisRunning = false;
     }
@@ -463,7 +463,7 @@ json.dumps(__m1_analysis_result, separators=(",", ":"), allow_nan=False)
   } catch (error) {
     const stage = error instanceof WorkerStageError ? error.stage : "compute";
     const code = error instanceof WorkerStageError ? error.code : "ANALYSIS_FAILED";
-    postError(request, stage, code, errorMessage(error), error instanceof WorkerStageError ? error.retryable : false);
+    postError(request, stage, code, errorMessage(error), error instanceof WorkerStageError ? error.retryable : false, error);
   } finally {
     analysisRunning = false;
   }
@@ -667,6 +667,7 @@ function postError(
   code: string,
   message: string,
   retryable: boolean,
+  cause?: unknown,
 ): void {
   workerScope.postMessage(M1EngineErrorSchema.parse({
     requestId: identity.requestId,
@@ -675,7 +676,7 @@ function postError(
     engineVersion: identity.engineVersion,
     type: "worker-error",
     stage,
-    error: { code, message, retryable },
+    error: { code, message, retryable, ...(cause instanceof Error && cause.stack ? { stack: cause.stack.slice(0, 8_000) } : {}) },
   }));
 }
 

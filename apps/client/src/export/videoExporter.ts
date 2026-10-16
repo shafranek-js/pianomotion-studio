@@ -317,7 +317,7 @@ export class VideoExporter {
       if (actualMidiHash !== snapshot.sourceIdentity.resource.sha256) {
         throw new Error("The frozen original MIDI bytes no longer match the saved source resource hash.");
       }
-      analysisWorker = new VideoExportAnalysisWorker();
+      analysisWorker = new VideoExportAnalysisWorker(snapshot.settings.calculationEngine);
       const replanned = await analysisWorker.replan(snapshot, signal, (message) => {
         onProgress?.({
           phase: "preparing", doneFrames: 0, totalFrames, frameProgress: 0, audioProgress: 0,

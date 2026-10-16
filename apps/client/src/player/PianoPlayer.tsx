@@ -34,7 +34,8 @@ import {
   type FingeringEditorDiagnosticsReport,
   type FingeringEditorSceneBridge,
 } from "../editor";
-import { postM1ExportMidiRequest, postM1ReplanDocumentRequest, createM1AnalysisWorker } from "../m1WorkerClient";
+import { postM1ExportMidiRequest, postM1ReplanDocumentRequest, createM1AnalysisWorker, getM1AnalysisWorkerEngine } from "../m1WorkerClient";
+import { recordDiagnostic } from "../diagnostics/eventLog";
 import { getActiveProfile, subscribeProfiles } from "../profiles/profileStore";
 import { PianoScene, MotionBuffer } from "../render";
 import {
@@ -202,6 +203,9 @@ export function PianoPlayer({
 
   const settingsAtStart = getSettings();
   const calculationEngineRef = useRef<CalculationEngine>(settingsAtStart.calculationEngine);
+  const [activeCalculationEngine, setActiveCalculationEngine] = useState<CalculationEngine>(
+    () => getM1AnalysisWorkerEngine(analysisWorker) ?? settingsAtStart.calculationEngine,
+  );
   const [analysis, setAnalysis] = useState(result);
   const [draftPlan, setDraftPlan] = useState<FingeringPlan>(() => initialSession?.draftFingeringPlan ?? initialSession?.fingeringPlan ?? result.fingeringPlan!);
   const [activeProfile, setActiveProfile] = useState<PianistProfile>(() => initialSession?.profile ?? result.profile);
@@ -344,6 +348,8 @@ export function PianoPlayer({
         const playbackWindow = motionPlaybackWindow(curTime, duration, transport?.getSpeed() ?? 1, motionRoundTripMsRef.current);
         if (bufferingPausedRef.current && playIntentRef.current &&
             buffer.hasCoverage(playbackWindow.start, playbackWindow.resumeEnd)) {
+          recordDiagnostic("motion.ready", { projectId: message.projectId, revision: message.revision,
+            timeSeconds: curTime, resumeEnd: playbackWindow.resumeEnd, roundTripMs: motionRoundTripMsRef.current });
           bufferingPausedRef.current = false;
           setIsBuffering(false);
           onStatusChangeRef.current({ kind: dirtyRef.current ? "modified" : "saved", message: "Animation is ready." });
@@ -717,6 +723,7 @@ export function PianoPlayer({
           motionStreamRef.current?.reset({ projectId: next.projectId, revision: next.revision, engineVersion: next.engineVersion }, seekEpochRef.current);
           motionErrorRef.current = null;
           setAnalysis(next);
+          setActiveCalculationEngine(getM1AnalysisWorkerEngine(worker) ?? calculationEngineRef.current);
           setDraftPlan(next.fingeringPlan);
           setAppliedKeyStyle(returnedKeyStyle);
           setForceReplan(0);
@@ -754,6 +761,7 @@ export function PianoPlayer({
     if (!rawMidiBytes || !document) return;
     autosaveService.schedule({
       projectId: analysis.projectId,
+      projectName,
       updatedAt: Date.now(),
       document,
       fingeringPlan: draftPlan,
@@ -768,7 +776,7 @@ export function PianoPlayer({
       sourceDescriptor: analysis.resource,
       viewMode,
     });
-  }, [analysis, document, draftPlan, rawMidiBytes, activeProfile, keyStyle, sourceContext, viewMode, needsReplan, autosaveService]);
+  }, [analysis, document, draftPlan, rawMidiBytes, activeProfile, keyStyle, sourceContext, viewMode, needsReplan, autosaveService, projectName]);
 
   useEffect(() => {
     let raf = 0;
@@ -802,6 +810,8 @@ export function PianoPlayer({
       const playbackWindow = motionPlaybackWindow(time, songEnd, transport?.getSpeed() ?? 1, motionRoundTripMsRef.current);
       if (bufferingPausedRef.current && playIntentRef.current && buffer &&
           buffer.hasCoverage(playbackWindow.start, playbackWindow.resumeEnd)) {
+        recordDiagnostic("motion.ready", { projectId: analysis.projectId, revision: analysis.revision,
+          timeSeconds: time, resumeEnd: playbackWindow.resumeEnd });
         bufferingPausedRef.current = false;
         setIsBuffering(false);
         void transport?.play().catch(error => {
@@ -819,6 +829,8 @@ export function PianoPlayer({
           motionLastPauseRef.current = { time, guardEnd: playbackWindow.guardEnd,
             left: buffer.getHandCoverageIntervals("left"), right: buffer.getHandCoverageIntervals("right"),
             inFlight: motionStreamRef.current?.inFlightRequest ?? null };
+          recordDiagnostic("motion.buffering", { projectId: analysis.projectId, revision: analysis.revision,
+            seekEpoch: seekEpochRef.current, ...motionLastPauseRef.current }, "warning");
           setIsBuffering(true);
           onStatusChangeRef.current({
             kind: "calculating",
@@ -859,9 +871,10 @@ export function PianoPlayer({
 
   const handleViewModeChange = useCallback((next: StudioView) => {
     const normalized = normalizeStudioView(next);
+    recordDiagnostic("studio.mode", { projectId: analysis.projectId, view: normalized });
     setViewMode(normalized);
     onViewModeChange(normalized);
-  }, [onViewModeChange]);
+  }, [onViewModeChange, analysis.projectId]);
 
   const togglePlay = useCallback(async () => {
     try {
@@ -1164,6 +1177,7 @@ export function PianoPlayer({
           onStatusChange({ kind: "error", message: `Calculation engine preference was not saved: ${errorMessage(error)}` });
         });
       }}
+      activeCalculationEngine={activeCalculationEngine}
       onOpenPianist={onOpenPianist}
       onAudioFileChange={event => void handleAudioFileChange(event)}
       onClearAudio={handleClearAudio}
@@ -1171,7 +1185,7 @@ export function PianoPlayer({
     />
   ), [analysis, activeProfile, settings, keyStyle, audioRecording, audioOffset, projectName, needsReplan, developerTools,
     editorReport, handleDiagnosticNote, handleKeyStyleChange, onOpenPianist, handleAudioFileChange, handleClearAudio,
-    handleAudioOffsetChange, handleRetryCalculation, onStatusChange, status, preparingOutput, preparingSamples, activeOutputId, activeSoundfontAssetId, playbackError]);
+    handleAudioOffsetChange, handleRetryCalculation, onStatusChange, status, preparingOutput, preparingSamples, activeOutputId, activeSoundfontAssetId, activeCalculationEngine, playbackError]);
 
   const editorState = <FingeringEditor
     document={document ?? result.document!}
@@ -1252,11 +1266,11 @@ export function PianoPlayer({
       motionPlan: analysis.motionPlan ?? null,
       keyStyle,
       profile: activeProfile,
-      settings,
+      settings: { ...settings, calculationEngine: activeCalculationEngine },
       audioRecording: audioRecording ?? null,
       audioOffset,
     };
-  }, [document, analysis, keyStyle, activeProfile, settings, audioRecording, audioOffset, rawMidiBytes, needsReplan, sourceContext, activeOutputId, activeSoundfontAssetId, activeSoundfontAssetBlob]);
+  }, [document, analysis, keyStyle, activeProfile, settings, activeCalculationEngine, audioRecording, audioOffset, rawMidiBytes, needsReplan, sourceContext, activeOutputId, activeSoundfontAssetId, activeSoundfontAssetBlob]);
 
   return <StudioShell
     projectName={projectName}
@@ -1282,7 +1296,7 @@ export function PianoPlayer({
     workspace={workspace}
     transport={transport}
     headerAddon={<div ref={setAssignmentControlsHost} className="studio-fingering-assignment-host" />}
-    footerAddon={footerAddon ?? <StudioReleaseDetails description="0.1.0-dev.7 preview: included MuseScore General piano by default, local SF2/SF3 banks with on-demand Vorbis decoding. 162 editable built-in melodies, linked stereo, adaptive streaming and protected saves." />}
+    footerAddon={footerAddon ?? <StudioReleaseDetails description="0.1.0-dev.9 preview: Native/Python numerical parity verification and motion streaming corrections. Engine switching preserves the project; video export pins its calculation runtime. Included MuseScore General, SF2/SF3 and 162 built-in melodies." />}
     dialogs={<>
       {dialogs}
       <VideoExportModal

@@ -1,0 +1,106 @@
+{
+  "generatedAt": "2026-10-16T17:07:33.782Z",
+  "baseCommit": "7edd431",
+  "version": "0.1.0-dev.8",
+  "workingTree": "Uncommitted implementation; no commit/push/deploy",
+  "targetPythonEngineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a",
+  "nativeSourceSha256": "c8a6673eb79fa701cd1f4666ad72772105cdbfc13a91c8ddbc26dae5aa0be52c",
+  "unit": {
+    "command": "node node_modules/vitest/vitest.mjs run --config vitest.config.ts",
+    "passed": 488,
+    "failed": 0,
+    "files": 43,
+    "success": true,
+    "finalFocusedManifestRerun": {
+      "passed": 5,
+      "failed": 0
+    }
+  },
+  "python": {
+    "command": "node tools/test-python.mjs",
+    "passed": 31,
+    "failed": 0,
+    "durationSeconds": 54.98,
+    "environment": ".venv-test Python 3.14.0 / pytest 9.1.1"
+  },
+  "typecheck": {
+    "command": "npm run typecheck",
+    "exitCode": 0
+  },
+  "lint": {
+    "command": "npm run lint",
+    "exitCode": 0
+  },
+  "build": {
+    "command": "npm run build",
+    "exitCode": 0,
+    "buildId": "32d5629e155acf05a9c372e5",
+    "resourceCount": 255,
+    "totalBytes": 72739523,
+    "warnings": [
+      "Main JS chunk exceeds 500 kB",
+      "Rolldown plugin callback timing warning"
+    ],
+    "productionOfflineAcceptanceRerun": false
+  },
+  "browser": {
+    "nativeChrome": {
+      "startTime": "2026-10-16T16:52:52.608Z",
+      "duration": 76474.821,
+      "expected": 1,
+      "skipped": 0,
+      "unexpected": 0,
+      "flaky": 0
+    },
+    "nativeEdge": {
+      "startTime": "2026-10-16T17:02:43.479Z",
+      "duration": 60250.894,
+      "expected": 1,
+      "skipped": 0,
+      "unexpected": 0,
+      "flaky": 0
+    },
+    "pythonParityChrome": {
+      "startTime": "2026-10-16T17:03:53.231Z",
+      "duration": 83301.03199999999,
+      "expected": 15,
+      "skipped": 0,
+      "unexpected": 0,
+      "flaky": 0
+    },
+    "parallel": false
+  },
+  "initialFixtureGeometry": {
+    "fixtures": 13,
+    "loadedFixtures": 10,
+    "poses": 727,
+    "collapsed": 0,
+    "overFourInches": 0
+  },
+  "nativeNumericalParity": {
+    "command": "npm run test:native-parity",
+    "exitCode": 1,
+    "status": "OPEN",
+    "fixtures": 13,
+    "fullPass": 5,
+    "releaseTimeComponentDifferences": 34,
+    "rawPoseComponentDifferences": 7367,
+    "noteIdentityAndFingeringDifferences": 0
+  },
+  "independentVisualReview": "Native Chopsticks startup and after-seek screenshots inspected; stretched hand absent",
+  "knownLimits": [
+    "Remaining Native release-time and raw-pose differences; Python is reference/default",
+    "No new production offline/media/hardware/load acceptance in this cycle",
+    "Legacy Native engineVersion declares target Python manifest; standalone Native source hash is recorded separately"
+  ],
+  "failedAttempts": [
+    "Initial Chrome test harness expected dialog instead of alertdialog; locator corrected and full scenario passed",
+    "Edge had a built-in Chopsticks Failed to fetch before any engine request; no cause established. Subsequent isolated Edge run passed; request failure tracing added",
+    "Final Edge captures two canceled SoundFont requests (ERR_ABORTED) during project replacement; zero pageerrors"
+  ],
+  "localDevelopment": {
+    "url": "http://127.0.0.1:5173/",
+    "httpStatus": 200,
+    "moduleVersion": "0.1.0-dev.8"
+  }
+}

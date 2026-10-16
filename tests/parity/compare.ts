@@ -173,7 +173,7 @@ export function compareM1ResultToGolden(
   const comparisonResult = status !== "invalid";
   if (comparisonResult && document) {
     const actualDocumentNotes = rows<NoteRow>(document.notes);
-    const goldenNotesByKey = indexBySourceSet(golden.desktopNotes, (note) => note.sourceNoteIds, differences, fixtureId, "golden.desktopNotes");
+    const goldenNotesByKey = indexBySourceSet(golden.desktopNotes ?? [], (note) => note.sourceNoteIds, differences, fixtureId, "golden.desktopNotes");
     const actualRawNotes = rows<NoteRow>(raw.desktopNotes).map((note) => ({ ...note, sourceNoteIds: canonicalIds(note.sourceNoteIds, actualSourceIdToGolden, differences, fixtureId, "rawBaseline.desktopNotes") }));
     const actualRawByKey = indexBySourceSet(actualRawNotes, (note) => note.sourceNoteIds, differences, fixtureId, "rawBaseline.desktopNotes");
     compareNoteSets(goldenNotesByKey, actualRawByKey, differences, fixtureId, "rawBaseline.desktopNotes", near, add);
@@ -185,25 +185,25 @@ export function compareM1ResultToGolden(
       end: number(note.endSeconds),
       hand: note.hand === "left" ? "L" as const : "R" as const,
       manualFinger: note.finger ?? null,
-      gliss: note.glissando,
+      gliss: note.glissando ?? false,
     }));
     const actualDocByKey = indexBySourceSet(actualDocCanonical, (note) => note.sourceNoteIds, differences, fixtureId, "document.notes");
     compareNoteSets(goldenNotesByKey, actualDocByKey, differences, fixtureId, "document.notes", near, add);
 
     compareAssignments(golden, result.fingeringPlan, actualDocumentNotes, actualSourceIdToGolden, differences, fixtureId, add);
     comparePerformance(golden, result.performancePlan, actualDocumentNotes, actualSourceIdToGolden, differences, fixtureId, near, add);
-    comparePedalRows(golden.rawPedals, rows(raw.rawPedals), "rawBaseline.rawPedals", fixtureId, differences, near, add);
-    comparePedalRows(golden.pedals, rows(raw.pedals), "rawBaseline.pedals", fixtureId, differences, near, add);
-    comparePedalRows(golden.rawPedals, rows(document.pedalControls).map((control) => ({
+    comparePedalRows(golden.rawPedals ?? [], rows(raw.rawPedals), "rawBaseline.rawPedals", fixtureId, differences, near, add);
+    comparePedalRows(golden.pedals ?? [], rows(raw.pedals), "rawBaseline.pedals", fixtureId, differences, near, add);
+    comparePedalRows(golden.rawPedals ?? [], rows(document.pedalControls).map((control) => ({
       time: record(control).timeSeconds,
       controller: record(control).controller,
       value: record(control).value,
     })), "document.pedalControls", fixtureId, differences, near, add);
-    compareSourcePedals(golden.sourcePedals, rows(raw.sourcePedals), fixtureId, differences, near, add);
-    compareTracks(golden.tracks, rows(raw.tracks), fixtureId, differences, add);
+    compareSourcePedals(golden.sourcePedals ?? [], rows(raw.sourcePedals), fixtureId, differences, near, add);
+    compareTracks(golden.tracks ?? [], rows(raw.tracks), fixtureId, differences, add);
 
     const rawActualPoses = rows<GoldenPose>(raw.selectedPoses);
-    const goldenPoses = golden.selectedPoses;
+    const goldenPoses = golden.selectedPoses ?? [];
     const frame = goldenPoses[0]?.coordinateFrame;
     const rawCoordinateTolerance = frame ? frame.keyboardRect[2] / WHITE_KEYS_ON_88_KEYBOARD * RAW_COORDINATE_TOLERANCE_WHITE_KEYS : 0;
     for (const expectedPose of goldenPoses) {
@@ -329,8 +329,8 @@ function compareAssignments(
     const key = note ? canonicalIds(note.sourceNoteIds ?? [], crosswalk, differences, fixtureId, "fingeringPlan.assignments") .join("|") : `missing-note:${str(assignment.noteId)}`;
     actualByKey.set(key, [...(actualByKey.get(key) ?? []), assignment]);
   }
-  const expectedByKey = new Map<string, GoldenFixture["assignments"]>();
-  for (const assignment of golden.assignments) {
+  const expectedByKey = new Map<string, NonNullable<GoldenFixture["assignments"]>>();
+  for (const assignment of golden.assignments ?? []) {
     const key = assignment.sourceNoteIds.slice().sort().join("|");
     expectedByKey.set(key, [...(expectedByKey.get(key) ?? []), assignment]);
   }
@@ -384,8 +384,8 @@ function comparePerformance(
     }
     pairs.set(key, pair);
   }
-  const expected = new Map<string, GoldenFixture["performanceEvents"]>();
-  for (const event of golden.performanceEvents) {
+  const expected = new Map<string, NonNullable<GoldenFixture["performanceEvents"]>>();
+  for (const event of golden.performanceEvents ?? []) {
     const key = `${event.sourceNoteIds.slice().sort().join("|")}:${handName(event.hand)}`;
     expected.set(key, [...(expected.get(key) ?? []), event]);
   }
@@ -421,7 +421,7 @@ function comparePedalRows(
 }
 
 function compareSourcePedals(
-  expected: GoldenFixture["sourcePedals"], actualValues: unknown[], fixtureId: string,
+  expected: NonNullable<GoldenFixture["sourcePedals"]>, actualValues: unknown[], fixtureId: string,
   differences: ParityDifference[], near: (category: string, path: string, expected: number, actual: number, tolerance: number) => void,
   add: (category: string, path: string, expected: unknown, actual: unknown) => void,
 ): void {
@@ -437,7 +437,7 @@ function compareSourcePedals(
 }
 
 function compareTracks(
-  expected: GoldenFixture["tracks"], actualValues: unknown[], fixtureId: string,
+  expected: NonNullable<GoldenFixture["tracks"]>, actualValues: unknown[], fixtureId: string,
   differences: ParityDifference[], add: (category: string, path: string, expected: unknown, actual: unknown) => void,
 ): void {
   add("tracks", "tracks.length", expected.length, actualValues.length);

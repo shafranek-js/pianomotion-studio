@@ -250,11 +250,12 @@ export function pyAugAdd(target: any, val: any): any {
 export function pyEq(a: any, b: any): boolean {
   if (a === b) return true;
   if (a === null || a === undefined || b === null || b === undefined) return a === b;
-  if (typeof a !== typeof b) return false;
-  if (typeof a === "number" && typeof b === "number") {
-    if (Number.isNaN(a) && Number.isNaN(b)) return true;
-    return Math.abs(a - b) < 1e-7;
+  const aIsPythonNumber = typeof a === "number" || typeof a === "boolean";
+  const bIsPythonNumber = typeof b === "number" || typeof b === "boolean";
+  if (aIsPythonNumber && bIsPythonNumber) {
+    return Number(a) === Number(b);
   }
+  if (typeof a !== typeof b) return false;
   if (typeof a !== "object") return a === b;
   if (Array.isArray(a) !== Array.isArray(b)) return false;
   if (Array.isArray(a)) {
@@ -266,8 +267,11 @@ export function pyEq(a: any, b: any): boolean {
   }
   if (a instanceof Set && b instanceof Set) {
     if (a.size !== b.size) return false;
+    const unmatched = Array.from(b);
     for (const item of a) {
-      if (!b.has(item)) return false;
+      const match = unmatched.findIndex((candidate) => pyEq(item, candidate));
+      if (match < 0) return false;
+      unmatched.splice(match, 1);
     }
     return true;
   }

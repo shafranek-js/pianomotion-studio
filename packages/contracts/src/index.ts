@@ -811,7 +811,7 @@ export const EngineRequestSchema = z.discriminatedUnion("operation", [
 ]);
 export type EngineRequest = z.infer<typeof EngineRequestSchema>;
 
-export const EngineErrorSchema = object({ code: id, message: z.string(), retryable: z.boolean() });
+export const EngineErrorSchema = object({ code: id, message: z.string(), retryable: z.boolean(), stack: z.string().max(8_000).optional() });
 const EngineSuccessResponseSchema = z.discriminatedUnion("operation", [
   object({
     schemaVersion: z.literal(SCHEMA_VERSION), ok: z.literal(true), requestId: id,

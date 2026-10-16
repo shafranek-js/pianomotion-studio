@@ -1,0 +1,106 @@
+[
+  {
+    "fixtureId": "synthetic-crossing-wide-chord",
+    "status": "loaded",
+    "poseCount": 108,
+    "collapsed": 0,
+    "overFourInches": 0,
+    "maximumInches": 2.252375313895743
+  },
+  {
+    "fixtureId": "synthetic-duplicate-identities",
+    "status": "loaded",
+    "poseCount": 26,
+    "collapsed": 0,
+    "overFourInches": 0,
+    "maximumInches": 2.252375311503618
+  },
+  {
+    "fixtureId": "synthetic-invalid-empty",
+    "status": "invalid",
+    "poseCount": 0,
+    "collapsed": 0,
+    "overFourInches": 0,
+    "maximumInches": 0
+  },
+  {
+    "fixtureId": "synthetic-invalid-non-midi",
+    "status": "invalid",
+    "poseCount": 0,
+    "collapsed": 0,
+    "overFourInches": 0,
+    "maximumInches": 0
+  },
+  {
+    "fixtureId": "synthetic-invalid-truncated",
+    "status": "repaired",
+    "poseCount": 0,
+    "collapsed": 0,
+    "overFourInches": 0,
+    "maximumInches": 0
+  },
+  {
+    "fixtureId": "synthetic-manual-fingering-gliss",
+    "status": "loaded",
+    "poseCount": 38,
+    "collapsed": 0,
+    "overFourInches": 0,
+    "maximumInches": 2.25237531268776
+  },
+  {
+    "fixtureId": "synthetic-mismatched-track-labels",
+    "status": "loaded",
+    "poseCount": 40,
+    "collapsed": 0,
+    "overFourInches": 0,
+    "maximumInches": 2.2523753150326575
+  },
+  {
+    "fixtureId": "synthetic-scale-chords",
+    "status": "loaded",
+    "poseCount": 45,
+    "collapsed": 0,
+    "overFourInches": 0,
+    "maximumInches": 2.2523753133571405
+  },
+  {
+    "fixtureId": "synthetic-stress-512",
+    "status": "loaded",
+    "poseCount": 200,
+    "collapsed": 0,
+    "overFourInches": 0,
+    "maximumInches": 2.2523753156429938
+  },
+  {
+    "fixtureId": "synthetic-tempo-pedals-overlap",
+    "status": "loaded",
+    "poseCount": 54,
+    "collapsed": 0,
+    "overFourInches": 0,
+    "maximumInches": 2.2523753136263363
+  },
+  {
+    "fixtureId": "tracked-demo-song",
+    "status": "loaded",
+    "poseCount": 126,
+    "collapsed": 0,
+    "overFourInches": 0,
+    "maximumInches": 2.25237531387926
+  },
+  {
+    "fixtureId": "tracked-right-hand-octaves",
+    "status": "loaded",
+    "poseCount": 47,
+    "collapsed": 0,
+    "overFourInches": 0,
+    "maximumInches": 2.2523753142346465
+  },
+  {
+    "fixtureId": "tracked-right-hand",
+    "status": "loaded",
+    "poseCount": 43,
+    "collapsed": 0,
+    "overFourInches": 0,
+    "maximumInches": 2.2523753144334706
+  }
+]

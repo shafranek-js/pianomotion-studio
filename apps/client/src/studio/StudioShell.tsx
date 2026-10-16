@@ -477,7 +477,7 @@ export function StudioShell(props: StudioShellProps) {
 
         <div className="studio-project-name" title={projectName || "Untitled project"}>
           <span className="studio-project-dot" data-has-project={hasProject ? "true" : "false"} aria-hidden="true" />
-          <span>{projectName || "Untitled project"}</span>
+          <span>{projectName ? (projectName.length > 36 ? projectName.slice(0, 33) + "…" : projectName) : "Untitled project"}</span>
         </div>
 
         <div className="studio-view-switch" role="group" aria-label="Workspace view">

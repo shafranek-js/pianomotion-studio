@@ -6,7 +6,7 @@ import { StudioShell, StudioReleaseDetails } from "./studio/StudioShell";
 import { StudioDialog } from "./studio/StudioDialog";
 import { ProjectsPanel } from "./studio/ProjectsPanel";
 import { BuiltinMelodiesDialog } from "./melodies/BuiltinMelodiesDialog";
-import { loadBuiltinMelodyBytes, type BuiltinMelodyEntry } from "./melodies/catalog";
+import { loadBuiltinMelodies, loadBuiltinMelodyBytes, lookupBuiltinMelody, type BuiltinMelodyEntry } from "./melodies/catalog";
 import { normalizeStudioView, type StudioStatus, type StudioView } from "./studio/types";
 import { ProfileModal } from "./profiles";
 import { SettingsModal } from "./settings";
@@ -29,6 +29,8 @@ import { skipWaiting, releaseAssetUrl, getCurrentServiceWorkerRegistration } fro
 import type { SaveSession } from "./player/saveResult";
 import { isCommittedSaveCurrent } from "./player/saveResult";
 import { applyGuardedStudioUpdate } from "./studio/updateGuard";
+import { recordDiagnostic } from "./diagnostics/eventLog";
+import { DiagnosticLogControls } from "./diagnostics/DiagnosticLogControls";
 
 type FixtureEntry = { fixturePath: string; fixtureSha256: string; scenarios?: string[] };
 type FixtureManifest = { fixtureSources: Record<string, FixtureEntry> };
@@ -96,6 +98,11 @@ export default function App() {
   }), []);
 
   const [swUpdateRegistration, setSwUpdateRegistration] = useState<ServiceWorkerRegistration | null>(null);
+
+  useEffect(() => {
+    recordDiagnostic("studio.status", { kind: status.kind, message: status.message, details: status.details,
+      projectId: active?.result.projectId, openedRevision: active?.result.revision }, status.kind === "error" ? "error" : "info");
+  }, [status, active?.result.projectId, active?.result.revision]);
 
   useEffect(() => {
     const onUpdateAvailable = (e: Event) => {
@@ -172,6 +179,7 @@ export default function App() {
         const [fixturesUnknown, coreUnknown] = await Promise.all([
           fetchJson(releaseAssetUrl(`m1-fixtures/manifest.json${cacheBust}`)),
           fetchJson(releaseAssetUrl(`python-core/source_manifest.json${cacheBust}`)),
+          loadBuiltinMelodies().catch(() => [] as BuiltinMelodyEntry[]),
         ]);
         const fixtures = fixturesUnknown as FixtureManifest;
         const core = coreUnknown as { engineVersion?: unknown };
@@ -562,7 +570,7 @@ export default function App() {
   );
 
   const inspector = (tab: "scene" | "pianist" | "audio" | "diagnostics") => {
-    if (tab === "diagnostics") return <section aria-label="Diagnostics"><h2>Diagnostics</h2><p>{status.message}</p><details><summary>Developer tools</summary>{developerTools}</details></section>;
+    if (tab === "diagnostics") return <section aria-label="Diagnostics"><h2>Diagnostics</h2><p>{status.message}</p><DiagnosticLogControls /><details><summary>Developer tools</summary>{developerTools}</details></section>;
     return <section aria-label={tab}><h2>{tab === "scene" ? "Scene" : tab === "pianist" ? "Pianist" : "Audio"}</h2><p>Open a MIDI project to edit its studio settings.</p></section>;
   };
 
@@ -639,7 +647,7 @@ export default function App() {
           Update ready
         </button>
       )}
-      <StudioReleaseDetails description="0.1.0-dev.7 preview: included MuseScore General piano by default, local SF2/SF3 banks with on-demand Vorbis decoding. 162 editable built-in melodies, linked stereo, adaptive streaming and protected saves." />
+      <StudioReleaseDetails description="0.1.0-dev.9 preview: Native/Python numerical parity verification and motion streaming corrections. Engine switching preserves the project; video export pins its calculation runtime. Included MuseScore General, SF2/SF3 and 162 built-in melodies." />
     </div>
   );
 
@@ -717,9 +725,22 @@ function snapshotToSavedProject(snapshot: SessionSnapshot, sourceContext: Projec
     result.document?.revision === document.revision &&
     result.fingeringPlan?.planId === fingeringPlan?.planId &&
     result.profile.profileId === profile.profileId && result.profile.revision === profile.revision;
+  let name = snapshot.projectName;
+  if (!name || name.startsWith("builtin-") || /^[a-f0-9]{64}$/i.test(name)) {
+    const candidateId = (name?.startsWith("builtin-") ? name.slice(8) : null) ??
+      (sourceContext.fixtureId?.startsWith("builtin-") ? sourceContext.fixtureId.slice(8) : null);
+    const catalogEntry = candidateId ? lookupBuiltinMelody(candidateId) : undefined;
+    if (catalogEntry) {
+      name = catalogEntry.title;
+    } else if (name?.startsWith("builtin-")) {
+      name = `Built-in #${name.slice(8, 14)}`;
+    } else {
+      name = document.title || snapshot.projectId;
+    }
+  }
   return {
     projectId: snapshot.projectId,
-    name: document.title || snapshot.projectId,
+    name,
     updatedAt: snapshot.updatedAt,
     document,
     fingeringPlan: fingeringPlan ?? null,

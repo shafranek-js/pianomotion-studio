@@ -1,0 +1,947 @@
+{
+  "workerUrls": [
+    "blob:http://127.0.0.1:4173/b9ea9562-49be-4137-af0f-20439bf53bf8",
+    "blob:http://127.0.0.1:4173/103a21a6-c87b-4fcc-ba84-7b0a2dd63a6a",
+    "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+    "http://127.0.0.1:4173/src/audio/soundfont/sf2Hash.worker.ts?worker_file&type=module",
+    "http://127.0.0.1:4173/src/audio/soundfont/sf2Parse.worker.ts?worker_file&type=module",
+    "http://127.0.0.1:4173/src/workers/midi-analysis.worker.ts?worker_file&type=module"
+  ],
+  "messages": [
+    {
+      "direction": "request",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "analyze-midi",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 0,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "progress",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 0,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "progress",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 0,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "progress",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 0,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "progress",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 0,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "progress",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 0,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "progress",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 0,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "progress",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 0,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "progress",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 0,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "progress",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 0,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "analysis-result",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 0,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a",
+      "status": "loaded",
+      "poseCount": 71
+    },
+    {
+      "direction": "request",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "sample-motion",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 0,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "sample-motion-result",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 0,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a",
+      "poseCount": 71
+    },
+    {
+      "direction": "request",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "replan-document",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 1,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "progress",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 1,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "progress",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 1,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "progress",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 1,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "progress",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 1,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "progress",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 1,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "progress",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 1,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "progress",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 1,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "progress",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 1,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "progress",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 1,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "replan-document-result",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 1,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a",
+      "status": "loaded"
+    },
+    {
+      "direction": "request",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "sample-motion",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 1,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "sample-motion-result",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 1,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a",
+      "poseCount": 71
+    },
+    {
+      "direction": "request",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis.worker.ts?worker_file&type=module",
+      "type": "replan-document",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 1,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis.worker.ts?worker_file&type=module",
+      "type": "progress",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 1,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis.worker.ts?worker_file&type=module",
+      "type": "progress",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 1,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis.worker.ts?worker_file&type=module",
+      "type": "progress",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 1,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis.worker.ts?worker_file&type=module",
+      "type": "progress",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 1,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis.worker.ts?worker_file&type=module",
+      "type": "progress",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 1,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis.worker.ts?worker_file&type=module",
+      "type": "progress",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 1,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis.worker.ts?worker_file&type=module",
+      "type": "progress",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 1,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis.worker.ts?worker_file&type=module",
+      "type": "progress",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 1,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis.worker.ts?worker_file&type=module",
+      "type": "progress",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 1,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis.worker.ts?worker_file&type=module",
+      "type": "progress",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 1,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis.worker.ts?worker_file&type=module",
+      "type": "progress",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 1,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis.worker.ts?worker_file&type=module",
+      "type": "progress",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 1,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis.worker.ts?worker_file&type=module",
+      "type": "progress",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 1,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis.worker.ts?worker_file&type=module",
+      "type": "replan-document-result",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 1,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a",
+      "status": "loaded"
+    },
+    {
+      "direction": "request",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis.worker.ts?worker_file&type=module",
+      "type": "sample-motion",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 1,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis.worker.ts?worker_file&type=module",
+      "type": "progress",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 1,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis.worker.ts?worker_file&type=module",
+      "type": "sample-motion-result",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 1,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a",
+      "poseCount": 70
+    },
+    {
+      "direction": "request",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "replan-document",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 1,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "progress",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 1,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "progress",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 1,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "progress",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 1,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "progress",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 1,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "progress",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 1,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "progress",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 1,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "progress",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 1,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "progress",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 1,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "progress",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 1,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "replan-document-result",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 1,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a",
+      "status": "loaded"
+    },
+    {
+      "direction": "request",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "sample-motion",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 1,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "sample-motion-result",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 1,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a",
+      "poseCount": 71
+    },
+    {
+      "direction": "request",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "replan-document",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 2,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "progress",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 2,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "progress",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 2,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "progress",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 2,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "progress",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 2,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "progress",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 2,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "progress",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 2,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "progress",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 2,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "progress",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 2,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "progress",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 2,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "replan-document-result",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 2,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a",
+      "status": "loaded"
+    },
+    {
+      "direction": "request",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "sample-motion",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 2,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "sample-motion-result",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 2,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a",
+      "poseCount": 71
+    },
+    {
+      "direction": "request",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "replan-document",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 3,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "progress",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 3,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "progress",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 3,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "progress",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 3,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "progress",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 3,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "progress",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 3,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "progress",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 3,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "progress",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 3,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "progress",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 3,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "progress",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 3,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "replan-document-result",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 3,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a",
+      "status": "loaded"
+    },
+    {
+      "direction": "request",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "sample-motion",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 3,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "sample-motion-result",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 3,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a",
+      "poseCount": 71
+    },
+    {
+      "direction": "request",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "sample-motion",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 3,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "sample-motion-result",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 3,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a",
+      "poseCount": 49
+    },
+    {
+      "direction": "request",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "sample-motion",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 3,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "sample-motion-result",
+      "projectId": "7e9e3599-21f2-4fb8-9e04-c35edf16db27",
+      "revision": 3,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a",
+      "poseCount": 45
+    },
+    {
+      "direction": "request",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "analyze-midi",
+      "projectId": "04973ec0-e74f-426e-96e3-43ee2872555c",
+      "revision": 0,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "progress",
+      "projectId": "04973ec0-e74f-426e-96e3-43ee2872555c",
+      "revision": 0,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "progress",
+      "projectId": "04973ec0-e74f-426e-96e3-43ee2872555c",
+      "revision": 0,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "progress",
+      "projectId": "04973ec0-e74f-426e-96e3-43ee2872555c",
+      "revision": 0,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "progress",
+      "projectId": "04973ec0-e74f-426e-96e3-43ee2872555c",
+      "revision": 0,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "progress",
+      "projectId": "04973ec0-e74f-426e-96e3-43ee2872555c",
+      "revision": 0,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "progress",
+      "projectId": "04973ec0-e74f-426e-96e3-43ee2872555c",
+      "revision": 0,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "progress",
+      "projectId": "04973ec0-e74f-426e-96e3-43ee2872555c",
+      "revision": 0,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "progress",
+      "projectId": "04973ec0-e74f-426e-96e3-43ee2872555c",
+      "revision": 0,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "progress",
+      "projectId": "04973ec0-e74f-426e-96e3-43ee2872555c",
+      "revision": 0,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "analysis-result",
+      "projectId": "04973ec0-e74f-426e-96e3-43ee2872555c",
+      "revision": 0,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a",
+      "status": "loaded",
+      "poseCount": 43
+    },
+    {
+      "direction": "request",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "sample-motion",
+      "projectId": "04973ec0-e74f-426e-96e3-43ee2872555c",
+      "revision": 0,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "sample-motion-result",
+      "projectId": "04973ec0-e74f-426e-96e3-43ee2872555c",
+      "revision": 0,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a",
+      "poseCount": 46
+    },
+    {
+      "direction": "request",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "replan-document",
+      "projectId": "04973ec0-e74f-426e-96e3-43ee2872555c",
+      "revision": 1,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "progress",
+      "projectId": "04973ec0-e74f-426e-96e3-43ee2872555c",
+      "revision": 1,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "progress",
+      "projectId": "04973ec0-e74f-426e-96e3-43ee2872555c",
+      "revision": 1,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "progress",
+      "projectId": "04973ec0-e74f-426e-96e3-43ee2872555c",
+      "revision": 1,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "progress",
+      "projectId": "04973ec0-e74f-426e-96e3-43ee2872555c",
+      "revision": 1,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "progress",
+      "projectId": "04973ec0-e74f-426e-96e3-43ee2872555c",
+      "revision": 1,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "progress",
+      "projectId": "04973ec0-e74f-426e-96e3-43ee2872555c",
+      "revision": 1,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "progress",
+      "projectId": "04973ec0-e74f-426e-96e3-43ee2872555c",
+      "revision": 1,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "progress",
+      "projectId": "04973ec0-e74f-426e-96e3-43ee2872555c",
+      "revision": 1,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "progress",
+      "projectId": "04973ec0-e74f-426e-96e3-43ee2872555c",
+      "revision": 1,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "replan-document-result",
+      "projectId": "04973ec0-e74f-426e-96e3-43ee2872555c",
+      "revision": 1,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a",
+      "status": "loaded"
+    },
+    {
+      "direction": "request",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "sample-motion",
+      "projectId": "04973ec0-e74f-426e-96e3-43ee2872555c",
+      "revision": 1,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a"
+    },
+    {
+      "direction": "response",
+      "url": "http://127.0.0.1:4173/src/workers/midi-analysis-ts.worker.ts?worker_file&type=module",
+      "type": "sample-motion-result",
+      "projectId": "04973ec0-e74f-426e-96e3-43ee2872555c",
+      "revision": 1,
+      "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a",
+      "poseCount": 46
+    }
+  ],
+  "startupGeometry": {
+    "poseCount": 71,
+    "issueCount": 0,
+    "examples": []
+  },
+  "sampledGeometry": {
+    "poseCount": 49,
+    "issueCount": 0,
+    "examples": []
+  },
+  "pageErrors": []
+}

@@ -1,0 +1,20 @@
+{
+  "baseline": {
+    "status": "loaded",
+    "noteCount": 162,
+    "initialPoseCount": 71,
+    "maxFingerBoneLengthInches": 26.193226734205414,
+    "collapsedFingerBoneCount": 1057,
+    "fingerBonesOverFourInches": 3,
+    "originEndpointCount": 1215
+  },
+  "after": {
+    "status": "loaded",
+    "noteCount": 162,
+    "initialPoseCount": 71,
+    "maxFingerBoneLengthInches": 2.252375313971365,
+    "collapsedFingerBoneCount": 0,
+    "fingerBonesOverFourInches": 0,
+    "originEndpointCount": 0
+  }
+}

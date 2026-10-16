@@ -8,6 +8,7 @@
 import { bisectLeft, bisectRight, rounded } from "./pythonCompat.ts";
 import * as progress from "./progress.ts";
 import { split_hands } from "./handSplit.ts";
+import { objId } from "./figures.ts";
 import type { Pianist } from "./pianist.ts";
 
 export const LOWEST_PIANO_KEY = 21; // A0
@@ -39,17 +40,7 @@ export function noteName(pitch: number): string {
 
 export const note_name = noteName;
 
-let _nextObjId = 1;
-const _objIdMap = new WeakMap<object, number>();
-export function objId(obj: object | null | undefined): number {
-  if (obj === null || obj === undefined || typeof obj !== "object") return 0;
-  let id = _objIdMap.get(obj);
-  if (id === undefined) {
-    id = _nextObjId++;
-    _objIdMap.set(obj, id);
-  }
-  return id;
-}
+export { objId };
 export const pyId = objId;
 
 export interface SourceEventLocator {
@@ -65,7 +56,7 @@ export class Note {
   readonly end: number;
   readonly velocity: number;
   readonly track: number;
-  readonly hand: string;
+  readonly hand: string | null;
   readonly finger: number | null;
   readonly gliss: boolean;
   readonly source_ids: readonly string[];
@@ -77,7 +68,7 @@ export class Note {
     end: number,
     velocity: number,
     track: number,
-    hand: string,
+    hand: string | null,
     finger: number | null = null,
     gliss = false,
     source_ids: readonly string[] = [],
@@ -133,7 +124,7 @@ export function pedal_switches(
   const state: Record<number, number> = {};
   for (const [t, c, v] of controls) {
     const on = v >= 64 ? 127 : 0;
-    if (state[c] !== on) {
+    if ((state[c] ?? 0) !== on) {
       state[c] = on;
       out.push([t, c, on]);
     }
@@ -309,15 +300,24 @@ export function _chunks(d: Uint8Array): [Uint8Array, Array<[string, Uint8Array]>
   }
   const view = new DataView(d.buffer, d.byteOffset, d.byteLength);
   const hl = view.getUint32(4, false);
+  if (hl < 6 || 8 + hl > d.length) {
+    throw new Error("invalid MIDI header length");
+  }
   const header = d.slice(8, 8 + hl);
   let i = 8 + hl;
   const out: Array<[string, Uint8Array]> = [];
   while (i + 8 <= d.length) {
     const chunkType = String.fromCharCode(d[i]!, d[i + 1]!, d[i + 2]!, d[i + 3]!);
     const chunkLen = view.getUint32(i + 4, false);
+    if (i + 8 + chunkLen > d.length) {
+      throw new Error("truncated MIDI chunk body");
+    }
     const chunkBody = d.slice(i + 8, i + 8 + chunkLen);
     out.push([chunkType, chunkBody]);
     i += 8 + chunkLen;
+  }
+  if (i !== d.length) {
+    throw new Error("truncated MIDI chunk header");
   }
   return [header, out];
 }
@@ -336,18 +336,20 @@ export function _events(td: Uint8Array): DecodedRawEvent[] {
     const [dt, nextJ] = _vlq(td, j);
     t += dt;
     j = nextJ;
-    if (j >= td.length) break;
+    if (j >= td.length) throw new Error("truncated MIDI event after delta time");
     const b = td[j]!;
     if (b === 0xff) {
-      if (j + 1 >= td.length) break;
+      if (j + 1 >= td.length) throw new Error("truncated MIDI meta event type");
       const typ = td[j + 1]!;
       const [ln, k] = _vlq(td, j + 2);
+      if (k + ln > td.length) throw new Error("truncated MIDI meta event payload");
       out.push([t, "meta", [typ, td.slice(k, k + ln)]]);
       j = k + ln;
       continue;
     }
     if (b === 0xf0 || b === 0xf7) {
       const [ln, k] = _vlq(td, j + 1);
+      if (k + ln > td.length) throw new Error("truncated MIDI system-exclusive payload");
       out.push([t, "sysex", td.slice(j, k + ln)]);
       j = k + ln;
       continue;
@@ -360,6 +362,7 @@ export function _events(td: Uint8Array): DecodedRawEvent[] {
       throw new Error("MIDI data without a status byte");
     }
     const n = (run & 0xf0) === 0xc0 || (run & 0xf0) === 0xd0 ? 1 : 2;
+    if (j + n > td.length) throw new Error("truncated MIDI channel message");
     const p = new Uint8Array(1 + n);
     p[0] = run;
     p.set(td.subarray(j, j + n), 1);
@@ -960,6 +963,10 @@ export class PrettyMIDI {
       err.name = "EOFError";
       throw err;
     }
+    const [, validatedChunks] = _chunks(data);
+    for (const [chunkTag, chunkBody] of validatedChunks) {
+      if (chunkTag === "MTrk") _events(chunkBody);
+    }
     const division = view.getInt16(12, false);
     if (division <= 0) {
       throw new Error("unsupported SMPTE division in PrettyMIDI");
@@ -1465,7 +1472,7 @@ export function load_midi(
           n.end,
           Math.trunc(n.velocity),
           i,
-          mark_hand || track_hand.get(i) || RIGHT,
+          mark_hand || track_hand.get(i) || null,
           gl ? null : finger,
           gl,
           sourceId ? [sourceId] : [],

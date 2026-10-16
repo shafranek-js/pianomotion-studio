@@ -176,13 +176,13 @@ export class VideoExportMotionProvider {
   }
 }
 
-/** Owns a dedicated Pyodide Worker for one export; it never touches the live player Worker. */
+/** Owns the snapshot's calculation Worker; it never touches the live player Worker. */
 export class VideoExportAnalysisWorker {
   private readonly worker: Worker;
   private disposed = false;
 
-  public constructor() {
-    this.worker = createM1AnalysisWorker();
+  public constructor(engine?: FrozenVideoExportSnapshot["settings"]["calculationEngine"]) {
+    this.worker = createM1AnalysisWorker(engine);
   }
 
   public async replan(

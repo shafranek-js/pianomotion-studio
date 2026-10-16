@@ -30,6 +30,7 @@ export const AUTOSAVE_SESSION_ID = "current_session";
  */
 export interface SessionSnapshot {
   projectId: string;
+  projectName?: string;
   updatedAt: number;
   /** Full analysis envelope. Required for a coherent current-session recovery. */
   result?: M1AnalyzeMidiResult | null;
@@ -61,6 +62,7 @@ export type SessionSnapshotAssessment =
 
 const SessionSnapshotBaseSchema = z.object({
   projectId: z.string().trim().min(1),
+  projectName: z.string().trim().optional(),
   updatedAt: z.number().finite(),
   result: M1AnalyzeMidiResultSchema.nullable().optional(),
   rawMidiBytes: z.custom<ArrayBuffer | null>((value) => value === null || value instanceof ArrayBuffer).optional(),

@@ -8,6 +8,8 @@ import type { DifficultyReport } from "../editor/types";
 import { DiagnosticsPanel } from "../editor/DiagnosticsPanel";
 import type { InspectorTab } from "./types";
 import styles from "./StudioInspector.module.css";
+import { DiagnosticLogControls } from "../diagnostics/DiagnosticLogControls";
+import { formatDisplaySourceName } from "../melodies/catalog";
 
 export interface StudioInspectorProps {
   tab: InspectorTab;
@@ -24,6 +26,7 @@ export interface StudioInspectorProps {
   difficultyReport?: DifficultyReport;
   planDiagnostics?: PlanDiagnostic[];
   calculationError?: string;
+  activeCalculationEngine?: CalculationEngine;
   canRetryCalculation?: boolean;
   onRetryCalculation?(): void;
   onSelectNote?(noteId: string): void;
@@ -143,11 +146,20 @@ export function StudioInspector(props: StudioInspectorProps) {
         </label>
       )}
       <dl className={styles.metrics}>
-        <div><dt>Source</dt><dd>{sourceName || "No project"}</dd></div>
+        <div>
+          <dt>Source</dt>
+          <dd title={result?.rawBaseline?.fixtureId ? `${sourceName || "No project"} (${result.rawBaseline.fixtureId})` : (sourceName || "No project")}>
+            {formatDisplaySourceName(sourceName, result?.rawBaseline?.fixtureId)}
+          </dd>
+        </div>
         <div><dt>Notes</dt><dd>{result?.document?.notes.length.toLocaleString() ?? "—"}</dd></div>
         <div><dt>Tracks</dt><dd>{result?.document?.tracks.length.toLocaleString() ?? "—"}</dd></div>
         <div><dt>Analysis state</dt><dd>{result?.status ?? "Idle"}</dd></div>
-        <div><dt>Engine</dt><dd>{settings.calculationEngine === "typescript" ? "TypeScript (Native)" : "Python (Pyodide)"}</dd></div>
+        <div><dt>Active engine</dt><dd>{props.activeCalculationEngine
+          ? props.activeCalculationEngine === "typescript" ? "TypeScript (Native)" : "Python (Pyodide)"
+          : "No computed project"}</dd></div>
+        {props.activeCalculationEngine && props.activeCalculationEngine !== settings.calculationEngine &&
+          <div><dt>Requested engine</dt><dd>{settings.calculationEngine === "typescript" ? "TypeScript (Native)" : "Python (Pyodide)"}</dd></div>}
       </dl>
       {props.calculationError && <div role="alert" className={styles.diagnostics}>
         <strong>Calculation error</strong>
@@ -166,6 +178,7 @@ export function StudioInspector(props: StudioInspectorProps) {
         diagnostics={props.planDiagnostics ?? []}
         onSelectNote={props.onSelectNote}
       />}
+      <DiagnosticLogControls />
       <details className={styles.developer}>
         <summary>Developer tools</summary>
         <div className={styles.developerContent}>{props.developerTools}</div>

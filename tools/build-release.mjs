@@ -64,6 +64,7 @@ async function buildInputFiles() {
     publicRoot,
     path.join(webRoot, "python-core"),
     path.join(webRoot, "packages", "contracts", "src"),
+    path.join(webRoot, "packages", "engine-ts", "src"),
     path.join(webRoot, "builtin_melodies", "midi"),
   ];
   for (const directory of directoryInputs) {
@@ -79,6 +80,8 @@ async function buildInputFiles() {
     "package.json",
     "package-lock.json",
     "apps/client/package.json",
+    "packages/engine-ts/package.json",
+    "packages/engine-ts/tsconfig.json",
     "apps/client/index.html",
     "apps/client/vite.config.ts",
     "apps/client/tsconfig.json",

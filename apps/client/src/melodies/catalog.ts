@@ -172,7 +172,9 @@ export async function loadBuiltinMelodies(signal?: AbortSignal): Promise<Builtin
     throw new Error("Could not load built-in melodies: the catalog manifest is not valid JSON.", { cause: error });
   }
   try {
-    return (await validateManifest(value)).entries;
+    const entries = (await validateManifest(value)).entries;
+    registerBuiltinMelodyEntries(entries);
+    return entries;
   } catch (error) {
     throw new Error(`Could not load built-in melodies: ${error instanceof Error ? error.message : String(error)}`, { cause: error });
   }
@@ -187,6 +189,7 @@ export async function loadBuiltinMelodyBytes(entry: BuiltinMelodyEntry, signal?:
   } catch (error) {
     throw new Error(`Could not load built-in melody: ${error instanceof Error ? error.message : String(error)}`, { cause: error });
   }
+  registerBuiltinMelodyEntries([safeEntry]);
 
   const url = releaseAssetUrl(`builtin-melodies/${safeEntry.assetPath}`);
   const response = await fetchChecked(url, `Failed to load built-in melody “${safeEntry.title}”`, signal).catch((error: unknown) => {
@@ -214,4 +217,59 @@ export async function loadBuiltinMelodyBytes(entry: BuiltinMelodyEntry, signal?:
     throw new Error(`Could not load built-in melody “${safeEntry.title}”: ${error instanceof Error ? error.message : String(error)}`, { cause: error });
   }
   return bytes;
+}
+
+const catalogEntriesById = new Map<string, BuiltinMelodyEntry>();
+
+export function registerBuiltinMelodyEntries(entries: readonly BuiltinMelodyEntry[]): void {
+  for (const entry of entries) {
+    catalogEntriesById.set(entry.id.toLowerCase(), entry);
+  }
+}
+
+export function lookupBuiltinMelody(idOrFixtureId: string): BuiltinMelodyEntry | undefined {
+  const rawId = (idOrFixtureId.startsWith("builtin-") ? idOrFixtureId.slice(8) : idOrFixtureId).toLowerCase();
+  return catalogEntriesById.get(rawId);
+}
+
+/**
+ * Formats a project name or source identity for human-readable display.
+ * Resolves internal built-in IDs (e.g. `builtin-cc34d9...`) into a friendly title
+ * with a short identifier (e.g. `Ode to Joy (#cc34d9)`), avoiding raw 64-char hex dumps.
+ * Also limits long titles with clean ellipsis.
+ */
+export function formatDisplaySourceName(name: string, fixtureId?: string, maxLength = 36): string {
+  const raw = (name || "").trim();
+  if (!raw && !fixtureId) return "No project";
+
+  // Check if candidate or fixtureId is a builtin melody: builtin-<sha256>
+  const builtinMatch = raw.match(/^builtin-([a-f0-9]{8,64})$/i) ??
+    (fixtureId ? fixtureId.match(/^builtin-([a-f0-9]{8,64})$/i) : null);
+
+  if (builtinMatch) {
+    const rawId = builtinMatch[1].toLowerCase();
+    const shortId = rawId.slice(0, 6);
+    const entry = lookupBuiltinMelody(rawId);
+    const baseTitle = entry?.title ?? ((!raw.startsWith("builtin-") && !/^[a-f0-9]{64}$/i.test(raw) && raw) ? raw : "Built-in");
+    if (baseTitle.includes(`(#${shortId})`)) return baseTitle;
+    return `${baseTitle} (#${shortId})`;
+  }
+
+  // Bare 64-character SHA-256 hash
+  if (/^[a-f0-9]{64}$/i.test(raw)) {
+    const rawId = raw.toLowerCase();
+    const shortId = rawId.slice(0, 6);
+    const entry = lookupBuiltinMelody(rawId);
+    if (entry) {
+      return `${entry.title} (#${shortId})`;
+    }
+    return `Project #${shortId}`;
+  }
+
+  // If already contains a readable name, limit length if needed
+  if (raw.length > maxLength) {
+    return raw.slice(0, maxLength - 1) + "…";
+  }
+
+  return raw;
 }

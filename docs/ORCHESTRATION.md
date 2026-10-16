@@ -1,5 +1,13 @@
 # PianoMotion Studio: журнал оркестрации
 
+## Native full parity и локальный журнал — dev.9
+
+Пользователь поручил довести Native до полного паритета и добавил ошибку неполного motion-window и запрос локального логирования. Три GPT-6 Luna Extra High: `native_hands_repair` владеет hands/geometry/pianist и геометрическими тестами; `native_api_repair` — API, Python compatibility, MIDI/fingering и строгими API-тестами; `native_acceptance` — новый реальный Worker parity browser suite. Root владеет журналом и его UI, Worker/Transport/Player интеграцией, CI, версиями/lockfile, независимой приёмкой и документацией. Существующие dirty изменения dev.8 сохранены. Goldens и допуски неизменяемы; никакого fixture-specific вывода или Python fallback. Commit/push/deploy не запрошены. Текущий результат фиксируется после freeze исходников.
+
+## Native calculation repair — dev.8
+
+После пользовательской самостоятельной доработки база заново прочитана: HEAD `7edd431`, дерево чистое. Три GPT-6 Luna Extra High: `native_hands_repair` — hands/geometry/pianist (изменён только hands); `native_api_repair` — API/MIDI/общая identity и тесты; `native_acceptance` — настоящий Worker browser spec. Root владеет Worker factory, Player/Inspector, export runtime snapshot, build/version/lockfile, независимой приёмкой и отчётом. Обнаруженные test-harness ошибки возвращаются в собственные проверки, численные goldens не меняются. [Результаты и открытые границы](DUAL_ENGINE_REVIEW.md). Коммиты/push/deploy не запрошены.
+
 ## Встроенный MuseScore General и SF3 — dev.7
 
 Три GPT-6 Luna Extra High: `sf3_parser_provider` — SF3 RIFF/Ogg metadata, ограниченный decode/provider; `builtin_sf3_asset` — подтверждённый MIT source/provenance, генератор, loader, затем два browser-сценария; `fazioli_repair` — первичные источники/авторская версия и отдельная проверяемая копия без изменения оригинала. Root владеет synth SF3 channel semantics, Settings/Player/Transport, версиями/lockfile, build/PWA, существующими browser suites, docs и независимой приёмкой. Для SF2 reciprocal links остаются строгими, MuseScore SF3 zero-links читаются как независимые channel zones по SF3 RFC. Нет нового разрешения commit/push/deploy; исходники пользователя защищены.

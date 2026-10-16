@@ -35,6 +35,11 @@ const steps = [
     args: ["run", "test:unit"],
   },
   {
+    name: "Native Numerical Parity",
+    command: process.platform === "win32" ? "npm.cmd" : "npm",
+    args: ["run", "test:native-parity"],
+  },
+  {
     name: "Production Build",
     command: process.platform === "win32" ? "npm.cmd" : "npm",
     args: ["run", "build"],

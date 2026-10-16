@@ -1,5 +1,11 @@
 # PianoMotion Studio — Release Notes
 
+## 0.1.0-dev.8 — Native calculation repair, 2026-10-16
+
+Исправлены растяжение рук Native (NaN после pre-roll), разные карты ID нот и неверные pitch при replan. Сохранены неизвестные руки до split, исправлены pedal-off, truncated MIDI и progress callback. Инспектор различает выбранный и активный движок; видео фиксирует runtime снимка; build ID учитывает Native исходники. Версии workspace/lockfile и статус-бар синхронизированы.
+
+488 unit-тестов проходят. Полная эквивалентность Python/TypeScript остаётся открытой; сравнение выполняется отдельной командой с ненулевым exit code при расхождении. [Точная приёмка и ограничения](DUAL_ENGINE_REVIEW.md).
+
 ## 0.1.0-dev.7 — локальная разработка, 2026-10-16
 
 - Включён MuseScore General v0.2 с проверенной MIT-лицензией и сохранёнными acknowledgements. Новые настройки выбирают этот банк; прежние явные выходы не заменяются.
