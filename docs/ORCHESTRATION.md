@@ -1,5 +1,9 @@
 # PianoMotion Studio: журнал оркестрации
 
+## Встроенный MuseScore General и SF3 — dev.7
+
+Три GPT-6 Luna Extra High: `sf3_parser_provider` — SF3 RIFF/Ogg metadata, ограниченный decode/provider; `builtin_sf3_asset` — подтверждённый MIT source/provenance, генератор, loader, затем два browser-сценария; `fazioli_repair` — первичные источники/авторская версия и отдельная проверяемая копия без изменения оригинала. Root владеет synth SF3 channel semantics, Settings/Player/Transport, версиями/lockfile, build/PWA, существующими browser suites, docs и независимой приёмкой. Для SF2 reciprocal links остаются строгими, MuseScore SF3 zero-links читаются как независимые channel zones по SF3 RFC. Нет нового разрешения commit/push/deploy; исходники пользователя защищены.
+
 ## Встроенные мелодии — dev.6
 
 По запросу пользователя подключается `builtin_melodies/midi/` (162 файла). GPT-6 Luna Extra High: `builtin_catalog_assets` — генератор/loader/unit; `builtin_catalog_ui` — каталог и ProjectsPanel. После их freeze `builtin_source_identity_repair`, затем `catalog_identity_finalize` исправляют обнаруженные полным контрактом identity/diagnostics/duplicate-motion ошибки. Оркестратор владеет App/Player/StudioShell, версиями/lockfile, build/offline-интеграцией и независимой браузерной приёмкой. Пользователь позднее разрешил commit/push/deploy после проверок. [Протокол dev.6](evidence/builtin-melodies-2026-10-16/VERIFICATION.md).

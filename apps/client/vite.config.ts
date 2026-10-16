@@ -9,5 +9,10 @@ export default defineConfig({
     __APP_BASE_PATH__: JSON.stringify(process.env.VITE_APP_BASE_PATH || "/"),
     __PIANOMOTION_BUILD_ID__: JSON.stringify(process.env.VITE_RELEASE_BUILD_ID || "development"),
   },
+  resolve: {
+    alias: {
+      "@handthesia/engine-ts": fileURLToPath(new URL("../../packages/engine-ts/src/index.ts", import.meta.url)),
+    },
+  },
   plugins: [react()],
 });

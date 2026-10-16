@@ -639,7 +639,7 @@ export default function App() {
           Update ready
         </button>
       )}
-      <StudioReleaseDetails description="0.1.0-dev.6 preview: 162 searchable built-in melodies, offline access and editable projects. Improved SoundFont parameter inheritance, volume envelopes and loop behavior; linked stereo banks up to 1 GiB. Adaptive animation streaming and protected saves." />
+      <StudioReleaseDetails description="0.1.0-dev.7 preview: included MuseScore General piano by default, local SF2/SF3 banks with on-demand Vorbis decoding. 162 editable built-in melodies, linked stereo, adaptive streaming and protected saves." />
     </div>
   );
 

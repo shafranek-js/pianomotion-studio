@@ -25,6 +25,7 @@ import {
   WebMidiPerformanceOutput,
   type DecodedAudioRecording,
 } from "../audio";
+import { BUILTIN_SOUNDFONT_ID, BUILTIN_SOUNDFONT_NAME, loadBuiltinSoundFont } from "../audio/soundfont/builtinSoundfont.ts";
 import { WebMidiOutputManager, getSharedWebMidiOutputManager } from "../midi/webMidiOutput";
 import {
   FingeringEditor,
@@ -43,7 +44,7 @@ import {
   type SavedProject,
   type SessionSnapshot,
 } from "../storage";
-import type { AppSettings, SkinStyleSetting } from "../settings";
+import type { AppSettings, CalculationEngine, SkinStyleSetting } from "../settings";
 import {
   getSettings,
   subscribeSettings,
@@ -200,6 +201,7 @@ export function PianoPlayer({
   useEffect(() => { onStatusChangeRef.current = onStatusChange; }, [onStatusChange]);
 
   const settingsAtStart = getSettings();
+  const calculationEngineRef = useRef<CalculationEngine>(settingsAtStart.calculationEngine);
   const [analysis, setAnalysis] = useState(result);
   const [draftPlan, setDraftPlan] = useState<FingeringPlan>(() => initialSession?.draftFingeringPlan ?? initialSession?.fingeringPlan ?? result.fingeringPlan!);
   const [activeProfile, setActiveProfile] = useState<PianistProfile>(() => initialSession?.profile ?? result.profile);
@@ -214,7 +216,7 @@ export function PianoPlayer({
   const [activeOutputId, setActiveOutputId] = useState<"synth" | "soundfont" | "webmidi">("synth");
   const [activeSoundfontAssetId, setActiveSoundfontAssetId] = useState<string | null>(null);
   const [activeSoundfontAssetBlob, setActiveSoundfontAssetBlob] = useState<Blob | null>(null);
-  const [preparingOutput, setPreparingOutput] = useState(false);
+  const [preparingOutput, setPreparingOutput] = useState(true);
   const [preparingSamples, setPreparingSamples] = useState(false);
   const [outputEpoch, setOutputEpoch] = useState(0);
   const [currentTime, setCurrentTime] = useState(settingsAtStart.leadInSeconds);
@@ -290,6 +292,12 @@ export function PianoPlayer({
     });
     transportRef.current?.setLeadInSeconds(Math.abs(next.leadInSeconds));
     if (next.keyStyle !== sourceContextRef.current.keyStyle) handleKeyStyleChange(next.keyStyle);
+    if (next.calculationEngine !== calculationEngineRef.current) {
+      calculationEngineRef.current = next.calculationEngine;
+      setRebuildMessage(`Switching to ${next.calculationEngine === "typescript" ? "TypeScript (Native)" : "Python (Pyodide)"} calculation engine…`);
+      setWorkerEpoch(value => value + 1);
+      setForceReplan(value => value + 1);
+    }
   }, [handleKeyStyleChange]);
 
   const handleProfileChanged = useCallback((profile: PianistProfile) => {
@@ -317,7 +325,7 @@ export function PianoPlayer({
 
   useEffect(() => {
     const hasPreparedContext = workerEpoch === 0 && Boolean(analysisWorker);
-    const worker = hasPreparedContext ? analysisWorker! : createM1AnalysisWorker();
+    const worker = hasPreparedContext ? analysisWorker! : createM1AnalysisWorker(settings.calculationEngine);
     workerRef.current = worker;
     workerReadyRef.current = hasPreparedContext;
     workerIdentityRef.current = hasPreparedContext ? {projectId:result.projectId, revision:result.revision, engineVersion:result.engineVersion} : null;
@@ -525,9 +533,11 @@ export function PianoPlayer({
       if (settings.soundOutput === "soundfont") {
         try {
           if (!settings.soundfontAssetId) {
-            throw new Error("No SoundFont selected. Please upload or choose an SF2 file in Settings.");
+            throw new Error("No SoundFont selected. Please choose the included bank or an SF2/SF3 file in Settings.");
           }
-          const asset = await loadSoundFontAsset(settings.soundfontAssetId);
+          const asset = settings.soundfontAssetId === BUILTIN_SOUNDFONT_ID
+            ? await loadBuiltinSoundFont({ signal: outputPreparation.signal })
+            : await loadSoundFontAsset(settings.soundfontAssetId);
           if (!asset) {
             throw new Error("Selected SoundFont was not found in local storage.");
           }
@@ -861,6 +871,10 @@ export function PianoPlayer({
         setIsBuffering(false);
         transportRef.current?.pause();
       } else {
+        if (preparingOutput) {
+          onStatusChange({ kind: "calculating", message: "Preparing selected audio output…" });
+          return;
+        }
         if (motionErrorRef.current) throw new Error("Retry animation calculation in Diagnostics before playing.");
         playIntentRef.current = true;
         setPlaybackError(null);
@@ -880,7 +894,7 @@ export function PianoPlayer({
       playIntentRef.current = false;
       onStatusChange({ kind: "error", message: `Playback failed: ${errorMessage(error)}` });
     }
-  }, [isPlaying, onStatusChange]);
+  }, [isPlaying, preparingOutput, onStatusChange]);
 
   const handleStop = useCallback(() => {
     playIntentRef.current = false;
@@ -1129,7 +1143,7 @@ export function PianoPlayer({
       keyStyle={keyStyle}
       audioRecording={audioRecording}
       audioOffset={audioOffset}
-      audioOutputLabel={playbackError ? `Playback unavailable: ${playbackError}` : `${preparingSamples ? "Preparing SoundFont samples; currently active: " : preparingOutput ? "Preparing selected output; currently active: " : "Active output: "}${activeOutputId === "synth" ? "Built-in synthesizer" : activeOutputId === "soundfont" ? "Local SoundFont" : "External MIDI device"}`}
+      audioOutputLabel={playbackError ? `Playback unavailable: ${playbackError}` : `${preparingSamples ? "Preparing SoundFont samples; currently active: " : preparingOutput ? "Preparing selected output; currently active: " : "Active output: "}${activeOutputId === "synth" ? "Built-in synthesizer" : activeOutputId === "soundfont" ? (activeSoundfontAssetId === BUILTIN_SOUNDFONT_ID ? BUILTIN_SOUNDFONT_NAME : "Local SoundFont") : "External MIDI device"}`}
       sourceName={projectName}
       busy={needsReplan}
       developerTools={developerTools}
@@ -1145,6 +1159,11 @@ export function PianoPlayer({
           onStatusChange({ kind: "error", message: `Hand style preference was not saved: ${errorMessage(error)}` });
         });
       }}
+      onCalculationEngineChange={(engine: CalculationEngine) => {
+        void updateSettingsPersisted({ calculationEngine: engine }).catch(error => {
+          onStatusChange({ kind: "error", message: `Calculation engine preference was not saved: ${errorMessage(error)}` });
+        });
+      }}
       onOpenPianist={onOpenPianist}
       onAudioFileChange={event => void handleAudioFileChange(event)}
       onClearAudio={handleClearAudio}
@@ -1152,7 +1171,7 @@ export function PianoPlayer({
     />
   ), [analysis, activeProfile, settings, keyStyle, audioRecording, audioOffset, projectName, needsReplan, developerTools,
     editorReport, handleDiagnosticNote, handleKeyStyleChange, onOpenPianist, handleAudioFileChange, handleClearAudio,
-    handleAudioOffsetChange, handleRetryCalculation, onStatusChange, status, preparingOutput, preparingSamples, activeOutputId, playbackError]);
+    handleAudioOffsetChange, handleRetryCalculation, onStatusChange, status, preparingOutput, preparingSamples, activeOutputId, activeSoundfontAssetId, playbackError]);
 
   const editorState = <FingeringEditor
     document={document ?? result.document!}
@@ -1209,6 +1228,7 @@ export function PianoPlayer({
     onSpeedChange={handleSpeedChange}
     onVolumeChange={handleVolumeChange}
     disabled={busy || needsReplan}
+    playDisabled={preparingOutput && !isPlaying && !isBuffering}
   />;
 
   const exportSceneDataSource = useMemo<ExportSceneDataSource | null>(() => {
@@ -1262,7 +1282,7 @@ export function PianoPlayer({
     workspace={workspace}
     transport={transport}
     headerAddon={<div ref={setAssignmentControlsHost} className="studio-fingering-assignment-host" />}
-    footerAddon={footerAddon ?? <StudioReleaseDetails description="0.1.0-dev.6 preview: 162 searchable built-in melodies, offline access and editable projects. Improved SoundFont parameter inheritance, volume envelopes and loops; linked stereo banks up to 1 GiB and adaptive animation streaming." />}
+    footerAddon={footerAddon ?? <StudioReleaseDetails description="0.1.0-dev.7 preview: included MuseScore General piano by default, local SF2/SF3 banks with on-demand Vorbis decoding. 162 editable built-in melodies, linked stereo, adaptive streaming and protected saves." />}
     dialogs={<>
       {dialogs}
       <VideoExportModal

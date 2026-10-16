@@ -1,0 +1,83 @@
+{
+  "createdUtcDate": "2026-10-16",
+  "sourceVersion": "Fazioli-F308-v3.0",
+  "sourceProvenance": {
+    "label": "Archive-provided Drive copy linked by SoundFonts 4U Recreated; not independently authenticated as an author-hosted v3.0 download",
+    "downloadUrl": "https://drive.google.com/file/d/1sI-fk7RmQwAuIUTsH_z-cceEFAmj03nx/view",
+    "archivePage": "https://nullcrawler.uk/pages/misc/soundfonts4u_recreate/home.html",
+    "authorReleasePost": "https://musescore.org/en/node/329283",
+    "followUpAttributionPost": "https://musescore.org/en/node/345265"
+  },
+  "source": {
+    "path": "soundfonts/Fazioli-F308-v3.0.sf2",
+    "sizeBytes": 313732114,
+    "sha256": "db1b7d2ecd5c8a68594f03687c51811e3c944b35be4c5bc081f2aba217252fbb"
+  },
+  "pair": {
+    "left": {
+      "sampleIndex": 287,
+      "name": "C214 XY-R PD f D#6-L",
+      "sampleTypeBefore": 4,
+      "sampleLinkBefore": 288,
+      "sampleTypeAfter": 4,
+      "sampleLinkAfter": 288,
+      "frames": 161448,
+      "sampleRate": 48000
+    },
+    "right": {
+      "sampleIndex": 288,
+      "name": "C214 XY-R PD f D#6-R",
+      "sampleTypeBefore": 1,
+      "sampleLinkBefore": 0,
+      "sampleTypeAfter": 2,
+      "sampleLinkAfter": 287,
+      "frames": 161448,
+      "sampleRate": 48000
+    },
+    "presetNames": [
+      "Fazioli Grand F308",
+      "Fazioli Dynamic",
+      "Fazioli Dark",
+      "Fazioli Extra Dark"
+    ]
+  },
+  "patches": [
+    {
+      "sampleIndex": 288,
+      "field": "sampleLink",
+      "fileOffset": 313732018,
+      "before": 0,
+      "after": 287,
+      "widthBytes": 2,
+      "endianness": "little"
+    },
+    {
+      "sampleIndex": 288,
+      "field": "sampleType",
+      "fileOffset": 313732020,
+      "before": 1,
+      "after": 2,
+      "widthBytes": 2,
+      "endianness": "little"
+    }
+  ],
+  "output": {
+    "path": "soundfonts/Fazioli-F308-v3.0.repaired.sf2",
+    "sizeBytes": 313732114,
+    "sha256": "596663ff22f3fca38c2ebec4e6d24cb8824c188a3295d93a875a327f59a9a430",
+    "metadataValidated": true,
+    "browserAudioAcceptance": "Pending in parent task"
+  },
+  "v26CrossCheck": {
+    "sha256": "bba52410c7ad5736aab67c3b27889819bc9b1c9995e0a22b68bec1071289984b",
+    "publicMirror": "https://huggingface.co/datasets/projectlosangeles/soundfonts4u",
+    "sameStereoHeaderDefect": true,
+    "originalModified": false,
+    "repairCopyCreated": false
+  },
+  "focusedTests": {
+    "command": "node --test tools/repair-fazioli-stereo.test.mjs",
+    "passed": 5,
+    "failed": 0
+  }
+}

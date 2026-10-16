@@ -15,8 +15,8 @@ function concat(parts: Uint8Array[]): Uint8Array {
   return result;
 }
 
-function chunk(tag: string, data: Uint8Array): Uint8Array {
-  const paddedSize = data.length + (data.length % 2);
+function chunk(tag: string, data: Uint8Array, padOdd = true): Uint8Array {
+  const paddedSize = data.length + (padOdd ? data.length % 2 : 0);
   const result = new Uint8Array(8 + paddedSize);
   result.set(encoder.encode(tag), 0);
   new DataView(result.buffer).setUint32(4, data.length, true);
@@ -24,8 +24,8 @@ function chunk(tag: string, data: Uint8Array): Uint8Array {
   return result;
 }
 
-function list(type: string, chunks: Uint8Array[]): Uint8Array {
-  return chunk("LIST", concat([encoder.encode(type), ...chunks]));
+function list(type: string, chunks: Uint8Array[], padOdd = true): Uint8Array {
+  return chunk("LIST", concat([encoder.encode(type), ...chunks]), padOdd);
 }
 
 function makeSf2(options: {
@@ -36,6 +36,11 @@ function makeSf2(options: {
   sampleLink?: number;
   sampleRate?: number;
   sampleModes?: number;
+  sampleStart?: number;
+  sampleEnd?: number;
+  loopStart?: number;
+  loopEnd?: number;
+  omitSf3OddPadding?: boolean;
 } = {}): ArrayBuffer {
   const version = new Uint8Array(4);
   const versionView = new DataView(version.buffer);
@@ -45,8 +50,10 @@ function makeSf2(options: {
   const sampleHeader = new Uint8Array(46);
   sampleHeader.set(encoder.encode("TestSample"), 0);
   const sampleView = new DataView(sampleHeader.buffer);
-  sampleView.setUint32(24, 2, true); // sample end
-  sampleView.setUint32(32, 2, true); // loop end
+  sampleView.setUint32(20, options.sampleStart ?? 0, true);
+  sampleView.setUint32(24, options.sampleEnd ?? 2, true); // sample end
+  sampleView.setUint32(28, options.loopStart ?? 0, true);
+  sampleView.setUint32(32, options.loopEnd ?? 2, true);
   sampleView.setUint32(36, options.sampleRate ?? 22_050, true);
   sampleView.setUint8(40, 60);
   sampleView.setUint16(42, options.sampleLink ?? 0, true);
@@ -80,10 +87,12 @@ function makeSf2(options: {
     pdta.unshift(chunk("igen", igen), chunk("ibag", ibag), chunk("inst", inst), chunk("pgen", pgen), chunk("pbag", pbag), chunk("phdr", phdr));
   }
 
+  const sampleChunk = chunk("smpl", options.sampleData ?? new Uint8Array([0, 0, 1, 0]), !options.omitSf3OddPadding);
+  const sdta = list("sdta", [sampleChunk], !options.omitSf3OddPadding);
   const riff = chunk("RIFF", concat([
     encoder.encode("sfbk"),
     list("INFO", [chunk("ifil", version)]),
-    list("sdta", [chunk("smpl", options.sampleData ?? new Uint8Array([0, 0, 1, 0]))]),
+    sdta,
     list("pdta", pdta),
   ]));
   const buffer = new ArrayBuffer(riff.byteLength);
@@ -91,7 +100,92 @@ function makeSf2(options: {
   return buffer;
 }
 
+function makeCompressedPairAtSampleZero(encoded: Uint8Array): ArrayBuffer {
+  const version = new Uint8Array(4);
+  new DataView(version.buffer).setUint16(0, 3, true);
+  new DataView(version.buffer).setUint16(2, 1, true);
+  const headers = new Uint8Array(3 * 46);
+  const view = new DataView(headers.buffer);
+  const samples = [
+    { base: 0, name: "Right", start: 0, type: 0x12, link: 1 },
+    { base: 46, name: "Left", start: encoded.byteLength, type: 0x14, link: 0 },
+    { base: 92, name: "EOS", start: 0, type: 1, link: 0 },
+  ];
+  for (const sample of samples) {
+    headers.set(encoder.encode(sample.name), sample.base);
+    view.setUint32(sample.base + 20, sample.start, true);
+    view.setUint32(sample.base + 24, sample.name === "EOS" ? 0 : sample.start + encoded.byteLength - 1, true);
+    view.setUint32(sample.base + 28, sample.name === "EOS" ? 0 : 4, true);
+    view.setUint32(sample.base + 32, sample.name === "EOS" ? 0 : 20, true);
+    view.setUint32(sample.base + 36, 22_050, true);
+    view.setUint8(sample.base + 40, 60);
+    view.setUint16(sample.base + 42, sample.link, true);
+    view.setUint16(sample.base + 44, sample.type, true);
+  }
+  const riff = chunk("RIFF", concat([
+    encoder.encode("sfbk"),
+    list("INFO", [chunk("ifil", version)]),
+    list("sdta", [chunk("smpl", concat([encoded, encoded]))]),
+    list("pdta", [chunk("shdr", headers)]),
+  ]));
+  return riff.buffer.slice(riff.byteOffset, riff.byteOffset + riff.byteLength) as ArrayBuffer;
+}
+
+function makeMixedSf3(encoded: Uint8Array, pcmEnd = 2): ArrayBuffer {
+  const version = new Uint8Array(4);
+  new DataView(version.buffer).setUint16(0, 3, true);
+  new DataView(version.buffer).setUint16(2, 1, true);
+  const headers = new Uint8Array(3 * 46);
+  const view = new DataView(headers.buffer);
+  const samples = [
+    { base: 0, name: "PCM", start: 0, end: pcmEnd, loopStart: 0, loopEnd: Math.min(2, pcmEnd), type: 1 },
+    { base: 46, name: "Compressed", start: 4, end: 4 + encoded.byteLength - 1, loopStart: 4, loopEnd: 20, type: 0x11 },
+    { base: 92, name: "EOS", start: 0, end: 0, loopStart: 0, loopEnd: 0, type: 1 },
+  ];
+  for (const sample of samples) {
+    headers.set(encoder.encode(sample.name), sample.base);
+    view.setUint32(sample.base + 20, sample.start, true);
+    view.setUint32(sample.base + 24, sample.end, true);
+    view.setUint32(sample.base + 28, sample.loopStart, true);
+    view.setUint32(sample.base + 32, sample.loopEnd, true);
+    view.setUint32(sample.base + 36, 22_050, true);
+    view.setUint8(sample.base + 40, 60);
+    view.setUint16(sample.base + 44, sample.type, true);
+  }
+  const riff = chunk("RIFF", concat([
+    encoder.encode("sfbk"),
+    list("INFO", [chunk("ifil", version)]),
+    list("sdta", [chunk("smpl", concat([new Uint8Array([0, 0, 1, 0]), encoded]))]),
+    list("pdta", [chunk("shdr", headers)]),
+  ]));
+  return riff.buffer.slice(riff.byteOffset, riff.byteOffset + riff.byteLength) as ArrayBuffer;
+}
+
 type Generator = [operator: number, amount: number];
+
+function makeOggVorbisFixture(frameCount = 24, sampleRate = 22_050): Uint8Array {
+  const idHeader = new Uint8Array(30);
+  idHeader[0] = 1;
+  idHeader.set(encoder.encode("vorbis"), 1);
+  new DataView(idHeader.buffer).setUint32(7, 0, true);
+  idHeader[11] = 1;
+  new DataView(idHeader.buffer).setUint32(12, sampleRate, true);
+
+  const makePage = (flags: number, granule: number, sequence: number, body: Uint8Array): Uint8Array => {
+    const page = new Uint8Array(28 + body.byteLength);
+    page.set(encoder.encode("OggS"), 0);
+    page[4] = 0;
+    page[5] = flags;
+    new DataView(page.buffer).setBigUint64(6, BigInt(granule), true);
+    new DataView(page.buffer).setUint32(14, 0x12345678, true);
+    new DataView(page.buffer).setUint32(18, sequence, true);
+    page[26] = 1;
+    page[27] = body.byteLength;
+    page.set(body, 28);
+    return page;
+  };
+  return concat([makePage(0x02, 0, 0, idHeader), makePage(0x04, frameCount, 1, new Uint8Array([0]))]);
+}
 
 function makeSf2WithGenerators(options: {
   presetZones: Generator[][];
@@ -232,9 +326,137 @@ afterEach(() => {
 });
 
 describe("SF2 format boundary and parser worker lifecycle", () => {
-  it("rejects SF3 versions and Ogg/Vorbis-compressed sample blocks with actionable errors", () => {
-    expect(() => parseSf2(makeSf2({ versionMajor: 3, versionMinor: 0 }))).toThrow(/SF2 versions through 2\.4/);
-    expect(() => parseSf2(makeSf2({ sampleData: encoder.encode("OggS") }))).toThrow(/Ogg\/Vorbis-compressed.*SF3/);
+  it("parses SF3 Ogg streams from byte-indexed SHDR records and normalizes decoded frame metadata", async () => {
+    const encoded = makeOggVorbisFixture(24);
+    const buffer = makeSf2({
+      versionMajor: 3,
+      versionMinor: 1,
+      sampleData: encoded,
+      sampleType: 0x11,
+      sampleStart: 0,
+      sampleEnd: encoded.byteLength - 1,
+      loopStart: 4,
+      loopEnd: 20,
+    });
+    const syncParsed = parseSf2(buffer);
+    expect(syncParsed.header).toMatchObject({ versionMajor: 3, versionMinor: 1 });
+    expect(syncParsed.samples[0]).toMatchObject({
+      compressed: true,
+      compressedByteStart: 0,
+      compressedByteEnd: encoded.byteLength,
+      decodedFrameCount: 24,
+      start: 0,
+      end: 24,
+      loopStart: 4,
+      loopEnd: 20,
+      sampleType: 0x11,
+    });
+    expect(syncParsed.rawSampleData).toBeUndefined();
+
+    const parsed = await parseSf2BlobMetadata(new Blob([buffer]));
+    expect(parsed.sampleSource).toMatchObject({ sampleCount: 0, sampleDataByteLength: encoded.byteLength });
+    expect(parsed.samples[0]).toMatchObject({ decodedFrameCount: 24, start: 0, end: 24 });
+  });
+
+  it("rejects compressed samples whose encoding or final Ogg page is invalid", async () => {
+    const notVorbis = encoder.encode("OggS-not-vorbis");
+    const invalidEncoding = makeSf2({ versionMajor: 3, versionMinor: 1, sampleData: notVorbis, sampleType: 0x11, sampleEnd: notVorbis.length - 1, loopEnd: 2 });
+    await expect(parseSf2BlobMetadata(new Blob([invalidEncoding]))).rejects.toThrow(/valid Ogg|Vorbis|Ogg page/i);
+
+    const encoded = makeOggVorbisFixture(24);
+    encoded[58 + 5] = 0; // Remove the EOS flag from the tail Ogg page.
+    const missingFinalPage = makeSf2({ versionMajor: 3, versionMinor: 1, sampleData: encoded, sampleType: 0x11, sampleEnd: encoded.length - 1, loopEnd: 2 });
+    await expect(parseSf2BlobMetadata(new Blob([missingFinalPage]))).rejects.toThrow(/final page|granule/i);
+  });
+
+  it("reads SF3 odd smpl and sdta payloads without padding and rejects that framing for SF2", async () => {
+    const encoded = makeOggVorbisFixture(25);
+    expect(encoded.byteLength % 2).toBe(1);
+    const sf3 = makeSf2({
+      versionMajor: 3,
+      versionMinor: 1,
+      sampleData: encoded,
+      sampleType: 0x11,
+      sampleEnd: encoded.byteLength - 1,
+      loopEnd: 20,
+      omitSf3OddPadding: true,
+    });
+    expect(parseSf2(sf3).samples[0]).toMatchObject({ compressed: true, decodedFrameCount: 25 });
+    const blobParsed = await parseSf2BlobMetadata(new Blob([sf3]));
+    expect(blobParsed.samples[0]).toMatchObject({ compressed: true, decodedFrameCount: 25 });
+
+    const invalidSf2 = makeSf2({
+      versionMajor: 2,
+      versionMinor: 4,
+      sampleData: encoded,
+      sampleType: 0x11,
+      sampleEnd: encoded.byteLength - 1,
+      loopEnd: 20,
+      omitSf3OddPadding: true,
+    });
+    expect(() => parseSf2(invalidSf2)).toThrow(/only an SF3 sdta list/);
+    await expect(parseSf2BlobMetadata(new Blob([invalidSf2]))).rejects.toThrow(/only an SF3 sdta list/);
+  });
+
+  it("treats compressed sampleLink zero as unlinked only without a reciprocal sample-zero pair", () => {
+    const encoded = makeOggVorbisFixture(24);
+    const linked = parseSf2(makeCompressedPairAtSampleZero(encoded));
+    expect(linked.samples.slice(0, 2)).toMatchObject([
+      { sampleType: 0x12, sampleLink: 1, compressed: true },
+      { sampleType: 0x14, sampleLink: 0, compressed: true },
+    ]);
+    const independent = parseSf2(makeSf2({
+      versionMajor: 3,
+      versionMinor: 1,
+      sampleData: encoded,
+      sampleType: 0x14,
+      sampleEnd: encoded.byteLength - 1,
+      loopEnd: 20,
+    }));
+    expect(independent.samples[0]).toMatchObject({ sampleType: 0x14, sampleLink: 0, compressed: true });
+  });
+
+  it("bounds PCM headers against the mixed-bank PCM prefix and reports that prefix to providers", async () => {
+    const encoded = makeOggVorbisFixture(24);
+    const mixed = makeMixedSf3(encoded);
+    const parsed = await parseSf2BlobMetadata(new Blob([mixed]));
+    expect(parsed.sampleSource).toMatchObject({ sampleCount: 2 });
+    expect(parsed.samples[0]).toMatchObject({ name: "PCM", end: 2 });
+
+    const outOfPrefix = makeMixedSf3(encoded, 3);
+    await expect(parseSf2BlobMetadata(new Blob([outOfPrefix]))).rejects.toThrow(/invalid PCM bounds 0\.\.3 for 2 available samples/);
+  });
+
+  it("normalizes a zero-filled terminal SHDR record to EOS instead of rejecting sampleType 0", async () => {
+    const encoded = makeOggVorbisFixture(24);
+    const version = new Uint8Array(4);
+    new DataView(version.buffer).setUint16(0, 3, true);
+    new DataView(version.buffer).setUint16(2, 1, true);
+    const headers = new Uint8Array(2 * 46);
+    const view = new DataView(headers.buffer);
+    headers.set(encoder.encode("Sample0"), 0);
+    view.setUint32(20, 0, true);
+    view.setUint32(24, encoded.byteLength, true);
+    view.setUint32(28, 4, true);
+    view.setUint32(32, 20, true);
+    view.setUint32(36, 22_050, true);
+    view.setUint8(40, 60);
+    view.setUint16(44, 0x11, true);
+    // Second 46-byte record is all zeros (no "EOS" string, sampleType 0), as emitted by MuseScore/sftools.
+    const riff = chunk("RIFF", concat([
+      encoder.encode("sfbk"),
+      list("INFO", [chunk("ifil", version)]),
+      list("sdta", [chunk("smpl", encoded)]),
+      list("pdta", [chunk("shdr", headers)]),
+    ]));
+    const buffer = riff.buffer.slice(riff.byteOffset, riff.byteOffset + riff.byteLength) as ArrayBuffer;
+    const syncParsed = parseSf2(buffer);
+    expect(syncParsed.samples).toHaveLength(2);
+    expect(syncParsed.samples[1]?.name).toBe("EOS");
+
+    const blobParsed = await parseSf2BlobMetadata(new Blob([buffer]));
+    expect(blobParsed.samples).toHaveLength(2);
+    expect(blobParsed.samples[1]?.name).toBe("EOS");
   });
 
   it("parses the complete synthetic mono SF2 used by browser output coverage", () => {
@@ -426,7 +648,7 @@ it("accepts reciprocal stereo samples with independent lengths and relative loop
 
   it("returns a rejected promise for fallback parser failures", async () => {
     vi.stubGlobal("Worker", undefined);
-    const parsing = parseSf2Async(makeSf2({ versionMajor: 3, versionMinor: 0 }));
+    const parsing = parseSf2Async(makeSf2({ versionMajor: 4, versionMinor: 0 }));
     await expect(parsing).rejects.toBeInstanceOf(InvalidSoundFontError);
   });
 

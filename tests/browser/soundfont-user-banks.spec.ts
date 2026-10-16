@@ -25,10 +25,15 @@ async function hashFile(path: string): Promise<string> {
 }
 
 // A proven malformed, actively referenced pair in this exact read-only fixture.
-const invalidSf2Paths = bankPaths.filter((path) => basename(path) === "Fazioli-F308-v2.6.sf2");
+const malformedFazioliHashes: Record<string, string> = {
+  "Fazioli-F308-v2.6.sf2": "bba52410c7ad5736aab67c3b27889819bc9b1c9995e0a22b68bec1071289984b",
+  "Fazioli-F308-v3.0.sf2": "db1b7d2ecd5c8a68594f03687c51811e3c944b35be4c5bc081f2aba217252fbb",
+};
+const invalidSf2Paths = bankPaths.filter((path) => Boolean(malformedFazioliHashes[basename(path)]));
 
-for (const path of bankPaths.filter((path) => !invalidSf2Paths.includes(path))) {
+for (const path of [...bankPaths.filter((path) => !invalidSf2Paths.includes(path)), ...sf3Paths]) {
   const bankName = basename(path);
+  const activeLabel = bankName === "MuseScore_General.sf3" ? "Active output: MuseScore General v0.2" : "Active output: Local SoundFont";
 
   test(`user bank ${bankName} activates, plays, restores and renders low/mid/high probes`, async ({ page }, testInfo) => {
     test.setTimeout(300_000);
@@ -39,7 +44,8 @@ for (const path of bankPaths.filter((path) => !invalidSf2Paths.includes(path))) 
     await loadStudioSong(page);
     await page.getByRole("button", { name: "Open preferences", exact: true }).click();
     await page.locator("#settings-sound-output").selectOption("soundfont");
-    await page.locator('input[type="file"][accept=".sf2"]').setInputFiles(path);
+    await page.locator('input[type="file"][accept=".sf2,.sf3"]').setInputFiles(path);
+    await expect(page.getByText(`SoundFont "${bankName}" loaded successfully.`, {exact:true})).toBeVisible({timeout:120_000});
     const importResult = await page.waitForFunction((id) => {
       const select = document.querySelector<HTMLSelectElement>("#settings-soundfont-select");
       if (select?.value === id) return "imported";
@@ -53,7 +59,7 @@ for (const path of bankPaths.filter((path) => !invalidSf2Paths.includes(path))) 
     await page.getByRole("button", { name: "Close", exact: true }).click();
 
     await openStudioInspector(page, "Audio");
-    await expect(page.getByText("Active output: Local SoundFont", { exact: true })).toBeVisible({ timeout: 120_000 });
+    await expect(page.getByText(activeLabel, { exact: true })).toBeVisible({ timeout: 120_000 });
     await page.getByRole("button", { name: "Play", exact: true }).click();
     await expect(page.getByRole("button", { name: "Pause", exact: true })).toBeVisible({ timeout: 30_000 });
     await expect.poll(async () => Number(await page.locator("#player-seek-slider").inputValue()), { timeout: 30_000 })
@@ -68,7 +74,7 @@ for (const path of bankPaths.filter((path) => !invalidSf2Paths.includes(path))) 
     await expect(page.locator("#settings-soundfont-select")).toHaveValue(sourceHashBefore, { timeout: 90_000 });
     await page.getByRole("button", { name: "Close", exact: true }).click();
     await openStudioInspector(page, "Audio");
-    await expect(page.getByText("Active output: Local SoundFont", { exact: true })).toBeVisible({ timeout: 120_000 });
+    await expect(page.getByText(activeLabel, { exact: true })).toBeVisible({ timeout: 120_000 });
 
     const render = await page.evaluate(async (id) => {
       const { loadSoundFontAsset } = await import("/src/audio/soundfont/soundfontAssetStore.ts");
@@ -187,7 +193,7 @@ for (const path of bankPaths.filter((path) => !invalidSf2Paths.includes(path))) 
           if (!probes.some((probe) => probe.pitch >= zone.keyRange[0] && probe.pitch <= zone.keyRange[1] &&
             probe.velocity >= zone.velRange[0] && probe.velocity <= zone.velRange[1])) return false;
           const sampleType = sf.samples[zone.sampleIndex]?.sampleType;
-          return sampleType !== undefined && ((sampleType & 0x7fff) === 2 || (sampleType & 0x7fff) === 4);
+          return sampleType !== undefined && ((sampleType & 0x7fef) === 2 || (sampleType & 0x7fef) === 4);
         }));
 
         metrics = {
@@ -196,9 +202,9 @@ for (const path of bankPaths.filter((path) => !invalidSf2Paths.includes(path))) 
           header: sf.header,
           preset: preset ? { name: preset.name, bankNumber: preset.bankNumber, presetNumber: preset.presetNumber } : null,
           sampleCount: sf.samples.length,
-          monoSampleCount: sf.samples.filter((sample) => (sample.sampleType & 0x7fff) === 1).length,
-          leftSampleCount: sf.samples.filter((sample) => (sample.sampleType & 0x7fff) === 4).length,
-          rightSampleCount: sf.samples.filter((sample) => (sample.sampleType & 0x7fff) === 2).length,
+          monoSampleCount: sf.samples.filter((sample) => (sample.sampleType & 0x7fef) === 1).length,
+          leftSampleCount: sf.samples.filter((sample) => (sample.sampleType & 0x7fef) === 4).length,
+          rightSampleCount: sf.samples.filter((sample) => (sample.sampleType & 0x7fef) === 2).length,
           usesStereoPair,
           measuredProbes,
           pedalProbeRms,
@@ -260,26 +266,25 @@ if (bankPaths.length === 0) {
   });
 }
 
-for (const path of [...sf3Paths, ...invalidSf2Paths]) {
+for (const path of invalidSf2Paths) {
   const bankName = basename(path);
-  const isSf3 = path.toLowerCase().endsWith(".sf3");
 
-  test(`${isSf3 ? "Unsupported SF3" : "Malformed stereo SF2"} ${bankName} is rejected clearly while the current output remains active`, async ({ page }, testInfo) => {
+  test(`Malformed stereo SF2 ${bankName} is rejected clearly while the current output remains active`, async ({ page }, testInfo) => {
     test.setTimeout(120_000);
     const pageErrors: string[] = [];
     page.on("pageerror", (error) => pageErrors.push(error.message));
     const sourceHashBefore = await hashFile(path);
 
-    if (!isSf3) expect(sourceHashBefore).toBe("bba52410c7ad5736aab67c3b27889819bc9b1c9995e0a22b68bec1071289984b");
+    expect(sourceHashBefore).toBe(malformedFazioliHashes[bankName]);
 
     await loadStudioSong(page);
     await openStudioInspector(page, "Audio");
-    await expect(page.getByText("Active output: Built-in synthesizer", { exact: true })).toBeVisible({ timeout: 45_000 });
+    await expect(page.getByText("Active output: MuseScore General v0.2", { exact: true })).toBeVisible({ timeout: 45_000 });
     await page.getByRole("button", { name: "Open preferences", exact: true }).click();
     await page.locator("#settings-sound-output").selectOption("soundfont");
-    await page.locator('input[type="file"][accept=".sf2"]').setInputFiles(path);
+    await page.locator('input[type="file"][accept=".sf2,.sf3"]').setInputFiles(path);
     const alert = page.getByRole("alert");
-    await expect(alert).toContainText(isSf3 ? /SF3.*not supported/i : /C214 XY-R PD f D#6-L.*link reciprocally/i, { timeout: 60_000 });
+    await expect(alert).toContainText(/C214 XY-R PD f D#6-L.*link reciprocally/i, { timeout: 60_000 });
 
     const imports = await page.evaluate(async () => {
       const { listSoundFontAssets } = await import("/src/audio/soundfont/soundfontAssetStore.ts");
@@ -288,7 +293,7 @@ for (const path of [...sf3Paths, ...invalidSf2Paths]) {
     expect(imports.some((asset) => asset.name === bankName)).toBe(false);
     await page.getByRole("button", { name: "Close", exact: true }).click();
     await openStudioInspector(page, "Audio");
-    await expect(page.getByText("Active output: Built-in synthesizer", { exact: true })).toBeVisible({ timeout: 45_000 });
+    await expect(page.getByText("Active output: MuseScore General v0.2", { exact: true })).toBeVisible({ timeout: 45_000 });
     expect(pageErrors).toEqual([]);
 
     const sourceHashAfter = await hashFile(path);
@@ -296,8 +301,8 @@ for (const path of [...sf3Paths, ...invalidSf2Paths]) {
     await testInfo.attach("rejected-user-bank-result", {
       contentType: "application/json",
       body: JSON.stringify({ file: bankName, sourceHashBefore, sourceHashAfter, installedAssetCount: imports.length,
-        reason: isSf3 ? "unsupported SF3" : "sample 287 links to mono sample 288 without a reciprocal link",
-        activeOutputAfterReject: "Built-in synthesizer" }, null, 2),
+        reason: "sample 287 links to mono sample 288 without a reciprocal link",
+        activeOutputAfterReject: "MuseScore General" }, null, 2),
     });
   });
 }

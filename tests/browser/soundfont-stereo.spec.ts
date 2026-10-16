@@ -373,12 +373,12 @@ test("file-backed linked stereo SF2 stays stereo through WAV, MP4, and WebM expo
     .getByRole("button", { name: "Open preferences", exact: true })
     .click();
   await page.locator("#settings-sound-output").selectOption("soundfont");
-  await page.locator('input[type="file"][accept=".sf2"]').setInputFiles({
+  await page.locator('input[type="file"][accept=".sf2,.sf3"]').setInputFiles({
     name: "Synthetic Stereo SF2.sf2",
     mimeType: "audio/sf2",
     buffer: bankBytes,
   });
-  await expect(page.locator("#settings-soundfont-select")).toBeVisible();
+  await expect(page.locator("#settings-soundfont-select")).toHaveValue(expectedHash, { timeout: 45_000 });
   const assetId = await page.locator("#settings-soundfont-select").inputValue();
   expect(assetId).toBe(expectedHash);
   await page.getByRole("button", { name: "Close" }).click();

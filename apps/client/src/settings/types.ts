@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { BUILTIN_SOUNDFONT_ID } from "../audio/soundfont/builtinSoundfont.ts";
 import { M1KeyStyleSchema, type M1KeyStyle } from "@handthesia/contracts";
 
 export const SETTINGS_STORAGE_KEY = "handthesia:settings";
@@ -32,8 +33,12 @@ export type SkinStyleSetting = z.infer<typeof SkinStyleSchema>;
 export const SoundOutputSchema = z.enum(["synth", "soundfont", "webmidi"]);
 export type SoundOutputSetting = z.infer<typeof SoundOutputSchema>;
 
+export const CalculationEngineSchema = z.enum(["python", "typescript"]);
+export type CalculationEngine = z.infer<typeof CalculationEngineSchema>;
+
 export interface Settings {
   keyStyle: "realistic" | "equal";
+  calculationEngine: "python" | "typescript";
   playbackSpeed: number;
   masterVolume: number;
   leadInSeconds: number;
@@ -62,6 +67,7 @@ export type AppSettings = Settings;
 
 export const SettingsSchema = z.object({
   keyStyle: KeyStyleSchema.default("realistic"),
+  calculationEngine: CalculationEngineSchema.default("python"),
   playbackSpeed: z.number().min(0.25).max(2.0).default(1.0),
   masterVolume: z.number().min(0.0).max(1.0).default(0.8),
   leadInSeconds: z.number().min(-2.0).max(0.0).default(-2.0),
@@ -77,14 +83,15 @@ export const SettingsSchema = z.object({
     .default(60),
   skinStyle: SkinStyleSchema.default("realistic"),
   showHandShadow: z.boolean().default(true),
-  soundOutput: SoundOutputSchema.default("synth"),
-  soundfontAssetId: z.string().nullable().optional(),
+  soundOutput: SoundOutputSchema.default("soundfont"),
+  soundfontAssetId: z.string().nullable().default(BUILTIN_SOUNDFONT_ID),
   webMidiDeviceId: z.string().nullable().optional(),
   webMidiChannel: z.number().int().min(0).max(15).default(0),
 });
 
 export const DEFAULT_SETTINGS: Settings = {
   keyStyle: "realistic",
+  calculationEngine: "python",
   playbackSpeed: 1.0,
   masterVolume: 0.8,
   leadInSeconds: -2.0,
@@ -95,8 +102,8 @@ export const DEFAULT_SETTINGS: Settings = {
   renderCapFps: 60,
   skinStyle: "realistic",
   showHandShadow: true,
-  soundOutput: "synth",
-  soundfontAssetId: null,
+  soundOutput: "soundfont",
+  soundfontAssetId: BUILTIN_SOUNDFONT_ID,
   webMidiDeviceId: null,
   webMidiChannel: 0,
 };
@@ -116,6 +123,11 @@ export function sanitizeSettings(input: Partial<Settings> | unknown): Settings {
     raw.keyStyle === "equal" || raw.keyStyle === "realistic"
       ? raw.keyStyle
       : DEFAULT_SETTINGS.keyStyle;
+
+  const calculationEngine: "python" | "typescript" =
+    raw.calculationEngine === "typescript" || raw.calculationEngine === "python"
+      ? raw.calculationEngine
+      : DEFAULT_SETTINGS.calculationEngine;
 
   const playbackSpeed =
     typeof raw.playbackSpeed === "number" && Number.isFinite(raw.playbackSpeed)
@@ -189,7 +201,7 @@ export function sanitizeSettings(input: Partial<Settings> | unknown): Settings {
   const soundfontAssetId =
     typeof raw.soundfontAssetId === "string" && raw.soundfontAssetId.trim().length > 0
       ? raw.soundfontAssetId.trim()
-      : null;
+      : BUILTIN_SOUNDFONT_ID;
 
   const webMidiDeviceId =
     typeof raw.webMidiDeviceId === "string" && raw.webMidiDeviceId.trim().length > 0
@@ -198,6 +210,7 @@ export function sanitizeSettings(input: Partial<Settings> | unknown): Settings {
 
   return {
     keyStyle,
+    calculationEngine,
     playbackSpeed,
     masterVolume,
     leadInSeconds,

@@ -1,6 +1,6 @@
 {
   "name": "@handthesia/web",
-  "version": "0.1.0-dev.6",
+  "version": "0.1.0-dev.7",
   "private": true,
   "type": "module",
   "workspaces": [
@@ -9,14 +9,15 @@
   ],
   "scripts": {
     "prepare:m1:assets": "node tools/prepare-pyodide-runtime.mjs",
+    "prepare:soundfont": "node tools/prepare-builtin-soundfont.mjs",
     "prepare:melodies": "node tools/prepare-builtin-melodies.mjs",
-    "predev": "npm run prepare:m1:assets && npm run prepare:melodies",
+    "predev": "npm run prepare:m1:assets && npm run prepare:melodies && npm run prepare:soundfont",
     "dev": "vite --config apps/client/vite.config.ts",
     "prebuild": "npm run prepare:m1:assets",
     "build": "node tools/build-release.mjs",
     "preview": "vite preview --config apps/client/vite.config.ts",
-    "typecheck": "tsc -b apps/client/tsconfig.json && tsc -p packages/contracts/tsconfig.json && tsc -p tsconfig.tools.json",
-    "lint": "eslint --config eslint.config.js eslint.config.js vitest.config.ts playwright.config.ts playwright.worker.config.ts playwright.audio.config.ts playwright.preview.config.ts playwright.media.config.ts playwright.soundfont.config.ts tools/build-release.mjs tools/generate-offline-manifest.mjs tools/prepare-builtin-melodies.mjs tools/verify-builtin-catalog.mjs tools/test-python.mjs tools/run-browser-verification.mjs tools/ci-verify.mjs apps/client packages/contracts",
+    "typecheck": "tsc -b apps/client/tsconfig.json && tsc -p packages/contracts/tsconfig.json && tsc -p packages/engine-ts/tsconfig.json && tsc -p tsconfig.tools.json",
+    "lint": "eslint --config eslint.config.js eslint.config.js vitest.config.ts playwright.config.ts playwright.worker.config.ts playwright.audio.config.ts playwright.preview.config.ts playwright.media.config.ts playwright.soundfont.config.ts tools/build-release.mjs tools/generate-offline-manifest.mjs tools/prepare-builtin-melodies.mjs tools/prepare-builtin-soundfont.mjs tools/repair-fazioli-stereo.mjs tools/verify-builtin-catalog.mjs tools/test-python.mjs tools/run-browser-verification.mjs tools/ci-verify.mjs apps/client packages/contracts packages/engine-ts",
     "test:unit": "vitest run --config vitest.config.ts",
     "test:python": "node tools/test-python.mjs",
     "pretest:catalog": "npm run prepare:m1:assets && npm run prepare:melodies",

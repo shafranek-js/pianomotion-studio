@@ -4,3 +4,5 @@ python-core/handthesia_core/*.py text eol=lf
 tests/fixtures/midi/synthetic-invalid-non-midi.mid -text
 # Built-in library hashes and musical events must survive every checkout byte-for-byte.
 builtin_melodies/midi/** -text
+
+assets/soundfonts/*.sf3 -text

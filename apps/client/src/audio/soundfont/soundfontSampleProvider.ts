@@ -27,8 +27,13 @@ interface SampleDescriptor {
   readonly blob: Blob;
   readonly sampleDataOffset: number;
   readonly sampleCount: number;
+  readonly sampleDataByteLength: number;
   readonly sampleIndex: number;
   readonly sample: Sf2SampleHeader;
+  readonly compressed: boolean;
+  readonly compressedByteStart?: number;
+  readonly compressedByteEnd?: number;
+  readonly decodedFrameCount?: number;
   readonly cacheKey: string;
 }
 
@@ -179,9 +184,14 @@ export class SoundFontSampleProvider {
       blob: source.blob,
       sampleDataOffset: source.sampleDataOffset,
       sampleCount: source.sampleCount,
+      sampleDataByteLength: source.sampleDataByteLength ?? source.sampleCount * 2,
       sampleIndex,
       sample,
-      cacheKey: `${source.assetId ? `asset:${source.assetId}` : `blob:${blobId}`}:${source.sampleDataOffset}:${sampleIndex}:${sample.start}:${sample.end}:${sample.sampleRate}`,
+      compressed: sample.compressed === true,
+      compressedByteStart: sample.compressedByteStart,
+      compressedByteEnd: sample.compressedByteEnd,
+      decodedFrameCount: sample.decodedFrameCount,
+      cacheKey: `${source.assetId ? `asset:${source.assetId}` : `blob:${blobId}`}:${source.sampleDataOffset}:${sampleIndex}:${sample.start}:${sample.end}:${sample.sampleRate}:${sample.compressed ? `${sample.compressedByteStart}-${sample.compressedByteEnd}-${sample.decodedFrameCount}` : "pcm"}`,
     };
   }
 
@@ -189,9 +199,7 @@ export class SoundFontSampleProvider {
     let additionalBytes = 0;
     for (const descriptor of descriptors) {
       if (this.cache.has(descriptor.cacheKey) || this.pending.has(descriptor.cacheKey)) continue;
-      const frames = this.sampleFrameCount(descriptor);
-      // Blob PCM (Int16) and the destination AudioBuffer Float32 coexist during conversion.
-      additionalBytes += frames * 6;
+      additionalBytes += this.reservationBytes(descriptor);
     }
 
     let pinnedBytes = 0;
@@ -271,7 +279,7 @@ export class SoundFontSampleProvider {
 
   private startLoad(descriptor: SampleDescriptor, audioContext: AudioContext | OfflineAudioContext): PendingSample {
     const controller = new AbortController();
-    const reservedBytes = this.sampleFrameCount(descriptor) * 6;
+    const reservedBytes = this.reservationBytes(descriptor);
     this.reservedBytes += reservedBytes;
     const pending: PendingSample = {
       controller,
@@ -309,6 +317,28 @@ export class SoundFontSampleProvider {
     signal: AbortSignal,
   ): Promise<CachedSample> {
     const frames = this.sampleFrameCount(descriptor);
+    if (descriptor.compressed) {
+      const encodedStart = descriptor.compressedByteStart;
+      const encodedEnd = descriptor.compressedByteEnd;
+      if (!Number.isSafeInteger(encodedStart) || !Number.isSafeInteger(encodedEnd) || encodedStart! < 0 || encodedEnd! <= encodedStart! || encodedEnd! > descriptor.sampleDataByteLength) {
+        throw new Error(`SoundFont sample ${descriptor.sampleIndex} has invalid compressed byte bounds.`);
+      }
+      const start = descriptor.sampleDataOffset + encodedStart!;
+      const end = descriptor.sampleDataOffset + encodedEnd!;
+      if (start < 0 || end <= start || end > descriptor.blob.size) {
+        throw new Error(`SoundFont sample ${descriptor.sampleIndex} has compressed bytes outside the source Blob.`);
+      }
+      this.readCount++;
+      const encodedBytes = await readBlobRange(descriptor.blob, start, end, signal);
+      if (signal.aborted) throw abortError();
+      const buffer = await decodeCompressedSample(encodedBytes, descriptor.sample.sampleRate, audioContext);
+      if (signal.aborted) throw abortError();
+      if (buffer.numberOfChannels !== 1 || buffer.sampleRate !== descriptor.sample.sampleRate || buffer.length !== frames) {
+        throw new Error(`SoundFont sample ${descriptor.sampleIndex} decoded as ${buffer.numberOfChannels} channel(s), ${buffer.length} frames at ${buffer.sampleRate} Hz; expected 1 channel, ${frames} frames at ${descriptor.sample.sampleRate} Hz.`);
+      }
+      this.decodeCount++;
+      return { buffer, bytes: frames * Float32Array.BYTES_PER_ELEMENT, pins: 0, lastUse: ++this.clock };
+    }
     const start = descriptor.sampleDataOffset + descriptor.sample.start * 2;
     const end = descriptor.sampleDataOffset + descriptor.sample.end * 2;
     if (start < 0 || end < start || end > descriptor.blob.size) {
@@ -328,11 +358,21 @@ export class SoundFontSampleProvider {
 
   private sampleFrameCount(descriptor: SampleDescriptor): number {
     const { start, end } = descriptor.sample;
-    const frames = end - start;
-    if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || start < 0 || frames <= 0 || end > descriptor.sampleCount) {
+    const frames = descriptor.compressed ? descriptor.decodedFrameCount ?? end - start : end - start;
+    if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || start < 0 || frames <= 0 || (!descriptor.compressed && end > descriptor.sampleCount)) {
       throw new Error(`SoundFont sample ${descriptor.sampleIndex} has invalid PCM sample bounds.`);
     }
     return frames;
+  }
+
+  private reservationBytes(descriptor: SampleDescriptor): number {
+    const frames = this.sampleFrameCount(descriptor);
+    const inputBytes = descriptor.compressed
+      ? (descriptor.compressedByteEnd ?? 0) - (descriptor.compressedByteStart ?? 0)
+      : frames * Int16Array.BYTES_PER_ELEMENT;
+    // Compressed bytes and the decoded Float32 AudioBuffer coexist while
+    // decodeAudioData runs. Keep the existing Int16 + Float32 PCM allowance.
+    return inputBytes + frames * Float32Array.BYTES_PER_ELEMENT;
   }
 
   private makeLease(sampleIndex: number, cacheKey: string, entry: CachedSample): SoundFontSampleLease {
@@ -383,6 +423,22 @@ export function getSoundFontSampleProviderStats(): SoundFontSampleProviderStats 
 export function resetSharedSoundFontSampleProviderForTests(): void {
   sharedProvider?.reset();
   sharedProvider = null;
+}
+
+async function decodeCompressedSample(
+  encoded: ArrayBuffer,
+  sampleRate: number,
+  audioContext: AudioContext | OfflineAudioContext,
+): Promise<AudioBuffer> {
+  if (audioContext.sampleRate === sampleRate && typeof audioContext.decodeAudioData === "function") {
+    return audioContext.decodeAudioData(encoded);
+  }
+  const OfflineContext = globalThis.OfflineAudioContext;
+  if (typeof OfflineContext !== "function") {
+    throw new Error(`SF3 decoding at ${sampleRate} Hz requires OfflineAudioContext when the active audio context uses ${audioContext.sampleRate} Hz.`);
+  }
+  const decoderContext = new OfflineContext(1, 1, sampleRate);
+  return decoderContext.decodeAudioData(encoded);
 }
 
 function abortError(): DOMException {

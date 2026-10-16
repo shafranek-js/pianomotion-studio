@@ -79,7 +79,7 @@ export interface SoundFontPedalState {
   soft: boolean;
 }
 
-/** Polyphonic SF2 sample playback with scheduled notes, pedals, and a bounded decoded cache. */
+/** Polyphonic SF2/SF3 sample playback with scheduled notes, pedals, and a bounded decoded cache. */
 export class SoundFontSynth {
   private readonly audioContext: AudioContext | OfflineAudioContext;
   private readonly maxPolyphony: number;
@@ -110,14 +110,19 @@ export class SoundFontSynth {
     this.masterGain.connect(options.destinationNode ?? this.audioContext.destination);
   }
 
-  public loadSoundFont(sf: Sf2SoundFont, presetIndex = 0): void {
+  public loadSoundFont(sf: Sf2SoundFont, presetIndex?: number): void {
     this.cancelPreparation();
     this.releasePreparedSamples();
     this.silenceAll();
     this.audioBufferCache.clear();
     this.cachedBytes = 0;
     this.soundFont = sf;
-    this.activePreset = sf.presets[presetIndex] ?? sf.presets[0] ?? null;
+    this.activePreset = presetIndex !== undefined
+      ? (sf.presets[presetIndex] ?? sf.presets[0] ?? null)
+      : (sf.presets.find((item) => item.bankNumber === 0 && item.presetNumber === 0)
+        ?? sf.presets.find((item) => item.bankNumber === 0 && item.presetNumber <= 7)
+        ?? sf.presets[0]
+        ?? null);
   }
 
   public selectPreset(presetNumber: number, bankNumber = 0): boolean {
@@ -283,10 +288,17 @@ export class SoundFontSynth {
     for (const { zone, zoneIndex } of selected) {
       const sample = this.soundFont.samples[zone.sampleIndex];
       if (!sample) throw new Error(`SoundFont zone ${zoneIndex} refers to missing sample ${zone.sampleIndex}.`);
-      const sampleType = sample.sampleType & 0x7fff;
-      if (sampleType === 1) {
+      const sampleType = sample.sampleType & 0x7fef;
+      // MuseScore SF3 intentionally leaves SHDR links at zero. Its channel
+      // zones carry their own pan/tuning and must each play once, without
+      // guessing a partner by name or weakening reciprocal SF2 validation.
+      const zeroTarget = this.soundFont.samples[0];
+      const reciprocalZero = zeroTarget?.sampleLink === zone.sampleIndex &&
+        (zeroTarget.sampleType & 0x7fef) === (sampleType === 4 ? 2 : 4);
+      const unlinkedSf3 = sample.compressed && sample.sampleLink === 0 && !reciprocalZero && (sampleType === 2 || sampleType === 4);
+      if (sampleType === 1 || unlinkedSf3) {
         layers.push({
-          channels: [{ sampleIndex: zone.sampleIndex, zone, side: "mono" }],
+          channels: [{ sampleIndex: zone.sampleIndex, zone, side: unlinkedSf3 ? (sampleType === 4 ? "left" : "right") : "mono" }],
           zoneIndex,
           sampleIndices: [zone.sampleIndex],
           primarySampleIndex: zone.sampleIndex,
@@ -363,7 +375,7 @@ export class SoundFontSynth {
     }
     const linked = this.soundFont.samples[linkedIndex];
     const expectedType = sampleType === 2 ? 4 : 2;
-    if (!linked || (linked.sampleType & 0x7fff) !== expectedType || linked.sampleLink !== sampleIndex) {
+    if (!linked || (linked.sampleType & 0x7fef) !== expectedType || linked.sampleLink !== sampleIndex) {
       throw new Error(`SoundFont stereo sample '${sample.name}' has an orphaned or inconsistent channel link.`);
     }
     const rightIndex = sampleType === 2 ? sampleIndex : linkedIndex;
@@ -534,7 +546,7 @@ export class SoundFontSynth {
           const explicitPan = channelZone.sampleIndex === sampleIndex ? channelZone.pan : undefined;
           const panValue = explicitPan !== undefined
             ? explicitPan / 500
-            : layer.isStereo
+            : channel.side !== "mono"
               ? channel.side === "left" ? -1 : 1
               : undefined;
           if (panValue !== undefined && typeof this.audioContext.createStereoPanner === "function") {

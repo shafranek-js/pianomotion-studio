@@ -32,9 +32,9 @@ test("uploads, parses, activates and reloads a real synthetic mono SF2 output", 
   await page.getByRole("button", { name: "Open preferences", exact: true }).click();
   await page.locator("#settings-sound-output").selectOption("soundfont");
 
-  const sf2Upload = page.locator('input[type="file"][accept=".sf2"]');
+  const sf2Upload = page.locator('input[type="file"][accept=".sf2,.sf3"]');
   await sf2Upload.setInputFiles({ name: "Synthetic Mono.sf2", mimeType: "audio/sf2", buffer: sampleBankBuffer });
-  await expect(page.locator("#settings-soundfont-select")).toBeVisible();
+  await expect(page.locator("#settings-soundfont-select")).toHaveValue(expectedHash, { timeout: 45_000 });
   const selectedAssetId = await page.locator("#settings-soundfont-select").inputValue();
   expect(selectedAssetId).toMatch(/^[a-f0-9]{64}$/);
   await page.getByRole("button", { name: "Close" }).click();

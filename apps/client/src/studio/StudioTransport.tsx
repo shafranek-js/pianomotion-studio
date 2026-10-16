@@ -15,6 +15,7 @@ export interface StudioTransportProps {
   onSpeedChange(speed: number): void;
   onVolumeChange(volume: number): void;
   disabled?: boolean;
+  playDisabled?: boolean;
 }
 
 const SPEED_OPTIONS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2];
@@ -39,6 +40,7 @@ export function StudioTransport({
   onSpeedChange,
   onVolumeChange,
   disabled = false,
+  playDisabled = false,
 }: StudioTransportProps) {
   const seekMin = Number.isFinite(leadInSeconds) ? leadInSeconds : 0;
   const seekMax = Math.max(Number.isFinite(duration) ? duration : 0, seekMin + 0.01);
@@ -57,7 +59,7 @@ export function StudioTransport({
           className="studio-transport-controls__button studio-transport-controls__play"
           type="button"
           onClick={onTogglePlay}
-          disabled={disabled}
+          disabled={disabled || playDisabled}
           aria-label={playing ? "Pause" : "Play"}
           title={playing ? "Pause playback" : "Start playback"}
         >

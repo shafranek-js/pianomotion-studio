@@ -43,4 +43,18 @@ export default tseslint.config(
       ],
     },
   },
+  {
+    files: ["packages/engine-ts/**/*.{ts,tsx}"],
+    rules: {
+      "@typescript-eslint/no-explicit-any": "off",
+      "@typescript-eslint/no-unused-vars": "off",
+      "prefer-const": "off",
+      "no-useless-assignment": "off",
+      "no-cond-assign": "off",
+      "no-useless-escape": "off",
+      "no-constant-condition": "off",
+      "@typescript-eslint/no-this-alias": "off",
+      "@typescript-eslint/ban-ts-comment": "off",
+    },
+  },
 );

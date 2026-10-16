@@ -1,5 +1,14 @@
 # PianoMotion Studio — Release Notes
 
+## 0.1.0-dev.7 — локальная разработка, 2026-10-16
+
+- Включён MuseScore General v0.2 с проверенной MIT-лицензией и сохранёнными acknowledgements. Новые настройки выбирают этот банк; прежние явные выходы не заменяются.
+- Загрузка собственных SF2/SF3 сохраняется, предел 1 GiB. Сжатые Ogg/Vorbis-сэмплы SF3 читаются отдельно и декодируются по требованию в общем live/export кеше.
+- MuseScore SF3 без sampleLink использует исходные channel zones/pan; strict reciprocal SF2 validation не ослабляется.
+- Генератор включает банк и полный license notice в content-addressed release/offline-набор. Версия статуса и workspace manifests синхронизированы.
+- Проверки и ремонт Fazioli описываются отдельными протоколами; исходные пользовательские файлы не перезаписываются. Полный SF2/SF3 synth parity не заявляется.
+
+
 **Version**: 0.1.0-dev.6
 
 **Date**: 2026-10-16

@@ -16,7 +16,10 @@
     "noEmit": true,
     "jsx": "react-jsx",
     "strict": true,
-    "types": ["vite/client"]
+    "types": ["vite/client"],
+    "paths": {
+      "@handthesia/engine-ts": ["../../packages/engine-ts/src/index.ts"]
+    }
   },
-  "include": ["src"]
+  "include": ["src", "../../packages/engine-ts/src"]
 }

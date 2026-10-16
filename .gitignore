@@ -14,3 +14,7 @@ node_modules/
 .venv*/
 __pycache__/
 *.pyc
+
+# Generated authorized built-in bank; source + notices live under assets/soundfonts.
+/apps/client/public/soundfonts/
+scratch/

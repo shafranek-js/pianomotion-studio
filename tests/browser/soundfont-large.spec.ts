@@ -193,7 +193,7 @@ test("user-provided Nice Steinway stereo bank activates, plays and restores with
   await loadStudioSong(page);
   await page.getByRole("button", { name: "Open preferences", exact: true }).click();
   await page.locator("#settings-sound-output").selectOption("soundfont");
-  await page.locator('input[type="file"][accept=".sf2"]').setInputFiles(path);
+  await page.locator('input[type="file"][accept=".sf2,.sf3"]').setInputFiles(path);
   await expect(page.locator("#settings-soundfont-select")).toHaveValue(expectedHash, { timeout: 90_000 });
   await page.getByRole("button", { name: "Close", exact: true }).click();
   await openStudioInspector(page, "Audio");

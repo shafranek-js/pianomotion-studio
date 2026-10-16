@@ -17,10 +17,10 @@ test("production offline navigation restores a stereo Blob bank and both new SF2
   await expect.poll(() => page.evaluate(() => Boolean(navigator.serviceWorker.controller)), { timeout: 45_000 }).toBe(true);
   await page.getByRole("button", { name: "Open preferences", exact: true }).click();
   await page.locator("#settings-sound-output").selectOption("soundfont");
-  await page.locator('input[type="file"][accept=".sf2"]').setInputFiles({
+  await page.locator('input[type="file"][accept=".sf2,.sf3"]').setInputFiles({
     name: "Offline Stereo.sf2", mimeType: "audio/sf2", buffer: Buffer.from(createSyntheticStereoSf2()),
   });
-  await expect(page.locator("#settings-soundfont-select")).toHaveValue(/^[a-f0-9]{64}$/, { timeout: 45_000 });
+  await expect(page.getByText('SoundFont "Offline Stereo.sf2" loaded successfully.', {exact:true})).toBeVisible({ timeout: 45_000 });
   await page.getByRole("button", { name: "Close", exact: true }).click();
   await openStudioInspector(page, "Audio");
   await expect(page.getByText("Active output: Local SoundFont", { exact: true })).toBeVisible({ timeout: 45_000 });

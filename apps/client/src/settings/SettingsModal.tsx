@@ -6,7 +6,7 @@ import {
   resetToDefaultsPersisted,
   subscribeSettings,
 } from "./settingsStore";
-import type { AppSettings, SkinStyleSetting } from "./types";
+import type { AppSettings, CalculationEngine, SkinStyleSetting } from "./types";
 import { getStorageQuota, clearSessionSnapshot } from "../storage";
 import {
   listSoundFontAssets,
@@ -16,6 +16,8 @@ import {
   MAX_SF2_FILE_BYTES,
   type Sf2Progress,
 } from "../audio/soundfont/index.ts";
+import { BUILTIN_SOUNDFONT_ID, BUILTIN_SOUNDFONT_NAME } from "../audio/soundfont/builtinSoundfont.ts";
+import { releaseAssetUrl } from "../pwa/urls";
 import { WebMidiOutputManager, getSharedWebMidiOutputManager } from "../midi/webMidiOutput.ts";
 import type { WebMidiStatus } from "../midi/types.ts";
 
@@ -73,9 +75,6 @@ export function SettingsModal({ isOpen, onClose, onSettingsChanged, presentation
       void getStorageQuota().then((q) => setQuotaInfo(q));
       void listSoundFontAssets().then((list) => {
         setSoundfonts(list);
-        if (list.length > 0 && !settings.soundfontAssetId) {
-          void handleChange("soundfontAssetId", list[0]!.id);
-        }
       });
     }
   }, [isOpen, settings.soundfontAssetId, handleChange]);
@@ -165,7 +164,7 @@ export function SettingsModal({ isOpen, onClose, onSettingsChanged, presentation
       const list = await listSoundFontAssets();
       setSoundfonts(list);
       if (settings.soundfontAssetId === id) {
-        await handleChange("soundfontAssetId", list.length > 0 ? list[0]!.id : null);
+        await handleChange("soundfontAssetId", BUILTIN_SOUNDFONT_ID);
       }
       setFeedback("SoundFont removed.");
       setTimeout(() => setFeedback(null), 2500);
@@ -425,12 +424,12 @@ export function SettingsModal({ isOpen, onClose, onSettingsChanged, presentation
                   }}
                 >
                   <option value="synth">Web Audio Synth (Built-in Polyphonic Sampler)</option>
-                  <option value="soundfont">SoundFont 2 (Acoustic SF2 Instrument Bank)</option>
+                  <option value="soundfont">SoundFont (SF2 / SF3 instrument bank)</option>
                   <option value="webmidi">Web MIDI Output (Hardware Synthesizer / Piano)</option>
                 </select>
                 <p id="settings-sound-output-note" style={{ margin: "0.35rem 0 0", color: "var(--muted, #9fac9f)", fontSize: "0.74rem" }}>
                   {settings.soundOutput === "synth" && "Built-in polyphonic synthesis running directly in the browser via Web Audio."}
-                  {settings.soundOutput === "soundfont" && "Plays acoustic multi-sampled audio from a local user SoundFont (.sf2). Stored safely in local IndexedDB."}
+                  {settings.soundOutput === "soundfont" && "MuseScore General is included. You can also load your own SF2 or SF3 bank; user banks stay on this device."}
                   {settings.soundOutput === "webmidi" && "Sends sub-millisecond hardware MIDI events to connected digital pianos and synthesizers."}
                 </p>
               </div>
@@ -464,13 +463,13 @@ export function SettingsModal({ isOpen, onClose, onSettingsChanged, presentation
               {settings.soundOutput === "soundfont" && (
                 <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
                   <label htmlFor="settings-soundfont-select" style={{ display: "block", fontSize: "0.8rem", color: "var(--muted, #9fac9f)" }}>
-                    Select User SoundFont:
+                    SoundFont bank:
                   </label>
-                  {soundfonts.length > 0 ? (
+                  {(
                     <div style={{ display: "flex", gap: "0.4rem", alignItems: "center" }}>
                       <select
                         id="settings-soundfont-select"
-                        value={settings.soundfontAssetId ?? soundfonts[0]?.id ?? ""}
+                        value={settings.soundfontAssetId ?? BUILTIN_SOUNDFONT_ID}
                         onChange={(e) => handleChange("soundfontAssetId", e.target.value)}
                         style={{
                           flex: 1,
@@ -482,13 +481,14 @@ export function SettingsModal({ isOpen, onClose, onSettingsChanged, presentation
                           fontSize: "0.85rem",
                         }}
                       >
-                        {soundfonts.map((sf) => (
+                        <option value={BUILTIN_SOUNDFONT_ID}>{BUILTIN_SOUNDFONT_NAME} (included · default)</option>
+                        {soundfonts.filter(sf => sf.id !== BUILTIN_SOUNDFONT_ID).map((sf) => (
                           <option key={sf.id} value={sf.id}>
                             {sf.name} ({(sf.byteLength / (1024 * 1024)).toFixed(1)} MB)
                           </option>
                         ))}
                       </select>
-                      {settings.soundfontAssetId && (
+                      {settings.soundfontAssetId && settings.soundfontAssetId !== BUILTIN_SOUNDFONT_ID && (
                         <button
                           type="button"
                           onClick={() => handleSoundFontDelete(settings.soundfontAssetId!)}
@@ -507,10 +507,6 @@ export function SettingsModal({ isOpen, onClose, onSettingsChanged, presentation
                         </button>
                       )}
                     </div>
-                  ) : (
-                    <p style={{ margin: "0.2rem 0", color: "#facc15", fontSize: "0.78rem" }}>
-                      No SoundFonts installed. Please upload an SF2 file to enable SoundFont playback.
-                    </p>
                   )}
 
                   <div style={{ marginTop: "0.3rem" }}>
@@ -529,10 +525,10 @@ export function SettingsModal({ isOpen, onClose, onSettingsChanged, presentation
                       }}
                     >
                       <Upload size={13} aria-hidden="true" />
-                      {sfUploading ? "Importing SoundFont..." : "Upload SoundFont (.sf2)"}
+                      {sfUploading ? "Importing SoundFont..." : "Upload SoundFont (.sf2 / .sf3)"}
                       <input
                         type="file"
-                        accept=".sf2"
+                        accept=".sf2,.sf3"
                         disabled={sfUploading}
                         onChange={handleSoundFontUpload}
                         style={{ display: "none" }}
@@ -562,8 +558,9 @@ export function SettingsModal({ isOpen, onClose, onSettingsChanged, presentation
                     </p>
                   )}
                   <p className="settings-help">
-                    Up to 1 GiB. Supports mono and linked stereo PCM SF2 samples. SF3 is not supported; some banks’ filter and modulation effects may sound different.
-                    Compressed SF3, ROM-backed, and linked sample type 8 banks are unsupported.
+                    Up to 1 GiB. Supports mono and linked stereo SF2 PCM and SF3 Ogg/Vorbis samples, decoded on demand.
+                    Filter, modulation and effects processing can differ from a full SoundFont synthesizer. ROM and linked sample type 8 remain unsupported.
+                    {" "}<a href={releaseAssetUrl("soundfonts/musescore-general/MuseScore_General_License.md").href} target="_blank" rel="noreferrer">MuseScore General credits and MIT license</a>.
                   </p>
                 </div>
               )}
@@ -666,6 +663,33 @@ export function SettingsModal({ isOpen, onClose, onSettingsChanged, presentation
                 />
                 Show FPS Performance Overlay
               </label>
+
+              <div>
+                <label htmlFor="settings-calculation-engine" style={{ display: "block", fontSize: "0.8rem", color: "var(--muted, #9fac9f)", marginBottom: "0.3rem" }}>
+                  Calculation Engine (Fingering & Kinematics):
+                </label>
+                <select
+                  id="settings-calculation-engine"
+                  value={settings.calculationEngine}
+                  onChange={(e) => handleChange("calculationEngine", e.target.value as CalculationEngine)}
+                  style={{
+                    background: "#19211d",
+                    color: "#edf2ed",
+                    border: "1px solid var(--border, #33423a)",
+                    borderRadius: "0.35rem",
+                    padding: "0.4rem 0.6rem",
+                    fontSize: "0.85rem",
+                  }}
+                >
+                  <option value="python">Python (Pyodide — Default)</option>
+                  <option value="typescript">TypeScript (Native)</option>
+                </select>
+                <p style={{ margin: "0.35rem 0 0", color: "var(--muted, #9fac9f)", fontSize: "0.74rem" }}>
+                  {settings.calculationEngine === "python"
+                    ? "Runs the Python calculation engine inside WebAssembly (Pyodide 314.0.7)."
+                    : "Runs the native TypeScript port directly in a browser Worker without loading Pyodide."}
+                </p>
+              </div>
 
               <div>
                 <label htmlFor="settings-frame-cap" style={{ display: "block", fontSize: "0.8rem", color: "var(--muted, #9fac9f)", marginBottom: "0.3rem" }}>

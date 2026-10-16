@@ -327,7 +327,7 @@ async function migrateLegacyAssets(db: IDBDatabase): Promise<void> {
   });
 }
 
-/** Validates and saves an SF2 file, resolving only after both stores commit. */
+/** Validates and saves an SF2/SF3 file, resolving only after both stores commit. */
 export async function saveSoundFontAsset(
   name: string,
   input: Blob | ArrayBuffer,
@@ -344,7 +344,7 @@ export async function saveSoundFontAsset(
   } catch (error) {
     if (isAbortError(error) || error instanceof InvalidSoundFontError) throw error;
     const message = error instanceof Error ? error.message : String(error);
-    throw new InvalidSoundFontError(`Failed to parse SF2 file '${name}': ${message}`);
+    throw new InvalidSoundFontError(`Failed to parse SoundFont file '${name}': ${message}`);
   }
   checkAbort(options.signal);
   const id = await computeSha256Hex(blob, options);
@@ -370,7 +370,7 @@ export async function saveSoundFontAsset(
   return metadata;
 }
 
-/** Retrieves a migrated SF2 asset with PCM held in a Blob. */
+/** Retrieves a migrated SoundFont asset held in a Blob. */
 export async function loadSoundFontAsset(id: string): Promise<StoredSoundFontAsset | null> {
   const db = await openSoundFontDb();
   await migrateLegacyAssets(db);

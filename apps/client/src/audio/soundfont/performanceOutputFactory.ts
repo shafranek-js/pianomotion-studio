@@ -24,7 +24,11 @@ export async function prepareSoundFontPerformanceOutput(
   soundFont: Sf2SoundFont,
   options: PrepareSoundFontPerformanceOutputOptions,
 ): Promise<SoundFontPerformanceOutput> {
-  const preset = soundFont.presets[options.presetIndex ?? 0] ?? soundFont.presets[0];
+  const preset = options.presetIndex !== undefined
+    ? (soundFont.presets[options.presetIndex] ?? soundFont.presets[0])
+    : (soundFont.presets.find((item) => item.bankNumber === 0 && item.presetNumber === 0)
+      ?? soundFont.presets.find((item) => item.bankNumber === 0 && item.presetNumber <= 7)
+      ?? soundFont.presets[0]);
   if ((!soundFont.sampleSource && !soundFont.rawSampleData?.length) || !preset?.zones.some((zone) => soundFont.samples[zone.sampleIndex])) {
     throw new Error("This SoundFont has no playable sample zones.");
   }
@@ -35,7 +39,7 @@ export async function prepareSoundFontPerformanceOutput(
     maxPolyphony: options.maxPolyphony,
   });
   try {
-    synth.loadSoundFont(soundFont, options.presetIndex ?? 0);
+    synth.loadSoundFont(soundFont, options.presetIndex);
     const output = new SoundFontPerformanceOutput(synth);
     if (options.plan) {
       const startSeconds = Math.max(0, options.startSeconds ?? 0);

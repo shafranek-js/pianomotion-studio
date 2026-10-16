@@ -1,7 +1,7 @@
 import type { ReactNode, ChangeEvent } from "react";
 import type { M1AnalyzeMidiResult, M1KeyStyle } from "@handthesia/contracts";
 import type { PianistProfile } from "../profiles";
-import type { AppSettings, SkinStyleSetting } from "../settings";
+import type { AppSettings, CalculationEngine, SkinStyleSetting } from "../settings";
 import type { DecodedAudioRecording } from "../audio/recording/audioDecoder";
 import type { PlanDiagnostic } from "@handthesia/contracts";
 import type { DifficultyReport } from "../editor/types";
@@ -29,6 +29,7 @@ export interface StudioInspectorProps {
   onSelectNote?(noteId: string): void;
   onKeyStyleChange(style: M1KeyStyle): void;
   onSkinStyleChange(style: SkinStyleSetting): void;
+  onCalculationEngineChange?(engine: CalculationEngine): void;
   onOpenPianist(): void;
   onAudioFileChange(event: ChangeEvent<HTMLInputElement>): void;
   onClearAudio(): void;
@@ -72,6 +73,20 @@ export function StudioInspector(props: StudioInspectorProps) {
           <span>{profile.profileId} · revision {profile.revision}</span>
         </div>
       </div>
+      {props.onCalculationEngineChange && (
+        <label className={styles.field} htmlFor="studio-pianist-calculation-engine">
+          <span>Calculation engine</span>
+          <select
+            id="studio-pianist-calculation-engine"
+            value={settings.calculationEngine}
+            disabled={busy}
+            onChange={(event) => props.onCalculationEngineChange?.(event.currentTarget.value as CalculationEngine)}
+          >
+            <option value="python">Python (Pyodide — Default)</option>
+            <option value="typescript">TypeScript (Native)</option>
+          </select>
+        </label>
+      )}
       <p className={styles.hint}>Anatomy and detailed motion behavior are edited in the full Pianist screen.</p>
       <button className={styles.primaryButton} type="button" onClick={props.onOpenPianist}>Edit pianist profile</button>
     </section>
@@ -113,11 +128,26 @@ export function StudioInspector(props: StudioInspectorProps) {
   return (
     <section className={styles.content} aria-label="Diagnostics">
       <h2 className={styles.heading}>Diagnostics</h2>
+      {props.onCalculationEngineChange && (
+        <label className={styles.field} htmlFor="studio-calculation-engine">
+          <span>Calculation engine</span>
+          <select
+            id="studio-calculation-engine"
+            value={settings.calculationEngine}
+            disabled={busy}
+            onChange={(event) => props.onCalculationEngineChange?.(event.currentTarget.value as CalculationEngine)}
+          >
+            <option value="python">Python (Pyodide — Default)</option>
+            <option value="typescript">TypeScript (Native)</option>
+          </select>
+        </label>
+      )}
       <dl className={styles.metrics}>
         <div><dt>Source</dt><dd>{sourceName || "No project"}</dd></div>
         <div><dt>Notes</dt><dd>{result?.document?.notes.length.toLocaleString() ?? "—"}</dd></div>
         <div><dt>Tracks</dt><dd>{result?.document?.tracks.length.toLocaleString() ?? "—"}</dd></div>
         <div><dt>Analysis state</dt><dd>{result?.status ?? "Idle"}</dd></div>
+        <div><dt>Engine</dt><dd>{settings.calculationEngine === "typescript" ? "TypeScript (Native)" : "Python (Pyodide)"}</dd></div>
       </dl>
       {props.calculationError && <div role="alert" className={styles.diagnostics}>
         <strong>Calculation error</strong>

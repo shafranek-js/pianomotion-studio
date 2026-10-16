@@ -88,10 +88,79 @@ function createStereoLoopSynth(leftMode: number, rightMode: number) {
   };
   const synth = new SoundFontSynth({ audioContext: audioContext as unknown as AudioContext });
   synth.loadSoundFont(soundFont);
-  return { audioContext, gains, sources, synth };
+  return { audioContext, gains, sources, synth, soundFont };
 }
 
 describe("SoundFont 2 Parser & Synthesizer (W042, W043)", () => {
+  it("distinguishes an explicit compressed pair linked to index zero from MuseScore zero links", () => {
+    const { synth, sources, soundFont } = createStereoLoopSynth(3, 3);
+    soundFont.header.versionMajor = 3;
+    for (const sample of soundFont.samples) { sample.compressed = true; sample.sampleType |= 0x10; }
+    synth.loadSoundFont(soundFont);
+    synth.noteOn(60, 90, "linked-sf3", 0.2);
+    expect(sources).toHaveLength(2);
+    expect(synth.getActiveVoiceCount()).toBe(1);
+    expect(sources.every(source => source.start.mock.calls[0]?.[0] === 0.2)).toBe(true);
+    synth.dispose();
+  });
+  it("plays MuseScore SF3 zero-link channel zones once with shared note lifecycle", () => {
+    const { audioContext, sources, synth } = createStereoLoopSynth(3, 3);
+    const sf: Sf2SoundFont = {
+      header: { name: "SF3 channel zones", versionMajor: 3, versionMinor: 1 },
+      presets: [{ name: "Piano", presetNumber: 0, bankNumber: 0, zones: [
+        { keyRange: [60,60], velRange: [1,127], sampleIndex: 0, sampleModes: 3 },
+        { keyRange: [60,60], velRange: [1,127], sampleIndex: 1, pan: 500, sampleModes: 3 },
+      ] }],
+      samples: [
+        { name: "L", compressed: true, sampleType: 0x14, sampleLink: 0, start: 0, end: 100, loopStart: 20, loopEnd: 60, sampleRate: 100, originalPitch: 60, pitchCorrection: 0 },
+        { name: "R", compressed: true, sampleType: 0x12, sampleLink: 0, start: 0, end: 100, loopStart: 20, loopEnd: 60, sampleRate: 100, originalPitch: 60, pitchCorrection: 0 },
+      ],
+      rawSampleData: new Int16Array(100),
+    };
+    const pans: number[] = [];
+    Object.assign(audioContext, { createStereoPanner: () => ({ pan: { setValueAtTime: (v: number) => pans.push(v) }, connect: vi.fn(), disconnect: vi.fn() }) });
+    synth.loadSoundFont(sf);
+    synth.noteOn(60, 80, "same-id", 0.2);
+    expect(sources).toHaveLength(2);
+    expect(sources.every(source => source.start.mock.calls[0]?.[0] === 0.2)).toBe(true);
+    expect(pans).toEqual([-1,1]);
+    expect(synth.getActiveVoiceCount()).toBe(2);
+    synth.pedalChange(64, 127, 0.3);
+    synth.noteOff("same-id", undefined, 0.4);
+    expect(sources.every(source => source.stop.mock.calls.length === 0)).toBe(true);
+    synth.pedalChange(64, 0, 0.5);
+    expect(sources.every(source => source.stop.mock.calls.length > 0)).toBe(true);
+    synth.dispose();
+    expect(synth.getActiveVoiceCount()).toBe(0);
+  });
+
+  it("selects bank 0 preset 0 (Grand Piano) by default when presets are not ordered by program number", () => {
+    const { audioContext } = createStereoLoopSynth(0, 0);
+    const sf: Sf2SoundFont = {
+      header: { name: "Unordered GM Bank", versionMajor: 3, versionMinor: 1 },
+      presets: [
+        { name: "Contrabass", bankNumber: 0, presetNumber: 43, zones: [{ keyRange: [60, 60], velRange: [1, 127], sampleIndex: 0 }] },
+        { name: "Cello", bankNumber: 0, presetNumber: 42, zones: [{ keyRange: [60, 60], velRange: [1, 127], sampleIndex: 0 }] },
+        { name: "Grand Piano", bankNumber: 0, presetNumber: 0, zones: [{ keyRange: [60, 60], velRange: [1, 127], sampleIndex: 1 }] },
+      ],
+      samples: [
+        { name: "CelloSample", start: 0, end: 50, loopStart: 0, loopEnd: 50, sampleRate: 100, originalPitch: 48, pitchCorrection: 0, sampleType: 1 },
+        { name: "PianoSample", start: 50, end: 100, loopStart: 50, loopEnd: 100, sampleRate: 100, originalPitch: 60, pitchCorrection: 0, sampleType: 1 },
+      ],
+      rawSampleData: new Int16Array(100),
+    };
+    const synth = new SoundFontSynth({ audioContext: audioContext as unknown as AudioContext });
+    synth.loadSoundFont(sf);
+    expect(synth.areNotesPrepared([{ pitch: 60, velocity: 100 }])).toBe(false);
+    void synth.prepareNotes([{ pitch: 60, velocity: 100 }]);
+    expect(synth.areNotesPrepared([{ pitch: 60, velocity: 100 }])).toBe(true);
+    synth.noteOn(60, 100, "piano-c4", 0);
+    // PianoSample has rootKey 60 -> playbackRate 1.0 (whereas CelloSample has rootKey 48 -> playbackRate 2.0)
+    const lastSource = audioContext.createBufferSource.mock.results.at(-1)?.value as StereoTestSource;
+    expect(lastSource.playbackRate.setValueAtTime).toHaveBeenCalledWith(1, 0);
+    synth.dispose();
+  });
+
   it("rejects non-SF2 buffers with descriptive InvalidSoundFontError", () => {
     // Empty
     expect(() => new Sf2Parser(new Uint8Array(4)).parse()).toThrow(InvalidSoundFontError);

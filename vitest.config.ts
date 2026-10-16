@@ -3,6 +3,11 @@ import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   root: fileURLToPath(new URL(".", import.meta.url)),
+  resolve: {
+    alias: {
+      "@handthesia/engine-ts": fileURLToPath(new URL("./packages/engine-ts/src/index.ts", import.meta.url)),
+    },
+  },
   test: {
     include: [
       "apps/**/*.{test,spec}.{ts,tsx}",

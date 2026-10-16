@@ -1,18 +1,21 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { SoundFontSampleProvider } from "./soundfontSampleProvider.ts";
 import type { Sf2SoundFont } from "./types.ts";
 
-function context() {
+function context(sampleRate = 44_100, decodeAudioData?: (bytes: ArrayBuffer) => Promise<AudioBuffer>) {
   return {
-    sampleRate: 44_100,
+    sampleRate,
     createBuffer: (_channels: number, frames: number, sampleRate: number) => {
       const channel = new Float32Array(frames);
       return {
         duration: frames / sampleRate,
         sampleRate,
+        numberOfChannels: 1,
+        length: frames,
         getChannelData: () => channel,
       } as unknown as AudioBuffer;
     },
+    ...(decodeAudioData ? { decodeAudioData } : {}),
   } as unknown as AudioContext;
 }
 
@@ -45,6 +48,30 @@ function soundFont(
   };
 }
 
+function compressedSoundFont(frames: number, bytes = new Uint8Array([79, 103, 103, 83, 1, 2, 3, 4])): Sf2SoundFont {
+  const blob = new Blob([bytes]);
+  return {
+    header: { name: "SF3 provider test", versionMajor: 3, versionMinor: 1 },
+    presets: [],
+    samples: [{
+      name: "compressed",
+      start: 0,
+      end: frames,
+      loopStart: Math.min(1, frames),
+      loopEnd: frames,
+      sampleRate: 44_100,
+      originalPitch: 60,
+      pitchCorrection: 0,
+      sampleType: 0x11,
+      compressed: true,
+      compressedByteStart: 0,
+      compressedByteEnd: bytes.byteLength,
+      decodedFrameCount: frames,
+    }],
+    sampleSource: { blob, sampleDataOffset: 0, sampleCount: 0, sampleDataByteLength: bytes.byteLength },
+  };
+}
+
 describe("shared lazy SoundFont sample provider", () => {
   it("reads only the requested PCM range and pins decoded audio until release", async () => {
     const provider = new SoundFontSampleProvider(1024, 1024);
@@ -57,6 +84,47 @@ describe("shared lazy SoundFont sample provider", () => {
 
     lease.release();
     expect(provider.getStats()).toMatchObject({ inactiveBytes: 8, pinnedBytes: 0 });
+  });
+
+  it("decodes only the requested SF3 stream at its source rate and pins the frame-bounded buffer", async () => {
+    const provider = new SoundFontSampleProvider(1024, 1024);
+    const sf = compressedSoundFont(5);
+    const output = new Float32Array([0.1, 0.2, 0.3, 0.4, 0.5]);
+    const decodeAudioData = vi.fn(async (bytes: ArrayBuffer) => {
+      expect(bytes.byteLength).toBe(8);
+      return {
+        duration: 5 / 44_100,
+        sampleRate: 44_100,
+        numberOfChannels: 1,
+        length: 5,
+        getChannelData: () => output,
+      } as unknown as AudioBuffer;
+    });
+
+    const leases = await provider.prepareSamples(sf, [0], context(44_100, decodeAudioData));
+    expect([...leases.get(0)!.buffer.getChannelData(0)]).toEqual([...output]);
+    expect(decodeAudioData).toHaveBeenCalledTimes(1);
+    expect(provider.getStats()).toMatchObject({ reads: 1, decodes: 1, decodedBytes: 20, preparingBytes: 0, pinnedBytes: 20 });
+    leases.get(0)!.release();
+  });
+
+  it("accounts for compressed input plus decoded frames before any SF3 read", async () => {
+    const provider = new SoundFontSampleProvider(23, 23);
+    await expect(provider.prepareSamples(compressedSoundFont(5), [0], context(44_100, vi.fn()))).rejects.toThrow(/shared cache budget/);
+    expect(provider.getStats()).toMatchObject({ reads: 0, decodes: 0, preparingBytes: 0 });
+  });
+
+  it("rejects a browser decode whose output disagrees with the validated Ogg granule", async () => {
+    const provider = new SoundFontSampleProvider(1024, 1024);
+    const decodeAudioData = vi.fn(async () => ({
+      duration: 4 / 44_100,
+      sampleRate: 44_100,
+      numberOfChannels: 1,
+      length: 4,
+      getChannelData: () => new Float32Array(4),
+    } as unknown as AudioBuffer));
+    await expect(provider.prepareSamples(compressedSoundFont(5), [0], context(44_100, decodeAudioData))).rejects.toThrow(/expected 1 channel, 5 frames/);
+    expect(provider.getStats()).toMatchObject({ reads: 1, decodes: 0, preparingBytes: 0, cachedSamples: 0 });
   });
 
   it("deduplicates concurrent range reads and counts each caller's pin", async () => {

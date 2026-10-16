@@ -71,13 +71,12 @@ test.describe("M6 Visual Hand Skins & Audio Sync (W039–W044)", () => {
 
     // 6. Test Audio Output Engine Selection
     const soundOutputSelect = page.locator("#settings-sound-output");
-    await expect(soundOutputSelect).toHaveValue("synth");
+    await expect(soundOutputSelect).toHaveValue("soundfont");
 
     await expect(soundOutputSelect.locator('option[value="soundfont"]')).toBeEnabled();
     await expect(soundOutputSelect.locator('option[value="webmidi"]')).toBeEnabled();
     await soundOutputSelect.selectOption("soundfont");
-    await expect(page.getByText("No SoundFonts installed. Please upload an SF2 file to enable SoundFont playback.")).toBeVisible();
-    await expect(page.getByTestId("studio-status")).toContainText("SoundFont was not activated");
+    await expect(page.locator("#settings-soundfont-select option:checked")).toContainText("MuseScore General");
 
     // Close settings modal
     await page.locator('button[aria-label="Close"]').click();
@@ -85,9 +84,8 @@ test.describe("M6 Visual Hand Skins & Audio Sync (W039–W044)", () => {
 
     await page.getByRole("button", {name: "Fingering", exact: true}).click();
     await openStudioInspector(page, "Audio");
-    await expect(page.getByText("Active output: Built-in synthesizer", {exact:true})).toBeVisible();
-    // A failed preparation must leave the previous backend active. Restore the
-    // requested preference before continuing with the real recording scenario.
+    await expect(page.getByText("Active output: MuseScore General v0.2", {exact:true})).toBeVisible();
+    // Explicitly select the lightweight synth for the recording scenario.
     await settingsBtn.click();
     await page.locator("#settings-sound-output").selectOption("synth");
     await page.locator('button[aria-label="Close"]').click();

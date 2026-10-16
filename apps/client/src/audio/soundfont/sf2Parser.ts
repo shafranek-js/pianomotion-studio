@@ -1,5 +1,14 @@
 import { parseSf2BlobMetadata } from "./sf2BlobParser.ts";
-import type { Sf2Header, Sf2Preset, Sf2SampleHeader, Sf2SoundFont, Sf2Zone } from "./types";
+import {
+  getSf2BaseSampleType,
+  SF2_SAMPLE_COMPRESSED_FLAG,
+  SF2_SAMPLE_ROM_FLAG,
+  type Sf2Header,
+  type Sf2Preset,
+  type Sf2SampleHeader,
+  type Sf2SoundFont,
+  type Sf2Zone,
+} from "./types";
 
 export type Sf2ProgressPhase = "reading" | "parsing" | "hashing" | "saving";
 export interface Sf2Progress {
@@ -33,13 +42,14 @@ export function assertSf2FileSize(byteLength: number): void {
 
 export interface Sf2ParserOptions {
   /** Used by the Blob metadata parser so the PCM remains in its original Blob. */
-  sampleSource?: { blob: Blob; sampleDataOffset: number; sampleCount: number };
+  sampleSource?: { blob: Blob; sampleDataOffset: number; sampleCount: number; sampleDataByteLength?: number };
 }
 
 interface ChunkView {
   tag: string;
   dataOffset: number;
   size: number;
+  unpadded: boolean;
 }
 
 const TABLE_ENTRY_BYTES: Record<string, number> = {
@@ -53,6 +63,7 @@ const TABLE_ENTRY_BYTES: Record<string, number> = {
   igen: 4,
   shdr: 46,
 };
+const MAX_OGG_PAGE_BYTES = 27 + 255 + 255 * 255;
 
 type GeneratorMap = Map<number, number>;
 
@@ -106,32 +117,33 @@ export class Sf2Parser {
     let header: Sf2Header = { name: "Unnamed SoundFont", versionMajor: 2, versionMinor: 4 };
     let rawSampleData = new Int16Array(0);
     let sawSampleData = false;
+    let sawUnpaddedSf3Chunk = false;
+    let sampleDataChunk: ChunkView | null = null;
     let rawShdr: Uint8Array | null = null;
     const tables = new Map<string, Uint8Array>();
 
-    for (const chunk of this.listChunks(12, riffEnd)) {
+    for (const chunk of this.listChunks(12, riffEnd, false, true)) {
       if (chunk.tag !== "LIST") continue;
       if (chunk.size < 4) throw new InvalidSoundFontError("LIST chunk is missing its list type.");
       const listType = this.readAscii(chunk.dataOffset, 4);
-      const children = this.listChunks(chunk.dataOffset + 4, chunk.dataOffset + chunk.size);
+      const listEnd = chunk.dataOffset + chunk.size;
+      const unpaddedList = (chunk.size & 1) !== 0 &&
+        (listEnd === riffEnd || (listEnd + 4 <= riffEnd && this.readAscii(listEnd, 4) === "LIST"));
+      if (unpaddedList && listType !== "sdta") {
+        throw new InvalidSoundFontError(`LIST '${listType}' omits its RIFF padding byte; only an SF3 sdta list may use this form.`);
+      }
+      if (unpaddedList) sawUnpaddedSf3Chunk = true;
+      const children = this.listChunks(chunk.dataOffset + 4, listEnd, listType === "sdta");
 
       if (listType === "INFO") {
         header = this.parseInfoList(children, header);
       } else if (listType === "sdta") {
         for (const child of children) {
           if (child.tag !== "smpl") continue;
-          if (sawSampleData) throw new InvalidSoundFontError("The sdta list contains more than one smpl PCM chunk.");
+          if (child.unpadded) sawUnpaddedSf3Chunk = true;
+          if (sawSampleData) throw new InvalidSoundFontError("The sdta list contains more than one smpl sample-data chunk.");
           sawSampleData = true;
-          if (child.size % 2 !== 0) throw new InvalidSoundFontError("Sample data must contain complete 16-bit PCM values.");
-          if (child.size >= 4 && this.readAscii(child.dataOffset, 4) === "OggS") {
-            throw new InvalidSoundFontError("Ogg/Vorbis-compressed sample data (SF3) is not supported; choose an uncompressed PCM SF2 bank.");
-          }
-          if (!this.options.sampleSource) {
-            rawSampleData = new Int16Array(child.size / 2);
-            for (let i = 0; i < rawSampleData.length; i++) {
-              rawSampleData[i] = this.view.getInt16(child.dataOffset + i * 2, true);
-            }
-          }
+          sampleDataChunk = child;
         }
       } else if (listType === "pdta") {
         for (const child of children) {
@@ -147,9 +159,54 @@ export class Sf2Parser {
       }
     }
 
+    if (sawUnpaddedSf3Chunk && header.versionMajor !== 3) {
+      throw new InvalidSoundFontError("An unpadded sdta LIST or smpl chunk is invalid in SF2; only an SF3 sdta list may omit its RIFF padding byte.");
+    }
+
     const sampleHeaders = rawShdr ? this.parseSampleHeaders(rawShdr) : [];
-    const sourceSampleCount = this.options.sampleSource?.sampleCount ?? rawSampleData.length;
-    this.validateSampleHeaders(sampleHeaders, sourceSampleCount);
+    if (!sampleDataChunk) throw new InvalidSoundFontError("The sdta list does not contain an embedded smpl sample-data chunk.");
+    const compressedHeaders = sampleHeaders.filter((sample) => sample.compressed);
+    if (compressedHeaders.length === 0 && sampleDataChunk.size % 2 !== 0) {
+      throw new InvalidSoundFontError("Sample data must contain complete 16-bit PCM values.");
+    }
+    const compressedDataStart = compressedHeaders.length > 0
+      ? compressedHeaders.reduce((first, sample) => Math.min(first, sample.compressedByteStart ?? 0), Number.POSITIVE_INFINITY)
+      : sampleDataChunk.size;
+    const pcmSampleCount = compressedHeaders.length > 0
+      ? Math.floor(compressedDataStart / 2)
+      : this.options.sampleSource?.sampleCount ?? Math.floor(sampleDataChunk.size / 2);
+    if (compressedHeaders.length > 0 && !this.options.sampleSource) {
+      for (const sample of compressedHeaders) this.populateCompressedSampleMetadata(sample, sampleDataChunk.dataOffset, sampleDataChunk.size);
+    }
+    let sampleSource = this.options.sampleSource;
+    if (compressedHeaders.length > 0) {
+      if (!sampleSource) {
+        // Sync callers already own the full source buffer. Wrap it as a Blob
+        // and keep its encoded sample streams out of rawSampleData.
+        sampleSource = {
+          blob: new Blob([this.bytes.slice()]),
+          sampleDataOffset: sampleDataChunk.dataOffset,
+          sampleCount: pcmSampleCount,
+          sampleDataByteLength: sampleDataChunk.size,
+        };
+      } else {
+        sampleSource = {
+          ...sampleSource,
+          sampleCount: pcmSampleCount,
+          sampleDataByteLength: sampleSource.sampleDataByteLength ?? sampleDataChunk.size,
+        };
+      }
+    } else if (!sampleSource) {
+      rawSampleData = new Int16Array(sampleDataChunk.size / 2);
+      for (let i = 0; i < rawSampleData.length; i++) {
+        rawSampleData[i] = this.view.getInt16(sampleDataChunk.dataOffset + i * 2, true);
+      }
+    }
+    this.validateSampleHeaders(
+      sampleHeaders,
+      pcmSampleCount,
+      sampleSource?.sampleDataByteLength ?? sampleDataChunk.size,
+    );
 
     const presets: Sf2Preset[] = [];
     const requiredPresetTables = ["phdr", "pbag", "pgen", "inst", "ibag", "igen"];
@@ -185,7 +242,7 @@ export class Sf2Parser {
     }
 
     const result: Sf2SoundFont = { header, presets, samples: sampleHeaders };
-    if (this.options.sampleSource) result.sampleSource = this.options.sampleSource;
+    if (sampleSource) result.sampleSource = sampleSource;
     else result.rawSampleData = rawSampleData;
     return result;
   }
@@ -199,8 +256,8 @@ export class Sf2Parser {
       else if (chunk.tag === "ifil" && chunk.size >= 4) {
         const versionMajor = this.readUint16At(chunk.dataOffset);
         const versionMinor = this.readUint16At(chunk.dataOffset + 2);
-        if (versionMajor !== 2 || versionMinor > 4) {
-          throw new InvalidSoundFontError(`SoundFont version ${versionMajor}.${versionMinor} is unsupported; this renderer accepts SF2 versions through 2.4.`);
+        if (!((versionMajor === 2 && versionMinor <= 4) || (versionMajor === 3 && versionMinor <= 1))) {
+          throw new InvalidSoundFontError(`SoundFont version ${versionMajor}.${versionMinor} is unsupported; this renderer accepts SF2 through 2.4 and SF3 through 3.1.`);
         }
         header.versionMajor = versionMajor;
         header.versionMinor = versionMinor;
@@ -213,34 +270,141 @@ export class Sf2Parser {
     const view = new DataView(rawShdr.buffer, rawShdr.byteOffset, rawShdr.byteLength);
     const headers: Sf2SampleHeader[] = [];
     for (let base = 0; base < rawShdr.byteLength; base += 46) {
+      const rawName = this.decodeFixedString(rawShdr.subarray(base, base + 20));
+      const rawStart = view.getUint32(base + 20, true);
+      const rawEnd = view.getUint32(base + 24, true);
+      const loopStart = view.getUint32(base + 28, true);
+      const loopEnd = view.getUint32(base + 32, true);
+      const sampleRate = view.getUint32(base + 36, true);
+      const originalPitch = view.getUint8(base + 40);
+      const pitchCorrection = view.getInt8(base + 41);
+      const sampleLink = view.getUint16(base + 42, true);
+      const sampleType = view.getUint16(base + 44, true);
+      const isTrailingZeroTerminal =
+        base > 0 &&
+        base + 46 === rawShdr.byteLength &&
+        rawName === "" &&
+        rawStart === 0 &&
+        rawEnd === 0 &&
+        loopStart === 0 &&
+        loopEnd === 0 &&
+        sampleRate === 0 &&
+        sampleLink === 0 &&
+        sampleType === 0;
+      const name = isTrailingZeroTerminal ? "EOS" : rawName;
+      const compressed = (sampleType & SF2_SAMPLE_COMPRESSED_FLAG) !== 0;
       headers.push({
-        name: this.decodeFixedString(rawShdr.subarray(base, base + 20)),
-        start: view.getUint32(base + 20, true),
-        end: view.getUint32(base + 24, true),
-        loopStart: view.getUint32(base + 28, true),
-        loopEnd: view.getUint32(base + 32, true),
-        sampleRate: view.getUint32(base + 36, true),
-        originalPitch: view.getUint8(base + 40),
-        pitchCorrection: view.getInt8(base + 41),
-        sampleLink: view.getUint16(base + 42, true),
-        sampleType: view.getUint16(base + 44, true),
+        name,
+        // SF3 stores byte offsets in SHDR for encoded samples. Normalize the
+        // playback range to decoded frame indices after reading Ogg metadata.
+        start: compressed ? 0 : rawStart,
+        end: compressed ? 0 : rawEnd,
+        loopStart,
+        loopEnd,
+        sampleRate,
+        originalPitch,
+        pitchCorrection,
+        sampleLink,
+        sampleType,
+        ...(compressed ? {
+          compressed: true,
+          compressedByteStart: rawStart,
+          // RFC SF3 says inclusive; MuseScore's official sftools writer emits
+          // the exclusive end. Resolve the boundary from the Ogg EOS page.
+          compressedByteEnd: rawEnd,
+        } : {}),
       });
     }
     return headers;
   }
 
-  private validateSampleHeaders(samples: Sf2SampleHeader[], sampleCount: number): void {
+  private populateCompressedSampleMetadata(sample: Sf2SampleHeader, sampleDataOffset: number, sampleDataByteLength: number): void {
+    const byteStart = sample.compressedByteStart ?? -1;
+    const rawEnd = sample.compressedByteEnd ?? -1;
+    const absoluteStart = sampleDataOffset + byteStart;
+    if (byteStart < 0 || rawEnd <= byteStart || rawEnd > sampleDataByteLength || sampleDataOffset + rawEnd > this.bytes.byteLength) {
+      throw new InvalidSoundFontError(`Compressed sample '${sample.name}' has invalid encoded byte bounds.`);
+    }
+    if (absoluteStart + 27 > this.bytes.byteLength || this.readAscii(absoluteStart, 4) !== "OggS" || this.bytes[absoluteStart + 4] !== 0) {
+      throw new InvalidSoundFontError(`Compressed sample '${sample.name}' does not begin with an Ogg page.`);
+    }
+    const streamSerial = this.view.getUint32(absoluteStart + 14, true);
+    const segmentCount = this.bytes[absoluteStart + 26]!;
+    const lacingOffset = absoluteStart + 27;
+    if (lacingOffset + segmentCount > sampleDataOffset + sampleDataByteLength) throw new InvalidSoundFontError(`Compressed sample '${sample.name}' has an incomplete Ogg page header.`);
+    let packetLength = 0;
+    let packetComplete = false;
+    for (let index = 0; index < segmentCount; index++) {
+      const lace = this.bytes[lacingOffset + index]!;
+      packetLength += lace;
+      if (lace < 255) {
+        packetComplete = true;
+        break;
+      }
+    }
+    const packetOffset = lacingOffset + segmentCount;
+    if (!packetComplete || packetLength < 30 || packetOffset + 30 > sampleDataOffset + sampleDataByteLength ||
+        this.bytes[packetOffset] !== 1 || this.readAscii(packetOffset + 1, 6) !== "vorbis") {
+      throw new InvalidSoundFontError(`Compressed sample '${sample.name}' does not contain a supported Ogg Vorbis identification packet.`);
+    }
+    if (this.view.getUint32(packetOffset + 7, true) !== 0) throw new InvalidSoundFontError(`Compressed sample '${sample.name}' has an unsupported Vorbis version.`);
+    const channels = this.bytes[packetOffset + 11]!;
+    const sampleRate = this.view.getUint32(packetOffset + 12, true);
+    if (channels !== 1 || sampleRate !== sample.sampleRate) {
+      throw new InvalidSoundFontError(`Compressed sample '${sample.name}' must be mono at ${sample.sampleRate} Hz; its Ogg stream declares ${channels} channel(s) at ${sampleRate} Hz.`);
+    }
+
+    const candidateEnds = [rawEnd, rawEnd + 1].filter((end) => end > byteStart && end <= sampleDataByteLength);
+    let resolvedEnd: number | null = null;
+    let frameCount: bigint | null = null;
+    for (const candidateEnd of candidateEnds) {
+      const absoluteEnd = sampleDataOffset + candidateEnd;
+      const searchStart = Math.max(absoluteStart, absoluteEnd - MAX_OGG_PAGE_BYTES);
+      for (let offset = absoluteEnd - 27; offset >= searchStart; offset--) {
+        if (this.readAscii(offset, 4) !== "OggS" || this.bytes[offset + 4] !== 0 || (this.bytes[offset + 5]! & 0x04) === 0) continue;
+        if (this.view.getUint32(offset + 14, true) !== streamSerial) continue;
+        const segments = this.bytes[offset + 26]!;
+        const tableEnd = offset + 27 + segments;
+        if (tableEnd > absoluteEnd) continue;
+        let bodyBytes = 0;
+        for (let index = 0; index < segments; index++) bodyBytes += this.bytes[offset + 27 + index]!;
+        if (tableEnd + bodyBytes !== absoluteEnd) continue;
+        const granule = this.view.getBigUint64(offset + 6, true);
+        if (granule !== 0xffff_ffff_ffff_ffffn) {
+          resolvedEnd = candidateEnd;
+          frameCount = granule;
+          break;
+        }
+      }
+      if (frameCount !== null) break;
+    }
+    if (frameCount === null || frameCount <= 0n || frameCount > BigInt(Number.MAX_SAFE_INTEGER)) {
+      throw new InvalidSoundFontError(`Compressed sample '${sample.name}' has no valid Ogg final granule frame count.`);
+    }
+    const decodedFrameCount = Number(frameCount);
+    if (sample.loopStart > sample.loopEnd || sample.loopEnd > decodedFrameCount) {
+      throw new InvalidSoundFontError(`Compressed sample '${sample.name}' has loop bounds ${sample.loopStart}..${sample.loopEnd} outside ${decodedFrameCount} decoded frames.`);
+    }
+    sample.decodedFrameCount = decodedFrameCount;
+    sample.compressedByteEnd = resolvedEnd!;
+    sample.start = 0;
+    sample.end = decodedFrameCount;
+  }
+
+  private validateSampleHeaders(samples: Sf2SampleHeader[], sampleCount: number, sampleDataByteLength: number): void {
     const eosIndex = samples.findIndex((sample) => sample.name === "EOS");
     const realCount = eosIndex >= 0 ? eosIndex : samples.length;
-    const sampleLimit = this.options.sampleSource?.sampleCount ?? sampleCount;
+    // `sampleCount` is the verified PCM prefix when SF3 streams are present;
+    // the source's sampleCount may describe the whole mixed byte chunk.
+    const sampleLimit = sampleCount;
 
     for (let index = 0; index < realCount; index++) {
       const sample = samples[index]!;
       const context = `Sample '${sample.name || index}'`;
-      if ((sample.sampleType & 0x8000) !== 0) {
+      if ((sample.sampleType & SF2_SAMPLE_ROM_FLAG) !== 0) {
         throw new InvalidSoundFontError(`${context}: ROM-backed samples are not supported; choose a bank containing embedded PCM samples.`);
       }
-      const type = sample.sampleType & 0x7fff;
+      const type = getSf2BaseSampleType(sample.sampleType);
       if (![1, 2, 4].includes(type)) {
         if (type === 8) throw new InvalidSoundFontError(`${context} uses linked sample type 8, which is not supported.`);
         throw new InvalidSoundFontError(`${context} uses unsupported sample type ${type}; supported SF2 types are mono (1), right (2), and left (4).`);
@@ -248,24 +412,49 @@ export class Sf2Parser {
       if (!(sample.sampleRate >= 3000 && sample.sampleRate <= 384000)) {
         throw new InvalidSoundFontError(`${context} has unsupported sample rate ${sample.sampleRate}; supported playback rates are 3000 to 384000 Hz (resampling is not implemented).`);
       }
-      if (!(sample.start < sample.end && sample.end <= sampleLimit)) {
-        throw new InvalidSoundFontError(`${context} has invalid PCM bounds ${sample.start}..${sample.end} for ${sampleLimit} available samples.`);
+      if ((sample.sampleType & ~(SF2_SAMPLE_ROM_FLAG | SF2_SAMPLE_COMPRESSED_FLAG | 0x000f)) !== 0) {
+        throw new InvalidSoundFontError(`${context} uses unsupported sample-type flags 0x${sample.sampleType.toString(16)}.`);
       }
-      if (!(sample.start <= sample.loopStart && sample.loopStart <= sample.loopEnd && sample.loopEnd <= sample.end)) {
-        throw new InvalidSoundFontError(`${context} has loop bounds ${sample.loopStart}..${sample.loopEnd} outside its PCM range ${sample.start}..${sample.end}.`);
+      if (sample.compressed) {
+        const start = sample.compressedByteStart ?? -1;
+        const end = sample.compressedByteEnd ?? -1;
+        if (!(Number.isSafeInteger(start) && Number.isSafeInteger(end) && start >= 0 && start < end && end <= sampleDataByteLength)) {
+          throw new InvalidSoundFontError(`${context} has invalid compressed byte bounds ${start}..${end} for ${sampleDataByteLength} available bytes.`);
+        }
+        if (!(sample.loopStart >= 0 && sample.loopStart <= sample.loopEnd)) {
+          throw new InvalidSoundFontError(`${context} has invalid decoded loop bounds ${sample.loopStart}..${sample.loopEnd}.`);
+        }
+        if (sample.decodedFrameCount !== undefined) {
+          if (!(Number.isSafeInteger(sample.decodedFrameCount) && sample.decodedFrameCount > 0 && sample.loopEnd <= sample.decodedFrameCount)) {
+            throw new InvalidSoundFontError(`${context} has invalid decoded frame count ${sample.decodedFrameCount} for loop ${sample.loopStart}..${sample.loopEnd}.`);
+          }
+          sample.start = 0;
+          sample.end = sample.decodedFrameCount;
+        }
+      } else {
+        if (!(sample.start < sample.end && sample.end <= sampleLimit)) {
+          throw new InvalidSoundFontError(`${context} has invalid PCM bounds ${sample.start}..${sample.end} for ${sampleLimit} available samples.`);
+        }
+        if (!(sample.start <= sample.loopStart && sample.loopStart <= sample.loopEnd && sample.loopEnd <= sample.end)) {
+          throw new InvalidSoundFontError(`${context} has loop bounds ${sample.loopStart}..${sample.loopEnd} outside its PCM range ${sample.start}..${sample.end}.`);
+        }
       }
     }
 
     for (let index = 0; index < realCount; index++) {
       const sample = samples[index]!;
-      const type = sample.sampleType & 0x7fff;
+      const type = getSf2BaseSampleType(sample.sampleType);
       if (type !== 2 && type !== 4) continue;
       const link = sample.sampleLink ?? 0;
+      // MuseScore emits independent mono streams with sampleLink=0. However,
+      // a real compressed pair can also use index 0 as the partner. Treat 0 as
+      // unlinked only if sample 0 does not reciprocally point to this header.
+      if (this.isUnlinkedCompressedStereo(sample, index, samples)) continue;
       if (link >= realCount || link === index) {
         throw new InvalidSoundFontError(`Stereo sample '${sample.name}' has invalid sampleLink ${link}.`);
       }
       const partner = samples[link]!;
-      const partnerType = partner.sampleType & 0x7fff;
+      const partnerType = getSf2BaseSampleType(partner.sampleType);
       if (partner.sampleLink !== index || partnerType !== (type === 2 ? 4 : 2)) {
         throw new InvalidSoundFontError(`Stereo sample '${sample.name}' must link reciprocally to an opposite-channel sample.`);
       }
@@ -313,8 +502,9 @@ export class Sf2Parser {
 
     for (let index = 0; index < realCount; index++) {
       const sample = samples[index]!;
-      const type = sample.sampleType & 0x7fff;
+      const type = getSf2BaseSampleType(sample.sampleType);
       if (type !== 2 && type !== 4) continue;
+      if (this.isUnlinkedCompressedStereo(sample, index, samples)) continue;
       const other = sampleInstruments[sample.sampleLink ?? -1];
       const own = sampleInstruments[index]!;
       if (!other) throw new InvalidSoundFontError(`Stereo sample '${sample.name}' links to a sample outside the sample table.`);
@@ -324,6 +514,16 @@ export class Sf2Parser {
         }
       }
     }
+  }
+
+  private isUnlinkedCompressedStereo(sample: Sf2SampleHeader, index: number, samples: Sf2SampleHeader[]): boolean {
+    if (!sample.compressed || (sample.sampleLink ?? 0) !== 0) return false;
+    if (index === 0) return true;
+    const first = samples[0];
+    const type = getSf2BaseSampleType(sample.sampleType);
+    const firstType = first ? getSf2BaseSampleType(first.sampleType) : 0;
+    const oppositeType = type === 2 ? 4 : type === 4 ? 2 : 0;
+    return !first || first.sampleLink !== index || firstType !== oppositeType;
   }
 
   private assemblePresets(tables: Map<string, Uint8Array>, sampleHeaders: Sf2SampleHeader[], outPresets: Sf2Preset[]): void {
@@ -454,6 +654,10 @@ export class Sf2Parser {
 
       if (zones.length > 0) outPresets.push({ name: name || `Preset ${presetNumber}`, presetNumber, bankNumber, zones });
     }
+    // SF2/SF3 phdr tables are not required to be stored in bank/program order
+    // (e.g. MuseScore General stores Contrabass/Cello first and Grand Piano at index 299).
+    // Sort by (bankNumber, presetNumber) so bank 0 preset 0 (Grand Piano) is first.
+    outPresets.sort((a, b) => (a.bankNumber - b.bankNumber) || (a.presetNumber - b.presetNumber));
   }
 
   private readGeneratorMap(view: DataView, start: number, end: number): GeneratorMap {
@@ -494,7 +698,7 @@ export class Sf2Parser {
     return range[0] <= range[1] ? range : undefined;
   }
 
-  private listChunks(start: number, end: number): ChunkView[] {
+  private listChunks(start: number, end: number, allowOddSampleData = false, allowUnpaddedList = false): ChunkView[] {
     const chunks: ChunkView[] = [];
     let offset = start;
     while (offset < end) {
@@ -503,11 +707,21 @@ export class Sf2Parser {
       const size = this.readUint32At(offset + 4);
       const dataOffset = offset + 8;
       const dataEnd = dataOffset + size;
-      const next = dataEnd + (size & 1);
+      let next = dataEnd + (size & 1);
+      const unpaddedSample = tag === "smpl" && allowOddSampleData && (size & 1) !== 0 &&
+          (dataEnd === end || (dataEnd + 4 <= end && this.readAscii(dataEnd, 4) === "sm24"));
+      if (unpaddedSample) {
+        next = dataEnd;
+      }
+      const unpaddedList = tag === "LIST" && allowUnpaddedList && (size & 1) !== 0 &&
+          (dataEnd === end || (dataEnd + 4 <= end && this.readAscii(dataEnd, 4) === "LIST"));
+      if (unpaddedList) {
+        next = dataEnd;
+      }
       if (dataEnd > end || next > end) {
         throw new InvalidSoundFontError(`Chunk '${tag}' extends beyond its containing RIFF/LIST boundary.`);
       }
-      chunks.push({ tag, dataOffset, size });
+      chunks.push({ tag, dataOffset, size, unpadded: unpaddedSample || unpaddedList });
       offset = next;
     }
     return chunks;
@@ -584,7 +798,7 @@ export function parseSf2(buffer: ArrayBuffer | Uint8Array): Sf2SoundFont {
 
 export function parseSf2MetadataBuffer(
   buffer: ArrayBuffer | Uint8Array,
-  sampleSource: { blob: Blob; sampleDataOffset: number; sampleCount: number },
+  sampleSource: { blob: Blob; sampleDataOffset: number; sampleCount: number; sampleDataByteLength?: number },
 ): Sf2SoundFont {
   assertSf2FileSize(buffer.byteLength);
   try {

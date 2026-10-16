@@ -2,7 +2,7 @@ import { defineConfig } from "@playwright/test";
 
 export default defineConfig({
   testDir: "./tests/browser",
-  testIgnore: ["**/offline-pwa.spec.ts", "**/pwa-deployment-m8.spec.ts", "**/media-export.spec.ts", "**/video-export-m7.spec.ts", "**/parity-m1.spec.ts", "**/motion-streaming.spec.ts", "**/motion-playback.spec.ts", "**/audio-dsp.spec.ts", "**/audio-output.spec.ts", "**/soundfont-stereo.spec.ts", "**/soundfont-storage.spec.ts", "**/soundfont-large.spec.ts", "**/soundfont-user-banks.spec.ts", "**/soundfont-offline.spec.ts", "**/builtin-melodies-offline.spec.ts"],
+  testIgnore: ["**/offline-pwa.spec.ts", "**/pwa-deployment-m8.spec.ts", "**/media-export.spec.ts", "**/video-export-m7.spec.ts", "**/parity-m1.spec.ts", "**/motion-streaming.spec.ts", "**/motion-playback.spec.ts", "**/audio-dsp.spec.ts", "**/audio-output.spec.ts", "**/soundfont-stereo.spec.ts", "**/soundfont-sf3.spec.ts", "**/builtin-soundfont-offline.spec.ts", "**/soundfont-storage.spec.ts", "**/soundfont-large.spec.ts", "**/soundfont-user-banks.spec.ts", "**/soundfont-offline.spec.ts", "**/builtin-melodies-offline.spec.ts"],
   fullyParallel: false,
   workers: 1,
   retries: 0,

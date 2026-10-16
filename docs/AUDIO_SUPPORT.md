@@ -2,7 +2,11 @@
 
 This page describes the audio engines implemented in this checkout. It is a bounded playback feature, not a claim of complete SoundFont or MIDI specification coverage. User-provided banks and external MIDI devices still require acceptance on the target browser and hardware.
 
-## SoundFont 2 bank support
+## Included piano and SoundFont 2/3 support
+
+Version `0.1.0-dev.7` includes **MuseScore General v0.2** (39,900,972 bytes, SHA-256 `5b85b6c2c61d10b2b91cddd41efcce7b25cd31c8271d511c73afafbef20b6fa3`). Fresh settings select its Grand Piano preset (program 0/bank 0). Existing explicit synth, MIDI and user-bank preferences are preserved. Settings always offers the included bank alongside local SF2/SF3 uploads. The included copy is checked against the official mirror and distributed with its full [MIT acknowledgements and notices](licenses/MuseScore_General_License.md), including an offline-accessible copy. User banks remain separate from portable musical projects.
+
+SF3 support follows the [FluidSynth SF3 format description](https://www.fluidsynth.org/wiki/SoundFont3Format/): version 3, compression bit `0x10`, per-sample mono Ogg/Vorbis streams, byte-addressed compressed ranges with inclusive SHDR end, decoded-frame loop coordinates. The Blob parser normalizes playback coordinates; the provider reads only requested streams and decodes them at their original rate through Web Audio. Mono and explicit linked L/R SF3 are supported. MuseScore SF3's documented zero links are treated as individual channel zones, using explicit pan or the L/R type as its default; no name-based partner reconstruction is performed. SF2 reciprocal-link validation remains strict. Unknown compression, multi-channel encoded streams and malformed metadata fail explicitly. Browser Vorbis decoding is required; arbitrary SF3 extensions are not promised.
 
 The parser accepts RIFF `sfbk` banks with embedded 16-bit PCM: mono samples (type 1) and reciprocal right/left stereo pairs (types 2/4). Stereo sample links, supported matching rates, each channel's own PCM/loop bounds and instrument membership are validated. Linked channels may have different lengths and relative loop offsets; their ranges are preserved without padding or cropping. Equal PCM lengths are not a requirement in the stereo paragraph of the [SF2 2.04 specification, page 29](https://www.synthfont.com/sfspec24.pdf#page=29). Matching L/R zones are paired one-to-one within their preset/instrument occurrence and key/velocity layer. Both sources share scheduled attack time, note identity and pedal lifecycle; the right-side pitch controls both, while pan, attenuation and envelope parameters remain per channel. If the `ifil` version record is present, it must identify SF2 2.0 through 2.4; when it is absent, the parser defaults the header version to 2.4. The renderer supports a single selected preset, zone key and velocity ranges, root key, coarse/fine tuning plus sample pitch correction, pan, attenuation, attack/hold/decay/sustain/release envelopes, and sample loop modes 0, 1, and 3. Mode 0 plays a one-shot sample; mode 1 loops continuously; mode 3 loops until the key and sustain/sostenuto holds are released, then plays the sample tail. CC 64 sustain, CC 66 selective sostenuto, and CC 67 soft pedal are implemented.
 
@@ -10,11 +14,11 @@ Supported generators inherit instrument/preset global defaults; local values ove
 
 The following are rejected with an `InvalidSoundFontError` rather than decoded as if they were supported:
 
-- SF3 or a version newer than SF2.04, including Ogg/Vorbis-compressed sample data.
+- Unsupported versions or compression codecs; valid SF2 2.0–2.4 and SF3 Ogg/Vorbis are accepted.
 - ROM-backed samples, undefined linkedSample type 8, unknown sample types, malformed/unbalanced stereo pairs, and reserved loop modes.
 - Files larger than 1 GiB or too small to contain a valid RIFF header; combined INFO/pdta metadata over 16 MiB; sample rates outside the supported Web Audio range of 3000–384000 Hz.
 
-Choose an uncompressed PCM SF2 bank within this supported subset when one of these errors appears. Unsupported or damaged pairs produce a contextual error instead of being downmixed or silently dropping one channel.
+Choose a bank within this supported subset when one of these errors appears. Unsupported or damaged SF2 pairs produce a contextual error instead of being downmixed or silently dropping one channel. Fazioli v2.6's known defect is examined and repaired only through a separate, explicit copy; loading never patches a bank automatically.
 
 The input limit is **1 GiB**, replacing an application-selected 128 MiB guard; neither value is an inherent SF2/browser file limit. Production loading passes File/Blob directly, indexes RIFF tables in a Worker and reads only referenced PCM ranges. SHA-256 is streamed in a Worker in 4 MiB chunks with pinned `hash-wasm@4.12.0`. Complete bank PCM is not materialized. Buffer-input helpers remain for compatibility and tests.
 

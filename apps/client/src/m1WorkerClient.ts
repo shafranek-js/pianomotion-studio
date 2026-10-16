@@ -10,10 +10,19 @@ import {
   type M1SampleMotionRequest,
 } from "@handthesia/contracts";
 
+import { getSettings, type CalculationEngine } from "./settings";
+
 export type M1WorkerIdentity = Pick<M1AnalyzeMidiRequest, "requestId" | "projectId" | "revision" | "engineVersion">;
 
-/** Creates the same real module Worker used by the M1 diagnostic page. */
-export function createM1AnalysisWorker(): Worker {
+/** Creates the module Worker for analysis: Python (Pyodide) or pure TypeScript. */
+export function createM1AnalysisWorker(engine?: CalculationEngine): Worker {
+  const selectedEngine =
+    engine ??
+    (typeof window !== "undefined" ? getSettings()?.calculationEngine : undefined) ??
+    "python";
+  if (selectedEngine === "typescript") {
+    return new Worker(new URL("./workers/midi-analysis-ts.worker.ts", import.meta.url), { type: "module" });
+  }
   return new Worker(new URL("./workers/midi-analysis.worker.ts", import.meta.url), { type: "module" });
 }
 

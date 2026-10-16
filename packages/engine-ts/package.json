@@ -1,0 +1,17 @@
+{
+  "name": "@handthesia/engine-ts",
+  "version": "0.1.0-dev.7",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "types": "./src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@handthesia/contracts": "0.1.0-dev.7"
+  }
+}

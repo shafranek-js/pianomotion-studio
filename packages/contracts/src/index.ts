@@ -1063,7 +1063,7 @@ export type M1EngineProgress = z.infer<typeof M1EngineProgressSchema>;
 export const M1EngineLoadResultSchema = object({
   type: z.literal("engine-loaded"),
   ...M1IdentityShape,
-  runtime: z.literal("pyodide"),
+  runtime: z.enum(["pyodide", "typescript"]),
   runtimeVersion: id,
   pythonVersion: id,
   packageVersions: z.record(id, id),

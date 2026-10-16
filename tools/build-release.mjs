@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { generateOfflineManifest } from "./generate-offline-manifest.mjs";
+import { prepareBuiltinSoundfont } from "./prepare-builtin-soundfont.mjs";
 import { prepareBuiltinMelodies } from "./prepare-builtin-melodies.mjs";
 
 const webRoot = fileURLToPath(new URL("../", import.meta.url));
@@ -88,6 +89,7 @@ async function buildInputFiles() {
     "tools/generate-offline-manifest.mjs",
     "tools/prepare-pyodide-runtime.mjs",
     "tools/prepare-builtin-melodies.mjs",
+    "tools/prepare-builtin-soundfont.mjs",
     "tools/package-python-core.mjs",
     "tools/pyodide-runtime-manifest.json",
   ];
@@ -251,6 +253,7 @@ async function embedBuildIdInWorker(distRoot, buildId) {
 
 async function main() {
   await prepareBuiltinMelodies();
+  await prepareBuiltinSoundfont();
   const appBase = normalizeAppBase(process.env.APP_BASE ?? process.env.VITE_APP_BASE_PATH ?? process.env.VITE_BASE ?? "/");
   const buildId = await computeBuildId(appBase);
   const assetBase = `${appBase}releases/${buildId}/`;
