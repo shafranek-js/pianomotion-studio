@@ -17,10 +17,12 @@ export interface TransportOptions {
   audioContext?: AudioContext;
   sampler?: PianoSampler;
   leadInSeconds?: number;
+  tailSeconds?: number;
   scheduleAheadSeconds?: number;
   scheduleIntervalMs?: number;
 }
 
+export const DEFAULT_TRANSPORT_TAIL_SECONDS = 1.2;
 const DEFAULT_SCHEDULE_AHEAD_SECONDS = 0.1; // 100ms lookahead
 const DEFAULT_SCHEDULE_INTERVAL_MS = 25; // 25ms polling tick
 const MIN_SPEED = 0.25;
@@ -29,7 +31,7 @@ const MAX_SPEED = 2.0;
 /**
  * Transport controller driven by AudioContext clock.
  * Implements high-precision lookahead event scheduling (~100ms ahead every 25ms),
- * negative lead-in support (down to -2.0s), and seamless speed/volume/seeking controls.
+ * negative lead-in support (down to -2.0s), natural release decay tail, and seamless speed/volume/seeking controls.
  */
 export class Transport {
   private readonly audioContext: AudioContext;
@@ -39,6 +41,7 @@ export class Transport {
   private output: PerformanceOutput;
 
   private leadInSeconds: number;
+  private tailSeconds: number;
   private readonly scheduleAheadSeconds: number;
   private readonly scheduleIntervalMs: number;
 
@@ -90,6 +93,7 @@ export class Transport {
     this.output = this.defaultSynthOutput;
 
     this.leadInSeconds = options.leadInSeconds ?? TRANSPORT_LEAD_IN_SECONDS;
+    this.tailSeconds = Math.max(0, options.tailSeconds ?? DEFAULT_TRANSPORT_TAIL_SECONDS);
     this.scheduleAheadSeconds = options.scheduleAheadSeconds ?? DEFAULT_SCHEDULE_AHEAD_SECONDS;
     this.scheduleIntervalMs = options.scheduleIntervalMs ?? DEFAULT_SCHEDULE_INTERVAL_MS;
 
@@ -246,6 +250,22 @@ export class Transport {
    */
   public getDuration(): number {
     return this.durationSeconds;
+  }
+
+  /**
+   * Sets natural audio release tail length in seconds.
+   */
+  public setTailSeconds(seconds: number): void {
+    if (Number.isFinite(seconds)) {
+      this.tailSeconds = Math.max(0, seconds);
+    }
+  }
+
+  /**
+   * Returns natural audio release tail length in seconds.
+   */
+  public getTailSeconds(): number {
+    return this.tailSeconds;
   }
 
   /**
@@ -613,14 +633,30 @@ export class Transport {
     const now = this.audioContext.currentTime;
     const currentSong = this.getCurrentTime();
 
-    // Check if song has completed
-    if (this.durationSeconds > 0 && currentSong >= this.durationSeconds) {
-      this.pause();
+    const songAudioEnd = this.durationSeconds > 0
+      ? this.audioStartTime + (this.durationSeconds - this.songStartTime) / this.speed
+      : Number.POSITIVE_INFINITY;
+    const playbackAudioEnd = songAudioEnd + this.tailSeconds;
+
+    // Check if song and natural tail decay have completed
+    if (this.durationSeconds > 0 && now >= playbackAudioEnd) {
+      this.playRequestGeneration += 1;
+      this.cancelSamplePreparation();
+      this.stopScheduler();
+      this.output.panic();
+      this.syncedAudio?.pause();
       this.currentTime = this.durationSeconds;
       this.state = "idle";
       this.emitState();
       this.emitTime();
       this.emitEnded();
+      return;
+    }
+
+    // In the post-roll tail window (song reached duration, notes decaying naturally),
+    // no new events remain to schedule.
+    if (this.durationSeconds > 0 && now >= songAudioEnd) {
+      this.emitTime();
       return;
     }
 

@@ -839,7 +839,7 @@ describe("transport.ts", () => {
     expect(transport.getCurrentTime()).toBe(0.75);
   });
 
-  it("notifies ended listener when song reaches duration", async () => {
+  it("notifies ended listener when song reaches duration plus tail", async () => {
     const endedSpy = vi.fn();
     transport.subscribeEnded(endedSpy);
 
@@ -852,8 +852,41 @@ describe("transport.ts", () => {
     transport.seek(0.0);
     await transport.play();
 
-    // Advance past duration (1.0s)
-    (mockCtx as unknown as MockAudioContext).currentTime = 1.1;
+    // Advance past duration (1.0s) + tail (1.2s)
+    (mockCtx as unknown as MockAudioContext).currentTime = 2.5;
+    vi.advanceTimersByTime(50);
+
+    expect(transport.getState()).toBe("idle");
+    expect(endedSpy).toHaveBeenCalled();
+  });
+
+  it("allows active notes to ring out during natural tail window without panic choking", async () => {
+    const panicSpy = vi.spyOn(transport["output"], "panic");
+    const endedSpy = vi.fn();
+    transport.subscribeEnded(endedSpy);
+
+    const plan = makeTestPerformancePlan([
+      { type: "press", timeSeconds: 0.0, noteId: "n1", pitch: 60, velocity: 80 },
+      { type: "release", timeSeconds: 1.0, noteId: "n1" },
+    ]);
+
+    transport.loadPlan(plan, 1.0);
+    transport.seek(0.0);
+    await transport.play();
+    panicSpy.mockClear();
+
+    // Advance into the tail window (1.2s is past 1.0s duration but before 1.0 + 1.2 = 2.2s end)
+    (mockCtx as unknown as MockAudioContext).currentTime = 1.2;
+    vi.advanceTimersByTime(50);
+
+    // Verified: still playing the tail, panic has NOT choked voices, ended has not fired
+    expect(transport.getState()).toBe("playing");
+    expect(panicSpy).not.toHaveBeenCalled();
+    expect(endedSpy).not.toHaveBeenCalled();
+    expect(transport.getCurrentTime()).toBe(1.0);
+
+    // Advance past the tail window
+    (mockCtx as unknown as MockAudioContext).currentTime = 2.5;
     vi.advanceTimersByTime(50);
 
     expect(transport.getState()).toBe("idle");

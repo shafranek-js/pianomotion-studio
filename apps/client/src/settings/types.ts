@@ -67,7 +67,7 @@ export type AppSettings = Settings;
 
 export const SettingsSchema = z.object({
   keyStyle: KeyStyleSchema.default("realistic"),
-  calculationEngine: CalculationEngineSchema.default("python"),
+  calculationEngine: CalculationEngineSchema.default("typescript"),
   playbackSpeed: z.number().min(0.25).max(2.0).default(1.0),
   masterVolume: z.number().min(0.0).max(1.0).default(0.8),
   leadInSeconds: z.number().min(-2.0).max(0.0).default(-2.0),
@@ -91,7 +91,7 @@ export const SettingsSchema = z.object({
 
 export const DEFAULT_SETTINGS: Settings = {
   keyStyle: "realistic",
-  calculationEngine: "python",
+  calculationEngine: "typescript",
   playbackSpeed: 1.0,
   masterVolume: 0.8,
   leadInSeconds: -2.0,

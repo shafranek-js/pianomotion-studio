@@ -85,8 +85,8 @@ export function StudioInspector(props: StudioInspectorProps) {
             disabled={busy}
             onChange={(event) => props.onCalculationEngineChange?.(event.currentTarget.value as CalculationEngine)}
           >
-            <option value="python">Python (Pyodide — Default)</option>
-            <option value="typescript">TypeScript (Native)</option>
+            <option value="typescript">TypeScript (Native — Default)</option>
+            <option value="python">Python (Pyodide)</option>
           </select>
         </label>
       )}
@@ -140,8 +140,8 @@ export function StudioInspector(props: StudioInspectorProps) {
             disabled={busy}
             onChange={(event) => props.onCalculationEngineChange?.(event.currentTarget.value as CalculationEngine)}
           >
-            <option value="python">Python (Pyodide — Default)</option>
-            <option value="typescript">TypeScript (Native)</option>
+            <option value="typescript">TypeScript (Native — Default)</option>
+            <option value="python">Python (Pyodide)</option>
           </select>
         </label>
       )}

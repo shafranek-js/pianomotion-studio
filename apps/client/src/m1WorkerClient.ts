@@ -10,7 +10,8 @@ import {
   type M1SampleMotionRequest,
 } from "@handthesia/contracts";
 
-import { getSettings, type CalculationEngine } from "./settings";
+import { getSettings } from "./settings/settingsStore";
+import type { CalculationEngine } from "./settings/types";
 import { recordDiagnostic } from "./diagnostics/eventLog";
 
 export type M1WorkerIdentity = Pick<M1AnalyzeMidiRequest, "requestId" | "projectId" | "revision" | "engineVersion">;
@@ -61,7 +62,7 @@ export function createM1AnalysisWorker(engine?: CalculationEngine): Worker {
   const selectedEngine =
     engine ??
     (typeof window !== "undefined" ? getSettings()?.calculationEngine : undefined) ??
-    "python";
+    "typescript";
   const worker = selectedEngine === "typescript"
     ? new Worker(new URL("./workers/midi-analysis-ts.worker.ts", import.meta.url), { type: "module" })
     : new Worker(new URL("./workers/midi-analysis.worker.ts", import.meta.url), { type: "module" });

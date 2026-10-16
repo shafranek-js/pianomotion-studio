@@ -1,5 +1,7 @@
 import { releaseAssetUrl } from "../pwa/urls";
 
+export type BuiltinMelodyTier = "Beginner" | "Intermediate" | "Advanced" | "Virtuoso";
+
 export interface BuiltinMelodyEntry {
   id: string;
   title: string;
@@ -7,6 +9,8 @@ export interface BuiltinMelodyEntry {
   assetPath: string;
   sha256: string;
   byteLength: number;
+  difficultyScore: number;
+  difficultyTier: BuiltinMelodyTier;
 }
 
 interface BuiltinMelodyManifest {
@@ -101,20 +105,31 @@ function assertMinimalMidiHeader(bytes: ArrayBuffer): void {
 }
 
 async function validateEntry(value: unknown): Promise<BuiltinMelodyEntry> {
-  if (!isRecord(value) || !hasExactKeys(value, ["id", "title", "fileName", "assetPath", "sha256", "byteLength"])) {
+  if (!isRecord(value) || !hasExactKeys(value, ["id", "title", "fileName", "assetPath", "sha256", "byteLength", "difficultyScore", "difficultyTier"])) {
     throw new Error("The built-in melody catalog contains an entry with an invalid shape.");
   }
-  const { id, title, fileName, assetPath, sha256, byteLength } = value;
+  const { id, title, fileName, assetPath, sha256, byteLength, difficultyScore, difficultyTier } = value;
   if (typeof id !== "string" || !SHA256.test(id) || typeof title !== "string" || !title ||
       typeof fileName !== "string" || !isSafeSourceFileName(fileName) || title !== titleFromFileName(fileName) ||
       typeof assetPath !== "string" || !SAFE_ASSET_PATH.test(assetPath) ||
       typeof sha256 !== "string" || !SHA256.test(sha256) || assetPath !== `files/${sha256}.mid` ||
-      !Number.isSafeInteger(byteLength) || (byteLength as number) < 22) {
+      !Number.isSafeInteger(byteLength) || (byteLength as number) < 22 ||
+      typeof difficultyScore !== "number" || !Number.isFinite(difficultyScore) || difficultyScore < 1.0 || difficultyScore > 10.0 ||
+      (difficultyTier !== "Beginner" && difficultyTier !== "Intermediate" && difficultyTier !== "Advanced" && difficultyTier !== "Virtuoso")) {
     throw new Error("The built-in melody catalog contains invalid entry metadata.");
   }
   const hashOfName = await expectedId(fileName);
   if (id !== hashOfName) throw new Error("The built-in melody catalog entry ID does not match its source filename.");
-  return { id, title, fileName, assetPath, sha256, byteLength: byteLength as number };
+  return {
+    id,
+    title,
+    fileName,
+    assetPath,
+    sha256,
+    byteLength: byteLength as number,
+    difficultyScore: Math.round((difficultyScore as number) * 10) / 10,
+    difficultyTier: difficultyTier as BuiltinMelodyTier,
+  };
 }
 
 function compareEntries(left: BuiltinMelodyEntry, right: BuiltinMelodyEntry): number {

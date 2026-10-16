@@ -681,8 +681,8 @@ export function SettingsModal({ isOpen, onClose, onSettingsChanged, presentation
                     fontSize: "0.85rem",
                   }}
                 >
-                  <option value="python">Python (Pyodide — Default)</option>
-                  <option value="typescript">TypeScript (Native)</option>
+                  <option value="typescript">TypeScript (Native — Default)</option>
+                  <option value="python">Python (Pyodide)</option>
                 </select>
                 <p style={{ margin: "0.35rem 0 0", color: "var(--muted, #9fac9f)", fontSize: "0.74rem" }}>
                   {settings.calculationEngine === "python"

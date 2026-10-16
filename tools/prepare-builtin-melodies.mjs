@@ -3,6 +3,8 @@ import { createHash } from "node:crypto";
 import { lstat, mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { analyze_midi } from "../packages/engine-ts/src/index.ts";
+import { calculateDifficulty } from "../apps/client/src/editor/difficulty.ts";
 
 const repositoryRoot = fileURLToPath(new URL("../", import.meta.url));
 const DEFAULT_SOURCE_DIR = path.join(repositoryRoot, "builtin_melodies", "midi");
@@ -163,6 +165,19 @@ export async function prepareBuiltinMelodies({ sourceDir = DEFAULT_SOURCE_DIR, d
     throw new Error(`No .mid or .midi files were found in ${absoluteSourceDir}`);
   }
 
+  const manifestPath = path.join(absoluteDestinationDir, MANIFEST_FILE);
+  let previousManifest = null;
+  let previousPaths = [];
+  try {
+    previousManifest = JSON.parse(await readFile(manifestPath, "utf8"));
+    previousPaths = previousGeneratedPaths(previousManifest, absoluteDestinationDir);
+  } catch (error) {
+    if (error?.code !== "ENOENT" && !(error instanceof SyntaxError)) throw error;
+  }
+  const existingByDigest = new Map(
+    previousManifest?.entries?.map((entry) => [entry.sha256, entry]) ?? []
+  );
+
   const entries = [];
   const assets = new Map();
   let totalBytes = 0;
@@ -172,6 +187,28 @@ export async function prepareBuiltinMelodies({ sourceDir = DEFAULT_SOURCE_DIR, d
     const digest = sha256(bytes);
     const assetPath = `files/${digest}.mid`;
     const id = sha256(Buffer.from(file.relativePath, "utf8"));
+
+    let difficultyScore;
+    let difficultyTier;
+    const existing = existingByDigest.get(digest);
+    if (existing && typeof existing.difficultyScore === "number" && typeof existing.difficultyTier === "string") {
+      difficultyScore = existing.difficultyScore;
+      difficultyTier = existing.difficultyTier;
+    } else {
+      const analysis = analyze_midi(new Uint8Array(bytes), {
+        fixtureId: `builtin-${id}`,
+        projectId: "builtin-catalog",
+        revision: 0,
+        requestId: `builtin-catalog/${id}`,
+        engineVersion: "builtin-catalog",
+        keyStyle: "realistic",
+        keyboardRect: [0, 0, 1400, 150],
+      });
+      const diff = calculateDifficulty(analysis.document, analysis.fingeringPlan);
+      difficultyScore = diff.overallScore;
+      difficultyTier = diff.tier;
+    }
+
     entries.push({
       id,
       title: titleFromFileName(path.posix.basename(file.relativePath)),
@@ -179,6 +216,8 @@ export async function prepareBuiltinMelodies({ sourceDir = DEFAULT_SOURCE_DIR, d
       assetPath,
       sha256: digest,
       byteLength: bytes.byteLength,
+      difficultyScore,
+      difficultyTier,
     });
     assets.set(assetPath, bytes);
     totalBytes += bytes.byteLength;
@@ -187,14 +226,6 @@ export async function prepareBuiltinMelodies({ sourceDir = DEFAULT_SOURCE_DIR, d
   entries.sort((left, right) => compareText(left.title, right.title) || compareText(left.fileName, right.fileName));
   const manifest = { schemaVersion: 1, entries };
   const filesDirectory = await assertOutputDirectory(absoluteDestinationDir);
-  const manifestPath = path.join(absoluteDestinationDir, MANIFEST_FILE);
-  let previousPaths = [];
-  try {
-    const previousManifest = JSON.parse(await readFile(manifestPath, "utf8"));
-    previousPaths = previousGeneratedPaths(previousManifest, absoluteDestinationDir);
-  } catch (error) {
-    if (error?.code !== "ENOENT" && !(error instanceof SyntaxError)) throw error;
-  }
 
   for (const [assetPath, bytes] of assets) {
     const assetFile = path.join(absoluteDestinationDir, ...assetPath.split("/"));

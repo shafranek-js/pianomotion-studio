@@ -89,6 +89,8 @@ describe("built-in melody assets", () => {
     expect(alias.id).not.toBe(first.id);
     expect(alias.assetPath).toBe(first.assetPath);
     expect(alias.sha256).toBe(sha256(sharedBytes));
+    expect(alias.difficultyScore).toBe(1);
+    expect(alias.difficultyTier).toBe("Beginner");
     expect(second.assetPath).toMatch(/^files\/[a-f0-9]{64}\.mid$/);
 
     for (const entry of firstRun.manifest.entries) {
