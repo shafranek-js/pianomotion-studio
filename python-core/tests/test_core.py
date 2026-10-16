@@ -18,7 +18,7 @@ GOLDEN_INDEX = REPO / "docs" / "evidence" / "baseline-2026-10-13" / "golden-inde
 if str(CORE_ROOT) not in sys.path:
     sys.path.insert(0, str(CORE_ROOT))
 
-from handthesia_core.api import analyze_midi  # noqa: E402
+from handthesia_core.api import analyze_midi, _dedupe_serialized_motion_poses  # noqa: E402
 from handthesia_core import identity  # noqa: E402
 from handthesia_core.geometry import KeyboardGeometry, NumericRect  # noqa: E402
 from handthesia_core.midi_loader import read_midi  # noqa: E402
@@ -216,6 +216,73 @@ def test_raw_event_mapping_never_claims_a_clean_cross_track_duplicate():
     assert locator["noteOffOrdinal"] == 2
 
 
+def test_unmapped_decoded_notes_do_not_claim_normalized_raw_event_pairs():
+    percussion = _named_track("Drums", [
+        mido.Message("note_on", channel=9, note=36, velocity=92, time=0),
+        mido.Message("note_off", channel=9, note=36, velocity=0, time=300),
+    ])
+    piano = _named_track("Piano", [
+        mido.Message("note_on", channel=0, note=60, velocity=78, time=0),
+        mido.Message("note_off", channel=0, note=60, velocity=0, time=500),
+    ])
+    result = analyze_midi(_midi_bytes(percussion, piano), options("dropped-percussion"))
+    raw = result["rawBaseline"]
+    source_by_pitch = {item["pitch"]: item for item in raw["sourceNotes"]}
+    mapping_by_id = {item["noteId"]: item for item in raw["identityMappings"]}
+
+    drum_source = source_by_pitch[36]
+    drum_mapping = mapping_by_id[drum_source["noteId"]]
+    assert drum_mapping["status"] == "unmapped"
+    assert drum_mapping["normalizedNoteId"] is None
+    assert drum_mapping["rawEvents"] == []
+    assert "sourceEvent" not in drum_source
+
+    piano_source = source_by_pitch[60]
+    piano_mapping = mapping_by_id[piano_source["noteId"]]
+    assert piano_mapping["status"] == "exact"
+    assert len(piano_mapping["rawEvents"]) == 1
+    assert piano_source["sourceEvent"] == piano_mapping["rawEvents"][0]
+
+
+def test_dropped_ambiguous_source_identities_have_explicit_diagnostics():
+    percussion = _named_track("Drums", [
+        mido.Message("note_on", channel=9, note=36, velocity=82, time=0),
+        mido.Message("note_on", channel=9, note=36, velocity=82, time=0),
+        mido.Message("note_off", channel=9, note=36, velocity=0, time=500),
+        mido.Message("note_off", channel=9, note=36, velocity=0, time=0),
+    ])
+    piano = _named_track("Piano", [
+        mido.Message("note_on", channel=0, note=60, velocity=82, time=0),
+        mido.Message("note_off", channel=0, note=60, velocity=0, time=500),
+    ])
+    result = analyze_midi(_midi_bytes(percussion, piano), options("ambiguous-dropped-source"))
+    mappings = result["rawBaseline"]["identityMappings"]
+    ambiguous = [mapping for mapping in mappings if mapping["status"] == "ambiguous"]
+    assert len(ambiguous) == 2
+    assert all(mapping["normalizedNoteId"] is None for mapping in ambiguous)
+    assert all(mapping["rawEvents"] == [] for mapping in ambiguous)
+
+    diagnostic = next(item for item in result["diagnostics"]
+                      if item["code"] == "source-identity-ambiguous")
+    assert set(diagnostic["noteIds"]) == {mapping["noteId"] for mapping in ambiguous}
+    document_ids = {note["noteId"] for note in result["document"]["notes"]}
+    for plan in (result["fingeringPlan"], result["performancePlan"]):
+        assert all(item["code"] != "source-identity-ambiguous" for item in plan["diagnostics"])
+        assert all(set(item.get("noteIds", [])).issubset(document_ids) for item in plan["diagnostics"])
+
+
+def test_motion_pose_dedup_only_removes_identical_serialized_collisions():
+    earlier = {"transportTimeSeconds": 1.4, "hand": "left", "layerOrder": 0, "joints": []}
+    duplicate = dict(earlier)
+    other_hand = {"transportTimeSeconds": 1.4, "hand": "right", "layerOrder": 0, "joints": []}
+    later = {"transportTimeSeconds": 1.5, "hand": "left", "layerOrder": 0, "joints": []}
+    assert _dedupe_serialized_motion_poses([earlier, duplicate, other_hand, later]) == [
+        earlier, other_hand, later,
+    ]
+    with pytest.raises(ValueError, match="distinct motion poses collide"):
+        _dedupe_serialized_motion_poses([earlier, {**earlier, "layerOrder": 1}])
+
+
 def test_document_source_ids_follow_normalizer_aliases_not_pitch_time_join():
     track_first = _named_track("Piano A", [
         mido.Message("note_on", channel=0, note=11, velocity=90, time=0),
@@ -270,6 +337,9 @@ if __name__ == "__main__":
         test_keyboard_geometry_matches_desktop_rectangles,
         test_core_matches_frozen_desktop_numeric_fields_for_all_fixtures,
         test_raw_event_mapping_never_claims_a_clean_cross_track_duplicate,
+        test_unmapped_decoded_notes_do_not_claim_normalized_raw_event_pairs,
+        test_dropped_ambiguous_source_identities_have_explicit_diagnostics,
+        test_motion_pose_dedup_only_removes_identical_serialized_collisions,
         test_document_source_ids_follow_normalizer_aliases_not_pitch_time_join,
         test_profile_a_b_a_runs_are_observationally_isolated,
     ):

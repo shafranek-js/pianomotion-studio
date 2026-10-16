@@ -5,6 +5,8 @@ import { analyzeSavedProjectCandidate, prepareSourceCandidate } from "./player/c
 import { StudioShell, StudioReleaseDetails } from "./studio/StudioShell";
 import { StudioDialog } from "./studio/StudioDialog";
 import { ProjectsPanel } from "./studio/ProjectsPanel";
+import { BuiltinMelodiesDialog } from "./melodies/BuiltinMelodiesDialog";
+import { loadBuiltinMelodyBytes, type BuiltinMelodyEntry } from "./melodies/catalog";
 import { normalizeStudioView, type StudioStatus, type StudioView } from "./studio/types";
 import { ProfileModal } from "./profiles";
 import { SettingsModal } from "./settings";
@@ -64,6 +66,8 @@ export default function App() {
   const [sessionProfile, setSessionProfile] = useState<PianistProfile | null>(null);
   const [status, setStatus] = useState<StudioStatus>({ kind: "loading", message: "Preparing the local studio…" });
   const [busy, setBusy] = useState(false);
+  const [builtinMelodiesOpen, setBuiltinMelodiesOpen] = useState(false);
+  const openBuiltinMelodies = useCallback(() => setBuiltinMelodiesOpen(true), []);
   const [dirty, setDirty] = useState(false);
   const [pendingCandidate, setPendingCandidate] = useState<ActiveSession | null>(null);
   const [confirmReplace, setConfirmReplace] = useState(false);
@@ -346,6 +350,24 @@ export default function App() {
     });
   }, [engineVersion, runCandidate]);
 
+  const openBuiltinMelody = useCallback(async (entry: BuiltinMelodyEntry) => {
+    if (!engineVersion) return;
+    setBuiltinMelodiesOpen(false);
+    await runCandidate(entry.title, async (signal, progress) => {
+      progress(`Loading ${entry.title}…`);
+      const midiBytes = await loadBuiltinMelodyBytes(entry, signal);
+      const sourceContext: ProjectSourceContext = {
+        fixtureId: `builtin-${entry.id}`, keyStyle: getSettings().keyStyle,
+      };
+      const { result, analysisWorker } = await prepareSourceCandidate({
+        midiBytes, projectId: crypto.randomUUID(), revision: 0, engineVersion,
+        sourceContext, signal, onProgress: progress,
+      });
+      return { result, rawMidiBytes: midiBytes, sourceContext, session: null,
+        projectName: entry.title, unsaved: true, analysisWorker };
+    });
+  }, [engineVersion, runCandidate]);
+
   const openFixture = useCallback(async (fixtureId: string) => {
     const fixture = fixtureManifest?.fixtureSources[fixtureId];
     if (!fixture || !engineVersion) {
@@ -545,6 +567,8 @@ export default function App() {
   };
 
   const dialogs = <>
+    <BuiltinMelodiesDialog open={builtinMelodiesOpen} onClose={() => setBuiltinMelodiesOpen(false)}
+      onChoose={entry => { void openBuiltinMelody(entry); }} busy={busy || !engineVersion} />
     {confirmReplace && pendingCandidate && <StudioDialog
       title="Unsaved changes" titleId="replace-project-title"
       description={`Save your current project before opening “${pendingCandidate.projectName}”?`}
@@ -582,9 +606,10 @@ export default function App() {
   const emptyWorkspace = <div className="studio-welcome" data-testid="studio-welcome">
     <p className="studio-welcome__eyebrow">PIANOMOTION STUDIO</p>
     <h1>Open a project</h1>
-    <p>Choose a MIDI file, saved project, or demo song.</p>
+    <p>Choose a built-in melody, MIDI file, saved project, or demo song.</p>
     <div className="studio-welcome__actions">
       <button type="button" onClick={() => midiInputRef.current?.click()}>Open MIDI</button>
+      <button type="button" onClick={openBuiltinMelodies}>Browse built-in melodies</button>
       <button type="button" onClick={() => projectInputRef.current?.click()}>Open Project</button>
       <button type="button" disabled={!fixtureManifest || busy} onClick={() => void openFixture(DEMO_FIXTURE_ID)}>Play demo song</button>
     </div>
@@ -614,7 +639,7 @@ export default function App() {
           Update ready
         </button>
       )}
-      <StudioReleaseDetails description="0.1.0 preview: protected saves and updates, coherent offline releases, bounded motion streaming and scheduled audio outputs. Audit verification is in progress; device and listening acceptance remains separate." />
+      <StudioReleaseDetails description="0.1.0-dev.6 preview: 162 searchable built-in melodies, offline access and editable projects. Improved SoundFont parameter inheritance, volume envelopes and loop behavior; linked stereo banks up to 1 GiB. Adaptive animation streaming and protected saves." />
     </div>
   );
 
@@ -638,6 +663,7 @@ export default function App() {
       onViewModeChange={setViewMode}
       onStatusChange={setStatus}
       onOpenMidi={() => midiInputRef.current?.click()}
+      onOpenBuiltinMelodies={openBuiltinMelodies}
       onOpenPackage={() => projectInputRef.current?.click()}
       onOpenPreferences={() => setFullScreenDialog("preferences")}
       onOpenPianist={() => setFullScreenDialog("pianist")}
@@ -662,10 +688,11 @@ export default function App() {
       status={shellStatus}
       busy={busy}
       onOpenMidi={() => midiInputRef.current?.click()}
+      onOpenBuiltinMelodies={openBuiltinMelodies}
       onOpenPackage={() => projectInputRef.current?.click()}
       onOpenPreferences={() => setFullScreenDialog("preferences")}
       onOpenPianist={() => setFullScreenDialog("pianist")}
-      projectsPanel={<ProjectsPanel onOpenProject={(id) => void openSavedProject(id)} />}
+      projectsPanel={<ProjectsPanel onOpenProject={(id) => void openSavedProject(id)} onOpenBuiltinMelodies={openBuiltinMelodies} />}
       inspector={inspector}
       workspace={emptyWorkspace}
       footerAddon={studioFooterAddon}

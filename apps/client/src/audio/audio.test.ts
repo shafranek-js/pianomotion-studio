@@ -12,6 +12,7 @@ import {
 } from "./audioContext.ts";
 import { PianoSampler } from "./sampler.ts";
 import { Transport } from "./transport.ts";
+import type { PerformanceOutput } from "./output/performanceOutput.ts";
 
 /**
  * Lightweight mock AudioContext for Node/Vitest test environment.
@@ -345,6 +346,113 @@ describe("transport.ts", () => {
   afterEach(() => {
     transport.dispose();
     vi.useRealTimers();
+  });
+
+  function deferredOutput() {
+    const requests: Array<{ start: number; end: number; signal?: AbortSignal; resolve(): void; reject(error: Error): void }> = [];
+    let ready = false;
+    const output: PerformanceOutput = {
+      id: "soundfont", noteOn: vi.fn(), noteOff: vi.fn(), pedal: vi.fn(),
+      panic: vi.fn(), cancelScheduledFutureEvents: vi.fn(), restoreState: vi.fn(), dispose: vi.fn(),
+      isWindowPrepared: () => ready,
+      prepareWindow: (_plan, start, end, signal) => new Promise<void>((resolve, reject) => {
+        requests.push({ start, end, signal, resolve: () => { ready = true; resolve(); }, reject });
+      }),
+    };
+    return { output, requests };
+  }
+
+  it("freezes musical time until file-backed output preparation has finished", async () => {
+    Object.assign(mockCtx, { state: "running" });
+    const { output, requests } = deferredOutput();
+    transport.loadPlan(makeTestPerformancePlan([
+      { type: "press", timeSeconds: 0, noteId: "n1", pitch: 60, velocity: 80 },
+      { type: "release", timeSeconds: 3, noteId: "n1" },
+    ]), 8);
+    transport.setOutput(output);
+    const pending = transport.play();
+    await Promise.resolve();
+    expect(transport.isPreparingOutput()).toBe(true);
+    expect(requests[0]).toMatchObject({ start: -2, end: 2 });
+    Object.assign(mockCtx, { currentTime: 100 });
+    expect(transport.getCurrentTime()).toBe(-2);
+    expect(output.restoreState).not.toHaveBeenCalled();
+    requests[0]!.resolve();
+    await pending;
+    expect(transport.getCurrentTime()).toBe(-2);
+    expect(transport.getState()).toBe("playing");
+    expect(transport.isPreparingOutput()).toBe(false);
+    expect(output.restoreState).toHaveBeenCalledOnce();
+  });
+
+  it.each(["pause", "stop", "dispose"] as const)("%s cancels pending SoundFont preparation without late resume", async (action) => {
+    Object.assign(mockCtx, { state: "running" });
+    const { output, requests } = deferredOutput();
+    transport.loadPlan(makeTestPerformancePlan([]), 8);
+    transport.setOutput(output);
+    const pending = transport.play();
+    await Promise.resolve();
+    transport[action]();
+    expect(requests[0]!.signal!.aborted).toBe(true);
+    requests[0]!.resolve();
+    await pending;
+    expect(transport.getState()).not.toBe("playing");
+    expect(output.restoreState).not.toHaveBeenCalled();
+    expect(transport.isPreparingOutput()).toBe(false);
+  });
+
+  it("seek replaces a pending preparation and ignores its obsolete response", async () => {
+    Object.assign(mockCtx, { state: "running" });
+    const { output, requests } = deferredOutput();
+    transport.loadPlan(makeTestPerformancePlan([]), 12);
+    transport.setOutput(output);
+    const first = transport.play();
+    await Promise.resolve();
+    transport.seek(5);
+    await Promise.resolve();
+    expect(requests[0]!.signal!.aborted).toBe(true);
+    expect(requests[1]).toMatchObject({ start: 5, end: 9 });
+    requests[0]!.resolve();
+    await first;
+    expect(transport.getState()).not.toBe("playing");
+    requests[1]!.resolve();
+    await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
+    expect(transport.getState()).toBe("playing");
+    expect(transport.getCurrentTime()).toBe(5);
+  });
+
+  it("reports a preparation failure and leaves a failed Play stopped", async () => {
+    Object.assign(mockCtx, { state: "running" });
+    const { output, requests } = deferredOutput();
+    transport.loadPlan(makeTestPerformancePlan([]), 8);
+    transport.setOutput(output);
+    const errors = vi.fn();
+    transport.subscribeOutputError(errors);
+    const pending = transport.play();
+    await Promise.resolve();
+    requests[0]!.reject(new Error("SoundFont working set exceeds budget"));
+    await expect(pending).rejects.toThrow(/working set/);
+    expect(errors).toHaveBeenCalledOnce();
+    expect(transport.getState()).not.toBe("playing");
+    expect(transport.isPreparingOutput()).toBe(false);
+  });
+
+  it("an unavailable output cancels pending sample preparation and cannot resume late", async () => {
+    Object.assign(mockCtx, { state: "running" });
+    const { output, requests } = deferredOutput();
+    let unavailable!: (error: Error) => void;
+    output.subscribeUnavailable = listener => { unavailable = listener; return () => {}; };
+    transport.loadPlan(makeTestPerformancePlan([]), 8);
+    transport.setOutput(output);
+    const pending = transport.play();
+    await Promise.resolve();
+    unavailable(new Error("Output removed"));
+    expect(requests[0]!.signal!.aborted).toBe(true);
+    expect(transport.isPreparingOutput()).toBe(false);
+    requests[0]!.resolve();
+    await pending;
+    expect(transport.getState()).not.toBe("playing");
+    expect(transport.getOutputError()?.message).toBe("Output removed");
   });
 
   it("starts in idle state at lead-in position -2.0s", () => {

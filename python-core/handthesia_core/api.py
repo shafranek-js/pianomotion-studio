@@ -272,6 +272,21 @@ def _motion_pose(pose, hand_name, sample_time, keyboard_left, ppi):
     }
 
 
+def _dedupe_serialized_motion_poses(poses):
+    """Drop only identical poses whose timestamps collide after serialization."""
+    unique = []
+    by_hand_time = {}
+    for pose in poses:
+        key = (pose["transportTimeSeconds"], pose["hand"])
+        previous = by_hand_time.get(key)
+        if previous is None:
+            by_hand_time[key] = pose
+            unique.append(pose)
+        elif previous != pose:
+            raise ValueError("distinct motion poses collide at the same serialized hand/time")
+    return unique
+
+
 def _plan_id(kind, request_id):
     digest = hashlib.sha256(f"{kind}\0{request_id}".encode("utf-8")).hexdigest()[:24]
     return f"{kind}/{digest}"
@@ -686,6 +701,15 @@ def analyze_midi(data: bytes, options: dict) -> dict:
         diagnostics.append({"severity": "warning", "code": "source-event-ambiguous",
                             "message": "Raw SMF event locator is ambiguous; decoded note identity is retained without a locator.",
                             "noteIds": [normalized_id]})
+    ambiguous_source_ids = sorted(
+        set(observed.get("ambiguousSourceIds", [])) | ambiguous_alias_ids
+    )
+    ambiguous_source_identity_diagnostic = ({
+            "severity": "warning",
+            "code": "source-identity-ambiguous",
+            "message": "Decoded source-note identities have ambiguous event or normalized-note mappings; see the raw identity mappings for affected source IDs.",
+            "noteIds": ambiguous_source_ids,
+        } if ambiguous_source_ids else None)
     for note in song.notes:
         if id(note) not in assignment_by_identity and id(note) not in gliss_ids:
             normalized_id = note_id_by_object[id(note)]
@@ -814,6 +838,7 @@ def analyze_midi(data: bytes, options: dict) -> dict:
                                               pose["ppi"]))
     raw_poses.sort(key=lambda item: (item["time"], item["hand"]))
     motion_poses.sort(key=lambda item: (item["transportTimeSeconds"], item["hand"]))
+    motion_poses = _dedupe_serialized_motion_poses(motion_poses)
     motion_plan = None
     if motion_poses:
         motion_plan = {
@@ -842,17 +867,24 @@ def analyze_midi(data: bytes, options: dict) -> dict:
             status = "ambiguous"
         elif not normalized:
             status = "unmapped"
+        elif not raw:
+            status = "decoded-only"
         elif any(len(source_ids_for([note_id], document_notes)) > 1 for note_id in normalized):
             status = "merged"
-        elif raw:
-            status = "exact"
         else:
-            status = "decoded-only"
+            status = "exact"
+        raw_events = [dict(raw)] if raw and status in ("exact", "merged") else []
+        if not raw_events:
+            # The raw event may still be observable for a decoded note that
+            # sanitation drops (for example, percussion in a piano score).
+            # Keep its decoded source identity, but do not expose that locator
+            # as a normalized mapping the document cannot represent.
+            source.pop("sourceEvent", None)
         identity_mappings.append({
             "noteId": source_id,
             "sourceInstrument": source["sourceInstrument"],
             "sourceOrdinal": source["sourceOrdinal"],
-            "rawEvents": [dict(raw)] if raw else [],
+            "rawEvents": raw_events,
             "normalizedNoteId": normalized[0] if len(normalized) == 1 else None,
             "status": status,
         })
@@ -939,6 +971,11 @@ def analyze_midi(data: bytes, options: dict) -> dict:
                 if key in sampled_window
             }
 
+    if ambiguous_source_identity_diagnostic is not None:
+        # These noteIds name decoded source identities, which can be absent
+        # from the normalized SongDocument. Keep the diagnostic at the result
+        # level so plan diagnostics remain constrained to document note IDs.
+        diagnostics.append(ambiguous_source_identity_diagnostic)
     _report_progress(1.0, "Analysis complete.")
     return {
         **common_result,

@@ -1,5 +1,17 @@
 # PianoMotion Studio: журнал оркестрации
 
+## Встроенные мелодии — dev.6
+
+По запросу пользователя подключается `builtin_melodies/midi/` (162 файла). GPT-6 Luna Extra High: `builtin_catalog_assets` — генератор/loader/unit; `builtin_catalog_ui` — каталог и ProjectsPanel. После их freeze `builtin_source_identity_repair`, затем `catalog_identity_finalize` исправляют обнаруженные полным контрактом identity/diagnostics/duplicate-motion ошибки. Оркестратор владеет App/Player/StudioShell, версиями/lockfile, build/offline-интеграцией и независимой браузерной приёмкой. Пользователь позднее разрешил commit/push/deploy после проверок. [Протокол dev.6](evidence/builtin-melodies-2026-10-16/VERIFICATION.md).
+
+Дополнительный запрос: проверить все восемь локальных банков. `all_soundfont_banks` — parser/global generators и read-only metadata/PCM audit; `sf2_envelope_hardening` — synth/envelopes/loop defaults; `bank_browser_harness` — новый native acceptance spec. Root уточнил правила range/root-key по первичному SF2 spec, независимо выполняет финальные Chrome/Edge и сохраняет различие между рабочими банками, повреждённой стереоссылкой Fazioli и неподдерживаемым SF3. Три исполнителя одновременно не превышены; пользовательские банки не публикуются. [Протокол банков](evidence/user-soundfonts-2026-10-16/VERIFICATION.md).
+
+## SF2 stereo/Blob цикл dev.5
+
+Принят план поддержки связанных L/R PCM-сэмплов и входных банков до 1 GiB. Три GPT-6 Luna Extra High: `sf2_blob_storage` — парсер/Worker/hash/IndexedDB/Settings; `sf2_stereo_synth` — пары голосов/provider/output/factory; `sf2_export_checks` — снимок экспорта/offline/media. Оркестратор владеет общими контрактами, Transport/Player, hash-wasm/lockfile, версией dev.5 и независимой приёмкой. [Контракты, ограничения и статус](SOUNDFONT_STEREO_IMPLEMENTATION.md).
+
+Дополнительный цикл по пользовательскому логу 16 октября: `motion_buffering_repair` исправил выбор первого пропуска и граничный continuation; root интегрировал адаптивный резерв и раннюю подкачку. `sf2_completion_repair` завершил per-channel cleanup/loop-state и независимо просмотрел Blob/provider/export. `sf2_native_acceptance_repair` исправил порядок IDB error/abort, повторное открытие video helper и после независимого сбоя реального банка снял лишнее требование одинаковых L/R lengths/loop offsets. Владение четырьмя parser/synth файлами было явно передано ему после freeze прежнего владельца. Root повторяет native-приёмку последовательно; все результаты и первоначальные неудачи зафиксированы в [отчёте dev.5](evidence/sf2-motion-2026-10-16/VERIFICATION.md). Коммит/push/deploy не выполняются.
+
 ## UI-цикл dev.4: меню команд и автопереход
 
 Пользователь одобрил удаление второй строки инструментов: Undo/Redo в Edit, Keyboard shortcuts в Help (?), Auto-advance около пальцев в шапке. Исполнители GPT-6 Luna Extra High: `editor_commands_ui` владеет editor UI/Player/studio shell и их локальными интерфейсами; `editor_autoadvance` — editorState, команды, типы EditorAction и семантические unit-тесты. Оркестратор владеет npm manifests/lockfile (dev.4), browser-проверками, документацией и интеграционной приёмкой. Состояние сессии, история, Worker и canvas должны сохраняться. Результаты проверок записываются после интеграции.

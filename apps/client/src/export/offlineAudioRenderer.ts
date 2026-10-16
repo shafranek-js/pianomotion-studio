@@ -10,6 +10,7 @@ export const AUDIO_RATE = 44100;
 export const NORMALIZE_PEAK = 0.89; // -1 dBFS
 export const NORMALIZE_GAIN_MAX = 16.0;
 const OFFLINE_SF2_ABORT_CHECK_SECONDS = 0.5;
+const OFFLINE_SF2_PREFETCH_WINDOW_SONG_SECONDS = 4;
 
 export interface OfflineAudioRenderOptions {
   document: SongDocument;
@@ -167,10 +168,7 @@ async function renderSoundFontPlan(options: OfflineAudioRenderOptions, sampleRat
   const frameCount = Math.max(1, Math.round(durationSeconds * sampleRate));
   const context = new OfflineAudioContext(2, frameCount, sampleRate);
   const synth = new SoundFontSynth({ audioContext: context, destinationNode: context.destination });
-  synth.loadSoundFont(soundFont);
   const initialState = derivePerformanceStateAt(performancePlan, startTime);
-  synth.restoreState(initialState);
-
   const endSongTime = startTime + durationSeconds * speed;
   const scheduledEvents = (performancePlan?.events ?? [])
     .filter((event) => event.timeSeconds > startTime && event.timeSeconds < endSongTime)
@@ -186,23 +184,63 @@ async function renderSoundFontPlan(options: OfflineAudioRenderOptions, sampleRat
       eventIndex++;
     }
   };
-  const lookahead = 0.1;
+  const lookahead = Math.min(0.1, OFFLINE_SF2_PREFETCH_WINDOW_SONG_SECONDS / Math.max(speed, Number.EPSILON));
   let rendering: Promise<AudioBuffer> | null = null;
   let rendered: AudioBuffer;
   try {
+    synth.loadSoundFont(soundFont);
+    const initialNotes = initialState.voices.map(({ pitch, velocity }) => ({ pitch, velocity }));
+    if (initialNotes.length) {
+      await synth.prepareNotes(initialNotes, options.cancelSignal);
+      if (options.cancelSignal?.aborted) throw new Error("Offline audio rendering aborted");
+      if (!synth.areNotesPrepared(initialNotes)) {
+        throw new Error("SoundFont samples for the restored notes were not prepared.");
+      }
+    }
+    // Restore held/sustained voices only after their samples are resident. This
+    // avoids noteOn silently skipping file-backed SF2 samples during lead-in.
+    synth.restoreState(initialState);
+
+    const prepareUpcomingThroughAudioTime = (audioTime: number): Promise<void> | null => {
+      if (options.cancelSignal?.aborted) throw new Error("Offline audio rendering aborted");
+      const horizon = Math.min(durationSeconds, audioTime, context.currentTime + lookahead);
+      const notes = scheduledEvents
+        .slice(eventIndex)
+        .flatMap(({ event, audioTime: eventAudioTime }) =>
+          event.type === "press" && eventAudioTime <= horizon
+            ? [{ pitch: event.pitch, velocity: event.velocity }]
+            : [],
+        );
+      if (!notes.length) return null;
+      return (async () => {
+        await synth.prepareNotes(notes, options.cancelSignal);
+        if (options.cancelSignal?.aborted) throw new Error("Offline audio rendering aborted");
+        if (!synth.areNotesPrepared(notes)) {
+          throw new Error("SoundFont samples for an upcoming note window were not prepared.");
+        }
+      })();
+    };
+
     const queueNextSuspend = (): Promise<void> | null => {
       const earliestSuspend = context.currentTime + 0.001;
       const nextEventTime = scheduledEvents[eventIndex]?.audioTime ?? Number.POSITIVE_INFINITY;
       const nextEventBoundary = Number.isFinite(nextEventTime)
         ? Math.max(earliestSuspend, nextEventTime - 0.01)
         : Number.POSITIVE_INFINITY;
-      const abortCheckBoundary = context.currentTime + OFFLINE_SF2_ABORT_CHECK_SECONDS;
+      const abortCheckBoundary = context.currentTime + Math.min(
+        OFFLINE_SF2_ABORT_CHECK_SECONDS,
+        OFFLINE_SF2_PREFETCH_WINDOW_SONG_SECONDS / Math.max(speed, Number.EPSILON),
+      );
+      // The abort cadence is also capped in song time so a high-speed export
+      // cannot cross more than one four-song-second preparation window.
       const suspendAt = Math.min(durationSeconds, nextEventBoundary, abortCheckBoundary);
       return suspendAt > context.currentTime && suspendAt < durationSeconds
         ? context.suspend(suspendAt)
         : null;
     };
 
+    const initialPreparation = prepareUpcomingThroughAudioTime(Math.min(durationSeconds, lookahead));
+    if (initialPreparation) await initialPreparation;
     scheduleThrough(Math.min(durationSeconds, lookahead));
     // Queue bounded suspensions before starting an OfflineAudioContext. They
     // let us observe cancellation even when a plan has no events to schedule.
@@ -213,13 +251,17 @@ async function renderSoundFontPlan(options: OfflineAudioRenderOptions, sampleRat
       if (options.cancelSignal?.aborted) {
         throw new Error("Offline audio rendering aborted");
       }
+      const eventPreparation = prepareUpcomingThroughAudioTime(Math.min(durationSeconds, context.currentTime + lookahead));
+      if (eventPreparation) await eventPreparation;
       scheduleThrough(Math.min(durationSeconds, context.currentTime + lookahead));
       // Register the next suspension while the context is still suspended,
       // then resume so offline rendering advances to the requested boundary.
       pendingSuspend = queueNextSuspend();
       if (context.state === "suspended") await context.resume();
     }
-    if (eventIndex < scheduledEvents.length) scheduleThrough(durationSeconds);
+    if (eventIndex < scheduledEvents.length) {
+      throw new Error("Offline SoundFont scheduling ended before every note was prepared.");
+    }
     if (context.state === "suspended") await context.resume();
     rendered = await rendering;
   } finally {

@@ -1,0 +1,186 @@
+{
+  "config": {
+    "argv": [
+      "C:\\nvm4w\\nodejs\\node.exe",
+      "C:\\Projects\\pianomotion-studio\\node_modules\\@playwright\\test\\cli.js",
+      "test",
+      "--config",
+      "playwright.config.ts",
+      "tests/browser/builtin-melodies.spec.ts",
+      "--grep",
+      "opens, plays"
+    ],
+    "configFile": "C:\\Projects\\pianomotion-studio\\playwright.config.ts",
+    "rootDir": "C:/Projects/pianomotion-studio/tests/browser",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "C:/Projects/pianomotion-studio/test-results/ui-chrome",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "",
+        "name": "",
+        "testDir": "C:/Projects/pianomotion-studio/tests/browser",
+        "testIgnore": [
+          "**/offline-pwa.spec.ts",
+          "**/pwa-deployment-m8.spec.ts",
+          "**/media-export.spec.ts",
+          "**/video-export-m7.spec.ts",
+          "**/parity-m1.spec.ts",
+          "**/motion-streaming.spec.ts",
+          "**/motion-playback.spec.ts",
+          "**/audio-dsp.spec.ts",
+          "**/audio-output.spec.ts",
+          "**/soundfont-stereo.spec.ts",
+          "**/soundfont-storage.spec.ts",
+          "**/soundfont-large.spec.ts",
+          "**/soundfont-offline.spec.ts",
+          "**/builtin-melodies-offline.spec.ts"
+        ],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 90000
+      }
+    ],
+    "filteredProjects": [
+      {
+        "grep": {},
+        "grepInvert": null,
+        "outputDir": "C:\\Projects\\pianomotion-studio\\test-results\\ui-chrome",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "name": "",
+        "testDir": "C:\\Projects\\pianomotion-studio\\tests\\browser",
+        "snapshotDir": "C:\\Projects\\pianomotion-studio\\tests\\browser",
+        "testIgnore": [
+          "**/offline-pwa.spec.ts",
+          "**/pwa-deployment-m8.spec.ts",
+          "**/media-export.spec.ts",
+          "**/video-export-m7.spec.ts",
+          "**/parity-m1.spec.ts",
+          "**/motion-streaming.spec.ts",
+          "**/motion-playback.spec.ts",
+          "**/audio-dsp.spec.ts",
+          "**/audio-output.spec.ts",
+          "**/soundfont-stereo.spec.ts",
+          "**/soundfont-storage.spec.ts",
+          "**/soundfont-large.spec.ts",
+          "**/soundfont-offline.spec.ts",
+          "**/builtin-melodies-offline.spec.ts"
+        ],
+        "testMatch": "**/*.@(spec|test).?(c|m)[jt]s?(x)",
+        "timeout": 90000,
+        "use": {
+          "baseURL": "http://127.0.0.1:4173",
+          "browserName": "chromium",
+          "channel": "chrome",
+          "headless": true
+        },
+        "dependencies": [],
+        "ignoreSnapshots": false,
+        "__projectId": ""
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "list",
+        null
+      ],
+      [
+        "json",
+        {
+          "outputFile": "test-results/reports/ui-chrome.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "default",
+    "updateSourceMethod": "patch",
+    "version": "1.64.0",
+    "workers": 1,
+    "webServer": {
+      "command": "npm run dev -- --host 127.0.0.1 --port 4173 --strictPort",
+      "url": "http://127.0.0.1:4173",
+      "reuseExistingServer": false,
+      "timeout": 60000
+    }
+  },
+  "suites": [
+    {
+      "title": "builtin-melodies.spec.ts",
+      "file": "builtin-melodies.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "built-in melody opens, plays, edits, saves and restores with exact source identities",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 180000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 31898,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-16T07:30:06.859Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "94bf1f200ad7d2d8f37d-ee6aa28ebb61d507839e",
+          "file": "builtin-melodies.spec.ts",
+          "line": 12,
+          "column": 1
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-10-16T07:30:00.940Z",
+    "duration": 66716.189,
+    "expected": 1,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}

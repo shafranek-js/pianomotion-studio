@@ -50,7 +50,8 @@ export function VideoExportModal({ isOpen, onClose, dataSource }: VideoExportMod
   const hasSoundFont = Boolean(
     dataSource?.sourceIdentity?.activeOutputId === "soundfont" &&
     dataSource.sourceIdentity.soundFontAssetId &&
-    dataSource.sourceIdentity.soundFontAssetBytes?.byteLength,
+    ((dataSource.sourceIdentity.soundFontAssetBlob?.size ?? 0) > 0 ||
+      (dataSource.sourceIdentity.soundFontAssetBytes?.byteLength ?? 0) > 0),
   );
 
   const dims = getVideoDimensions(preset, window.innerWidth, window.innerHeight);

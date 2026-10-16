@@ -1,7 +1,95 @@
 import { describe, it, expect, vi } from "vitest";
 import { InvalidSoundFontError, Sf2Parser } from "./sf2Parser";
 import { SoundFontSynth } from "./soundfontSynth";
+import { getSoundFontSampleProviderStats, resetSharedSoundFontSampleProviderForTests } from "./soundfontSampleProvider.ts";
+import { createSyntheticMonoSf2 } from "./testing/syntheticMonoSf2.ts";
 import type { Sf2SoundFont } from "./types";
+
+type StereoTestBuffer = { duration: number; sampleRate: number; getChannelData: (channel: number) => Float32Array };
+type StereoTestSource = {
+  buffer: StereoTestBuffer | null;
+  loop: boolean;
+  loopStart: number;
+  loopEnd: number;
+  playbackRate: { setValueAtTime: ReturnType<typeof vi.fn> };
+  start: ReturnType<typeof vi.fn>;
+  stop: ReturnType<typeof vi.fn>;
+  connect: ReturnType<typeof vi.fn>;
+  disconnect: ReturnType<typeof vi.fn>;
+  onended: (() => void) | null;
+};
+
+function createStereoLoopSynth(leftMode: number, rightMode: number) {
+  const sources: StereoTestSource[] = [];
+  const gains: Array<{
+    gain: {
+      setValueAtTime: ReturnType<typeof vi.fn>;
+      cancelScheduledValues: ReturnType<typeof vi.fn>;
+      exponentialRampToValueAtTime: ReturnType<typeof vi.fn>;
+    };
+    connect: ReturnType<typeof vi.fn>;
+    disconnect: ReturnType<typeof vi.fn>;
+  }> = [];
+  const audioContext = {
+    currentTime: 0,
+    destination: {},
+    createGain: vi.fn().mockImplementation(() => {
+      const gain = {
+        gain: {
+          setValueAtTime: vi.fn(),
+          cancelScheduledValues: vi.fn(),
+          exponentialRampToValueAtTime: vi.fn(),
+        },
+        connect: vi.fn(),
+        disconnect: vi.fn(),
+      };
+      gains.push(gain);
+      return gain;
+    }),
+    createBuffer: vi.fn().mockImplementation((_channels: number, frames: number, sampleRate: number) => ({
+      duration: frames / sampleRate,
+      sampleRate,
+      getChannelData: vi.fn().mockReturnValue(new Float32Array(frames)),
+    })),
+    createBufferSource: vi.fn().mockImplementation(() => {
+      const source: StereoTestSource = {
+        buffer: null,
+        loop: false,
+        loopStart: 0,
+        loopEnd: 0,
+        playbackRate: { setValueAtTime: vi.fn() },
+        start: vi.fn(),
+        stop: vi.fn(),
+        connect: vi.fn(),
+        disconnect: vi.fn(),
+        onended: null,
+      };
+      sources.push(source);
+      return source;
+    }),
+  };
+  const soundFont: Sf2SoundFont = {
+    header: { name: "Stereo Loop Modes", versionMajor: 2, versionMinor: 4 },
+    presets: [{ name: "Piano", presetNumber: 0, bankNumber: 0, zones: [
+      {
+        keyRange: [60, 60], velRange: [1, 127], sampleIndex: 0, instrumentId: 1,
+        presetZoneId: 2, instrumentZoneId: 3, sampleModes: rightMode, releaseSeconds: 0.2,
+      },
+      {
+        keyRange: [60, 60], velRange: [1, 127], sampleIndex: 1, instrumentId: 1,
+        presetZoneId: 2, instrumentZoneId: 3, sampleModes: leftMode, releaseSeconds: 0.4,
+      },
+    ] }],
+    samples: [
+      { name: "Right", start: 0, end: 100, loopStart: 20, loopEnd: 60, sampleRate: 100, originalPitch: 60, pitchCorrection: 0, sampleType: 2, sampleLink: 1 },
+      { name: "Left", start: 146, end: 286, loopStart: 180, loopEnd: 250, sampleRate: 100, originalPitch: 60, pitchCorrection: 0, sampleType: 4, sampleLink: 0 },
+    ],
+    rawSampleData: new Int16Array(286),
+  };
+  const synth = new SoundFontSynth({ audioContext: audioContext as unknown as AudioContext });
+  synth.loadSoundFont(soundFont);
+  return { audioContext, gains, sources, synth };
+}
 
 describe("SoundFont 2 Parser & Synthesizer (W042, W043)", () => {
   it("rejects non-SF2 buffers with descriptive InvalidSoundFontError", () => {
@@ -21,72 +109,17 @@ describe("SoundFont 2 Parser & Synthesizer (W042, W043)", () => {
   });
 
   it("parses valid SF2 RIFF structure with presets and samples", () => {
-    // Construct a minimal valid SF2 binary structure in memory
-    const totalSize = 256;
-    const buffer = new ArrayBuffer(totalSize);
-    const view = new DataView(buffer);
-    const bytes = new Uint8Array(buffer);
-
-    // RIFF header
-    bytes.set(new TextEncoder().encode("RIFF"), 0);
-    view.setUint32(4, totalSize - 8, true);
-    bytes.set(new TextEncoder().encode("sfbk"), 8);
-
-    // LIST INFO
-    let offset = 12;
-    bytes.set(new TextEncoder().encode("LIST"), offset);
-    view.setUint32(offset + 4, 24, true); // 4 (INFO) + 8 (INAM header) + 8 (data) = 20 + 4 = 24
-    bytes.set(new TextEncoder().encode("INFO"), offset + 8);
-
-    // INAM chunk
-    bytes.set(new TextEncoder().encode("INAM"), offset + 12);
-    view.setUint32(offset + 16, 8, true);
-    bytes.set(new TextEncoder().encode("Piano\0\0\0"), offset + 20);
-
-    offset += 8 + 24; // 44
-
-    // LIST sdta
-    bytes.set(new TextEncoder().encode("LIST"), offset);
-    view.setUint32(offset + 4, 32, true); // 4 (sdta) + 8 (smpl header) + 20 (data) = 32
-    bytes.set(new TextEncoder().encode("sdta"), offset + 8);
-
-    // smpl chunk with 10 dummy 16-bit PCM samples
-    bytes.set(new TextEncoder().encode("smpl"), offset + 12);
-    view.setUint32(offset + 16, 20, true);
-    for (let i = 0; i < 10; i++) {
-      view.setInt16(offset + 20 + i * 2, i * 1000, true);
-    }
-
-    offset += 8 + 32; // 84
-
-    // LIST pdta with shdr
-    bytes.set(new TextEncoder().encode("LIST"), offset);
-    view.setUint32(offset + 4, 58, true); // 4 (pdta) + 8 (shdr header) + 46 (data) = 58
-    bytes.set(new TextEncoder().encode("pdta"), offset + 8);
-
-    // shdr chunk (46 bytes per entry)
-    bytes.set(new TextEncoder().encode("shdr"), offset + 12);
-    view.setUint32(offset + 16, 46, true);
-    const shdrBase = offset + 20;
-    bytes.set(new TextEncoder().encode("A0_Sample\0\0\0\0\0\0\0\0\0\0\0"), shdrBase);
-    view.setUint32(shdrBase + 20, 0, true); // start
-    view.setUint32(shdrBase + 24, 10, true); // end
-    view.setUint32(shdrBase + 28, 0, true); // loopStart
-    view.setUint32(shdrBase + 32, 10, true); // loopEnd
-    view.setUint32(shdrBase + 36, 44100, true); // sampleRate
-    view.setUint8(shdrBase + 40, 60); // originalPitch (C4)
-    view.setInt8(shdrBase + 41, 0); // pitchCorrection
-    view.setUint16(shdrBase + 44, 1, true); // mono sample
-
+    const bytes = createSyntheticMonoSf2({ sampleRate: 44_100, seconds: 0.001 });
+    const buffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
     const parser = new Sf2Parser(buffer);
     const sf = parser.parse();
 
-    expect(sf.header.name).toBe("Piano");
-    expect(sf.samples).toHaveLength(1);
-    expect(sf.samples[0]?.name).toBe("A0_Sample");
+    expect(sf.header.name).toBe("Synthetic Mono SF2");
+    expect(sf.samples).toHaveLength(2); // Includes the required terminal EOS sample header.
+    expect(sf.samples[0]?.name).toBe("Synthetic A4");
     expect(sf.samples[0]?.sampleRate).toBe(44100);
-    expect(sf.samples[0]?.originalPitch).toBe(60);
-    expect(sf.rawSampleData?.length).toBe(10);
+    expect(sf.samples[0]?.originalPitch).toBe(69);
+    expect(sf.rawSampleData?.length).toBe(128);
     expect(sf.presets.length).toBeGreaterThan(0);
   });
 
@@ -442,6 +475,188 @@ describe("SoundFont 2 Parser & Synthesizer (W042, W043)", () => {
     synth.dispose();
   });
 
+  it("uses the SF2 hold-decay-sustain envelope, true dB attenuation, and one-shot default", () => {
+    const gains: Array<{
+      gain: {
+        setValueAtTime: ReturnType<typeof vi.fn>;
+        cancelScheduledValues: ReturnType<typeof vi.fn>;
+        exponentialRampToValueAtTime: ReturnType<typeof vi.fn>;
+      };
+      connect: ReturnType<typeof vi.fn>;
+      disconnect: ReturnType<typeof vi.fn>;
+    }> = [];
+    const sources: Array<{
+      loop: boolean;
+      playbackRate: { setValueAtTime: ReturnType<typeof vi.fn> };
+      start: ReturnType<typeof vi.fn>;
+      stop: ReturnType<typeof vi.fn>;
+      connect: ReturnType<typeof vi.fn>;
+      disconnect: ReturnType<typeof vi.fn>;
+      onended: (() => void) | null;
+    }> = [];
+    const context = {
+      currentTime: 0,
+      destination: {},
+      createGain: vi.fn().mockImplementation(() => {
+        const node = {
+          gain: {
+            setValueAtTime: vi.fn(),
+            cancelScheduledValues: vi.fn(),
+            exponentialRampToValueAtTime: vi.fn(),
+          },
+          connect: vi.fn(),
+          disconnect: vi.fn(),
+        };
+        gains.push(node);
+        return node;
+      }),
+      createBuffer: vi.fn().mockReturnValue({
+        duration: 1,
+        sampleRate: 44_100,
+        getChannelData: vi.fn().mockReturnValue(new Float32Array(44_100)),
+      }),
+      createBufferSource: vi.fn().mockImplementation(() => {
+        const source = {
+          loop: false,
+          playbackRate: { setValueAtTime: vi.fn() },
+          start: vi.fn(),
+          stop: vi.fn(),
+          connect: vi.fn(),
+          disconnect: vi.fn(),
+          onended: null as (() => void) | null,
+        };
+        sources.push(source);
+        return source;
+      }),
+    };
+    const soundFont: Sf2SoundFont = {
+      header: { name: "ADSR", versionMajor: 2, versionMinor: 4 },
+      presets: [{ name: "Default", presetNumber: 0, bankNumber: 0, zones: [
+        {
+          keyRange: [60, 60], velRange: [1, 127], sampleIndex: 0,
+          attackSeconds: 0.1, holdSeconds: 0.2, decaySeconds: 0.3,
+          sustainPercent: 25, releaseSeconds: 0.4, initialAttenuationDb: 20,
+        },
+      ] }],
+      samples: [{ name: "One shot", start: 0, end: 44_100, loopStart: 4_410, loopEnd: 13_230, sampleRate: 44_100, originalPitch: 60, pitchCorrection: 0, sampleType: 1 }],
+      rawSampleData: new Int16Array(44_100),
+    };
+    const synth = new SoundFontSynth({ audioContext: context as unknown as AudioContext });
+    synth.loadSoundFont(soundFont);
+    synth.noteOn(60, 100, "adsr-note", 0);
+
+    const gain = gains[1]!.gain;
+    const source = sources[0]!;
+    const peak = (100 / 127) ** 1.5 * 0.5 * 10 ** (-20 / 20);
+    const sustain = peak * 0.25;
+    expect(source.loop).toBe(false);
+    expect(gain.exponentialRampToValueAtTime).toHaveBeenNthCalledWith(1, peak, 0.1);
+    expect(gain.setValueAtTime.mock.calls[1]![0]).toBeCloseTo(peak, 12);
+    expect(gain.setValueAtTime.mock.calls[1]![1]).toBeCloseTo(0.3, 12);
+    expect(gain.exponentialRampToValueAtTime.mock.calls[1]![0]).toBeCloseTo(sustain, 12);
+    expect(gain.exponentialRampToValueAtTime.mock.calls[1]![1]).toBeCloseTo(0.6, 12);
+
+    // A release that begins during decay starts at the instantaneous ADSR value.
+    const releaseStart = peak * Math.sqrt(0.25);
+    synth.noteOff("adsr-note", 60, 0.45);
+    const releaseValue = gain.setValueAtTime.mock.calls[gain.setValueAtTime.mock.calls.length - 1]!;
+    const releaseRamp = gain.exponentialRampToValueAtTime.mock.calls[gain.exponentialRampToValueAtTime.mock.calls.length - 1]!;
+    expect(releaseValue[0]).toBeCloseTo(releaseStart, 12);
+    expect(releaseValue[1]).toBe(0.45);
+    expect(releaseRamp[0]).toBe(0.0001);
+    expect(releaseRamp[1]).toBeCloseTo(0.85, 12);
+    synth.dispose();
+  });
+
+  it("cancels a future release and resumes the current decay phase", () => {
+    const gains: Array<{
+      gain: {
+        setValueAtTime: ReturnType<typeof vi.fn>;
+        cancelScheduledValues: ReturnType<typeof vi.fn>;
+        exponentialRampToValueAtTime: ReturnType<typeof vi.fn>;
+      };
+      connect: ReturnType<typeof vi.fn>;
+      disconnect: ReturnType<typeof vi.fn>;
+    }> = [];
+    const sources: Array<{
+      loop: boolean;
+      playbackRate: { setValueAtTime: ReturnType<typeof vi.fn> };
+      start: ReturnType<typeof vi.fn>;
+      stop: ReturnType<typeof vi.fn>;
+      connect: ReturnType<typeof vi.fn>;
+      disconnect: ReturnType<typeof vi.fn>;
+      onended: (() => void) | null;
+    }> = [];
+    const context = {
+      currentTime: 0,
+      destination: {},
+      createGain: vi.fn().mockImplementation(() => {
+        const node = {
+          gain: {
+            setValueAtTime: vi.fn(),
+            cancelScheduledValues: vi.fn(),
+            exponentialRampToValueAtTime: vi.fn(),
+          },
+          connect: vi.fn(),
+          disconnect: vi.fn(),
+        };
+        gains.push(node);
+        return node;
+      }),
+      createBuffer: vi.fn().mockReturnValue({
+        duration: 1,
+        sampleRate: 44_100,
+        getChannelData: vi.fn().mockReturnValue(new Float32Array(44_100)),
+      }),
+      createBufferSource: vi.fn().mockImplementation(() => {
+        const source = {
+          loop: false,
+          playbackRate: { setValueAtTime: vi.fn() },
+          start: vi.fn(),
+          stop: vi.fn(),
+          connect: vi.fn(),
+          disconnect: vi.fn(),
+          onended: null as (() => void) | null,
+        };
+        sources.push(source);
+        return source;
+      }),
+    };
+    const soundFont: Sf2SoundFont = {
+      header: { name: "Cancelled decay", versionMajor: 2, versionMinor: 4 },
+      presets: [{ name: "Default", presetNumber: 0, bankNumber: 0, zones: [
+        {
+          keyRange: [60, 60], velRange: [1, 127], sampleIndex: 0,
+          attackSeconds: 0.1, holdSeconds: 0.2, decaySeconds: 0.4,
+          sustainPercent: 50, releaseSeconds: 0.2,
+        },
+      ] }],
+      samples: [{ name: "Sample", start: 0, end: 44_100, loopStart: 0, loopEnd: 44_100, sampleRate: 44_100, originalPitch: 60, pitchCorrection: 0, sampleType: 1 }],
+      rawSampleData: new Int16Array(44_100),
+    };
+    const synth = new SoundFontSynth({ audioContext: context as unknown as AudioContext });
+    synth.loadSoundFont(soundFont);
+    synth.noteOn(60, 100, "cancelled-release", 0);
+    synth.noteOff("cancelled-release", 60, 0.55);
+
+    const gain = gains[1]!.gain;
+    context.currentTime = 0.4;
+    synth.cancelScheduledFutureEvents(0.4);
+    const peak = (100 / 127) ** 1.5 * 0.5;
+    const sustain = peak * 0.5;
+    const currentDecay = peak * (sustain / peak) ** 0.25;
+    expect(gain.cancelScheduledValues).toHaveBeenCalledWith(0.4);
+    const resumedValue = gain.setValueAtTime.mock.calls[gain.setValueAtTime.mock.calls.length - 1]!;
+    const resumedDecay = gain.exponentialRampToValueAtTime.mock.calls[gain.exponentialRampToValueAtTime.mock.calls.length - 1]!;
+    expect(resumedValue[0]).toBeCloseTo(currentDecay, 12);
+    expect(resumedValue[1]).toBe(0.4);
+    expect(resumedDecay[0]).toBeCloseTo(sustain, 12);
+    expect(resumedDecay[1]).toBeCloseTo(0.7, 12);
+    expect(gain.exponentialRampToValueAtTime.mock.calls.filter((call) => call[0] === peak && call[1] === 0.1)).toHaveLength(1);
+    expect(synth.getKeyDownNotes()).toEqual([{ noteId: "cancelled-release", pitch: 60 }]);
+    synth.dispose();
+  });
+
   it("keeps mode 3 looping through sustain and exits only at effective release", () => {
     const sources: Array<{
       loop: boolean;
@@ -667,6 +882,247 @@ describe("SoundFont 2 Parser & Synthesizer (W042, W043)", () => {
     synth.pedalChange(66, 0);
     expect(synth.getPedalState().sostenuto).toBe(false);
 
+    synth.dispose();
+  });
+
+  it("prepares linked stereo once, keeps right-side pitch control, and preserves each channel's pan and envelope", async () => {
+    resetSharedSoundFontSampleProviderForTests();
+    const createdSources: Array<{
+      buffer: AudioBuffer | null;
+      playbackRate: { setValueAtTime: ReturnType<typeof vi.fn> };
+      start: ReturnType<typeof vi.fn>;
+      stop: ReturnType<typeof vi.fn>;
+      connect: ReturnType<typeof vi.fn>;
+      disconnect: ReturnType<typeof vi.fn>;
+      onended: (() => void) | null;
+    }> = [];
+    const gains: Array<{ gain: { setValueAtTime: ReturnType<typeof vi.fn>; cancelScheduledValues: ReturnType<typeof vi.fn>; exponentialRampToValueAtTime: ReturnType<typeof vi.fn> }; connect: ReturnType<typeof vi.fn>; disconnect: ReturnType<typeof vi.fn> }> = [];
+    const pans: Array<{ pan: { setValueAtTime: ReturnType<typeof vi.fn> }; connect: ReturnType<typeof vi.fn>; disconnect: ReturnType<typeof vi.fn> }> = [];
+    const audioContext = {
+      currentTime: 10,
+      sampleRate: 44_100,
+      destination: {},
+      createGain: vi.fn().mockImplementation(() => {
+        const node = {
+          gain: { setValueAtTime: vi.fn(), cancelScheduledValues: vi.fn(), exponentialRampToValueAtTime: vi.fn() },
+          connect: vi.fn(),
+          disconnect: vi.fn(),
+        };
+        gains.push(node);
+        return node;
+      }),
+      createBuffer: vi.fn().mockImplementation((_channels: number, frames: number, sampleRate: number) => ({
+        duration: frames / sampleRate,
+        sampleRate,
+        getChannelData: () => new Float32Array(frames),
+      })),
+      createBufferSource: vi.fn().mockImplementation(() => {
+        const source = {
+          buffer: null,
+          playbackRate: { setValueAtTime: vi.fn() },
+          start: vi.fn(), stop: vi.fn(), connect: vi.fn(), disconnect: vi.fn(),
+          onended: null as (() => void) | null,
+        };
+        createdSources.push(source);
+        return source;
+      }),
+      createStereoPanner: vi.fn().mockImplementation(() => {
+        const node = { pan: { setValueAtTime: vi.fn() }, connect: vi.fn(), disconnect: vi.fn() };
+        pans.push(node);
+        return node;
+      }),
+    };
+    const soundFont: Sf2SoundFont = {
+      header: { name: "Stereo", versionMajor: 2, versionMinor: 4 },
+      presets: [{
+        name: "Piano", presetNumber: 0, bankNumber: 0, zones: [
+          {
+            keyRange: [60, 60], velRange: [1, 127], sampleIndex: 0, instrumentId: 4,
+            presetZoneId: 2, instrumentZoneId: 8, rootKey: 61, pitchCorrection: 6,
+            pan: 500, initialAttenuationDb: 0, attackSeconds: 0.02, releaseSeconds: 0.2, sampleModes: 0,
+          },
+          {
+            keyRange: [60, 60], velRange: [1, 127], sampleIndex: 1, instrumentId: 4,
+            presetZoneId: 2, instrumentZoneId: 9, rootKey: 40, pitchCorrection: -40,
+            pan: -500, initialAttenuationDb: 12, attackSeconds: 0.1, releaseSeconds: 0.4, sampleModes: 0,
+          },
+        ],
+      }],
+      samples: [
+        { name: "Right", start: 0, end: 8, loopStart: 1, loopEnd: 5, sampleRate: 22_050, originalPitch: 61, pitchCorrection: 6, sampleType: 2, sampleLink: 1 },
+        { name: "Left", start: 8, end: 20, loopStart: 13, loopEnd: 18, sampleRate: 22_050, originalPitch: 40, pitchCorrection: -40, sampleType: 4, sampleLink: 0 },
+      ],
+      sampleSource: { blob: new Blob([new Uint8Array(40)]), sampleDataOffset: 0, sampleCount: 20 },
+    };
+    const synth = new SoundFontSynth({ audioContext: audioContext as unknown as AudioContext });
+    synth.loadSoundFont(soundFont);
+
+    expect(() => synth.noteOn(60, 100, "before-prepare")).toThrow(/not prepared/);
+    expect(getSoundFontSampleProviderStats()).toMatchObject({ reads: 0, decodes: 0 });
+    const cancelledWindow = new AbortController();
+    const firstPreparation = synth.prepareNotes([{ pitch: 60, velocity: 100 }], cancelledWindow.signal);
+    const replacementPreparation = synth.prepareNotes([{ pitch: 60, velocity: 100 }]);
+    cancelledWindow.abort();
+    await expect(firstPreparation).rejects.toMatchObject({ name: "AbortError" });
+    await replacementPreparation;
+    expect(synth.areNotesPrepared([{ pitch: 60, velocity: 100 }])).toBe(true);
+    expect(getSoundFontSampleProviderStats()).toMatchObject({ reads: 2, decodes: 2, pinnedBytes: 80 });
+
+    synth.noteOn(60, 100, "stereo-note");
+    expect(createdSources).toHaveLength(2);
+    expect(createdSources[0]!.start).toHaveBeenCalledWith(10);
+    expect(createdSources[1]!.start).toHaveBeenCalledWith(10);
+    expect(createdSources[0]!.buffer?.duration).toBeCloseTo(12 / 22_050, 8);
+    expect(createdSources[1]!.buffer?.duration).toBeCloseTo(8 / 22_050, 8);
+    const expectedRate = 2 ** (((60 - 61) * 100 + 6) / 1200);
+    expect(createdSources[0]!.playbackRate.setValueAtTime).toHaveBeenCalledWith(expectedRate, 10);
+    expect(createdSources[1]!.playbackRate.setValueAtTime).toHaveBeenCalledWith(expectedRate, 10);
+    expect(pans[0]!.pan.setValueAtTime).toHaveBeenCalledWith(-1, 10);
+    expect(pans[1]!.pan.setValueAtTime).toHaveBeenCalledWith(1, 10);
+    expect(gains[1]!.gain.exponentialRampToValueAtTime).toHaveBeenCalledWith(expect.any(Number), 10.1);
+    expect(gains[2]!.gain.exponentialRampToValueAtTime).toHaveBeenCalledWith(expect.any(Number), 10.02);
+    expect(gains[1]!.gain.exponentialRampToValueAtTime.mock.calls[0]![0]).toBeLessThan(
+      gains[2]!.gain.exponentialRampToValueAtTime.mock.calls[0]![0],
+    );
+
+    synth.noteOff("stereo-note", 60, 10.5);
+    expect(gains[1]!.gain.exponentialRampToValueAtTime).toHaveBeenLastCalledWith(expect.any(Number), 10.9);
+    expect(gains[2]!.gain.exponentialRampToValueAtTime).toHaveBeenLastCalledWith(expect.any(Number), 10.7);
+    expect(createdSources[0]!.stop.mock.calls[0]![0]).toBeCloseTo(10.95);
+    expect(createdSources[1]!.stop.mock.calls[0]![0]).toBeCloseTo(10.75);
+    createdSources[1]!.onended?.();
+    expect(synth.getActiveVoiceCount()).toBe(1);
+    createdSources[0]!.onended?.();
+    expect(synth.getActiveVoiceCount()).toBe(0);
+    synth.dispose();
+    expect(getSoundFontSampleProviderStats().pinnedBytes).toBe(0);
+    resetSharedSoundFontSampleProviderForTests();
+  });
+
+  it("rejects unmatched stereo zones instead of duplicating one channel", () => {
+    const soundFont: Sf2SoundFont = {
+      header: { name: "Unmatched stereo", versionMajor: 2, versionMinor: 4 },
+      presets: [{
+        name: "Piano", presetNumber: 0, bankNumber: 0, zones: [
+          { keyRange: [60, 60], velRange: [1, 127], sampleIndex: 0, instrumentId: 1, presetZoneId: 2, instrumentZoneId: 3 },
+        ],
+      }],
+      samples: [
+        { name: "Right", start: 0, end: 8, loopStart: 0, loopEnd: 8, sampleRate: 22_050, originalPitch: 60, pitchCorrection: 0, sampleType: 2, sampleLink: 1 },
+        { name: "Left", start: 8, end: 16, loopStart: 8, loopEnd: 16, sampleRate: 22_050, originalPitch: 60, pitchCorrection: 0, sampleType: 4, sampleLink: 0 },
+      ],
+      rawSampleData: new Int16Array(16),
+    };
+    const audioContext = {
+      currentTime: 0,
+      destination: {},
+      createGain: vi.fn().mockReturnValue({
+        gain: { setValueAtTime: vi.fn(), cancelScheduledValues: vi.fn(), exponentialRampToValueAtTime: vi.fn() },
+        connect: vi.fn(), disconnect: vi.fn(),
+      }),
+    };
+    const synth = new SoundFontSynth({ audioContext: audioContext as unknown as AudioContext });
+    synth.loadSoundFont(soundFont);
+
+    expect(() => synth.noteOn(60, 100, "missing-left-zone")).toThrow(/has 0 left zones and 1 right zones/);
+    synth.dispose();
+  });
+
+  it("releases mode-1 left and mode-3 right channels together after sustain, then waits for both tails", () => {
+    const { sources, gains, synth } = createStereoLoopSynth(1, 3);
+    synth.noteOn(60, 100, "left-mode1-right-mode3", 0);
+    expect(sources).toHaveLength(2);
+    expect(sources[0]!.loop).toBe(true); // left channel
+    expect(sources[1]!.loop).toBe(true); // right channel
+    expect(sources[0]!.buffer?.duration).toBeCloseTo(1.4); // left has an independent 140-frame range
+    expect(sources[0]!.loopStart).toBeCloseTo(0.34);
+    expect(sources[0]!.loopEnd).toBeCloseTo(1.04);
+    expect(sources[1]!.buffer?.duration).toBeCloseTo(1); // right has a 100-frame range
+    expect(sources[1]!.loopStart).toBeCloseTo(0.2);
+    expect(sources[1]!.loopEnd).toBeCloseTo(0.6);
+
+    synth.pedalChange(64, 127, 0.1);
+    synth.noteOff("left-mode1-right-mode3", 60, 0.2);
+    expect(sources[0]!.stop).not.toHaveBeenCalled();
+    expect(sources[1]!.stop).not.toHaveBeenCalled();
+
+    synth.pedalChange(64, 0, 0.3);
+    expect(sources).toHaveLength(3); // one-shot tail for the mode-3 right channel
+    expect(sources[0]!.stop).toHaveBeenCalledWith(0.75); // left's 400 ms release
+    expect(sources[1]!.stop).toHaveBeenCalledWith(0.3); // right loop hands off at release
+    expect(sources[2]!.start).toHaveBeenCalledWith(0.3, expect.any(Number));
+    expect(sources[2]!.stop).toHaveBeenCalledWith(0.55); // right's 200 ms release
+    expect(gains[1]!.gain.exponentialRampToValueAtTime).toHaveBeenLastCalledWith(0.0001, 0.7);
+    expect(gains[2]!.gain.exponentialRampToValueAtTime).toHaveBeenLastCalledWith(0.0001, 0.5);
+
+    sources[1]!.onended?.();
+    sources[2]!.onended?.();
+    expect(synth.getActiveVoiceCount()).toBe(1); // left's release is still sounding
+    sources[0]!.onended?.();
+    expect(synth.getActiveVoiceCount()).toBe(0);
+    synth.dispose();
+  });
+
+  it("cancels a mode-3 right tail while sustain holds a mode-0 left channel", () => {
+    const { sources, synth } = createStereoLoopSynth(0, 3);
+    synth.restoreState({
+      voices: [{
+        noteId: "left-mode0-right-mode3",
+        pitch: 60,
+        velocity: 100,
+        keyState: "down",
+        heldBySostenuto: false,
+        sustainedBySustain: false,
+        softPedalAtPress: false,
+      }],
+      pedals: { sustain: true, sostenuto: false, soft: false },
+    });
+    synth.noteOff("left-mode0-right-mode3", 60, 0.2);
+    synth.pedalChange(64, 0, 0.8);
+    expect(sources).toHaveLength(3);
+    expect(sources[0]!.loop).toBe(false);
+    expect(sources[1]!.loop).toBe(true);
+    expect(sources[2]!.start).toHaveBeenCalledWith(0.8, expect.any(Number));
+
+    synth.cancelScheduledFutureEvents(0.5);
+    expect(sources[2]!.onended).toBeNull();
+    expect(sources[2]!.disconnect).toHaveBeenCalledOnce();
+    expect(sources[0]!.loop).toBe(false);
+    expect(sources[1]!.loop).toBe(true);
+    expect(sources[0]!.stop).toHaveBeenLastCalledWith(0.5 + 24 * 60 * 60);
+    expect(sources[1]!.stop).toHaveBeenLastCalledWith(0.5 + 24 * 60 * 60);
+    expect(synth.getActiveVoiceCount()).toBe(1);
+
+    synth.pedalChange(64, 0, 0.9);
+    expect(sources).toHaveLength(4);
+    expect(sources[1]!.stop).toHaveBeenLastCalledWith(0.9);
+    expect(sources[3]!.start).toHaveBeenCalledWith(0.9, expect.any(Number));
+    sources[0]!.onended?.();
+    sources[1]!.onended?.();
+    expect(synth.getActiveVoiceCount()).toBe(1);
+    sources[3]!.onended?.();
+    expect(synth.getActiveVoiceCount()).toBe(0);
+    synth.dispose();
+  });
+
+  it("cleans up a new stereo voice only after both channel sources end", () => {
+    const { sources, synth } = createStereoLoopSynth(0, 0);
+    synth.noteOn(60, 100, "new-stereo-voice", 0);
+    expect(synth.getActiveVoiceCount()).toBe(1);
+    expect(sources).toHaveLength(2);
+
+    expect(() => sources[0]!.onended?.()).not.toThrow();
+    expect(synth.getActiveVoiceCount()).toBe(1);
+    expect(() => sources[1]!.onended?.()).not.toThrow();
+    expect(synth.getActiveVoiceCount()).toBe(0);
+    expect(sources[0]!.disconnect).toHaveBeenCalledOnce();
+    expect(sources[1]!.disconnect).toHaveBeenCalledOnce();
+
+    synth.noteOn(60, 100, "next-stereo-voice", 0);
+    expect(synth.getActiveVoiceCount()).toBe(1);
+    sources[2]!.onended?.();
+    sources[3]!.onended?.();
+    expect(synth.getActiveVoiceCount()).toBe(0);
     synth.dispose();
   });
 });

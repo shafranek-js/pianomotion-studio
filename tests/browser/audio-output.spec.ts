@@ -57,7 +57,7 @@ test("uploads, parses, activates and reloads a real synthetic mono SF2 output", 
   await expect(page.getByRole("alert")).toContainText("Invalid SoundFont:");
   await expect(page.locator("#settings-soundfont-select")).toHaveValue(selectedAssetId);
   const beforeReload = await page.evaluate(async () => {
-    const [{ initializeSettings, getSettings }, { listSoundFontAssets, loadSoundFontAsset }] = await Promise.all([
+    const [{ initializeSettings, getSettings }, { listSoundFontAssets, loadSoundFontAsset, computeSha256Hex }] = await Promise.all([
       import("/src/settings/settingsStore.ts"),
       import("/src/audio/soundfont/soundfontAssetStore.ts"),
     ]);
@@ -65,12 +65,12 @@ test("uploads, parses, activates and reloads a real synthetic mono SF2 output", 
     const id = getSettings().soundfontAssetId;
     const assets = await listSoundFontAssets();
     const asset = id ? await loadSoundFontAsset(id) : null;
-    const digest = asset && await crypto.subtle.digest("SHA-256", asset.data);
+    const digest = asset && await computeSha256Hex(asset.data);
     return {
       id,
       assetCount: assets.length,
-      byteLength: asset?.data.byteLength ?? 0,
-      hash: digest ? [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, "0")).join("") : null,
+      byteLength: asset?.data.size ?? 0,
+      hash: digest ?? null,
     };
   });
   expect(beforeReload).toEqual({ id: selectedAssetId, assetCount: 1, byteLength: sampleBankBuffer.byteLength, hash: expectedHash });
@@ -91,7 +91,7 @@ test("uploads, parses, activates and reloads a real synthetic mono SF2 output", 
     await initializeSettings();
     const id = getSettings().soundfontAssetId;
     const asset = id ? await loadSoundFontAsset(id) : null;
-    return { id, byteLength: asset?.data.byteLength ?? 0 };
+    return { id, byteLength: asset?.data.size ?? 0 };
   });
   expect(afterReload).toEqual({ id: selectedAssetId, byteLength: sampleBankBuffer.byteLength });
 });

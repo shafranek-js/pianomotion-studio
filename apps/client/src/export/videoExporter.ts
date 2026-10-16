@@ -360,15 +360,19 @@ export class VideoExporter {
       let soundFont: Awaited<ReturnType<typeof parseSf2Async>> | null = null;
       if (options.includeAudio && options.audioSource === "soundfont") {
         const identity = snapshot.sourceIdentity;
+        const frozenAsset = identity.soundFontAssetBlob ?? identity.soundFontAssetBytes ?? null;
+        const frozenAssetSize = frozenAsset instanceof Blob ? frozenAsset.size : frozenAsset?.byteLength ?? 0;
         if (identity.activeOutputId !== "soundfont" || !identity.soundFontAssetId ||
-            !identity.soundFontAssetBytes || identity.soundFontAssetBytes.byteLength === 0) {
+            !frozenAsset || frozenAssetSize === 0) {
           throw new Error("The selected SoundFont is no longer loaded for this exact source identity.");
         }
-        const frozenAssetHash = await computeSha256Hex(identity.soundFontAssetBytes);
+        const frozenAssetHash = await computeSha256Hex(frozenAsset, { signal });
         if (frozenAssetHash !== identity.soundFontAssetId) {
           throw new Error("The frozen SoundFont bytes do not match the active source asset identity.");
         }
-        soundFont = await parseSf2Async(identity.soundFontAssetBytes);
+        throwIfCancelled(signal);
+        soundFont = await parseSf2Async(frozenAsset, { signal });
+        if (soundFont.sampleSource) soundFont.sampleSource.assetId = identity.soundFontAssetId;
       }
       if (options.includeAudio && options.audioSource === "recording" && !snapshot.audioRecording) {
         throw new Error("The selected synchronized recording is not available in the export snapshot.");

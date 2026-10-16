@@ -1,0 +1,292 @@
+{
+  "config": {
+    "argv": [
+      "C:\\nvm4w\\nodejs\\node.exe",
+      "C:\\Projects\\pianomotion-studio\\node_modules\\@playwright\\test\\cli.js",
+      "test",
+      "--config",
+      "playwright.soundfont.config.ts",
+      "--grep",
+      "real .* MiB|rejects more"
+    ],
+    "configFile": "C:\\Projects\\pianomotion-studio\\playwright.soundfont.config.ts",
+    "rootDir": "C:/Projects/pianomotion-studio/tests/browser",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "C:/Projects/pianomotion-studio/test-results/soundfont-msedge",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "",
+        "name": "",
+        "testDir": "C:/Projects/pianomotion-studio/tests/browser",
+        "testIgnore": [],
+        "testMatch": [
+          "**/soundfont-large.spec.ts"
+        ],
+        "timeout": 300000
+      }
+    ],
+    "filteredProjects": [
+      {
+        "grep": {},
+        "grepInvert": null,
+        "outputDir": "C:\\Projects\\pianomotion-studio\\test-results\\soundfont-msedge",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "name": "",
+        "testDir": "C:\\Projects\\pianomotion-studio\\tests\\browser",
+        "snapshotDir": "C:\\Projects\\pianomotion-studio\\tests\\browser",
+        "testIgnore": [],
+        "testMatch": [
+          "**/soundfont-large.spec.ts"
+        ],
+        "timeout": 300000,
+        "use": {
+          "baseURL": "http://127.0.0.1:4173",
+          "browserName": "chromium",
+          "channel": "msedge",
+          "headless": true
+        },
+        "dependencies": [],
+        "ignoreSnapshots": false,
+        "__projectId": ""
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "list",
+        null
+      ],
+      [
+        "json",
+        {
+          "outputFile": "test-results/reports/soundfont-msedge.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "default",
+    "updateSourceMethod": "patch",
+    "version": "1.64.0",
+    "workers": 1,
+    "webServer": {
+      "command": "npm run dev -- --host 127.0.0.1 --port 4173 --strictPort",
+      "url": "http://127.0.0.1:4173",
+      "reuseExistingServer": false,
+      "timeout": 60000
+    }
+  },
+  "suites": [
+    {
+      "title": "soundfont-large.spec.ts",
+      "file": "soundfont-large.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "real 128 MiB PCM bank hashes, commits, reopens and decodes only referenced stereo samples",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 300000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 33265,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-16T06:47:36.241Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "large-bank-result",
+                      "contentType": "application/json",
+                      "body": "ewogICJtaWIiOiAxMjgsCiAgImVsYXBzZWRNcyI6IDMzMjEsCiAgInN0b3JlZCI6IHsKICAgICJpZCI6ICIwZTlkMDA5MDJiMWUwY2JhMDY0MmU5ODc3MzViODM0ODNjYjQ4ZDM0YmZkNzdmNzZiMzVmMDgyNTNhMGUxMzhiIiwKICAgICJzaXplIjogMTM0MjE3NzI4LAogICAgImJsb2JCYWNrZWQiOiB0cnVlLAogICAgIm1hdGVyaWFsaXplZFBjbSI6IDAsCiAgICAibGFyZ2VzdE1haW5UaHJlYWRSZWFkIjogMAogIH0sCiAgInJlc3RvcmVkIjogewogICAgImlkIjogIjBlOWQwMDkwMmIxZTBjYmEwNjQyZTk4NzczNWI4MzQ4M2NiNDhkMzRiZmQ3N2Y3NmIzNWYwODI1M2EwZTEzOGIiLAogICAgInNpemUiOiAxMzQyMTc3MjgsCiAgICAiYmxvYnMiOiB0cnVlLAogICAgImxpc3RlZCI6IDEsCiAgICAicm1zIjogWwogICAgICAwLjEyOTMwMDY3NDE3MzM3MDYsCiAgICAgIDAuMDg3OTA5MTI0NTE0Mjg1NDEKICAgIF0sCiAgICAic3RhdHMiOiB7CiAgICAgICJidWRnZXRCeXRlcyI6IDI2ODQzNTQ1NiwKICAgICAgImluYWN0aXZlQnVkZ2V0Qnl0ZXMiOiA2NzEwODg2NCwKICAgICAgImRlY29kZWRCeXRlcyI6IDEzMjMwNCwKICAgICAgInByZXBhcmluZ0J5dGVzIjogMCwKICAgICAgImluYWN0aXZlQnl0ZXMiOiAwLAogICAgICAicGlubmVkQnl0ZXMiOiAxMzIzMDQsCiAgICAgICJjYWNoZWRTYW1wbGVzIjogMiwKICAgICAgInByZXBhcmluZ1NhbXBsZXMiOiAwLAogICAgICAicmVhZHMiOiAyLAogICAgICAiZGVjb2RlcyI6IDIsCiAgICAgICJjYWNoZUhpdHMiOiAwCiAgICB9CiAgfQp9"
+                    },
+                    {
+                      "name": "browser-private-memory-samples",
+                      "contentType": "application/json",
+                      "body": "ewogICJwbGF0Zm9ybSI6ICJ3aW4zMiIsCiAgImludGVydmFsTXMiOiAyMDAwLAogICJzYW1wbGVzIjogWwogICAgewogICAgICAiZWxhcHNlZE1zIjogMjE1NSwKICAgICAgInByaXZhdGVCeXRlcyI6IDQ5MjE4MzU1MgogICAgfSwKICAgIHsKICAgICAgImVsYXBzZWRNcyI6IDM4NTIsCiAgICAgICJwcml2YXRlQnl0ZXMiOiA1Njg1Mjg4OTYKICAgIH0KICBdLAogICJlcnJvcnMiOiBbXSwKICAib2JzZXJ2ZWRQZWFrUHJpdmF0ZUJ5dGVzIjogNTY4NTI4ODk2Cn0="
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "434233d160a2e1d552a0-46d8d2f61d9be07d5f9c",
+          "file": "soundfont-large.spec.ts",
+          "line": 85,
+          "column": 3
+        },
+        {
+          "title": "real 512 MiB PCM bank hashes, commits, reopens and decodes only referenced stereo samples",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 300000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 49088,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-16T06:48:21.703Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "large-bank-result",
+                      "contentType": "application/json",
+                      "body": "ewogICJtaWIiOiA1MTIsCiAgImVsYXBzZWRNcyI6IDQ2MTIsCiAgInN0b3JlZCI6IHsKICAgICJpZCI6ICJmNzM4MGU5N2JmYzYzZThhZTIxM2UzZjllY2NkYjdmMjdiZGJhMWY3YWY4MzA2YzRkYjNmODgyMzI1ZjYxZGFlIiwKICAgICJzaXplIjogNTM2ODcwOTEyLAogICAgImJsb2JCYWNrZWQiOiB0cnVlLAogICAgIm1hdGVyaWFsaXplZFBjbSI6IDAsCiAgICAibGFyZ2VzdE1haW5UaHJlYWRSZWFkIjogMAogIH0sCiAgInJlc3RvcmVkIjogewogICAgImlkIjogImY3MzgwZTk3YmZjNjNlOGFlMjEzZTNmOWVjY2RiN2YyN2JkYmExZjdhZjgzMDZjNGRiM2Y4ODIzMjVmNjFkYWUiLAogICAgInNpemUiOiA1MzY4NzA5MTIsCiAgICAiYmxvYnMiOiB0cnVlLAogICAgImxpc3RlZCI6IDEsCiAgICAicm1zIjogWwogICAgICAwLjEyOTMwMDY3NDE3MzM3MDYsCiAgICAgIDAuMDg3OTA5MTI0NTE0Mjg1NDEKICAgIF0sCiAgICAic3RhdHMiOiB7CiAgICAgICJidWRnZXRCeXRlcyI6IDI2ODQzNTQ1NiwKICAgICAgImluYWN0aXZlQnVkZ2V0Qnl0ZXMiOiA2NzEwODg2NCwKICAgICAgImRlY29kZWRCeXRlcyI6IDEzMjMwNCwKICAgICAgInByZXBhcmluZ0J5dGVzIjogMCwKICAgICAgImluYWN0aXZlQnl0ZXMiOiAwLAogICAgICAicGlubmVkQnl0ZXMiOiAxMzIzMDQsCiAgICAgICJjYWNoZWRTYW1wbGVzIjogMiwKICAgICAgInByZXBhcmluZ1NhbXBsZXMiOiAwLAogICAgICAicmVhZHMiOiAyLAogICAgICAiZGVjb2RlcyI6IDIsCiAgICAgICJjYWNoZUhpdHMiOiAwCiAgICB9CiAgfQp9"
+                    },
+                    {
+                      "name": "browser-private-memory-samples",
+                      "contentType": "application/json",
+                      "body": "ewogICJwbGF0Zm9ybSI6ICJ3aW4zMiIsCiAgImludGVydmFsTXMiOiAyMDAwLAogICJzYW1wbGVzIjogWwogICAgewogICAgICAiZWxhcHNlZE1zIjogNDc2LAogICAgICAicHJpdmF0ZUJ5dGVzIjogNTA3MTk1MzkyCiAgICB9LAogICAgewogICAgICAiZWxhcHNlZE1zIjogMjk0MywKICAgICAgInByaXZhdGVCeXRlcyI6IDU4OTg2OTA1NgogICAgfSwKICAgIHsKICAgICAgImVsYXBzZWRNcyI6IDU2MzgsCiAgICAgICJwcml2YXRlQnl0ZXMiOiA1NjQ5NjEyODAKICAgIH0sCiAgICB7CiAgICAgICJlbGFwc2VkTXMiOiA2NDQzLAogICAgICAicHJpdmF0ZUJ5dGVzIjogNTY0OTk4MTQ0CiAgICB9CiAgXSwKICAiZXJyb3JzIjogW10sCiAgIm9ic2VydmVkUGVha1ByaXZhdGVCeXRlcyI6IDU4OTg2OTA1Ngp9"
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "434233d160a2e1d552a0-99f918855cd04b62b31a",
+          "file": "soundfont-large.spec.ts",
+          "line": 85,
+          "column": 3
+        },
+        {
+          "title": "real 1024 MiB PCM bank hashes, commits, reopens and decodes only referenced stereo samples",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 300000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 64431,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-16T06:49:10.808Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "large-bank-result",
+                      "contentType": "application/json",
+                      "body": "ewogICJtaWIiOiAxMDI0LAogICJlbGFwc2VkTXMiOiA3Mzc5LAogICJzdG9yZWQiOiB7CiAgICAiaWQiOiAiZWJkZWUwM2UxOTBkMDAxY2E0NDYxYjYwNzc5MDI2YjZjMjNhNzRiNjM2NGU0NWVjMzMxMTljYzViMWUwYjRhZiIsCiAgICAic2l6ZSI6IDEwNzM3NDE4MjQsCiAgICAiYmxvYkJhY2tlZCI6IHRydWUsCiAgICAibWF0ZXJpYWxpemVkUGNtIjogMCwKICAgICJsYXJnZXN0TWFpblRocmVhZFJlYWQiOiAwCiAgfSwKICAicmVzdG9yZWQiOiB7CiAgICAiaWQiOiAiZWJkZWUwM2UxOTBkMDAxY2E0NDYxYjYwNzc5MDI2YjZjMjNhNzRiNjM2NGU0NWVjMzMxMTljYzViMWUwYjRhZiIsCiAgICAic2l6ZSI6IDEwNzM3NDE4MjQsCiAgICAiYmxvYnMiOiB0cnVlLAogICAgImxpc3RlZCI6IDEsCiAgICAicm1zIjogWwogICAgICAwLjEyOTMwMDY3NDE3MzM3MDYsCiAgICAgIDAuMDg3OTA5MTI0NTE0Mjg1NDEKICAgIF0sCiAgICAic3RhdHMiOiB7CiAgICAgICJidWRnZXRCeXRlcyI6IDI2ODQzNTQ1NiwKICAgICAgImluYWN0aXZlQnVkZ2V0Qnl0ZXMiOiA2NzEwODg2NCwKICAgICAgImRlY29kZWRCeXRlcyI6IDEzMjMwNCwKICAgICAgInByZXBhcmluZ0J5dGVzIjogMCwKICAgICAgImluYWN0aXZlQnl0ZXMiOiAwLAogICAgICAicGlubmVkQnl0ZXMiOiAxMzIzMDQsCiAgICAgICJjYWNoZWRTYW1wbGVzIjogMiwKICAgICAgInByZXBhcmluZ1NhbXBsZXMiOiAwLAogICAgICAicmVhZHMiOiAyLAogICAgICAiZGVjb2RlcyI6IDIsCiAgICAgICJjYWNoZUhpdHMiOiAwCiAgICB9CiAgfQp9"
+                    },
+                    {
+                      "name": "browser-private-memory-samples",
+                      "contentType": "application/json",
+                      "body": "ewogICJwbGF0Zm9ybSI6ICJ3aW4zMiIsCiAgImludGVydmFsTXMiOiAyMDAwLAogICJzYW1wbGVzIjogWwogICAgewogICAgICAiZWxhcHNlZE1zIjogNDU1LAogICAgICAicHJpdmF0ZUJ5dGVzIjogNDk4MDM2NzM2CiAgICB9LAogICAgewogICAgICAiZWxhcHNlZE1zIjogMjkxMiwKICAgICAgInByaXZhdGVCeXRlcyI6IDU2OTgzOTYxNgogICAgfSwKICAgIHsKICAgICAgImVsYXBzZWRNcyI6IDQ5MTUsCiAgICAgICJwcml2YXRlQnl0ZXMiOiA1MjM4MTY5NjAKICAgIH0sCiAgICB7CiAgICAgICJlbGFwc2VkTXMiOiA2OTQwLAogICAgICAicHJpdmF0ZUJ5dGVzIjogNTE0NzQ4NDE2CiAgICB9LAogICAgewogICAgICAiZWxhcHNlZE1zIjogNzgzOCwKICAgICAgInByaXZhdGVCeXRlcyI6IDU1NTI1Mzc2MAogICAgfQogIF0sCiAgImVycm9ycyI6IFtdLAogICJvYnNlcnZlZFBlYWtQcml2YXRlQnl0ZXMiOiA1Njk4Mzk2MTYKfQ=="
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "434233d160a2e1d552a0-6f58eacf974aa0dbf9ae",
+          "file": "soundfont-large.spec.ts",
+          "line": 85,
+          "column": 3
+        },
+        {
+          "title": "rejects more than 1 GiB before reading the source",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 300000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 941,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-16T06:50:15.259Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "434233d160a2e1d552a0-f0fdaaf2aad6b612e155",
+          "file": "soundfont-large.spec.ts",
+          "line": 157,
+          "column": 1
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-10-16T06:47:17.533Z",
+    "duration": 211454.58299999998,
+    "expected": 4,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}

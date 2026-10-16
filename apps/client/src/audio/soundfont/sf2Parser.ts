@@ -1,4 +1,17 @@
+import { parseSf2BlobMetadata } from "./sf2BlobParser.ts";
 import type { Sf2Header, Sf2Preset, Sf2SampleHeader, Sf2SoundFont, Sf2Zone } from "./types";
+
+export type Sf2ProgressPhase = "reading" | "parsing" | "hashing" | "saving";
+export interface Sf2Progress {
+  phase: Sf2ProgressPhase;
+  loadedBytes: number;
+  totalBytes: number;
+}
+export type Sf2ProgressCallback = (progress: Sf2Progress) => void;
+export interface Sf2OperationOptions {
+  signal?: AbortSignal;
+  onProgress?: Sf2ProgressCallback;
+}
 
 export class InvalidSoundFontError extends Error {
   constructor(message: string) {
@@ -7,26 +20,65 @@ export class InvalidSoundFontError extends Error {
   }
 }
 
-export const MAX_SF2_FILE_BYTES = 128 * 1024 * 1024;
+export const MAX_SF2_FILE_BYTES = 1024 * 1024 * 1024;
 
 export function assertSf2FileSize(byteLength: number): void {
   if (!Number.isSafeInteger(byteLength) || byteLength < 12) {
     throw new InvalidSoundFontError("File is too small to be a valid SF2 file.");
   }
   if (byteLength > MAX_SF2_FILE_BYTES) {
-    throw new InvalidSoundFontError(`File exceeds the ${MAX_SF2_FILE_BYTES / (1024 * 1024)} MiB SoundFont limit.`);
+    throw new InvalidSoundFontError("File exceeds the 1 GiB SoundFont limit.");
   }
 }
 
+export interface Sf2ParserOptions {
+  /** Used by the Blob metadata parser so the PCM remains in its original Blob. */
+  sampleSource?: { blob: Blob; sampleDataOffset: number; sampleCount: number };
+}
+
+interface ChunkView {
+  tag: string;
+  dataOffset: number;
+  size: number;
+}
+
+const TABLE_ENTRY_BYTES: Record<string, number> = {
+  phdr: 38,
+  pbag: 4,
+  pmod: 10,
+  pgen: 4,
+  inst: 22,
+  ibag: 4,
+  imod: 10,
+  igen: 4,
+  shdr: 46,
+};
+
+type GeneratorMap = Map<number, number>;
+
+const VALUE_GENERATORS = new Set([17, 34, 35, 36, 37, 38, 48, 51, 52]);
+const PRESET_GENERATOR_DEFAULTS: Record<number, number> = {
+  17: 0,
+  34: -12_000,
+  35: -12_000,
+  36: -12_000,
+  37: 0,
+  38: -12_000,
+  48: 0,
+  51: 0,
+  52: 0,
+};
+
 /**
- * Parser for SoundFont 2 (SF2) binary files conforming to SF2.04 specification.
+ * Parser for SoundFont 2 (SF2) binary files. The synchronous ArrayBuffer path
+ * keeps rawSampleData for existing in-memory callers. Blob imports use the
+ * metadata-only worker path below and retain PCM as a file-backed source.
  */
 export class Sf2Parser {
-  private view: DataView;
-  private bytes: Uint8Array;
-  private offset = 0;
+  private readonly view: DataView;
+  private readonly bytes: Uint8Array;
 
-  constructor(buffer: ArrayBuffer | Uint8Array) {
+  constructor(buffer: ArrayBuffer | Uint8Array, private readonly options: Sf2ParserOptions = {}) {
     if (buffer instanceof Uint8Array) {
       this.bytes = buffer;
       this.view = new DataView(buffer.buffer, buffer.byteOffset, buffer.byteLength);
@@ -37,141 +89,83 @@ export class Sf2Parser {
   }
 
   public parse(): Sf2SoundFont {
-    if (this.bytes.byteLength < 12) {
-      throw new InvalidSoundFontError("File is too small to be a valid SF2 file.");
+    assertSf2FileSize(this.bytes.byteLength);
+    if (this.readAscii(0, 4) !== "RIFF") {
+      throw new InvalidSoundFontError(`Expected RIFF header, got '${this.readAscii(0, 4)}'`);
     }
 
-    const riffTag = this.readFourCC();
-    if (riffTag !== "RIFF") {
-      throw new InvalidSoundFontError(`Expected RIFF header, got '${riffTag}'`);
+    const riffSize = this.readUint32At(4);
+    const riffEnd = riffSize + 8;
+    if (riffSize < 4 || riffEnd > this.bytes.byteLength) {
+      throw new InvalidSoundFontError("RIFF size extends beyond the file boundary.");
+    }
+    if (this.readAscii(8, 4) !== "sfbk") {
+      throw new InvalidSoundFontError(`Expected form type 'sfbk', got '${this.readAscii(8, 4)}'`);
     }
 
-    const fileSize = this.readUint32();
-    if (fileSize + 8 > this.bytes.byteLength + 4) {
-      // Tolerate slight padding difference, but enforce reasonable size
-    }
-
-    const formType = this.readFourCC();
-    if (formType !== "sfbk") {
-      throw new InvalidSoundFontError(`Expected form type 'sfbk', got '${formType}'`);
-    }
-
-    let header: Sf2Header = {
-      name: "Unnamed SoundFont",
-      versionMajor: 2,
-      versionMinor: 4,
-    };
-
-    let rawSampleData: Int16Array = new Int16Array(0);
-    const sampleHeaders: Sf2SampleHeader[] = [];
-    const presets: Sf2Preset[] = [];
-
-    // Temporary storage for pdta subchunks
-    let rawPhdr: Uint8Array | null = null;
-    let rawPbag: Uint8Array | null = null;
-    let rawPgen: Uint8Array | null = null;
-    let rawInst: Uint8Array | null = null;
-    let rawIbag: Uint8Array | null = null;
-    let rawIgen: Uint8Array | null = null;
+    let header: Sf2Header = { name: "Unnamed SoundFont", versionMajor: 2, versionMinor: 4 };
+    let rawSampleData = new Int16Array(0);
+    let sawSampleData = false;
     let rawShdr: Uint8Array | null = null;
+    const tables = new Map<string, Uint8Array>();
 
-    while (this.offset + 8 <= this.bytes.byteLength) {
-      const chunkTag = this.readFourCC();
-      const chunkSize = this.readUint32();
-      const nextChunkOffset = this.offset + chunkSize + (chunkSize % 2); // Word aligned
+    for (const chunk of this.listChunks(12, riffEnd)) {
+      if (chunk.tag !== "LIST") continue;
+      if (chunk.size < 4) throw new InvalidSoundFontError("LIST chunk is missing its list type.");
+      const listType = this.readAscii(chunk.dataOffset, 4);
+      const children = this.listChunks(chunk.dataOffset + 4, chunk.dataOffset + chunk.size);
 
-      if (chunkTag === "LIST") {
-        const listType = this.readFourCC();
-        const listEnd = this.offset + chunkSize - 4;
-
-        if (listType === "INFO") {
-          header = this.parseInfoList(listEnd, header);
-        } else if (listType === "sdta") {
-          rawSampleData = this.parseSdtaList(listEnd);
-        } else if (listType === "pdta") {
-          // Parse pdta subchunks
-          while (this.offset + 8 <= listEnd) {
-            const subTag = this.readFourCC();
-            const subSize = this.readUint32();
-            const subData = this.bytes.subarray(this.offset, this.offset + subSize);
-
-            if (subTag === "phdr") rawPhdr = subData;
-            else if (subTag === "pbag") rawPbag = subData;
-            else if (subTag === "pgen") rawPgen = subData;
-            else if (subTag === "inst") rawInst = subData;
-            else if (subTag === "ibag") rawIbag = subData;
-            else if (subTag === "igen") rawIgen = subData;
-            else if (subTag === "shdr") rawShdr = subData;
-
-            this.offset += subSize + (subSize % 2);
+      if (listType === "INFO") {
+        header = this.parseInfoList(children, header);
+      } else if (listType === "sdta") {
+        for (const child of children) {
+          if (child.tag !== "smpl") continue;
+          if (sawSampleData) throw new InvalidSoundFontError("The sdta list contains more than one smpl PCM chunk.");
+          sawSampleData = true;
+          if (child.size % 2 !== 0) throw new InvalidSoundFontError("Sample data must contain complete 16-bit PCM values.");
+          if (child.size >= 4 && this.readAscii(child.dataOffset, 4) === "OggS") {
+            throw new InvalidSoundFontError("Ogg/Vorbis-compressed sample data (SF3) is not supported; choose an uncompressed PCM SF2 bank.");
+          }
+          if (!this.options.sampleSource) {
+            rawSampleData = new Int16Array(child.size / 2);
+            for (let i = 0; i < rawSampleData.length; i++) {
+              rawSampleData[i] = this.view.getInt16(child.dataOffset + i * 2, true);
+            }
           }
         }
-      }
-
-      this.offset = nextChunkOffset;
-    }
-
-    // Parse Sample Headers (shdr)
-    if (rawShdr) {
-      const shdrView = new DataView(rawShdr.buffer, rawShdr.byteOffset, rawShdr.byteLength);
-      const entrySize = 46; // SF2 sample header is 46 bytes
-      const count = Math.floor(rawShdr.byteLength / entrySize);
-
-      for (let i = 0; i < count; i++) {
-        const base = i * entrySize;
-        const nameBytes = rawShdr.subarray(base, base + 20);
-        const name = this.decodeFixedString(nameBytes);
-        const start = shdrView.getUint32(base + 20, true);
-        const end = shdrView.getUint32(base + 24, true);
-        const loopStart = shdrView.getUint32(base + 28, true);
-        const loopEnd = shdrView.getUint32(base + 32, true);
-        const sampleRate = shdrView.getUint32(base + 36, true);
-        const originalPitch = shdrView.getUint8(base + 40);
-        const pitchCorrection = shdrView.getInt8(base + 41);
-        const sampleType = shdrView.getUint16(base + 44, true);
-
-        sampleHeaders.push({
-          name,
-          start,
-          end,
-          loopStart,
-          loopEnd,
-          sampleRate: sampleRate > 0 ? sampleRate : 44100,
-          originalPitch: originalPitch > 0 && originalPitch < 128 ? originalPitch : 60,
-          pitchCorrection,
-          sampleType,
-        });
+      } else if (listType === "pdta") {
+        for (const child of children) {
+          if (!(child.tag in TABLE_ENTRY_BYTES)) continue;
+          if (tables.has(child.tag)) throw new InvalidSoundFontError(`pdta contains duplicate '${child.tag}' tables.`);
+          const entryBytes = TABLE_ENTRY_BYTES[child.tag]!;
+          if (child.size % entryBytes !== 0) {
+            throw new InvalidSoundFontError(`pdta '${child.tag}' table has ${child.size} bytes; entries must be ${entryBytes} bytes long.`);
+          }
+          tables.set(child.tag, this.bytes.subarray(child.dataOffset, child.dataOffset + child.size));
+          if (child.tag === "shdr") rawShdr = tables.get(child.tag)!;
+        }
       }
     }
 
-    for (const sample of sampleHeaders) {
-      if (sample.name === "EOS") continue;
-      if ((sample.sampleType & 0x8000) !== 0) {
-        throw new InvalidSoundFontError("ROM-backed samples are not supported; choose a bank containing embedded PCM samples.");
-      }
-      if ((sample.sampleType & 0x7fff) !== 1) {
-        throw new InvalidSoundFontError("Only mono PCM samples are supported; stereo, linked, and unknown sample types cannot be rendered.");
-      }
+    const sampleHeaders = rawShdr ? this.parseSampleHeaders(rawShdr) : [];
+    const sourceSampleCount = this.options.sampleSource?.sampleCount ?? rawSampleData.length;
+    this.validateSampleHeaders(sampleHeaders, sourceSampleCount);
+
+    const presets: Sf2Preset[] = [];
+    const requiredPresetTables = ["phdr", "pbag", "pgen", "inst", "ibag", "igen"];
+    const presentPresetTables = requiredPresetTables.filter((tag) => tables.has(tag));
+    if (presentPresetTables.length > 0 && presentPresetTables.length !== requiredPresetTables.length) {
+      const missing = requiredPresetTables.filter((tag) => !tables.has(tag));
+      throw new InvalidSoundFontError(`Preset tables are incomplete; missing ${missing.join(", ")}.`);
+    }
+    if (presentPresetTables.length === requiredPresetTables.length) {
+      this.validateInstrumentSamplePairs(tables, sampleHeaders);
+      this.assemblePresets(tables, sampleHeaders, presets);
     }
 
-    // Parse Presets & Instruments if present
-    if (rawPhdr && rawPbag && rawPgen && rawInst && rawIbag && rawIgen) {
-      this.assemblePresets(
-        rawPhdr,
-        rawPbag,
-        rawPgen,
-        rawInst,
-        rawIbag,
-        rawIgen,
-        sampleHeaders,
-        presets,
-      );
-    }
-
-    // Fallback: If no presets assembled, create default piano preset mapping available samples
-    if (presets.length === 0 && sampleHeaders.length > 0) {
+    if (presets.length === 0 && sampleHeaders.some((sample) => sample.name !== "EOS")) {
       const fallbackZones: Sf2Zone[] = sampleHeaders
-        .filter((s) => s.end > s.start && s.name !== "EOS")
+        .filter((sample) => sample.name !== "EOS")
         .map((sample, idx) => ({
           keyRange: [0, 127],
           velRange: [0, 127],
@@ -179,13 +173,7 @@ export class Sf2Parser {
           rootKey: sample.originalPitch,
           pitchCorrection: sample.pitchCorrection,
         }));
-
-      presets.push({
-        name: header.name || "Default Preset",
-        presetNumber: 0,
-        bankNumber: 0,
-        zones: fallbackZones,
-      });
+      presets.push({ name: header.name || "Default Preset", presetNumber: 0, bankNumber: 0, zones: fallbackZones });
     }
 
     for (const preset of presets) {
@@ -196,83 +184,170 @@ export class Sf2Parser {
       }
     }
 
-    return {
-      header,
-      presets,
-      samples: sampleHeaders,
-      rawSampleData,
-    };
+    const result: Sf2SoundFont = { header, presets, samples: sampleHeaders };
+    if (this.options.sampleSource) result.sampleSource = this.options.sampleSource;
+    else result.rawSampleData = rawSampleData;
+    return result;
   }
 
-  private parseInfoList(listEnd: number, currentHeader: Sf2Header): Sf2Header {
-    const header: Sf2Header = { ...currentHeader };
-    while (this.offset + 8 <= listEnd) {
-      const tag = this.readFourCC();
-      const size = this.readUint32();
-      const strBytes = this.bytes.subarray(this.offset, this.offset + size);
-      const val = this.decodeFixedString(strBytes);
-
-      if (tag === "INAM") header.name = val;
-      else if (tag === "isng") header.soundEngine = val;
-      else if (tag === "ifil" && size >= 4) {
-        const versionMajor = this.view.getUint16(this.offset, true);
-        const versionMinor = this.view.getUint16(this.offset + 2, true);
+  private parseInfoList(chunks: ChunkView[], currentHeader: Sf2Header): Sf2Header {
+    const header = { ...currentHeader };
+    for (const chunk of chunks) {
+      const value = this.decodeFixedString(this.bytes.subarray(chunk.dataOffset, chunk.dataOffset + chunk.size));
+      if (chunk.tag === "INAM") header.name = value;
+      else if (chunk.tag === "isng") header.soundEngine = value;
+      else if (chunk.tag === "ifil" && chunk.size >= 4) {
+        const versionMajor = this.readUint16At(chunk.dataOffset);
+        const versionMinor = this.readUint16At(chunk.dataOffset + 2);
         if (versionMajor !== 2 || versionMinor > 4) {
           throw new InvalidSoundFontError(`SoundFont version ${versionMajor}.${versionMinor} is unsupported; this renderer accepts SF2 versions through 2.4.`);
         }
         header.versionMajor = versionMajor;
         header.versionMinor = versionMinor;
       }
-
-      this.offset += size + (size % 2);
     }
     return header;
   }
 
-  private parseSdtaList(listEnd: number): Int16Array {
-    while (this.offset + 8 <= listEnd) {
-      const tag = this.readFourCC();
-      const size = this.readUint32();
-      if (tag === "smpl") {
-        if (size >= 4 && this.decodeFixedString(this.bytes.subarray(this.offset, this.offset + 4)) === "OggS") {
-          throw new InvalidSoundFontError("Ogg/Vorbis-compressed sample data (SF3) is not supported; choose an uncompressed PCM SF2 bank.");
-        }
-        if (size % 2 !== 0) {
-          throw new InvalidSoundFontError("Sample data must contain complete 16-bit PCM values.");
-        }
-        const sampleCount = Math.floor(size / 2);
-        // Copy 16-bit PCM samples
-        const sampleData = new Int16Array(sampleCount);
-        for (let i = 0; i < sampleCount; i++) {
-          sampleData[i] = this.view.getInt16(this.offset + i * 2, true);
-        }
-        this.offset += size + (size % 2);
-        return sampleData;
-      }
-      this.offset += size + (size % 2);
+  private parseSampleHeaders(rawShdr: Uint8Array): Sf2SampleHeader[] {
+    const view = new DataView(rawShdr.buffer, rawShdr.byteOffset, rawShdr.byteLength);
+    const headers: Sf2SampleHeader[] = [];
+    for (let base = 0; base < rawShdr.byteLength; base += 46) {
+      headers.push({
+        name: this.decodeFixedString(rawShdr.subarray(base, base + 20)),
+        start: view.getUint32(base + 20, true),
+        end: view.getUint32(base + 24, true),
+        loopStart: view.getUint32(base + 28, true),
+        loopEnd: view.getUint32(base + 32, true),
+        sampleRate: view.getUint32(base + 36, true),
+        originalPitch: view.getUint8(base + 40),
+        pitchCorrection: view.getInt8(base + 41),
+        sampleLink: view.getUint16(base + 42, true),
+        sampleType: view.getUint16(base + 44, true),
+      });
     }
-    return new Int16Array(0);
+    return headers;
   }
 
-  private assemblePresets(
-    rawPhdr: Uint8Array,
-    rawPbag: Uint8Array,
-    rawPgen: Uint8Array,
-    rawInst: Uint8Array,
-    rawIbag: Uint8Array,
-    rawIgen: Uint8Array,
-    sampleHeaders: Sf2SampleHeader[],
-    outPresets: Sf2Preset[],
-  ): void {
-    const phdrView = new DataView(rawPhdr.buffer, rawPhdr.byteOffset, rawPhdr.byteLength);
-    const pbagView = new DataView(rawPbag.buffer, rawPbag.byteOffset, rawPbag.byteLength);
-    const pgenView = new DataView(rawPgen.buffer, rawPgen.byteOffset, rawPgen.byteLength);
-    const instView = new DataView(rawInst.buffer, rawInst.byteOffset, rawInst.byteLength);
-    const ibagView = new DataView(rawIbag.buffer, rawIbag.byteOffset, rawIbag.byteLength);
-    const igenView = new DataView(rawIgen.buffer, rawIgen.byteOffset, rawIgen.byteLength);
+  private validateSampleHeaders(samples: Sf2SampleHeader[], sampleCount: number): void {
+    const eosIndex = samples.findIndex((sample) => sample.name === "EOS");
+    const realCount = eosIndex >= 0 ? eosIndex : samples.length;
+    const sampleLimit = this.options.sampleSource?.sampleCount ?? sampleCount;
 
-    const presetCount = Math.floor(rawPhdr.byteLength / 38) - 1; // Last is terminal EOP
-    if (presetCount <= 0) return;
+    for (let index = 0; index < realCount; index++) {
+      const sample = samples[index]!;
+      const context = `Sample '${sample.name || index}'`;
+      if ((sample.sampleType & 0x8000) !== 0) {
+        throw new InvalidSoundFontError(`${context}: ROM-backed samples are not supported; choose a bank containing embedded PCM samples.`);
+      }
+      const type = sample.sampleType & 0x7fff;
+      if (![1, 2, 4].includes(type)) {
+        if (type === 8) throw new InvalidSoundFontError(`${context} uses linked sample type 8, which is not supported.`);
+        throw new InvalidSoundFontError(`${context} uses unsupported sample type ${type}; supported SF2 types are mono (1), right (2), and left (4).`);
+      }
+      if (!(sample.sampleRate >= 3000 && sample.sampleRate <= 384000)) {
+        throw new InvalidSoundFontError(`${context} has unsupported sample rate ${sample.sampleRate}; supported playback rates are 3000 to 384000 Hz (resampling is not implemented).`);
+      }
+      if (!(sample.start < sample.end && sample.end <= sampleLimit)) {
+        throw new InvalidSoundFontError(`${context} has invalid PCM bounds ${sample.start}..${sample.end} for ${sampleLimit} available samples.`);
+      }
+      if (!(sample.start <= sample.loopStart && sample.loopStart <= sample.loopEnd && sample.loopEnd <= sample.end)) {
+        throw new InvalidSoundFontError(`${context} has loop bounds ${sample.loopStart}..${sample.loopEnd} outside its PCM range ${sample.start}..${sample.end}.`);
+      }
+    }
+
+    for (let index = 0; index < realCount; index++) {
+      const sample = samples[index]!;
+      const type = sample.sampleType & 0x7fff;
+      if (type !== 2 && type !== 4) continue;
+      const link = sample.sampleLink ?? 0;
+      if (link >= realCount || link === index) {
+        throw new InvalidSoundFontError(`Stereo sample '${sample.name}' has invalid sampleLink ${link}.`);
+      }
+      const partner = samples[link]!;
+      const partnerType = partner.sampleType & 0x7fff;
+      if (partner.sampleLink !== index || partnerType !== (type === 2 ? 4 : 2)) {
+        throw new InvalidSoundFontError(`Stereo sample '${sample.name}' must link reciprocally to an opposite-channel sample.`);
+      }
+      const left = type === 4 ? sample : partner;
+      const right = type === 2 ? sample : partner;
+      if (left.sampleRate !== right.sampleRate) {
+        throw new InvalidSoundFontError(`Stereo samples '${left.name}' and '${right.name}' must have matching sample rates.`);
+      }
+    }
+  }
+
+  private validateInstrumentSamplePairs(tables: Map<string, Uint8Array>, samples: Sf2SampleHeader[]): void {
+    const realCount = samples.findIndex((sample) => sample.name === "EOS") >= 0
+      ? samples.findIndex((sample) => sample.name === "EOS")
+      : samples.length;
+    const inst = tables.get("inst")!;
+    const ibag = tables.get("ibag")!;
+    const igen = tables.get("igen")!;
+    const instView = this.dataView(inst);
+    const ibagView = this.dataView(ibag);
+    const igenView = this.dataView(igen);
+    const instrumentCount = this.terminalCount(inst, 22, "EOI");
+    const bagCount = ibag.byteLength / 4;
+    const genCount = igen.byteLength / 4;
+    const sampleInstruments = Array.from({ length: realCount }, () => new Set<number>());
+
+    for (let id = 0; id < instrumentCount; id++) {
+      const start = instView.getUint16(id * 22 + 20, true);
+      const end = instView.getUint16((id + 1) * 22 + 20, true);
+      this.assertIndexRange("instrument bag", start, end, bagCount - 1, `Instrument ${id}`);
+      for (let bag = start; bag < end; bag++) {
+        const genStart = ibagView.getUint16(bag * 4, true);
+        const genEnd = ibagView.getUint16((bag + 1) * 4, true);
+        this.assertIndexRange("instrument generator", genStart, genEnd, genCount, `Instrument ${id}, zone ${bag - start}`);
+        for (let gen = genStart; gen < genEnd; gen++) {
+          if (igenView.getUint16(gen * 4, true) !== 53) continue;
+          const sampleId = igenView.getUint16(gen * 4 + 2, true);
+          if (sampleId >= realCount) {
+            throw new InvalidSoundFontError(`Instrument ${id} references invalid sample index ${sampleId}.`);
+          }
+          sampleInstruments[sampleId]!.add(id);
+        }
+      }
+    }
+
+    for (let index = 0; index < realCount; index++) {
+      const sample = samples[index]!;
+      const type = sample.sampleType & 0x7fff;
+      if (type !== 2 && type !== 4) continue;
+      const other = sampleInstruments[sample.sampleLink ?? -1];
+      const own = sampleInstruments[index]!;
+      if (!other) throw new InvalidSoundFontError(`Stereo sample '${sample.name}' links to a sample outside the sample table.`);
+      if (own.size > 0 || other.size > 0) {
+        if (own.size === 0 || own.size !== other.size || [...own].some((instrumentId) => !other.has(instrumentId))) {
+          throw new InvalidSoundFontError(`Stereo samples '${sample.name}' and '${samples[sample.sampleLink!]!.name}' must be paired within the same instrument(s).`);
+        }
+      }
+    }
+  }
+
+  private assemblePresets(tables: Map<string, Uint8Array>, sampleHeaders: Sf2SampleHeader[], outPresets: Sf2Preset[]): void {
+    const rawPhdr = tables.get("phdr")!;
+    const rawPbag = tables.get("pbag")!;
+    const rawPgen = tables.get("pgen")!;
+    const rawInst = tables.get("inst")!;
+    const rawIbag = tables.get("ibag")!;
+    const rawIgen = tables.get("igen")!;
+    const phdrView = this.dataView(rawPhdr);
+    const pbagView = this.dataView(rawPbag);
+    const pgenView = this.dataView(rawPgen);
+    const instView = this.dataView(rawInst);
+    const ibagView = this.dataView(rawIbag);
+    const igenView = this.dataView(rawIgen);
+
+    const presetCount = this.terminalCount(rawPhdr, 38, "EOP");
+    const instrumentCount = this.terminalCount(rawInst, 22, "EOI");
+    const pbagCount = rawPbag.byteLength / 4;
+    const pgenCount = rawPgen.byteLength / 4;
+    const ibagCount = rawIbag.byteLength / 4;
+    const igenCount = rawIgen.byteLength / 4;
+    const eosIndex = sampleHeaders.findIndex((sample) => sample.name === "EOS");
+    const realSampleCount = eosIndex >= 0 ? eosIndex : sampleHeaders.length;
 
     for (let p = 0; p < presetCount; p++) {
       const pOffset = p * 38;
@@ -280,134 +355,224 @@ export class Sf2Parser {
       const presetNumber = phdrView.getUint16(pOffset + 20, true);
       const bankNumber = phdrView.getUint16(pOffset + 22, true);
       const pbagStart = phdrView.getUint16(pOffset + 24, true);
-      const pbagEnd = phdrView.getUint16(pOffset + 38 + 24, true);
-
+      const pbagEnd = phdrView.getUint16((p + 1) * 38 + 24, true);
+      this.assertIndexRange("preset bag", pbagStart, pbagEnd, pbagCount - 1, `Preset '${name || presetNumber}'`);
       const zones: Sf2Zone[] = [];
+      let presetGlobal: GeneratorMap | undefined;
 
-      for (let pb = pbagStart; pb < pbagEnd && pb * 4 + 4 <= rawPbag.byteLength; pb++) {
+      for (let pb = pbagStart; pb < pbagEnd; pb++) {
         const pgenStart = pbagView.getUint16(pb * 4, true);
         const pgenEnd = pbagView.getUint16((pb + 1) * 4, true);
-
-        let instrumentId: number | null = null;
-        let pKeyRange: [number, number] = [0, 127];
-        let pVelRange: [number, number] = [0, 127];
-
-        for (let pg = pgenStart; pg < pgenEnd && pg * 4 + 4 <= rawPgen.byteLength; pg++) {
-          const genOper = pgenView.getUint16(pg * 4, true);
-          const genVal = pgenView.getUint16(pg * 4 + 2, true);
-
-          if (genOper === 41) {
-            // instrument generator
-            instrumentId = genVal;
-          } else if (genOper === 43) {
-            // key range
-            pKeyRange = [genVal & 0xff, (genVal >> 8) & 0xff];
-          } else if (genOper === 44) {
-            // vel range
-            pVelRange = [genVal & 0xff, (genVal >> 8) & 0xff];
-          }
+        this.assertIndexRange("preset generator", pgenStart, pgenEnd, pgenCount, `Preset '${name || presetNumber}', zone ${pb - pbagStart}`);
+        const presetGenerators = this.readGeneratorMap(pgenView, pgenStart, pgenEnd);
+        const instrumentId = presetGenerators.get(41);
+        if (pb === pbagStart && instrumentId === undefined) {
+          presetGlobal = presetGenerators;
+          continue;
+        }
+        if (instrumentId === undefined) continue;
+        if (instrumentId >= instrumentCount) {
+          throw new InvalidSoundFontError(`Preset '${name || presetNumber}' references invalid instrument index ${instrumentId}.`);
         }
 
-        if (instrumentId !== null && instrumentId * 22 + 22 <= rawInst.byteLength) {
-          // Resolve instrument
-          const instOffset = instrumentId * 22;
-          const ibagStart = instView.getUint16(instOffset + 20, true);
-          const ibagEnd = instView.getUint16(instOffset + 22 + 20, true);
+        const presetValues = this.resolveValueGenerators(presetGlobal, presetGenerators, VALUE_GENERATORS);
+        const pKeyRange = this.resolveGeneratorRange(presetGlobal, presetGenerators, 43, "preset key");
+        const pVelRange = this.resolveGeneratorRange(presetGlobal, presetGenerators, 44, "preset velocity");
+        const instOffset = instrumentId * 22;
+        const ibagStart = instView.getUint16(instOffset + 20, true);
+        const ibagEnd = instView.getUint16((instrumentId + 1) * 22 + 20, true);
+        this.assertIndexRange("instrument bag", ibagStart, ibagEnd, ibagCount - 1, `Instrument ${instrumentId}`);
 
-          for (let ib = ibagStart; ib < ibagEnd && ib * 4 + 4 <= rawIbag.byteLength; ib++) {
-            const igenStart = ibagView.getUint16(ib * 4, true);
-            const igenEnd = ibagView.getUint16((ib + 1) * 4, true);
+        const instrumentZones: Array<{ bagIndex: number; generators: GeneratorMap }> = [];
+        for (let ib = ibagStart; ib < ibagEnd; ib++) {
+          const igenStart = ibagView.getUint16(ib * 4, true);
+          const igenEnd = ibagView.getUint16((ib + 1) * 4, true);
+          this.assertIndexRange("instrument generator", igenStart, igenEnd, igenCount, `Instrument ${instrumentId}, zone ${ib - ibagStart}`);
+          instrumentZones.push({ bagIndex: ib, generators: this.readGeneratorMap(igenView, igenStart, igenEnd) });
+        }
+        const firstInstrumentZone = instrumentZones[0]?.generators;
+        const instrumentGlobal = firstInstrumentZone && !firstInstrumentZone.has(53) ? firstInstrumentZone : undefined;
 
-            let sampleId: number | null = null;
-            let iKeyRange: [number, number] = [0, 127];
-            let iVelRange: [number, number] = [0, 127];
-            let rootKey: number | undefined;
-            let pitchCorrection: number | undefined;
-            let pan: number | undefined;
-            let attack: number | undefined;
-            let release: number | undefined;
-            let sampleModes: number | undefined;
-
-            for (let ig = igenStart; ig < igenEnd && ig * 4 + 4 <= rawIgen.byteLength; ig++) {
-              const op = igenView.getUint16(ig * 4, true);
-              const val = igenView.getUint16(ig * 4 + 2, true);
-
-              if (op === 53) sampleId = val;
-              else if (op === 43) iKeyRange = [val & 0xff, (val >> 8) & 0xff];
-              else if (op === 44) iVelRange = [val & 0xff, (val >> 8) & 0xff];
-              else if (op === 58) rootKey = val;
-              else if (op === 54) sampleModes = val;
-              else if (op === 52) pitchCorrection = val > 32767 ? val - 65536 : val;
-              else if (op === 17) pan = val > 32767 ? val - 65536 : val;
-              else if (op === 34) attack = Math.pow(2, (val > 32767 ? val - 65536 : val) / 1200);
-              else if (op === 38) release = Math.pow(2, (val > 32767 ? val - 65536 : val) / 1200);
-            }
-
-            if (sampleId !== null && sampleId < sampleHeaders.length) {
-              const finalKeyMin = Math.max(pKeyRange[0], iKeyRange[0]);
-              const finalKeyMax = Math.min(pKeyRange[1], iKeyRange[1]);
-              const finalVelMin = Math.max(pVelRange[0], iVelRange[0]);
-              const finalVelMax = Math.min(pVelRange[1], iVelRange[1]);
-
-              if (finalKeyMin <= finalKeyMax && finalVelMin <= finalVelMax) {
-                zones.push({
-                  keyRange: [finalKeyMin, finalKeyMax],
-                  velRange: [finalVelMin, finalVelMax],
-                  sampleIndex: sampleId,
-                  rootKey: rootKey ?? sampleHeaders[sampleId]?.originalPitch,
-                  pitchCorrection: pitchCorrection ?? sampleHeaders[sampleId]?.pitchCorrection,
-                  sampleModes,
-                  pan,
-                  attackSeconds: attack,
-                  releaseSeconds: release,
-                });
-              }
-            }
+        for (const { bagIndex: ib, generators: instrumentGenerators } of instrumentZones) {
+          const sampleId = instrumentGenerators.get(53);
+          if (sampleId === undefined) continue;
+          if (sampleId >= realSampleCount) {
+            throw new InvalidSoundFontError(`Instrument ${instrumentId}, zone ${ib - ibagStart} references invalid sample index ${sampleId}.`);
           }
+          const iValues = this.resolveValueGenerators(instrumentGlobal, instrumentGenerators, VALUE_GENERATORS);
+          const iKeyRange = this.resolveGeneratorRange(instrumentGlobal, instrumentGenerators, 43, "instrument key");
+          const iVelRange = this.resolveGeneratorRange(instrumentGlobal, instrumentGenerators, 44, "instrument velocity");
+          const finalKeyRange = this.intersectRanges(pKeyRange, iKeyRange);
+          const finalVelRange = this.intersectRanges(pVelRange, iVelRange);
+          if (!finalKeyRange || !finalVelRange) continue;
+
+          const amount = (operator: number): number | undefined => {
+            const instrumentValue = iValues.get(operator);
+            const presetValue = presetValues.get(operator);
+            if (presetValue === undefined) {
+              return instrumentValue === undefined ? undefined : this.signedAmount(instrumentValue);
+            }
+            const base = instrumentValue === undefined
+              ? PRESET_GENERATOR_DEFAULTS[operator] ?? 0
+              : this.signedAmount(instrumentValue);
+            return base + this.signedAmount(presetValue);
+          };
+          const coarseTune = amount(51) ?? 0;
+          const fineTune = amount(52) ?? 0;
+          const sample = sampleHeaders[sampleId];
+          const rawRootKey = instrumentGenerators.get(58) ?? instrumentGlobal?.get(58);
+          const rootKeyAmount = rawRootKey === undefined ? undefined : this.signedAmount(rawRootKey);
+          if (rootKeyAmount !== undefined && rootKeyAmount !== -1 && (rootKeyAmount < 0 || rootKeyAmount > 127)) {
+            throw new InvalidSoundFontError(`Instrument ${instrumentId}, zone ${ib - ibagStart} has invalid overridingRootKey ${rootKeyAmount}.`);
+          }
+          const timecentsToSeconds = (value: number | undefined): number | undefined => value === undefined ? undefined : Math.pow(2, value / 1200);
+          const sustainCentibels = amount(37);
+          const attenuationCentibels = amount(48);
+
+          zones.push({
+            keyRange: finalKeyRange,
+            velRange: finalVelRange,
+            sampleIndex: sampleId,
+            instrumentId,
+            presetZoneId: pb,
+            instrumentZoneId: ib,
+            rootKey: rootKeyAmount === undefined || rootKeyAmount === -1 ? sample?.originalPitch : rootKeyAmount,
+            pitchCorrection: (sample?.pitchCorrection ?? 0) + coarseTune * 100 + fineTune,
+            // sampleModes is instrument-local only. overridingRootKey may be
+            // inherited from the instrument global zone, never the preset.
+            sampleModes: instrumentGenerators.get(54),
+            pan: amount(17),
+            initialAttenuationDb: attenuationCentibels === undefined ? undefined : attenuationCentibels / 10,
+            attackSeconds: timecentsToSeconds(amount(34)),
+            holdSeconds: timecentsToSeconds(amount(35)),
+            decaySeconds: timecentsToSeconds(amount(36)),
+            sustainPercent: sustainCentibels === undefined ? undefined : 100 * Math.pow(10, -sustainCentibels / 200),
+            releaseSeconds: timecentsToSeconds(amount(38)),
+          });
         }
       }
 
-      if (zones.length > 0) {
-        outPresets.push({
-          name: name || `Preset ${presetNumber}`,
-          presetNumber,
-          bankNumber,
-          zones,
-        });
-      }
+      if (zones.length > 0) outPresets.push({ name: name || `Preset ${presetNumber}`, presetNumber, bankNumber, zones });
     }
   }
 
-  private readFourCC(): string {
-    const chars = [
-      String.fromCharCode(this.bytes[this.offset]!),
-      String.fromCharCode(this.bytes[this.offset + 1]!),
-      String.fromCharCode(this.bytes[this.offset + 2]!),
-      String.fromCharCode(this.bytes[this.offset + 3]!),
-    ];
-    this.offset += 4;
-    return chars.join("");
+  private readGeneratorMap(view: DataView, start: number, end: number): GeneratorMap {
+    const generators: GeneratorMap = new Map();
+    for (let index = start; index < end; index++) {
+      const operator = view.getUint16(index * 4, true);
+      // SF2 says the first occurrence is ignored when a zone repeats a generator.
+      generators.set(operator, view.getUint16(index * 4 + 2, true));
+    }
+    return generators;
   }
 
-  private readUint32(): number {
-    const val = this.view.getUint32(this.offset, true);
-    this.offset += 4;
-    return val;
+  private resolveValueGenerators(globalZone: GeneratorMap | undefined, localZone: GeneratorMap, supported: Set<number>): GeneratorMap {
+    const resolved: GeneratorMap = new Map();
+    if (globalZone) {
+      for (const [operator, amount] of globalZone) {
+        if (supported.has(operator)) resolved.set(operator, amount);
+      }
+    }
+    for (const [operator, amount] of localZone) {
+      if (supported.has(operator)) resolved.set(operator, amount);
+    }
+    return resolved;
+  }
+
+  private resolveGeneratorRange(
+    globalZone: GeneratorMap | undefined,
+    localZone: GeneratorMap,
+    operator: 43 | 44,
+    context: string,
+  ): [number, number] {
+    const amount = localZone.get(operator) ?? globalZone?.get(operator);
+    return amount === undefined ? [0, 127] : this.readRange(amount, context);
+  }
+
+  private intersectRanges(left: [number, number], right: [number, number]): [number, number] | undefined {
+    const range: [number, number] = [Math.max(left[0], right[0]), Math.min(left[1], right[1])];
+    return range[0] <= range[1] ? range : undefined;
+  }
+
+  private listChunks(start: number, end: number): ChunkView[] {
+    const chunks: ChunkView[] = [];
+    let offset = start;
+    while (offset < end) {
+      if (end - offset < 8) throw new InvalidSoundFontError("Chunk table ends with an incomplete chunk header.");
+      const tag = this.readAscii(offset, 4);
+      const size = this.readUint32At(offset + 4);
+      const dataOffset = offset + 8;
+      const dataEnd = dataOffset + size;
+      const next = dataEnd + (size & 1);
+      if (dataEnd > end || next > end) {
+        throw new InvalidSoundFontError(`Chunk '${tag}' extends beyond its containing RIFF/LIST boundary.`);
+      }
+      chunks.push({ tag, dataOffset, size });
+      offset = next;
+    }
+    return chunks;
+  }
+
+  private terminalCount(bytes: Uint8Array, entrySize: number, terminalName: string): number {
+    const count = bytes.byteLength / entrySize;
+    if (count === 0) return 0;
+    // The SF2 terminal record is mandatory by format. Older small fixtures use
+    // a zero-filled terminal name, so its position is authoritative here.
+    void terminalName;
+    return count - 1;
+  }
+
+  private assertIndexRange(kind: string, start: number, end: number, limit: number, context: string): void {
+    if (start > end || end > limit) {
+      throw new InvalidSoundFontError(`${context} has invalid ${kind} index range ${start}..${end}; table limit is ${limit}.`);
+    }
+  }
+
+  private readRange(value: number, context: string): [number, number] {
+    const min = value & 0xff;
+    const max = (value >>> 8) & 0xff;
+    if (min > max || max > 127) throw new InvalidSoundFontError(`Invalid ${context} range ${min}..${max}.`);
+    return [min, max];
+  }
+
+  private signedAmount(value: number): number {
+    return value > 32767 ? value - 65536 : value;
+  }
+
+  private dataView(bytes: Uint8Array): DataView {
+    return new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  }
+
+  private readAscii(offset: number, length: number): string {
+    this.assertBytes(offset, length);
+    let result = "";
+    for (let i = 0; i < length; i++) result += String.fromCharCode(this.bytes[offset + i]!);
+    return result;
+  }
+
+  private readUint32At(offset: number): number {
+    this.assertBytes(offset, 4);
+    return this.view.getUint32(offset, true);
+  }
+
+  private readUint16At(offset: number): number {
+    this.assertBytes(offset, 2);
+    return this.view.getUint16(offset, true);
+  }
+
+  private assertBytes(offset: number, length: number): void {
+    if (!Number.isSafeInteger(offset) || !Number.isSafeInteger(length) || offset < 0 || length < 0 || offset + length > this.bytes.byteLength) {
+      throw new InvalidSoundFontError("A chunk references bytes outside the file boundary.");
+    }
   }
 
   private decodeFixedString(bytes: Uint8Array): string {
     let len = 0;
-    while (len < bytes.length && bytes[len] !== 0) {
-      len++;
-    }
-    const decoder = new TextDecoder("ascii");
-    return decoder.decode(bytes.subarray(0, len)).trim();
+    while (len < bytes.length && bytes[len] !== 0) len++;
+    return new TextDecoder("ascii").decode(bytes.subarray(0, len)).trim();
   }
 }
 
-/**
- * Convenience helper to parse an SF2 buffer into Sf2SoundFont.
- */
 export function parseSf2(buffer: ArrayBuffer | Uint8Array): Sf2SoundFont {
   assertSf2FileSize(buffer.byteLength);
   try {
@@ -417,31 +582,76 @@ export function parseSf2(buffer: ArrayBuffer | Uint8Array): Sf2SoundFont {
   }
 }
 
+export function parseSf2MetadataBuffer(
+  buffer: ArrayBuffer | Uint8Array,
+  sampleSource: { blob: Blob; sampleDataOffset: number; sampleCount: number },
+): Sf2SoundFont {
+  assertSf2FileSize(buffer.byteLength);
+  try {
+    return new Sf2Parser(buffer, { sampleSource }).parse();
+  } catch (error) {
+    throw asInvalidSoundFontError(error, "The file could not be parsed as an SF2 bank.");
+  }
+}
+
 /** Converts parser and worker failures into a user-facing SoundFont error. */
-function asInvalidSoundFontError(reason: unknown, fallback: string): InvalidSoundFontError {
+export function asInvalidSoundFontError(reason: unknown, fallback: string): InvalidSoundFontError {
   if (reason instanceof InvalidSoundFontError) return reason;
   const message = reason instanceof Error ? reason.message : typeof reason === "string" ? reason : fallback;
   const cleanMessage = message.replace(/^Invalid SoundFont:\s*/i, "").trim();
   return new InvalidSoundFontError(cleanMessage || fallback);
 }
 
-/** Parses in a Worker and preserves input bytes by default. `transferInput: true` detaches an ArrayBuffer; Uint8Array inputs are copied into a plain transferable buffer. */
+function isAbortError(error: unknown): boolean {
+  return error instanceof Error && error.name === "AbortError";
+}
+
+function makeAbortError(): Error {
+  if (typeof DOMException !== "undefined") return new DOMException("The operation was aborted.", "AbortError");
+  const error = new Error("The operation was aborted.");
+  error.name = "AbortError";
+  return error;
+}
+
+/**
+ * Parses an SF2 file off the main thread. Blob input is never materialized as a
+ * whole-file ArrayBuffer. ArrayBuffer callers remain supported and receive a
+ * metadata result whose PCM source is a Blob.
+ */
 export function parseSf2Async(
-  buffer: ArrayBuffer | Uint8Array,
-  options: { transferInput?: boolean } = {},
+  input: Blob | ArrayBuffer | Uint8Array,
+  options: Sf2OperationOptions & { transferInput?: boolean } = {},
 ): Promise<Sf2SoundFont> {
-  let bytes: ArrayBuffer;
+  const size = input instanceof Blob ? input.size : input.byteLength;
   try {
-    assertSf2FileSize(buffer.byteLength);
-    if (typeof Worker === "undefined") return Promise.resolve(parseSf2(buffer));
-    if (buffer instanceof Uint8Array) {
-      // `view.buffer` is typed as ArrayBufferLike and may be a SharedArrayBuffer.
-      // Copy into a plain ArrayBuffer for Worker.postMessage's transfer list.
-      const copy = new ArrayBuffer(buffer.byteLength);
-      new Uint8Array(copy).set(buffer);
-      bytes = copy;
-    } else {
-      bytes = options.transferInput ? buffer : buffer.slice(0);
+    assertSf2FileSize(size);
+    if (options.signal?.aborted) return Promise.reject(makeAbortError());
+    if (typeof Worker === "undefined") {
+      const blob = input instanceof Blob ? input : new Blob([input instanceof Uint8Array ? input.slice() : input]);
+      return parseSf2BlobMetadata(blob, options).catch((error: unknown) => {
+        if (isAbortError(error)) throw error;
+        throw asInvalidSoundFontError(error, "The file could not be parsed as an SF2 bank.");
+      });
+    }
+  } catch (error) {
+    return Promise.reject(isAbortError(error) ? error : asInvalidSoundFontError(error, "Unable to read this file."));
+  }
+
+  let payload: { blob: Blob } | { buffer: ArrayBuffer };
+  let transfer: Transferable[] = [];
+  try {
+    if (input instanceof Blob) payload = { blob: input };
+    else {
+      let bytes: ArrayBuffer;
+      if (input instanceof Uint8Array) {
+        bytes = input.buffer instanceof ArrayBuffer && input.byteOffset === 0 && input.byteLength === input.buffer.byteLength
+          ? input.buffer.slice(0)
+          : input.slice().buffer as ArrayBuffer;
+      } else {
+        bytes = options.transferInput ? input : input.slice(0);
+      }
+      payload = { buffer: bytes };
+      transfer = [bytes];
     }
   } catch (error) {
     return Promise.reject(asInvalidSoundFontError(error, "Unable to read this file."));
@@ -459,41 +669,44 @@ export function parseSf2Async(
     const finish = (callback: () => void) => {
       if (settled) return;
       settled = true;
-      try {
-        worker.terminate();
-      } catch {
-        // The worker may already have terminated after a runtime failure.
-      }
+      options.signal?.removeEventListener("abort", abort);
+      try { worker.terminate(); } catch { /* The worker may already have stopped. */ }
       callback();
     };
-    worker.onmessage = (event: MessageEvent<{ soundFont?: Omit<Sf2SoundFont, "rawSampleData">; rawSampleBuffer?: ArrayBuffer; error?: string }>) => {
+    const abort = () => finish(() => reject(makeAbortError()));
+    if (options.signal?.aborted) {
+      abort();
+      return;
+    }
+    options.signal?.addEventListener("abort", abort, { once: true });
+    worker.onmessage = (event: MessageEvent<{ soundFont?: Sf2SoundFont; progress?: Sf2Progress; error?: string }>) => {
       const data = event.data;
-      if (!data || data.error || !data.soundFont || !data.rawSampleBuffer) {
+      if (data?.progress) {
+        options.onProgress?.(data.progress);
+        return;
+      }
+      if (!data || data.error || !data.soundFont) {
         finish(() => reject(asInvalidSoundFontError(data?.error, "The parser worker returned incomplete data.")));
         return;
       }
-      if (!(data.rawSampleBuffer instanceof ArrayBuffer)) {
-        finish(() => reject(new InvalidSoundFontError("The parser worker returned invalid sample data.")));
+      const source = data.soundFont.sampleSource;
+      if (!(source?.blob instanceof Blob) || !Number.isSafeInteger(source.sampleDataOffset) || !Number.isSafeInteger(source.sampleCount)) {
+        finish(() => reject(new InvalidSoundFontError("The parser worker returned invalid file-backed sample data.")));
         return;
       }
-      try {
-        const result: Sf2SoundFont = { ...data.soundFont, rawSampleData: new Int16Array(data.rawSampleBuffer) };
-        finish(() => resolve(result));
-      } catch (error) {
-        finish(() => reject(asInvalidSoundFontError(error, "The parser worker returned invalid SoundFont data.")));
-      }
+      finish(() => resolve(data.soundFont!));
     };
     worker.onerror = (event) => {
       event.preventDefault();
       finish(() => reject(asInvalidSoundFontError(event.message, "The SoundFont parser worker failed.")));
     };
-    worker.onmessageerror = () => {
-      finish(() => reject(new InvalidSoundFontError("The SoundFont parser worker returned data that could not be decoded.")));
-    };
+    worker.onmessageerror = () => finish(() => reject(new InvalidSoundFontError("The SoundFont parser worker returned data that could not be decoded.")));
     try {
-      worker.postMessage({ buffer: bytes }, [bytes]);
+      worker.postMessage(payload, transfer);
     } catch (error) {
       finish(() => reject(asInvalidSoundFontError(error, "The SoundFont parser worker could not receive the file.")));
     }
   });
 }
+
+export { MAX_SF2_METADATA_BYTES, parseSf2BlobMetadata } from "./sf2BlobParser.ts";

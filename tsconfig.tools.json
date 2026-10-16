@@ -1,14 +1,26 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "lib": ["ES2022"],
+    "lib": [
+      "ES2022"
+    ],
     "module": "ESNext",
     "skipLibCheck": true,
     "moduleResolution": "Bundler",
     "verbatimModuleSyntax": true,
     "noEmit": true,
     "strict": true,
-    "types": ["node"]
+    "types": [
+      "node"
+    ]
   },
-  "include": ["vitest.config.ts", "playwright.config.ts", "playwright.worker.config.ts", "playwright.audio.config.ts", "playwright.preview.config.ts", "playwright.media.config.ts"]
+  "include": [
+    "vitest.config.ts",
+    "playwright.config.ts",
+    "playwright.worker.config.ts",
+    "playwright.audio.config.ts",
+    "playwright.preview.config.ts",
+    "playwright.media.config.ts",
+    "playwright.soundfont.config.ts"
+  ]
 }

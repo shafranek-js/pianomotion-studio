@@ -14,6 +14,8 @@ export interface DemuxedMediaSummary {
   audioPackets: Array<{ timestamp: number; duration: number; bytes: number }>;
 }
 
+const exportPresetByPage = new WeakMap<Page, "1080p" | "720p">();
+
 /** Use a real Origin Private File System file and its native writable stream. */
 export async function installOpfsSavePicker(page: Page, failClose = false): Promise<void> {
   await page.addInitScript((rejectClose) => {
@@ -50,13 +52,19 @@ export async function openVideoExportModal(page: Page, preset: "1080p" | "720p" 
   await item.click();
   await expect(page.getByRole("dialog", { name: /Export Performance Video/ })).toBeVisible();
   await expect(page.locator("#export-format-capability")).not.toContainText("Checking encoder support", { timeout: 90_000 });
-  // Verify the product default before any test changes it. The modal defaults to 1080p.
-  await expect(page.locator("#export-resolution-select")).toHaveValue("1080p");
-  await expect(page.locator("#export-format-capability")).toContainText("1920 × 1080 at 30 FPS", { timeout: 90_000 });
-  if (preset !== "1080p") await page.locator("#export-resolution-select").selectOption(preset);
+  const resolution = page.locator("#export-resolution-select");
+  const capability = page.locator("#export-format-capability");
+  const previousPreset = exportPresetByPage.get(page);
+  const openedPreset = previousPreset ?? "1080p";
+  const openedDimensions = openedPreset === "1080p" ? "1920 × 1080" : "1280 × 720";
+  // The first opening verifies the product default; later openings verify the saved choice.
+  await expect(resolution).toHaveValue(openedPreset);
+  await expect(capability).toContainText(`${openedDimensions} at 30 FPS`, { timeout: 90_000 });
+  if (preset !== openedPreset) await resolution.selectOption(preset);
   await page.locator("#export-fps-select").selectOption("30");
   const dimensions = preset === "1080p" ? "1920 × 1080" : "1280 × 720";
-  await expect(page.locator("#export-format-capability")).toContainText(`${dimensions} at 30 FPS`, { timeout: 90_000 });
+  await expect(capability).toContainText(`${dimensions} at 30 FPS`, { timeout: 90_000 });
+  exportPresetByPage.set(page, preset);
 }
 
 export async function chooseFormat(page: Page, format: MediaFormat): Promise<void> {

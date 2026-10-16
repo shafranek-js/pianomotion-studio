@@ -15,6 +15,11 @@ const steps = [
     args: ["run", "test:python"],
   },
   {
+    name: "Built-in Catalog Contracts",
+    command: process.platform === "win32" ? "npm.cmd" : "npm",
+    args: ["run", "test:catalog"],
+  },
+  {
     name: "TypeScript Typecheck",
     command: process.platform === "win32" ? "npm.cmd" : "npm",
     args: ["run", "typecheck"],

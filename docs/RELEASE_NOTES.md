@@ -1,15 +1,31 @@
 # PianoMotion Studio — Release Notes
 
-**Version**: 0.1.0-dev.4
+**Version**: 0.1.0-dev.6
 
-**Date**: 2026-10-15
+**Date**: 2026-10-16
 
-**Status**: Development preview. Manual hardware/listening and load limits remain open. Previous dev.3 was published to GitHub Pages; current UI verification is recorded separately below.
+**Status**: Development preview. Manual hardware/listening and load limits remain open. Deployment is authorized after verification; check the Pages workflow and live version/build ID for its actual state. Historical audit evidence is separate from this change.
 **Architecture**: Offline-First Progressive Web Application (SPA + Web Workers + WebAssembly)
 
 ---
 
-## Editor command menus and Auto-advance — dev.4
+## Built-in MIDI library — dev.6
+
+Adds 162 built-in MIDI melodies, searchable by title from the empty workspace, File menu and Projects panel. Opening creates an independent editable project through the existing validated import/unsaved-changes flow. Source MIDI bytes remain unchanged; content hashes verify downloaded assets. The release builder generates the catalog and includes every melody in the coherent production offline set. Only the requested MIDI directory is embedded; other source formats and private SoundFonts remain excluded. [Implementation evidence and acceptance limits](evidence/builtin-melodies-2026-10-16/VERIFICATION.md).
+
+The complete catalog exposed and repaired source-only identity diagnostics leaking into normalized plans, missing diagnostics for ambiguous dropped percussion, and identical motion poses colliding after timestamp rounding. Numerical golden fields remain unchanged.
+
+The subsequent user-bank check repairs supported SF2 global/local generator inheritance, preset/instrument offsets, tuning/attenuation units, hold/decay/sustain volume envelopes and cancellation continuity. Missing sampleModes now means one-shot playback; arbitrary loop bounds alone no longer enable looping. Strict malformed-stereo and unsupported-SF3 errors remain. Private banks are ignored by Git and excluded from the release. [Bank-specific results](evidence/user-soundfonts-2026-10-16/VERIFICATION.md).
+
+## Stereo SoundFont and file-backed large banks — dev.5
+
+Animation streaming now prefetches bounded windows during lead-in, adapts its reserve to playback speed and measured Worker latency, and fills the earliest uncovered interval before later event anchors. Resuming requires a usable reserve; Pause/Stop cancel automatic resumption. The stereo voice cleanup callback and a stale development Service Worker error reported in the user's console are also repaired. See the current implementation report for measured browser results.
+
+Linked left/right PCM SF2 samples now play synchronously with per-channel controls and paired note/pedal lifecycle. File/Blob import accepts up to 1 GiB, indexes metadata in a Worker and hashes 4 MiB chunks instead of materializing full-bank PCM. IndexedDB v2 separates Blob payloads from metadata and migrates older assets transactionally. Live and export share a 256 MiB decoded/preparing sample budget with 64 MiB inactive LRU; exhausted capacity fails explicitly. Snapshots retain the immutable bank Blob; WAV and video use the same stereo synth.
+
+The former 128 MiB limit was application policy, not a format/browser limit. Full SF2 compatibility is not claimed. SF3, ROM, linkedSample type 8 and other unsupported synthesis features remain excluded. Version/package format independence is preserved: portable projects stay v2. [Implementation and exact acceptance](SOUNDFONT_STEREO_IMPLEMENTATION.md), [audio subset](AUDIO_SUPPORT.md).
+
+## Historical editor command menus and Auto-advance — dev.4
 
 The secondary toolbar above the scene is removed. Undo/Redo move into the Edit menu while retaining keyboard shortcuts. Help (?) opens a menu with Keyboard shortcuts. Auto-advance replaces Step Entry and sits with finger assignments in the header, visible only in Fingering and off by default. Only numeric finger assignments advance selection; hand assignment, Clear, Unplayable and Gliss retain selection. Confirming an already assigned finger can advance without adding an edit or history entry.
 
@@ -23,7 +39,7 @@ Hand, finger, Clear, Unplayable and Gliss assignments move next to the workspace
 
 Focused verification: 25 unit tests; Chrome 11 scenarios plus final editor/responsive reruns; Edge 11 scenarios; typecheck, scoped lint and build passed. Six standard viewports and four additional header boundary widths have no page horizontal overflow or inaccessible header controls. See [UI evidence](evidence/fingering-header-2026-10-15/VERIFICATION.md) for exact runs and screenshots. This is separate from the preceding audit checks below.
 
-## Current remediation
+## Historical audit remediation baseline before dev.5
 
 The active record is [AUDIT_REPAIR_PROGRESS.md](AUDIT_REPAIR_PROGRESS.md). This preview adds committed-save/update barriers, content-addressed offline releases with old-tab pins, bounded motion streaming, one performance-event audio path, local Signalsmith 1.3.2 time stretch, prepared SF2/MIDI outputs and deterministic MP4/WebM export. The application version is synchronized across workspaces and the status bar.
 

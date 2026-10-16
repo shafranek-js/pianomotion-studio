@@ -255,21 +255,21 @@ describe("MotionBuffer", () => {
       // Frame at t = 12.6: 12.6 + 1.5 = 14.1 > 14.0 -> true (APPROACHING BOUNDARY)
       expect(buffer.needsMorePoses(12.6)).toBe(true);
 
-      // Missing window calculates next slice with 250ms boundary overlap
+      // Missing window preserves the configured 4s horizon and adds overlap only at the start.
       const nextWindow = buffer.getMissingWindow(12.6);
       expect(nextWindow.start).toBe(13.75);
-      expect(nextWindow.end).toBe(17.75);
+      expect(nextWindow.end).toBe(16.6);
 
       // Once next slice is added densely, needsMorePoses goes back to false
       const extTimes: number[] = [];
-      for (let t = 13.8; t <= 17.8; t += 0.2) {
+      for (let t = 13.8; t <= 16.6; t += 0.2) {
         extTimes.push(Math.round(t * 10) / 10);
       }
       const extensionPoses = extTimes.map((t) =>
         createSyntheticPose({ hand: "right", time: t }),
       );
       buffer.addSampleMotionResult(sampleResult(extensionPoses, {
-        right: { coveredStartTimeSeconds: 13.8, coveredEndTimeSeconds: 17.8, isComplete: true, poseCount: extensionPoses.length },
+        right: { coveredStartTimeSeconds: 13.8, coveredEndTimeSeconds: 16.6, isComplete: true, poseCount: extensionPoses.length },
       }), 12.6);
       expect(buffer.needsMorePoses(12.6)).toBe(false);
     });
@@ -372,6 +372,24 @@ describe("MotionBuffer", () => {
       expect(buffer.hasCoverage(10, 11)).toBe(false);
     });
 
+    it("fills the earliest continuous gap before a later event anchor in a long lookahead", () => {
+      const buffer = new MotionBuffer({
+        windowAheadSeconds: 24,
+        expectedHands: ["right"],
+        requiredAnchors: [{ hand: "right", timeSeconds: 10 }],
+      });
+      const initialPoses = Array.from({ length: 17 }, (_, index) =>
+        createSyntheticPose({ hand: "right", time: index * 0.25 }),
+      );
+      buffer.addSampleMotionResult(sampleResult(initialPoses, {
+        right: { coveredStartTimeSeconds: 0, coveredEndTimeSeconds: 4, isComplete: true, poseCount: initialPoses.length },
+      }));
+
+      // The caller may cap this to a 4s request. Starting at 9.75 would leave
+      // the earlier 4s boundary unfilled and prevent continuous lookahead.
+      expect(buffer.getMissingWindow(0)).toEqual({ start: 3.75, end: 24 });
+    });
+
     it("bridges a small response-chunk gap only when adjacent rendered poses prove interpolation", () => {
       const buffer = new MotionBuffer({ expectedHands: ["right"] });
       const firstPoses = Array.from({ length: 11 }, (_, index) => createSyntheticPose({
@@ -417,7 +435,7 @@ describe("MotionBuffer", () => {
       }));
 
       expect(buffer.hasCoverage(99_998, 99_999)).toBe(true);
-      expect(buffer.getMissingWindow(99_998)).toEqual({ start: 99_998.75, end: 100_002.75 });
+      expect(buffer.getMissingWindow(99_998)).toEqual({ start: 99_998.75, end: 100_002 });
     });
   });
 

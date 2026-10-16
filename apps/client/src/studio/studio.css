@@ -702,9 +702,11 @@ body:has(.studio-shell) {
 .studio-fullscreen-screen { position: fixed; z-index: 30; inset: 56px 0 24px; overflow: auto; background: transparent; color: var(--studio-text); pointer-events: none; }
 .studio-fullscreen-screen .modal-backdrop { position: absolute !important; inset: 0 !important; justify-content: stretch !important; align-items: stretch !important; padding: 0 !important; background: var(--studio-bg) !important; pointer-events: auto; }
 .studio-fullscreen-screen .modal-content { width: 100% !important; max-width: none !important; max-height: none !important; height: 100% !important; border: 0 !important; border-radius: 0 !important; box-shadow: none !important; }
-.studio-modal-overlay { position: fixed; inset: 0; z-index: 28; background: rgb(0 0 0 / 50%); }
+.studio-modal-overlay { position: fixed; inset: 0; z-index: 50; background: rgb(0 0 0 / 50%); }
+/* Project decisions and workspace dialogs must appear above mobile sheets (41). */
+[role="dialog"].studio-fullscreen-screen { z-index: 51; }
 .studio-decision-dialog {
-  position: fixed; z-index: 31; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  position: fixed; z-index: 51; top: 50%; left: 50%; transform: translate(-50%, -50%);
   width: min(480px, calc(100vw - 24px)); max-height: calc(100dvh - 32px);
   overflow: auto; padding: 24px; border: 1px solid var(--studio-border, #303640);
   border-radius: 8px; background: var(--studio-panel, #181b20); color: var(--studio-text, #e7ecf2);

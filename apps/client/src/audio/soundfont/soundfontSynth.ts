@@ -1,6 +1,10 @@
 import type { RestoredPianoVoice } from "../sampler.ts";
 import type { PedalState } from "../sampler.ts";
-import type { Sf2Preset, Sf2SoundFont, SoundFontSynthOptions } from "./types.ts";
+import {
+  getSharedSoundFontSampleProvider,
+  type SoundFontSampleLease,
+} from "./soundfontSampleProvider.ts";
+import type { Sf2Preset, Sf2SoundFont, Sf2Zone, SoundFontSynthOptions } from "./types.ts";
 
 const MAX_INACTIVE_DECODED_BYTES = 64 * 1024 * 1024;
 
@@ -18,24 +22,55 @@ interface ActiveVoice {
   pitch: number;
   velocity: number;
   sampleIndex: number;
-  sourceNode: AudioBufferSourceNode;
+  sampleIndices: number[];
+  sampleLeases: SoundFontSampleLease[];
+  sourceNodes: AudioBufferSourceNode[];
+  gainNodes: GainNode[];
+  panNodes: StereoPannerNode[];
+  tailSourceNodes: AudioBufferSourceNode[];
+  tailChannelIndices: number[];
+  endedSourceNodes: Set<AudioBufferSourceNode>;
+  endedTailSourceNodes: Set<AudioBufferSourceNode>;
   gainNode: GainNode;
   panNode?: StereoPannerNode;
-  tailSourceNode?: AudioBufferSourceNode;
   startTime: number;
   playbackRate: number;
-  loopStartSeconds?: number;
-  loopEndSeconds?: number;
-  attackSeconds: number;
-  peakGain: number;
-  releaseSeconds: number;
+  loopStartSeconds: Array<number | undefined>;
+  loopEndSeconds: Array<number | undefined>;
+  loopWhileHeld: boolean[];
+  attackSeconds: number[];
+  holdSeconds: number[];
+  decaySeconds: number[];
+  peakGain: number[];
+  sustainGain: number[];
+  releaseSeconds: number[];
   keyState: "down" | "up";
   keyReleaseTime?: number;
   releaseStartTime?: number;
   heldBySostenuto: boolean;
   sostenutoCapturedAtBaseline: boolean;
   sustainedByPedal: boolean;
-  sampleModes: number;
+  sampleModes: number[];
+}
+
+interface PlaybackLayer {
+  rightZone?: Sf2Zone;
+  zoneIndex: number;
+  channels: Array<{ sampleIndex: number; zone: Sf2Zone; side: "left" | "right" | "mono" }>;
+  sampleIndices: number[];
+  primarySampleIndex: number;
+  rootKey: number;
+  pitchCorrection: number;
+  isStereo: boolean;
+}
+
+interface PendingPreparation {
+  indices: Set<number>;
+  generation: number;
+  controller: AbortController;
+  promise: Promise<void>;
+  waiters: number;
+  settled: boolean;
 }
 
 export interface SoundFontPedalState {
@@ -51,6 +86,7 @@ export class SoundFontSynth {
   private soundFont: Sf2SoundFont | null = null;
   private activePreset: Sf2Preset | null = null;
   private readonly audioBufferCache = new Map<number, DecodedSample>();
+  private readonly sampleProvider = getSharedSoundFontSampleProvider();
   private readonly activeVoices = new Map<string, ActiveVoice>();
   private pedalEvents: Array<{ controller: 64 | 66 | 67; value: number; time: number }> = [];
   private cachedBytes = 0;
@@ -58,6 +94,12 @@ export class SoundFontSynth {
   private pedalState: SoundFontPedalState = { sustain: false, sostenuto: false, soft: false };
   private pedalBaseline: SoundFontPedalState = { sustain: false, sostenuto: false, soft: false };
   private masterGain: GainNode;
+  private preparedLeases = new Map<number, SoundFontSampleLease>();
+  private preparedSampleIndices = new Set<number>();
+  private preparationController: AbortController | null = null;
+  private pendingPreparation: PendingPreparation | null = null;
+  private preparationGeneration = 0;
+  private disposed = false;
 
   constructor(options: SoundFontSynthOptions) {
     this.audioContext = options.audioContext;
@@ -69,6 +111,8 @@ export class SoundFontSynth {
   }
 
   public loadSoundFont(sf: Sf2SoundFont, presetIndex = 0): void {
+    this.cancelPreparation();
+    this.releasePreparedSamples();
     this.silenceAll();
     this.audioBufferCache.clear();
     this.cachedBytes = 0;
@@ -80,8 +124,291 @@ export class SoundFontSynth {
     if (!this.soundFont) return false;
     const preset = this.soundFont.presets.find((item) => item.presetNumber === presetNumber && item.bankNumber === bankNumber);
     if (!preset) return false;
+    this.cancelPreparation();
+    this.releasePreparedSamples();
     this.activePreset = preset;
     return true;
+  }
+
+  /**
+   * Prepares and pins the samples selected by notes before synchronous playback.
+   * A replacement lease set becomes visible only after every required sample is ready.
+   */
+  public async prepareNotes(
+    notes: readonly { pitch: number; velocity: number }[],
+    signal?: AbortSignal,
+  ): Promise<void> {
+    if (this.disposed) throw new Error("SoundFont synth has been disposed.");
+    if (signal?.aborted) throw abortError();
+    if (!this.soundFont || !this.activePreset) throw new Error("No SoundFont preset is loaded.");
+
+    const requestedIndices = this.resolvePreparedSampleIndices(notes);
+    if (sameNumberSet(this.preparedSampleIndices, requestedIndices)) {
+      if (this.pendingPreparation && !sameNumberSet(this.pendingPreparation.indices, requestedIndices)) this.cancelPreparation();
+      return;
+    }
+    if (this.soundFont.sampleSource && this.pendingPreparation &&
+        sameNumberSet(this.pendingPreparation.indices, requestedIndices)) {
+      return this.waitForPreparation(this.pendingPreparation, signal);
+    }
+    this.cancelPreparation();
+    const generation = ++this.preparationGeneration;
+    const controller = new AbortController();
+    this.preparationController = controller;
+
+    if (!this.soundFont.sampleSource) {
+      const staged = new Map<number, SoundFontSampleLease>();
+      try {
+        for (const index of requestedIndices) {
+          const lease = this.acquireReadySample(index);
+          if (!lease) throw new Error(`SoundFont sample ${index} could not be prepared.`);
+          staged.set(index, lease);
+        }
+        this.assertCurrentPreparation(generation, controller.signal);
+        const previous = this.preparedLeases;
+        this.preparedLeases = staged;
+        for (const lease of previous.values()) lease.release();
+        this.preparedSampleIndices = requestedIndices;
+      } catch (error) {
+        for (const lease of staged.values()) lease.release();
+        throw error;
+      } finally {
+        if (this.preparationController === controller) this.preparationController = null;
+      }
+      return;
+    }
+
+    const pending: PendingPreparation = {
+      indices: requestedIndices,
+      generation,
+      controller,
+      promise: Promise.resolve(),
+      waiters: 0,
+      settled: false,
+    };
+    this.pendingPreparation = pending;
+    pending.promise = this.runFileBackedPreparation(pending);
+    return this.waitForPreparation(pending, signal);
+  }
+
+  private async runFileBackedPreparation(pending: PendingPreparation): Promise<void> {
+    let staged = new Map<number, SoundFontSampleLease>();
+    try {
+      staged = await this.sampleProvider.prepareSamples(
+        this.soundFont!, [...pending.indices], this.audioContext, pending.controller.signal,
+      );
+      this.assertCurrentPreparation(pending.generation, pending.controller.signal);
+      const previous = this.preparedLeases;
+      this.preparedLeases = staged;
+      staged = new Map();
+      this.preparedSampleIndices = pending.indices;
+      for (const lease of previous.values()) lease.release();
+    } finally {
+      for (const lease of staged.values()) lease.release();
+      pending.settled = true;
+      if (this.pendingPreparation === pending) this.pendingPreparation = null;
+      if (this.preparationController === pending.controller) this.preparationController = null;
+    }
+  }
+
+  private waitForPreparation(pending: PendingPreparation, signal?: AbortSignal): Promise<void> {
+    if (signal?.aborted) return Promise.reject(abortError());
+    pending.waiters++;
+    return new Promise<void>((resolve, reject) => {
+      let active = true;
+      const finish = (error?: unknown) => {
+        if (!active) return;
+        active = false;
+        signal?.removeEventListener("abort", onAbort);
+        pending.waiters = Math.max(0, pending.waiters - 1);
+        if (error === undefined) resolve();
+        else reject(error);
+      };
+      const onAbort = () => {
+        finish(abortError());
+        if (pending.waiters === 0 && !pending.settled && this.pendingPreparation === pending) {
+          pending.controller.abort();
+        }
+      };
+      signal?.addEventListener("abort", onAbort, { once: true });
+      pending.promise.then(() => finish(), (error: unknown) => finish(error));
+    });
+  }
+
+  /** True only when the currently leased preparation covers all selected layers. */
+  public areNotesPrepared(notes: readonly { pitch: number; velocity: number }[]): boolean {
+    if (!this.soundFont || !this.activePreset) return false;
+    let required: Set<number>;
+    try {
+      required = this.resolvePreparedSampleIndices(notes);
+    } catch {
+      return false;
+    }
+    for (const index of required) {
+      if (this.soundFont.sampleSource) {
+        if (!this.preparedSampleIndices.has(index) || !this.sampleProvider.getCachedBuffer(this.soundFont, index)) return false;
+      } else if (!this.audioBufferCache.has(index)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private resolvePreparedSampleIndices(notes: readonly { pitch: number; velocity: number }[]): Set<number> {
+    const required = new Set<number>();
+    for (const note of notes) {
+      const rawVelocity = Math.max(1, Math.min(127, Math.round(note.velocity)));
+      for (const velocity of new Set([rawVelocity, Math.max(1, Math.round(rawVelocity * 0.7))])) {
+        for (const layer of this.resolvePlaybackLayers(note.pitch, velocity)) {
+          for (const sampleIndex of layer.sampleIndices) required.add(sampleIndex);
+        }
+      }
+    }
+    return required;
+  }
+
+  private resolvePlaybackLayers(pitch: number, velocity: number): PlaybackLayer[] {
+    if (!this.soundFont || !this.activePreset) return [];
+    const selected = this.activePreset.zones.map((zone, zoneIndex) => ({ zone, zoneIndex }))
+      .filter(({ zone }) => pitch >= zone.keyRange[0] && pitch <= zone.keyRange[1] &&
+        velocity >= zone.velRange[0] && velocity <= zone.velRange[1]);
+    const layers: PlaybackLayer[] = [];
+    const stereoGroups = new Map<string, {
+      leftIndex: number;
+      rightIndex: number;
+      rightSample: Sf2SoundFont["samples"][number];
+      leftZones: Array<{ zone: Sf2Zone; zoneIndex: number }>;
+      rightZones: Array<{ zone: Sf2Zone; zoneIndex: number }>;
+    }>();
+    for (const { zone, zoneIndex } of selected) {
+      const sample = this.soundFont.samples[zone.sampleIndex];
+      if (!sample) throw new Error(`SoundFont zone ${zoneIndex} refers to missing sample ${zone.sampleIndex}.`);
+      const sampleType = sample.sampleType & 0x7fff;
+      if (sampleType === 1) {
+        layers.push({
+          channels: [{ sampleIndex: zone.sampleIndex, zone, side: "mono" }],
+          zoneIndex,
+          sampleIndices: [zone.sampleIndex],
+          primarySampleIndex: zone.sampleIndex,
+          rootKey: zone.rootKey ?? sample.originalPitch ?? 60,
+          pitchCorrection: zone.pitchCorrection ?? sample.pitchCorrection ?? 0,
+          isStereo: false,
+        });
+        continue;
+      }
+      if (sampleType !== 2 && sampleType !== 4) {
+        throw new Error(`SoundFont sample '${sample.name}' uses unsupported sampleType ${sample.sampleType}; supported playback types are mono, right, and left.`);
+      }
+
+      const { leftIndex, rightIndex, rightSample } = this.resolveStereoPair(zone.sampleIndex, sampleType);
+      const groupKey = [
+        zone.instrumentId ?? "unscoped-instrument",
+        zone.presetZoneId ?? "unscoped-preset-zone",
+        leftIndex,
+        rightIndex,
+        zone.keyRange.join(":"),
+        zone.velRange.join(":"),
+      ].join("|");
+      let group = stereoGroups.get(groupKey);
+      if (!group) {
+        group = { leftIndex, rightIndex, rightSample, leftZones: [], rightZones: [] };
+        stereoGroups.set(groupKey, group);
+      }
+      (sampleType === 4 ? group.leftZones : group.rightZones).push({ zone, zoneIndex });
+    }
+
+    for (const group of stereoGroups.values()) {
+      group.leftZones.sort((a, b) => zoneOrder(a.zone, a.zoneIndex) - zoneOrder(b.zone, b.zoneIndex));
+      group.rightZones.sort((a, b) => zoneOrder(a.zone, a.zoneIndex) - zoneOrder(b.zone, b.zoneIndex));
+      if (group.leftZones.length !== group.rightZones.length) {
+        throw new Error(
+          `SoundFont stereo pair '${this.soundFont.samples[group.rightIndex]?.name ?? group.rightIndex}' has ${group.leftZones.length} left zones and ${group.rightZones.length} right zones for one instrument layer set.`,
+        );
+      }
+      const layerCount = group.leftZones.length;
+      for (let index = 0; index < layerCount; index++) {
+        const left = group.leftZones[index]!;
+        const right = group.rightZones[index]!;
+        const leftZone = left.zone;
+        const rightZone = right.zone;
+        const layerZoneIndex = right.zoneIndex;
+        layers.push({
+          rightZone,
+          zoneIndex: layerZoneIndex,
+          channels: [
+            { sampleIndex: group.leftIndex, zone: leftZone, side: "left" },
+            { sampleIndex: group.rightIndex, zone: rightZone, side: "right" },
+          ],
+          sampleIndices: [group.leftIndex, group.rightIndex],
+          primarySampleIndex: group.rightIndex,
+          rootKey: right.zone.rootKey ?? group.rightSample.originalPitch ?? 60,
+          pitchCorrection: right.zone.pitchCorrection ?? group.rightSample.pitchCorrection ?? 0,
+          isStereo: true,
+        });
+      }
+    }
+    return layers.sort((a, b) => a.zoneIndex - b.zoneIndex);
+  }
+
+  private resolveStereoPair(sampleIndex: number, sampleType: number): {
+    leftIndex: number;
+    rightIndex: number;
+    rightSample: NonNullable<Sf2SoundFont["samples"][number]>;
+  } {
+    if (!this.soundFont) throw new Error("No SoundFont is loaded.");
+    const sample = this.soundFont.samples[sampleIndex];
+    const linkedIndex = sample?.sampleLink;
+    if (!sample || linkedIndex === undefined || !Number.isInteger(linkedIndex) || linkedIndex < 0 || linkedIndex >= this.soundFont.samples.length) {
+      throw new Error(`SoundFont stereo sample '${sample?.name ?? sampleIndex}' has no valid linked channel.`);
+    }
+    const linked = this.soundFont.samples[linkedIndex];
+    const expectedType = sampleType === 2 ? 4 : 2;
+    if (!linked || (linked.sampleType & 0x7fff) !== expectedType || linked.sampleLink !== sampleIndex) {
+      throw new Error(`SoundFont stereo sample '${sample.name}' has an orphaned or inconsistent channel link.`);
+    }
+    const rightIndex = sampleType === 2 ? sampleIndex : linkedIndex;
+    const leftIndex = sampleType === 4 ? sampleIndex : linkedIndex;
+    const rightSample = this.soundFont.samples[rightIndex];
+    const leftSample = this.soundFont.samples[leftIndex];
+    if (!rightSample || !leftSample || rightSample.sampleRate !== leftSample.sampleRate) {
+      throw new Error(`SoundFont stereo pair '${sample.name}' and '${linked.name}' has mismatched sample rates.`);
+    }
+    return { leftIndex, rightIndex, rightSample };
+  }
+
+  private acquireReadySample(sampleIndex: number): SoundFontSampleLease | null {
+    if (!this.soundFont) return null;
+    if (this.soundFont.sampleSource) return this.sampleProvider.retainSample(this.soundFont, sampleIndex);
+    const decoded = this.getOrCreateRawAudioBuffer(sampleIndex);
+    if (!decoded) return null;
+    decoded.pins++;
+    decoded.lastUse = ++this.cacheClock;
+    return {
+      sampleIndex,
+      buffer: decoded.buffer,
+      release: () => {
+        decoded.pins = Math.max(0, decoded.pins - 1);
+        decoded.lastUse = ++this.cacheClock;
+        this.evictInactiveSamples();
+      },
+    };
+  }
+
+  private assertCurrentPreparation(generation: number, signal: AbortSignal): void {
+    if (this.disposed || signal.aborted || generation !== this.preparationGeneration) throw abortError();
+  }
+
+  private cancelPreparation(): void {
+    this.preparationGeneration++;
+    this.preparationController?.abort();
+    this.preparationController = null;
+    this.pendingPreparation = null;
+  }
+
+  private releasePreparedSamples(): void {
+    for (const lease of this.preparedLeases.values()) lease.release();
+    this.preparedLeases.clear();
+    this.preparedSampleIndices.clear();
   }
 
   public noteOn(
@@ -95,91 +422,194 @@ export class SoundFontSynth {
     const time = Math.max(this.audioContext.currentTime, scheduledTime);
     const effectiveVelocity = softPedalAtPress ? Math.round(velocity * 0.7) : velocity;
     if (effectiveVelocity <= 0) return;
-    const zones = this.activePreset.zones.filter((zone) =>
-      pitch >= zone.keyRange[0] && pitch <= zone.keyRange[1] &&
-      effectiveVelocity >= zone.velRange[0] && effectiveVelocity <= zone.velRange[1]);
-    if (!zones.length) return;
-    this.enforcePolyphonyLimit(zones.length);
+    const layers = this.resolvePlaybackLayers(pitch, effectiveVelocity);
+    if (!layers.length) return;
 
-    for (let zoneIndex = 0; zoneIndex < zones.length; zoneIndex++) {
-      const zone = zones[zoneIndex]!;
-      const sample = this.soundFont.samples[zone.sampleIndex];
-      const decoded = this.getOrCreateAudioBuffer(zone.sampleIndex);
-      if (!sample || !decoded) continue;
-      const source = this.audioContext.createBufferSource();
-      source.buffer = decoded.buffer;
-      let loopStartSeconds: number | undefined;
-      let loopEndSeconds: number | undefined;
-      const sampleModes = zone.sampleModes ?? 0;
-      if (sampleModes === 1 || sampleModes === 3 || (zone.sampleModes === undefined && sample.loopEnd > sample.loopStart)) {
-        const sampleRate = sample.sampleRate || 44100;
-        if (sample.loopStart >= sample.start && sample.loopEnd > sample.loopStart && sample.loopEnd <= sample.end) {
-          const loopStart = (sample.loopStart - sample.start) / sampleRate;
-          const loopEnd = (sample.loopEnd - sample.start) / sampleRate;
-          if (loopEnd > loopStart && loopEnd <= decoded.buffer.duration) {
-            source.loop = true;
-            source.loopStart = loopStart;
-            source.loopEnd = loopEnd;
-            loopStartSeconds = loopStart;
-            loopEndSeconds = loopEnd;
+    const leases: SoundFontSampleLease[] = [];
+    const buffers = new Map<number, AudioBuffer>();
+    try {
+      for (const layer of layers) {
+        for (const sampleIndex of layer.sampleIndices) {
+          const lease = this.acquireReadySample(sampleIndex);
+          if (!lease) {
+            throw new Error(`SoundFont note ${pitch} at velocity ${effectiveVelocity} was not prepared; refusing to decode during noteOn.`);
           }
+          leases.push(lease);
+          buffers.set(sampleIndex, lease.buffer);
         }
       }
-      const rootKey = zone.rootKey ?? sample.originalPitch ?? 60;
-      const cents = (pitch - rootKey) * 100 + (zone.pitchCorrection ?? 0);
-      const playbackRate = Math.pow(2, cents / 1200);
-      source.playbackRate.setValueAtTime(playbackRate, time);
+    } catch (error) {
+      for (const lease of leases) lease.release();
+      throw error;
+    }
 
-      const gainNode = this.audioContext.createGain();
-      const velScale = (effectiveVelocity / 127) ** 1.5;
-      const attenuation = Math.pow(10, -(zone.initialAttenuationDb ?? 0) / 200);
-      const peakGain = Math.max(0.0001, velScale * 0.5 * attenuation);
-      const attack = Math.max(0.003, zone.attackSeconds ?? 0.005);
-      const release = Math.max(0.05, zone.releaseSeconds ?? 0.25);
-      gainNode.gain.setValueAtTime(0.0001, time);
-      gainNode.gain.exponentialRampToValueAtTime(peakGain, time + attack);
-      let outputNode: AudioNode = gainNode;
-      let panNode: StereoPannerNode | undefined;
-      if (zone.pan !== undefined && typeof this.audioContext.createStereoPanner === "function") {
-        panNode = this.audioContext.createStereoPanner();
-        panNode.pan.setValueAtTime(Math.max(-1, Math.min(1, zone.pan / 500)), time);
-        gainNode.connect(panNode);
-        outputNode = panNode;
+    this.enforcePolyphonyLimit(layers.length);
+    let leaseOffset = 0;
+    const createdVoiceKeys: string[] = [];
+    const partialSources: AudioBufferSourceNode[] = [];
+    const partialGains: GainNode[] = [];
+    const partialPans: StereoPannerNode[] = [];
+    try {
+      for (let layerIndex = 0; layerIndex < layers.length; layerIndex++) {
+        const layer = layers[layerIndex]!;
+        const layerLeases = leases.slice(leaseOffset, leaseOffset + layer.sampleIndices.length);
+        leaseOffset += layer.sampleIndices.length;
+        const sourceNodes: AudioBufferSourceNode[] = [];
+        const gainNodes: GainNode[] = [];
+        const panNodes: StereoPannerNode[] = [];
+        const sampleModes: number[] = [];
+        const loopStartSeconds: Array<number | undefined> = [];
+        const loopEndSeconds: Array<number | undefined> = [];
+        const loopWhileHeld: boolean[] = [];
+        for (const channel of layer.channels) {
+          const channelSample = this.soundFont.samples[channel.sampleIndex]!;
+          const channelMode = channel.zone.sampleModes ?? 0;
+          let channelLoopStart: number | undefined;
+          let channelLoopEnd: number | undefined;
+          if (channelMode === 1 || channelMode === 3) {
+            const rate = channelSample.sampleRate || 44_100;
+            if (channelSample.loopStart >= channelSample.start && channelSample.loopEnd > channelSample.loopStart && channelSample.loopEnd <= channelSample.end) {
+              const start = (channelSample.loopStart - channelSample.start) / rate;
+              const end = (channelSample.loopEnd - channelSample.start) / rate;
+              const channelBuffer = buffers.get(channel.sampleIndex)!;
+              if (end > start && end <= channelBuffer.duration) {
+                channelLoopStart = start;
+                channelLoopEnd = end;
+              }
+            }
+          }
+          sampleModes.push(channelMode);
+          loopStartSeconds.push(channelLoopStart);
+          loopEndSeconds.push(channelLoopEnd);
+          loopWhileHeld.push(channelLoopStart !== undefined && channelLoopEnd !== undefined &&
+            (channelMode === 1 || channelMode === 3));
+        }
+        const cents = (pitch - layer.rootKey) * 100 + layer.pitchCorrection;
+        const playbackRate = Math.pow(2, cents / 1200);
+        const velScale = (effectiveVelocity / 127) ** 1.5;
+        const channelAttacks: number[] = [];
+        const channelHolds: number[] = [];
+        const channelDecays: number[] = [];
+        const channelPeaks: number[] = [];
+        const channelSustains: number[] = [];
+        const channelReleases: number[] = [];
+
+        for (let channelIndex = 0; channelIndex < layer.sampleIndices.length; channelIndex++) {
+          const channel = layer.channels[channelIndex]!;
+          const sampleIndex = channel.sampleIndex;
+          const channelZone = channel.zone;
+          const source = this.audioContext.createBufferSource();
+          partialSources.push(source);
+          source.buffer = buffers.get(sampleIndex)!;
+          source.playbackRate.setValueAtTime(playbackRate, time);
+          if (loopStartSeconds[channelIndex] !== undefined && loopEndSeconds[channelIndex] !== undefined) {
+            source.loop = loopWhileHeld[channelIndex]!;
+            source.loopStart = loopStartSeconds[channelIndex]!;
+            source.loopEnd = loopEndSeconds[channelIndex]!;
+          }
+
+          const gainNode = this.audioContext.createGain();
+          partialGains.push(gainNode);
+          // initialAttenuationDb is attenuation in decibels, so convert it to
+          // amplitude using 20 dB per decade.
+          const attenuation = Math.pow(10, -(channelZone.initialAttenuationDb ?? 0) / 20);
+          const peakGain = Math.max(0.0001, velScale * 0.5 * attenuation);
+          const attack = Math.max(0.003, channelZone.attackSeconds ?? 0.005);
+          const hold = Math.max(0, channelZone.holdSeconds ?? 0);
+          const decay = Math.max(0, channelZone.decaySeconds ?? 0);
+          const sustainPercent = Math.max(0, Math.min(100, channelZone.sustainPercent ?? 100));
+          const sustainGain = Math.max(0.0001, peakGain * sustainPercent / 100);
+          const release = Math.max(0.05, channelZone.releaseSeconds ?? 0.25);
+          gainNode.gain.setValueAtTime(0.0001, time);
+          gainNode.gain.exponentialRampToValueAtTime(peakGain, time + attack);
+          this.scheduleHoldDecay(gainNode.gain, time + attack, hold, decay, peakGain, sustainGain);
+          channelAttacks.push(attack);
+          channelHolds.push(hold);
+          channelDecays.push(decay);
+          channelPeaks.push(peakGain);
+          channelSustains.push(sustainGain);
+          channelReleases.push(release);
+          let outputNode: AudioNode = gainNode;
+          let panNode: StereoPannerNode | undefined;
+          const explicitPan = channelZone.sampleIndex === sampleIndex ? channelZone.pan : undefined;
+          const panValue = explicitPan !== undefined
+            ? explicitPan / 500
+            : layer.isStereo
+              ? channel.side === "left" ? -1 : 1
+              : undefined;
+          if (panValue !== undefined && typeof this.audioContext.createStereoPanner === "function") {
+            panNode = this.audioContext.createStereoPanner();
+            partialPans.push(panNode);
+            panNode.pan.setValueAtTime(Math.max(-1, Math.min(1, panValue)), time);
+            gainNode.connect(panNode);
+            outputNode = panNode;
+            panNodes.push(panNode);
+          }
+          source.connect(gainNode);
+          outputNode.connect(this.masterGain);
+          source.start(time);
+          sourceNodes.push(source);
+          gainNodes.push(gainNode);
+        }
+
+        const voiceKey = `${noteId}-z${layer.zoneIndex}-${layer.primarySampleIndex}-${this.cacheClock++}`;
+        const voice: ActiveVoice = {
+          voiceKey,
+          noteId: voiceKey,
+          originalNoteId: noteId,
+          pitch,
+          velocity: effectiveVelocity,
+          sampleIndex: layer.primarySampleIndex,
+          sampleIndices: layer.sampleIndices,
+          sampleLeases: layerLeases,
+          sourceNodes,
+          gainNodes,
+          panNodes,
+          tailSourceNodes: [],
+          tailChannelIndices: [],
+          endedSourceNodes: new Set(),
+          endedTailSourceNodes: new Set(),
+          gainNode: gainNodes[0]!,
+          panNode: panNodes[0],
+          startTime: time,
+          playbackRate,
+          loopStartSeconds,
+          loopEndSeconds,
+          loopWhileHeld,
+          attackSeconds: channelAttacks,
+          holdSeconds: channelHolds,
+          decaySeconds: channelDecays,
+          peakGain: channelPeaks,
+          sustainGain: channelSustains,
+          releaseSeconds: channelReleases,
+          keyState: "down",
+          heldBySostenuto: false,
+          sostenutoCapturedAtBaseline: false,
+          sustainedByPedal: false,
+          sampleModes,
+        };
+        this.activeVoices.set(voiceKey, voice);
+        createdVoiceKeys.push(voiceKey);
+        for (const source of sourceNodes) {
+          source.onended = () => {
+            voice.endedSourceNodes.add(source);
+            this.teardownVoiceIfEnded(voice);
+          };
+        }
       }
-      source.connect(gainNode);
-      outputNode.connect(this.masterGain);
-      source.start(time);
-
-      const voiceKey = `${noteId}-z${zoneIndex}-${zone.sampleIndex}-${this.cacheClock++}`;
-      const voice: ActiveVoice = {
-        voiceKey,
-        noteId: voiceKey,
-        originalNoteId: noteId,
-        pitch,
-        velocity: effectiveVelocity,
-        sampleIndex: zone.sampleIndex,
-        sourceNode: source,
-        gainNode,
-        panNode,
-        startTime: time,
-        playbackRate,
-        loopStartSeconds,
-        loopEndSeconds,
-        attackSeconds: attack,
-        peakGain,
-        releaseSeconds: release,
-        keyState: "down",
-        heldBySostenuto: false,
-        sostenutoCapturedAtBaseline: false,
-        sustainedByPedal: false,
-        sampleModes,
-      };
-      this.activeVoices.set(voiceKey, voice);
-      decoded.pins++;
-      this.evictInactiveSamples();
-      source.onended = () => {
-        if (!voice.tailSourceNode) this.teardownVoice(voiceKey, this.audioContext.currentTime);
-      };
+    } catch (error) {
+      for (const key of createdVoiceKeys) this.teardownVoice(key, this.audioContext.currentTime);
+      for (const source of partialSources) {
+        try { source.stop(this.audioContext.currentTime); source.disconnect(); } catch { /* Ignore an already-stopped node. */ }
+      }
+      for (const gain of partialGains) {
+        try { gain.disconnect(); } catch { /* Ignore a disconnected node. */ }
+      }
+      for (const pan of partialPans) {
+        try { pan.disconnect(); } catch { /* Ignore a disconnected node. */ }
+      }
+      for (const lease of leases) lease.release();
+      throw error;
     }
   }
 
@@ -243,7 +673,9 @@ export class SoundFontSynth {
   }
 
   public getActiveVoiceCount(): number { return this.activeVoices.size; }
-  public getDecodedSampleCacheBytes(): number { return this.cachedBytes; }
+  public getDecodedSampleCacheBytes(): number {
+    return this.soundFont?.sampleSource ? this.sampleProvider.getStats().decodedBytes : this.cachedBytes;
+  }
   public getPedalState(): Readonly<SoundFontPedalState> {
     const state: SoundFontPedalState = { ...this.pedalBaseline };
     const now = this.audioContext.currentTime;
@@ -327,6 +759,9 @@ export class SoundFontSynth {
   }
 
   public dispose(): void {
+    this.disposed = true;
+    this.cancelPreparation();
+    this.releasePreparedSamples();
     this.silenceAll();
     this.audioBufferCache.clear();
     this.cachedBytes = 0;
@@ -339,61 +774,127 @@ export class SoundFontSynth {
     if (!voice.sustainedByPedal && !voice.heldBySostenuto) this.startVoiceRelease(voice, time);
   }
 
+  private scheduleHoldDecay(
+    gain: AudioParam,
+    attackEnd: number,
+    holdSeconds: number,
+    decaySeconds: number,
+    peakGain: number,
+    sustainGain: number,
+  ): void {
+    const decayStart = attackEnd + holdSeconds;
+    if (holdSeconds > 0 && (decaySeconds > 0 || sustainGain >= peakGain)) {
+      gain.setValueAtTime(peakGain, decayStart);
+    }
+    if (sustainGain >= peakGain) return;
+    if (decaySeconds > 0) gain.exponentialRampToValueAtTime(sustainGain, decayStart + decaySeconds);
+    else gain.setValueAtTime(sustainGain, decayStart);
+  }
+
+  private scheduleEnvelopeAfter(voice: ActiveVoice, time: number, channelIndex: number): void {
+    const gain = voice.gainNodes[channelIndex]!.gain;
+    const attackEnd = voice.startTime + voice.attackSeconds[channelIndex]!;
+    const holdSeconds = voice.holdSeconds[channelIndex] ?? 0;
+    const decaySeconds = voice.decaySeconds[channelIndex] ?? 0;
+    const holdEnd = attackEnd + holdSeconds;
+    const decayEnd = holdEnd + decaySeconds;
+    const peakGain = voice.peakGain[channelIndex]!;
+    const sustainGain = voice.sustainGain[channelIndex]!;
+
+    if (time < attackEnd) {
+      gain.exponentialRampToValueAtTime(peakGain, attackEnd);
+      this.scheduleHoldDecay(gain, attackEnd, holdSeconds, decaySeconds, peakGain, sustainGain);
+    } else if (time < holdEnd) {
+      this.scheduleHoldDecay(gain, attackEnd, holdSeconds, decaySeconds, peakGain, sustainGain);
+    } else if (time < decayEnd && sustainGain < peakGain) {
+      gain.exponentialRampToValueAtTime(sustainGain, decayEnd);
+    }
+  }
+
   private startVoiceRelease(voice: ActiveVoice, time: number): void {
     if (voice.releaseStartTime !== undefined && voice.releaseStartTime <= time) return;
     voice.releaseStartTime = time;
-    if (voice.sampleModes === 3) this.scheduleMode3Tail(voice, time);
-    try {
-      const gain = voice.gainNode.gain;
-      const atStart = Math.max(0.0001, this.envelopeGainAt(voice, time));
-      gain.cancelScheduledValues(time);
-      gain.setValueAtTime(atStart, time);
-      gain.exponentialRampToValueAtTime(0.0001, time + voice.releaseSeconds);
-      if (voice.tailSourceNode) voice.tailSourceNode.stop(time + voice.releaseSeconds + 0.05);
-      else if (voice.sampleModes !== 3) voice.sourceNode.stop(time + voice.releaseSeconds + 0.05);
-    } catch { /* Web Audio may reject a stop on an ended voice. */ }
+    const tailedChannels = this.scheduleMode3Tails(voice, time);
+    for (let index = 0; index < voice.gainNodes.length; index++) {
+      const gain = voice.gainNodes[index]!.gain;
+      const atStart = Math.max(0.0001, this.envelopeGainAt(voice, time, index));
+      try {
+        gain.cancelScheduledValues(time);
+        gain.setValueAtTime(atStart, time);
+        gain.exponentialRampToValueAtTime(0.0001, time + voice.releaseSeconds[index]!);
+      } catch { /* Keep the other channel envelopes scheduled if a node has ended. */ }
+    }
+    for (let index = 0; index < voice.sourceNodes.length; index++) {
+      if (tailedChannels.has(index)) continue;
+      try { voice.sourceNodes[index]!.stop(time + voice.releaseSeconds[index]! + 0.05); }
+      catch { /* Ignore an already-ended source. */ }
+    }
+    for (let index = 0; index < voice.tailSourceNodes.length; index++) {
+      const channelIndex = voice.tailChannelIndices[index]!;
+      try { voice.tailSourceNodes[index]!.stop(time + voice.releaseSeconds[channelIndex]! + 0.05); }
+      catch { /* Ignore an already-ended tail. */ }
+    }
   }
 
   private cancelVoiceRelease(voice: ActiveVoice, time: number): void {
     voice.releaseStartTime = undefined;
-    if (voice.tailSourceNode) {
-      const tail = voice.tailSourceNode;
-      voice.tailSourceNode = undefined;
+    for (const tail of voice.tailSourceNodes) {
       tail.onended = null;
-      try {
-        tail.stop(time);
-        tail.disconnect();
-      } catch { /* Ignore a tail that already ended. */ }
+      try { tail.stop(time); } catch { /* Ignore an already-ended tail. */ }
+      try { tail.disconnect(); } catch { /* Ignore a disconnected tail. */ }
     }
-    const gain = voice.gainNode.gain;
-    const value = Math.max(0.0001, this.envelopeGainAt(voice, time));
-    try {
-      gain.cancelScheduledValues(time);
-      gain.setValueAtTime(value, time);
-      if (time < voice.startTime + voice.attackSeconds) {
-        gain.exponentialRampToValueAtTime(voice.peakGain, voice.startTime + voice.attackSeconds);
-      }
-      const source = voice.sourceNode as AudioBufferSourceNode & { stop: (when?: number) => void };
-      // A later stop() replaces an earlier scheduled stop; push it beyond the
-      // Web Audio session so a canceled future release cannot truncate a held loop.
-      source.stop(time + 24 * 60 * 60);
-      if (voice.sampleModes === 3 && voice.loopStartSeconds !== undefined) source.loop = true;
-    } catch { /* Keep the active envelope if a browser rejects rescheduling. */ }
+    voice.tailSourceNodes = [];
+    voice.tailChannelIndices = [];
+    voice.endedTailSourceNodes.clear();
+    for (let index = 0; index < voice.gainNodes.length; index++) {
+      const gain = voice.gainNodes[index]!.gain;
+      const value = Math.max(0.0001, this.envelopeGainAt(voice, time, index));
+      try {
+        gain.cancelScheduledValues(time);
+        gain.setValueAtTime(value, time);
+        this.scheduleEnvelopeAfter(voice, time, index);
+      } catch { /* Keep the other channel envelopes active. */ }
+    }
+    for (let index = 0; index < voice.sourceNodes.length; index++) {
+      const source = voice.sourceNodes[index]!;
+      try {
+        // A later stop replaces an earlier scheduled stop; push it beyond the session.
+        source.stop(time + 24 * 60 * 60);
+      } catch { /* Ignore an already-ended source. */ }
+      if (voice.loopWhileHeld[index]) source.loop = true;
+    }
+    this.teardownVoiceIfEnded(voice);
   }
 
-  private envelopeGainAt(voice: ActiveVoice, time: number): number {
-    const attackEnd = voice.startTime + voice.attackSeconds;
-    if (time <= voice.startTime) return 0.0001;
-    if (time < attackEnd) {
-      const ratio = (time - voice.startTime) / voice.attackSeconds;
-      return 0.0001 * Math.pow(voice.peakGain / 0.0001, Math.max(0, ratio));
-    }
+  private envelopeGainAt(voice: ActiveVoice, time: number, channelIndex = 0): number {
+    const attackSeconds = voice.attackSeconds[channelIndex] ?? voice.attackSeconds[0] ?? 0.005;
+    const holdSeconds = voice.holdSeconds[channelIndex] ?? voice.holdSeconds[0] ?? 0;
+    const decaySeconds = voice.decaySeconds[channelIndex] ?? voice.decaySeconds[0] ?? 0;
+    const peakGain = voice.peakGain[channelIndex] ?? voice.peakGain[0] ?? 0.5;
+    const sustainGain = voice.sustainGain[channelIndex] ?? voice.sustainGain[0] ?? peakGain;
+    const releaseSeconds = voice.releaseSeconds[channelIndex] ?? voice.releaseSeconds[0] ?? 0.25;
+    const attackEnd = voice.startTime + attackSeconds;
+    const holdEnd = attackEnd + holdSeconds;
+    const decayEnd = holdEnd + decaySeconds;
+    const adsrGainAt = (at: number): number => {
+      if (at <= voice.startTime) return 0.0001;
+      if (at < attackEnd) {
+        const ratio = (at - voice.startTime) / attackSeconds;
+        return 0.0001 * Math.pow(peakGain / 0.0001, Math.max(0, ratio));
+      }
+      if (at < holdEnd) return peakGain;
+      if (at < decayEnd && decaySeconds > 0) {
+        const ratio = (at - holdEnd) / decaySeconds;
+        return peakGain * Math.pow(sustainGain / peakGain, Math.max(0, ratio));
+      }
+      return sustainGain;
+    };
     if (voice.releaseStartTime !== undefined && time >= voice.releaseStartTime) {
-      const releaseRatio = Math.min(1, (time - voice.releaseStartTime) / voice.releaseSeconds);
-      const start = Math.max(0.0001, this.envelopeGainAt({ ...voice, releaseStartTime: undefined }, voice.releaseStartTime));
+      const releaseRatio = Math.min(1, (time - voice.releaseStartTime) / releaseSeconds);
+      const start = Math.max(0.0001, adsrGainAt(voice.releaseStartTime));
       return start * Math.pow(0.0001 / start, releaseRatio);
     }
-    return voice.peakGain;
+    return adsrGainAt(time);
   }
 
   private wasCapturedBySostenuto(voice: ActiveVoice, time: number): boolean {
@@ -412,34 +913,46 @@ export class SoundFontSynth {
   }
 
   private restoreLoopWhileHeld(voice: ActiveVoice): void {
-    if (voice.sampleModes === 3 && voice.releaseStartTime === undefined) {
-      if (voice.loopStartSeconds !== undefined) voice.sourceNode.loop = true;
+    if (voice.releaseStartTime !== undefined) return;
+    for (let index = 0; index < voice.sourceNodes.length; index++) {
+      if (voice.loopWhileHeld[index]) voice.sourceNodes[index]!.loop = true;
     }
   }
 
-  private scheduleMode3Tail(voice: ActiveVoice, time: number): void {
-    const { loopStartSeconds, loopEndSeconds, playbackRate, sourceNode } = voice;
-    if (!sourceNode.loop || loopStartSeconds === undefined || loopEndSeconds === undefined || !sourceNode.buffer) return;
-    const loopDuration = loopEndSeconds - loopStartSeconds;
-    const firstLoopTime = voice.startTime + loopEndSeconds / playbackRate;
-    const elapsed = Math.max(0, time - voice.startTime);
-    const offset = time < firstLoopTime
-      ? elapsed * playbackRate
-      : loopStartSeconds + (((time - firstLoopTime) * playbackRate) % loopDuration);
-    const tail = this.audioContext.createBufferSource();
-    tail.buffer = sourceNode.buffer;
-    tail.playbackRate.setValueAtTime(playbackRate, time);
-    tail.connect(voice.gainNode);
-    const tailSampleRate = tail.buffer.sampleRate || 44100;
-    tail.start(time, Math.min(offset, Math.max(0, tail.buffer.duration - 1 / tailSampleRate)));
-    voice.tailSourceNode = tail;
-    tail.onended = () => {
-      if (voice.tailSourceNode === tail) this.teardownVoice(voice.voiceKey, this.audioContext.currentTime);
-    };
-    try {
-      // The main loop stops exactly when the one-shot loop tail begins.
-      sourceNode.stop(time);
-    } catch { /* Ignore already-stopped sources. */ }
+  private scheduleMode3Tails(voice: ActiveVoice, time: number): Set<number> {
+    const tailedChannels = new Set<number>();
+    for (let index = 0; index < voice.sourceNodes.length; index++) {
+      const source = voice.sourceNodes[index]!;
+      const loopStartSeconds = voice.loopStartSeconds[index];
+      const loopEndSeconds = voice.loopEndSeconds[index];
+      if (voice.sampleModes[index] !== 3 || !source.loop || loopStartSeconds === undefined ||
+          loopEndSeconds === undefined || !source.buffer) continue;
+      const loopDuration = loopEndSeconds - loopStartSeconds;
+      if (loopDuration <= 0) continue;
+      const firstLoopTime = voice.startTime + loopEndSeconds / voice.playbackRate;
+      const elapsed = Math.max(0, time - voice.startTime);
+      const offset = time < firstLoopTime
+        ? elapsed * voice.playbackRate
+        : loopStartSeconds + (((time - firstLoopTime) * voice.playbackRate) % loopDuration);
+      const tail = this.audioContext.createBufferSource();
+      tail.buffer = source.buffer;
+      tail.playbackRate.setValueAtTime(voice.playbackRate, time);
+      tail.connect(voice.gainNodes[index]!);
+      const tailSampleRate = tail.buffer.sampleRate || 44_100;
+      tail.start(time, Math.min(offset, Math.max(0, tail.buffer.duration - 1 / tailSampleRate)));
+      voice.tailSourceNodes.push(tail);
+      voice.tailChannelIndices.push(index);
+      tailedChannels.add(index);
+      tail.onended = () => {
+        voice.endedTailSourceNodes.add(tail);
+        this.teardownVoiceIfEnded(voice);
+      }
+    }
+    for (const index of tailedChannels) {
+      try { voice.sourceNodes[index]!.stop(time); }
+      catch { /* Ignore an already-ended loop. */ }
+    }
+    return tailedChannels;
   }
 
   private enforcePolyphonyLimit(incomingVoices: number): void {
@@ -457,24 +970,41 @@ export class SoundFontSynth {
   private teardownVoice(key: string, time: number): void {
     const voice = this.activeVoices.get(key);
     if (!voice) return;
-    try {
-      voice.gainNode.gain.cancelScheduledValues(time);
-      voice.gainNode.gain.setValueAtTime(0.0001, time);
-      voice.sourceNode.stop(time);
-      voice.tailSourceNode?.stop(time);
-      voice.sourceNode.disconnect();
-      voice.gainNode.disconnect();
-      voice.panNode?.disconnect();
-    } catch { /* Ignore already-ended nodes. */ }
-    this.activeVoices.delete(key);
-    const cached = this.audioBufferCache.get(voice.sampleIndex);
-    if (cached) {
-      cached.pins = Math.max(0, cached.pins - 1);
-      this.evictInactiveSamples();
+    for (const source of voice.sourceNodes) {
+      source.onended = null;
+      try { source.stop(time); } catch { /* Ignore already-ended nodes. */ }
+      try { source.disconnect(); } catch { /* Ignore disconnected nodes. */ }
     }
+    for (const tail of voice.tailSourceNodes) {
+      tail.onended = null;
+      try { tail.stop(time); } catch { /* Ignore already-ended nodes. */ }
+      try { tail.disconnect(); } catch { /* Ignore disconnected nodes. */ }
+    }
+    for (const gain of voice.gainNodes) {
+      try { gain.gain.cancelScheduledValues(time); gain.gain.setValueAtTime(0.0001, time); } catch { /* Ignore ended gains. */ }
+      try { gain.disconnect(); } catch { /* Ignore disconnected nodes. */ }
+    }
+    for (const pan of voice.panNodes) {
+      try { pan.disconnect(); } catch { /* Ignore disconnected nodes. */ }
+    }
+    this.activeVoices.delete(key);
+    for (const lease of voice.sampleLeases) lease.release();
   }
 
-  private getOrCreateAudioBuffer(sampleIndex: number): DecodedSample | null {
+  private teardownVoiceIfEnded(voice: ActiveVoice): void {
+    if (this.activeVoices.get(voice.voiceKey) !== voice) return;
+    const everyChannelEnded = voice.sourceNodes.every((source, channelIndex) => {
+      const tailIndex = voice.tailChannelIndices.indexOf(channelIndex);
+      if (tailIndex >= 0) {
+        const tail = voice.tailSourceNodes[tailIndex];
+        return tail !== undefined && voice.endedTailSourceNodes.has(tail);
+      }
+      return voice.endedSourceNodes.has(source);
+    });
+    if (everyChannelEnded) this.teardownVoice(voice.voiceKey, this.audioContext.currentTime);
+  }
+
+  private getOrCreateRawAudioBuffer(sampleIndex: number): DecodedSample | null {
     const cached = this.audioBufferCache.get(sampleIndex);
     if (cached) {
       cached.lastUse = ++this.cacheClock;
@@ -483,7 +1013,7 @@ export class SoundFontSynth {
     if (!this.soundFont?.rawSampleData) return null;
     const sample = this.soundFont.samples[sampleIndex];
     if (!sample) return null;
-    const length = Math.max(1, Math.min(sample.end - sample.start, this.soundFont.rawSampleData.length - sample.start));
+    const length = Math.min(sample.end - sample.start, this.soundFont.rawSampleData.length - sample.start);
     if (!Number.isFinite(length) || length <= 0) return null;
     const buffer = this.audioContext.createBuffer(1, length, sample.sampleRate || 44100);
     const channel = buffer.getChannelData(0);
@@ -504,4 +1034,16 @@ export class SoundFontSynth {
       this.cachedBytes -= victim[1].bytes;
     }
   }
+}
+
+function zoneOrder(zone: Sf2Zone, fallbackIndex: number): number {
+  return zone.instrumentZoneId ?? fallbackIndex;
+}
+
+function sameNumberSet(a: ReadonlySet<number>, b: ReadonlySet<number>): boolean {
+  return a.size === b.size && [...a].every((value) => b.has(value));
+}
+
+function abortError(): DOMException {
+  return new DOMException("SoundFont preparation was cancelled.", "AbortError");
 }

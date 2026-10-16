@@ -61,6 +61,13 @@ export class Transport {
   private unsubscribeSyncedAudioError: (() => void) | null = null;
   private unsubscribeOutputUnavailable: (() => void) | null = null;
   private fatalOutputError: Error | null = null;
+  private samplePreparation: {
+    output: PerformanceOutput; plan: PerformancePlan; start: number; end: number;
+    controller: AbortController; promise: Promise<void>;
+  } | null = null;
+  private preparingOutput = false;
+  private nextSamplePrefetchTime = Number.NEGATIVE_INFINITY;
+  private readonly preparationListeners = new Set<(preparing: boolean) => void>();
 
   // Listeners
   private readonly timeListeners = new Set<(timeSeconds: number) => void>();
@@ -96,6 +103,9 @@ export class Transport {
   public setOutput(output: PerformanceOutput | null): void {
     const nextOutput = output ?? this.defaultSynthOutput;
     if (this.output === nextOutput) return;
+    const resumePreparation = this.preparingOutput;
+    this.playRequestGeneration += 1;
+    this.cancelSamplePreparation();
 
     const prevOutput = this.output;
     this.unsubscribeOutputUnavailable?.();
@@ -108,6 +118,7 @@ export class Transport {
     this.unsubscribeOutputUnavailable = this.output.subscribeUnavailable?.((error) => {
       this.fatalOutputError = error;
       this.playRequestGeneration += 1;
+      this.cancelSamplePreparation();
       if (this.state === "playing") this.pause();
       for (const listener of this.outputErrorListeners) listener(error);
     }) ?? null;
@@ -116,9 +127,15 @@ export class Transport {
     this.output.setVolume?.(getMasterVolume());
 
     if (this.state === "playing" && this.plan) {
-      this.output.restoreState(derivePerformanceStateAt(this.plan, this.getCurrentTime()));
+      if (this.outputWindowReady(this.getCurrentTime(), this.getCurrentTime() + this.scheduleAheadSeconds * this.speed)) {
+        this.output.restoreState(derivePerformanceStateAt(this.plan, this.getCurrentTime()));
+      } else {
+        this.pause();
+        void this.play().catch(() => { /* play reports the current output error. */ });
+      }
     } else if (this.plan) {
       this.restorePedalStateAt(this.currentTime);
+      if (resumePreparation) void this.play().catch(() => { /* Reported by play. */ });
     }
   }
 
@@ -168,8 +185,11 @@ export class Transport {
    */
   public updatePlan(plan: PerformancePlan, explicitDurationSeconds?: number): void {
     const wasPlaying = this.state === "playing";
+    const resumePreparation = this.preparingOutput;
     const position = wasPlaying ? this.getCurrentTime() : this.currentTime;
 
+    this.playRequestGeneration += 1;
+    this.cancelSamplePreparation();
     this.stopScheduler();
     if (!wasPlaying) this.output.panic();
     this.plan = plan;
@@ -180,9 +200,16 @@ export class Transport {
     this.updateNextEventIndex(this.currentTime);
 
     if (wasPlaying) {
-      this.restorePlaybackStateAt(this.currentTime);
-      this.startScheduler();
-      this.syncedAudio?.seek(this.currentTime, this.speed);
+      if (this.outputWindowReady(this.currentTime, this.currentTime + this.scheduleAheadSeconds * this.speed)) {
+        this.restorePlaybackStateAt(this.currentTime);
+        this.startScheduler();
+        this.syncedAudio?.seek(this.currentTime, this.speed);
+      } else {
+        this.pause();
+        void this.play().catch(() => { /* Reported by play. */ });
+      }
+    } else if (resumePreparation) {
+      void this.play().catch(() => { /* Reported by play. */ });
     }
 
     this.emitTime();
@@ -276,12 +303,26 @@ export class Transport {
       return;
     }
 
-    const now = this.audioContext.currentTime;
-
     // If song was at the end or idle past duration, restart from lead-in
     if (this.durationSeconds > 0 && this.currentTime >= this.durationSeconds) {
       this.currentTime = -this.leadInSeconds;
     }
+
+    try {
+      if (!this.outputWindowReady(this.currentTime, this.currentTime + 4)) {
+        this.setPreparingOutput(true);
+        await this.prepareOutputWindow(this.currentTime, this.currentTime + 4);
+      }
+    } catch (error) {
+      if (this.disposed || requestGeneration !== this.playRequestGeneration) return;
+      this.setPreparingOutput(false);
+      const failure = error instanceof Error ? error : new Error(String(error));
+      this.handlePlaybackError(failure);
+      throw failure;
+    }
+    if (this.disposed || requestGeneration !== this.playRequestGeneration || this.fatalOutputError) return;
+    this.setPreparingOutput(false);
+    const now = this.audioContext.currentTime;
 
     this.songStartTime = this.currentTime;
     this.audioStartTime = now;
@@ -289,6 +330,7 @@ export class Transport {
     this.restorePlaybackStateAt(this.currentTime);
     this.state = "playing";
     this.startScheduler();
+    if (this.state !== "playing") return;
 
     this.syncedAudio?.play(this.currentTime, this.speed);
 
@@ -300,6 +342,7 @@ export class Transport {
    */
   public pause(): void {
     this.playRequestGeneration += 1;
+    this.cancelSamplePreparation();
     if (this.state !== "playing") {
       return;
     }
@@ -320,6 +363,7 @@ export class Transport {
    */
   public stop(): void {
     this.playRequestGeneration += 1;
+    this.cancelSamplePreparation();
     this.stopScheduler();
     this.output.panic();
     this.syncedAudio?.pause();
@@ -340,6 +384,9 @@ export class Transport {
   public seek(timeSeconds: number): void {
     if (!Number.isFinite(timeSeconds)) return;
     const clampedTime = this.clampSongTime(timeSeconds);
+    const resumePreparation = this.preparingOutput;
+    this.playRequestGeneration += 1;
+    this.cancelSamplePreparation();
 
     if (this.state === "playing") {
       const now = this.audioContext.currentTime;
@@ -347,6 +394,11 @@ export class Transport {
       this.audioStartTime = now;
       this.currentTime = clampedTime;
       this.updateNextEventIndex(clampedTime);
+      if (!this.outputWindowReady(clampedTime, clampedTime + this.scheduleAheadSeconds * this.speed)) {
+        this.pause();
+        void this.play().catch(() => { /* Reported by play. */ });
+        return;
+      }
       this.restorePlaybackStateAt(clampedTime);
       this.syncedAudio?.seek(clampedTime, this.speed);
       this.tickScheduler();
@@ -356,6 +408,7 @@ export class Transport {
       this.updateNextEventIndex(clampedTime);
       this.restorePedalStateAt(clampedTime);
       this.syncedAudio?.seek(clampedTime, this.speed);
+      if (resumePreparation) void this.play().catch(() => { /* Reported by play. */ });
     }
 
     this.emitTime();
@@ -493,6 +546,53 @@ export class Transport {
     return () => this.outputErrorListeners.delete(callback);
   }
 
+  /** A frozen musical clock while file-backed SoundFont data is prepared. */
+  public subscribePreparingOutput(callback: (preparing: boolean) => void): () => void {
+    this.preparationListeners.add(callback);
+    callback(this.preparingOutput);
+    return () => this.preparationListeners.delete(callback);
+  }
+
+  public isPreparingOutput(): boolean { return this.preparingOutput; }
+
+  private setPreparingOutput(preparing: boolean): void {
+    if (this.preparingOutput === preparing) return;
+    this.preparingOutput = preparing;
+    for (const listener of this.preparationListeners) listener(preparing);
+  }
+
+  private cancelSamplePreparation(): void {
+    this.samplePreparation?.controller.abort();
+    this.samplePreparation = null;
+    this.nextSamplePrefetchTime = Number.NEGATIVE_INFINITY;
+    this.setPreparingOutput(false);
+  }
+
+  private outputWindowReady(start: number, end: number): boolean {
+    return !this.plan || !this.output.isWindowPrepared ||
+      this.output.isWindowPrepared(this.plan, start, Math.min(this.durationSeconds, end));
+  }
+
+  private prepareOutputWindow(start: number, end: number): Promise<void> {
+    const output = this.output;
+    const plan = this.plan;
+    if (!plan || !output.prepareWindow) return Promise.resolve();
+    end = Math.min(this.durationSeconds, end);
+    const current = this.samplePreparation;
+    if (current && current.output === output && current.plan === plan && current.start <= start && current.end >= end) {
+      return current.promise;
+    }
+    current?.controller.abort();
+    const controller = new AbortController();
+    const promise = Promise.resolve().then(() => output.prepareWindow!(plan, start, end, controller.signal));
+    const pending = { output, plan, start, end, controller, promise };
+    this.samplePreparation = pending;
+    void promise.finally(() => {
+      if (this.samplePreparation === pending) this.samplePreparation = null;
+    }).catch(() => { /* The awaiting playback or prefetch owns error reporting. */ });
+    return promise;
+  }
+
   /**
    * Lookahead scheduler tick running every ~25ms.
    * Schedules events in [audioNow, audioNow + scheduleAheadSeconds].
@@ -519,8 +619,25 @@ export class Transport {
     const audioHorizon = now + this.scheduleAheadSeconds;
     const songHorizon = this.songStartTime + (audioHorizon - this.audioStartTime) * this.speed;
 
+    if (!this.outputWindowReady(currentSong, songHorizon)) {
+      this.pause();
+      void this.play().catch(() => { /* play reports the preparation failure. */ });
+      return;
+    }
+    if (this.output.prepareWindow && !this.samplePreparation && currentSong >= this.nextSamplePrefetchTime) {
+      const expectedOutput = this.output;
+      const expectedPlan = this.plan;
+      const generation = this.playRequestGeneration;
+      this.nextSamplePrefetchTime = currentSong + 0.5;
+      void this.prepareOutputWindow(currentSong, currentSong + 4).catch(error => {
+        if (generation === this.playRequestGeneration && this.output === expectedOutput && this.plan === expectedPlan) {
+          this.handlePlaybackError(error instanceof Error ? error : new Error(String(error)));
+        }
+      });
+    }
+
     const events = this.plan.events;
-    while (this.nextEventIndex < events.length) {
+    try { while (this.nextEventIndex < events.length) {
       const event = events[this.nextEventIndex]!;
       if (event.timeSeconds > songHorizon) {
         break;
@@ -543,6 +660,9 @@ export class Transport {
       }
 
       this.nextEventIndex += 1;
+    } } catch (error) {
+      this.handlePlaybackError(error instanceof Error ? error : new Error(String(error)));
+      return;
     }
 
     this.emitTime();
@@ -551,6 +671,7 @@ export class Transport {
   private startScheduler(): void {
     this.stopScheduler();
     this.tickScheduler();
+    if (this.state !== "playing") return;
     this.schedulerTimer = setInterval(() => {
       this.tickScheduler();
     }, this.scheduleIntervalMs);
@@ -658,6 +779,7 @@ export class Transport {
 
   private handlePlaybackError(error: Error): void {
     this.playRequestGeneration += 1;
+    this.cancelSamplePreparation();
     if (this.state === "playing") {
       this.currentTime = this.getCurrentTime();
       this.state = "paused";
@@ -680,6 +802,7 @@ export class Transport {
     this.stateListeners.clear();
     this.speedListeners.clear();
     this.endedListeners.clear();
+    this.preparationListeners.clear();
     if (this.syncedAudio) {
       this.syncedAudio.dispose();
       this.syncedAudio = null;

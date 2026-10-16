@@ -1,0 +1,444 @@
+{
+  "config": {
+    "argv": [
+      "C:\\nvm4w\\nodejs\\node.exe",
+      "C:\\Projects\\pianomotion-studio\\node_modules\\@playwright\\test\\cli.js",
+      "test",
+      "--config",
+      "playwright.soundfont.config.ts",
+      "tests/browser/soundfont-user-banks.spec.ts"
+    ],
+    "configFile": "C:\\Projects\\pianomotion-studio\\playwright.soundfont.config.ts",
+    "rootDir": "C:/Projects/pianomotion-studio/tests/browser",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "C:/Projects/pianomotion-studio/test-results/soundfont-chrome",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "",
+        "name": "",
+        "testDir": "C:/Projects/pianomotion-studio/tests/browser",
+        "testIgnore": [],
+        "testMatch": [
+          "**/soundfont-large.spec.ts",
+          "**/soundfont-user-banks.spec.ts"
+        ],
+        "timeout": 300000
+      }
+    ],
+    "filteredProjects": [
+      {
+        "grep": {},
+        "grepInvert": null,
+        "outputDir": "C:\\Projects\\pianomotion-studio\\test-results\\soundfont-chrome",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "name": "",
+        "testDir": "C:\\Projects\\pianomotion-studio\\tests\\browser",
+        "snapshotDir": "C:\\Projects\\pianomotion-studio\\tests\\browser",
+        "testIgnore": [],
+        "testMatch": [
+          "**/soundfont-large.spec.ts",
+          "**/soundfont-user-banks.spec.ts"
+        ],
+        "timeout": 300000,
+        "use": {
+          "baseURL": "http://127.0.0.1:4173",
+          "browserName": "chromium",
+          "channel": "chrome",
+          "headless": true
+        },
+        "dependencies": [],
+        "ignoreSnapshots": false,
+        "__projectId": ""
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "list",
+        null
+      ],
+      [
+        "json",
+        {
+          "outputFile": "test-results/reports/soundfont-chrome.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "default",
+    "updateSourceMethod": "patch",
+    "version": "1.64.0",
+    "workers": 1,
+    "webServer": {
+      "command": "npm run dev -- --host 127.0.0.1 --port 4173 --strictPort",
+      "url": "http://127.0.0.1:4173",
+      "reuseExistingServer": false,
+      "timeout": 60000
+    }
+  },
+  "suites": [
+    {
+      "title": "soundfont-user-banks.spec.ts",
+      "file": "soundfont-user-banks.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "user bank Abbey-Steinway-D-v1.9.sf2 activates, plays, restores and renders low/mid/high probes",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 300000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 27428,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-16T11:35:30.774Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "user-bank-result",
+                      "contentType": "application/json",
+                      "body": "ewogICJmaWxlIjogIkFiYmV5LVN0ZWlud2F5LUQtdjEuOS5zZjIiLAogICJzb3VyY2VIYXNoQmVmb3JlIjogIjdkOTAwZGI0MDMxMmVmZjM1NjM2ZDk5NWU0ZDk2ZThkY2Q3NjVmNzYwZGQyNzkzYTg1ODBjZWNiMzQxNmQzMTAiLAogICJzb3VyY2VIYXNoQWZ0ZXIiOiAiN2Q5MDBkYjQwMzEyZWZmMzU2MzZkOTk1ZTRkOTZlOGRjZDc2NWY3NjBkZDI3OTNhODU4MGNlY2IzNDE2ZDMxMCIsCiAgInJlbmRlciI6IHsKICAgICJpZCI6ICI3ZDkwMGRiNDAzMTJlZmYzNTYzNmQ5OTVlNGQ5NmU4ZGNkNzY1Zjc2MGRkMjc5M2E4NTgwY2VjYjM0MTZkMzEwIiwKICAgICJieXRlTGVuZ3RoIjogNDAyNDM3MTIsCiAgICAiaGVhZGVyIjogewogICAgICAibmFtZSI6ICJBYmJleS1TdGVpbndheS1ELXYxLjkiLAogICAgICAidmVyc2lvbk1ham9yIjogMiwKICAgICAgInZlcnNpb25NaW5vciI6IDEsCiAgICAgICJzb3VuZEVuZ2luZSI6ICJFTVU4MDAwIgogICAgfSwKICAgICJwcmVzZXQiOiB7CiAgICAgICJuYW1lIjogIlN0ZWlud2F5LUQiLAogICAgICAiYmFua051bWJlciI6IDAsCiAgICAgICJwcmVzZXROdW1iZXIiOiAwCiAgICB9LAogICAgInNhbXBsZUNvdW50IjogNDUsCiAgICAibW9ub1NhbXBsZUNvdW50IjogMCwKICAgICJsZWZ0U2FtcGxlQ291bnQiOiAyMiwKICAgICJyaWdodFNhbXBsZUNvdW50IjogMjIsCiAgICAidXNlc1N0ZXJlb1BhaXIiOiB0cnVlLAogICAgIm1lYXN1cmVkUHJvYmVzIjogWwogICAgICB7CiAgICAgICAgInBpdGNoIjogMzYsCiAgICAgICAgInZlbG9jaXR5IjogNDgsCiAgICAgICAgIm5vdGVJZCI6ICJiYW5rLXByb2JlLTAiLAogICAgICAgICJjaGFubmVsUm1zIjogWwogICAgICAgICAgMC4wNDAzMzc5NDI3MjMxOTMwNSwKICAgICAgICAgIDAuMDM2NTAxNDYzOTkxNzY0MzcKICAgICAgICBdCiAgICAgIH0sCiAgICAgIHsKICAgICAgICAicGl0Y2giOiAzNiwKICAgICAgICAidmVsb2NpdHkiOiA4MCwKICAgICAgICAibm90ZUlkIjogImJhbmstcHJvYmUtMSIsCiAgICAgICAgImNoYW5uZWxSbXMiOiBbCiAgICAgICAgICAwLjA4NDM0NzU4MzI0MzAyMzE2LAogICAgICAgICAgMC4wNzY1ODY4NjU2MTgzMjA3OQogICAgICAgIF0KICAgICAgfSwKICAgICAgewogICAgICAgICJwaXRjaCI6IDM2LAogICAgICAgICJ2ZWxvY2l0eSI6IDExMiwKICAgICAgICAibm90ZUlkIjogImJhbmstcHJvYmUtMiIsCiAgICAgICAgImNoYW5uZWxSbXMiOiBbCiAgICAgICAgICAwLjEzMzg4ODg3NTIwMDQzMzEzLAogICAgICAgICAgMC4xMjI4NDE0ODA4NDIxNTMzOQogICAgICAgIF0KICAgICAgfSwKICAgICAgewogICAgICAgICJwaXRjaCI6IDYwLAogICAgICAgICJ2ZWxvY2l0eSI6IDQ4LAogICAgICAgICJub3RlSWQiOiAiYmFuay1wcm9iZS0zIiwKICAgICAgICAiY2hhbm5lbFJtcyI6IFsKICAgICAgICAgIDAuMDM0NDg1MTExMTAwMDUwOTY2LAogICAgICAgICAgMC4wMjcyMzM2NjA4NTkwMzU1CiAgICAgICAgXQogICAgICB9LAogICAgICB7CiAgICAgICAgInBpdGNoIjogNjAsCiAgICAgICAgInZlbG9jaXR5IjogODAsCiAgICAgICAgIm5vdGVJZCI6ICJiYW5rLXByb2JlLTQiLAogICAgICAgICJjaGFubmVsUm1zIjogWwogICAgICAgICAgMC4wNzMzMjcwODE2MTU0ODAwNCwKICAgICAgICAgIDAuMDUwODAwODExMDA1ODA2ODM1CiAgICAgICAgXQogICAgICB9LAogICAgICB7CiAgICAgICAgInBpdGNoIjogNjAsCiAgICAgICAgInZlbG9jaXR5IjogMTEyLAogICAgICAgICJub3RlSWQiOiAiYmFuay1wcm9iZS01IiwKICAgICAgICAiY2hhbm5lbFJtcyI6IFsKICAgICAgICAgIDAuMTA3OTM3MzQ3MzgwNDA4NjcsCiAgICAgICAgICAwLjA2OTYyOTcxOTExNDk3NDUxCiAgICAgICAgXQogICAgICB9LAogICAgICB7CiAgICAgICAgInBpdGNoIjogODQsCiAgICAgICAgInZlbG9jaXR5IjogNDgsCiAgICAgICAgIm5vdGVJZCI6ICJiYW5rLXByb2JlLTYiLAogICAgICAgICJjaGFubmVsUm1zIjogWwogICAgICAgICAgMC4wMTg5MDkzNTcwMzAyOTM0OSwKICAgICAgICAgIDAuMDIzMDE0ODk3MjI2MzYwODE1CiAgICAgICAgXQogICAgICB9LAogICAgICB7CiAgICAgICAgInBpdGNoIjogODQsCiAgICAgICAgInZlbG9jaXR5IjogODAsCiAgICAgICAgIm5vdGVJZCI6ICJiYW5rLXByb2JlLTciLAogICAgICAgICJjaGFubmVsUm1zIjogWwogICAgICAgICAgMC4wMjkxODA4Njk4NzMxODQyNTYsCiAgICAgICAgICAwLjA0NTE3NjEyNTAzMDYwMzM4NQogICAgICAgIF0KICAgICAgfSwKICAgICAgewogICAgICAgICJwaXRjaCI6IDg0LAogICAgICAgICJ2ZWxvY2l0eSI6IDExMiwKICAgICAgICAibm90ZUlkIjogImJhbmstcHJvYmUtOCIsCiAgICAgICAgImNoYW5uZWxSbXMiOiBbCiAgICAgICAgICAwLjA1MzA2ODE4Mjc3ODExMzc1LAogICAgICAgICAgMC4wODczMzE5MDE4NTg1Njc3OAogICAgICAgIF0KICAgICAgfQogICAgXSwKICAgICJwZWRhbFByb2JlUm1zIjogWwogICAgICAwLjA3NTMwODk2MTc5NDQ2MTg4LAogICAgICAwLjA1MDU3MzM3NTU5MzI0Nzk5CiAgICBdLAogICAgInBlYWsiOiAwLjM3NDI2MTkxNTY4Mzc0NjM0LAogICAgIm5vbkZpbml0ZVNhbXBsZXMiOiAwLAogICAgImRpZmZlcmVuY2VSbXMiOiAwLjA2NTg5NTAxMjE5MDA0ODQ4LAogICAgImhlbGRTdGF0ZSI6IHsKICAgICAgImFjdGl2ZVZvaWNlcyI6IDMsCiAgICAgICJrZXlEb3duTm90ZXMiOiBbXSwKICAgICAgInN1c3RhaW4iOiB0cnVlCiAgICB9LAogICAgInJlbGVhc2VkU3RhdGUiOiB7CiAgICAgICJhY3RpdmVWb2ljZXMiOiAyLAogICAgICAia2V5RG93bk5vdGVzIjogW10sCiAgICAgICJzdXN0YWluIjogZmFsc2UKICAgIH0sCiAgICAicHJlcGFyZWRTdGF0cyI6IHsKICAgICAgImJ1ZGdldEJ5dGVzIjogMjY4NDM1NDU2LAogICAgICAiaW5hY3RpdmVCdWRnZXRCeXRlcyI6IDY3MTA4ODY0LAogICAgICAiZGVjb2RlZEJ5dGVzIjogMjYwODc2NzIsCiAgICAgICJwcmVwYXJpbmdCeXRlcyI6IDAsCiAgICAgICJpbmFjdGl2ZUJ5dGVzIjogMCwKICAgICAgInBpbm5lZEJ5dGVzIjogMjYwODc2NzIsCiAgICAgICJjYWNoZWRTYW1wbGVzIjogMTQsCiAgICAgICJwcmVwYXJpbmdTYW1wbGVzIjogMCwKICAgICAgInJlYWRzIjogMTQsCiAgICAgICJkZWNvZGVzIjogMTQsCiAgICAgICJjYWNoZUhpdHMiOiAyCiAgICB9LAogICAgImJhc2VsaW5lU3RhdHMiOiB7CiAgICAgICJidWRnZXRCeXRlcyI6IDI2ODQzNTQ1NiwKICAgICAgImluYWN0aXZlQnVkZ2V0Qnl0ZXMiOiA2NzEwODg2NCwKICAgICAgImRlY29kZWRCeXRlcyI6IDY3MzUzMzYsCiAgICAgICJwcmVwYXJpbmdCeXRlcyI6IDAsCiAgICAgICJpbmFjdGl2ZUJ5dGVzIjogMCwKICAgICAgInBpbm5lZEJ5dGVzIjogNjczNTMzNiwKICAgICAgImNhY2hlZFNhbXBsZXMiOiA0LAogICAgICAicHJlcGFyaW5nU2FtcGxlcyI6IDAsCiAgICAgICJyZWFkcyI6IDQsCiAgICAgICJkZWNvZGVzIjogNCwKICAgICAgImNhY2hlSGl0cyI6IDAKICAgIH0sCiAgICAidm9pY2VzQWZ0ZXJSZW5kZXIiOiAwLAogICAgImNsZWFudXBTdGF0cyI6IHsKICAgICAgImJ1ZGdldEJ5dGVzIjogMjY4NDM1NDU2LAogICAgICAiaW5hY3RpdmVCdWRnZXRCeXRlcyI6IDY3MTA4ODY0LAogICAgICAiZGVjb2RlZEJ5dGVzIjogMjYwODc2NzIsCiAgICAgICJwcmVwYXJpbmdCeXRlcyI6IDAsCiAgICAgICJpbmFjdGl2ZUJ5dGVzIjogMTkzNTIzMzYsCiAgICAgICJwaW5uZWRCeXRlcyI6IDY3MzUzMzYsCiAgICAgICJjYWNoZWRTYW1wbGVzIjogMTQsCiAgICAgICJwcmVwYXJpbmdTYW1wbGVzIjogMCwKICAgICAgInJlYWRzIjogMTQsCiAgICAgICJkZWNvZGVzIjogMTQsCiAgICAgICJjYWNoZUhpdHMiOiAyCiAgICB9CiAgfQp9"
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "cd1c387d2259a2dd708b-ab8a17a8fcefe525eb56",
+          "file": "soundfont-user-banks.spec.ts",
+          "line": 33,
+          "column": 3
+        },
+        {
+          "title": "user bank Chateau-Grand-v2.2.sf2 activates, plays, restores and renders low/mid/high probes",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 300000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 37462,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-16T11:36:04.358Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "user-bank-result",
+                      "contentType": "application/json",
+                      "body": "ewogICJmaWxlIjogIkNoYXRlYXUtR3JhbmQtdjIuMi5zZjIiLAogICJzb3VyY2VIYXNoQmVmb3JlIjogImQzZTljZjg3MjFmOTQxZGI4Yzk2NDg3MGVkN2Y1MWY5N2VkY2U0NzE0MGFiYTBmMjIyYzFiNDU1OTkwZmRmOGQiLAogICJzb3VyY2VIYXNoQWZ0ZXIiOiAiZDNlOWNmODcyMWY5NDFkYjhjOTY0ODcwZWQ3ZjUxZjk3ZWRjZTQ3MTQwYWJhMGYyMjJjMWI0NTU5OTBmZGY4ZCIsCiAgInJlbmRlciI6IHsKICAgICJpZCI6ICJkM2U5Y2Y4NzIxZjk0MWRiOGM5NjQ4NzBlZDdmNTFmOTdlZGNlNDcxNDBhYmEwZjIyMmMxYjQ1NTk5MGZkZjhkIiwKICAgICJieXRlTGVuZ3RoIjogMjY4NTYyMjg2LAogICAgImhlYWRlciI6IHsKICAgICAgIm5hbWUiOiAiQ2hhdGVhdSBHcmFuZC12Mi4yIiwKICAgICAgInZlcnNpb25NYWpvciI6IDIsCiAgICAgICJ2ZXJzaW9uTWlub3IiOiAxLAogICAgICAic291bmRFbmdpbmUiOiAiRU1VODAwMCIKICAgIH0sCiAgICAicHJlc2V0IjogewogICAgICAibmFtZSI6ICJDaGF0ZWF1IEdyYW5kIiwKICAgICAgImJhbmtOdW1iZXIiOiAwLAogICAgICAicHJlc2V0TnVtYmVyIjogMAogICAgfSwKICAgICJzYW1wbGVDb3VudCI6IDM0MywKICAgICJtb25vU2FtcGxlQ291bnQiOiA4LAogICAgImxlZnRTYW1wbGVDb3VudCI6IDE2NywKICAgICJyaWdodFNhbXBsZUNvdW50IjogMTY3LAogICAgInVzZXNTdGVyZW9QYWlyIjogdHJ1ZSwKICAgICJtZWFzdXJlZFByb2JlcyI6IFsKICAgICAgewogICAgICAgICJwaXRjaCI6IDM2LAogICAgICAgICJ2ZWxvY2l0eSI6IDQ4LAogICAgICAgICJub3RlSWQiOiAiYmFuay1wcm9iZS0wIiwKICAgICAgICAiY2hhbm5lbFJtcyI6IFsKICAgICAgICAgIDAuMDA4NDQ0NTcwMTUyNzcyNTMzLAogICAgICAgICAgMC4wMTMwNTcxMDgwMjc1MTc1ODgKICAgICAgICBdCiAgICAgIH0sCiAgICAgIHsKICAgICAgICAicGl0Y2giOiAzNiwKICAgICAgICAidmVsb2NpdHkiOiA4MCwKICAgICAgICAibm90ZUlkIjogImJhbmstcHJvYmUtMSIsCiAgICAgICAgImNoYW5uZWxSbXMiOiBbCiAgICAgICAgICAwLjAzMDAxMTY4MjYxMjgyMDQ2NiwKICAgICAgICAgIDAuMDQxNTI1MTYyMjU5MjY1OTQKICAgICAgICBdCiAgICAgIH0sCiAgICAgIHsKICAgICAgICAicGl0Y2giOiAzNiwKICAgICAgICAidmVsb2NpdHkiOiAxMTIsCiAgICAgICAgIm5vdGVJZCI6ICJiYW5rLXByb2JlLTIiLAogICAgICAgICJjaGFubmVsUm1zIjogWwogICAgICAgICAgMC4wODY5ODEwOTQxMzM5NzgyLAogICAgICAgICAgMC4xMTQwNTI3NjE2NDM4OTE0NwogICAgICAgIF0KICAgICAgfSwKICAgICAgewogICAgICAgICJwaXRjaCI6IDYwLAogICAgICAgICJ2ZWxvY2l0eSI6IDQ4LAogICAgICAgICJub3RlSWQiOiAiYmFuay1wcm9iZS0zIiwKICAgICAgICAiY2hhbm5lbFJtcyI6IFsKICAgICAgICAgIDAuMDExNzM4ODA3MTc1Nzc0NjMzLAogICAgICAgICAgMC4wMTU1MzQwODY5Mjk5MzQyMDUKICAgICAgICBdCiAgICAgIH0sCiAgICAgIHsKICAgICAgICAicGl0Y2giOiA2MCwKICAgICAgICAidmVsb2NpdHkiOiA4MCwKICAgICAgICAibm90ZUlkIjogImJhbmstcHJvYmUtNCIsCiAgICAgICAgImNoYW5uZWxSbXMiOiBbCiAgICAgICAgICAwLjAzMjEwMzY2ODQ0MTY2ODI4LAogICAgICAgICAgMC4wNDc0OTcxNTc2NDYxMjc4MQogICAgICAgIF0KICAgICAgfSwKICAgICAgewogICAgICAgICJwaXRjaCI6IDYwLAogICAgICAgICJ2ZWxvY2l0eSI6IDExMiwKICAgICAgICAibm90ZUlkIjogImJhbmstcHJvYmUtNSIsCiAgICAgICAgImNoYW5uZWxSbXMiOiBbCiAgICAgICAgICAwLjA4OTY2NjA2Mjc3NzEyODI0LAogICAgICAgICAgMC4xMzczMDYxMDM2NjMxMTc5MwogICAgICAgIF0KICAgICAgfSwKICAgICAgewogICAgICAgICJwaXRjaCI6IDg0LAogICAgICAgICJ2ZWxvY2l0eSI6IDQ4LAogICAgICAgICJub3RlSWQiOiAiYmFuay1wcm9iZS02IiwKICAgICAgICAiY2hhbm5lbFJtcyI6IFsKICAgICAgICAgIDAuMDEwODMzNzM0MTA1ODA3MDc2LAogICAgICAgICAgMC4wMTM1NDU4MDg2ODY3ODE2NTcKICAgICAgICBdCiAgICAgIH0sCiAgICAgIHsKICAgICAgICAicGl0Y2giOiA4NCwKICAgICAgICAidmVsb2NpdHkiOiA4MCwKICAgICAgICAibm90ZUlkIjogImJhbmstcHJvYmUtNyIsCiAgICAgICAgImNoYW5uZWxSbXMiOiBbCiAgICAgICAgICAwLjAzMDkwNzQzMjA2ODAxMzU4MywKICAgICAgICAgIDAuMDI3MDgxMjA0Mjk5NzExMjc4CiAgICAgICAgXQogICAgICB9LAogICAgICB7CiAgICAgICAgInBpdGNoIjogODQsCiAgICAgICAgInZlbG9jaXR5IjogMTEyLAogICAgICAgICJub3RlSWQiOiAiYmFuay1wcm9iZS04IiwKICAgICAgICAiY2hhbm5lbFJtcyI6IFsKICAgICAgICAgIDAuMDcxODQ5NDIzMjUyMTczMTgsCiAgICAgICAgICAwLjA1MDA3NDg2ODQxOTUwODkKICAgICAgICBdCiAgICAgIH0KICAgIF0sCiAgICAicGVkYWxQcm9iZVJtcyI6IFsKICAgICAgMC4wMzc0MDE0MDU1MTQyMTM5OCwKICAgICAgMC4wNTMwMDA0NzA3NzY2ODg5OQogICAgXSwKICAgICJwZWFrIjogMC40MDM2MzI3NjAwNDc5MTI2LAogICAgIm5vbkZpbml0ZVNhbXBsZXMiOiAwLAogICAgImRpZmZlcmVuY2VSbXMiOiAwLjA1MTEwMDMwNjYzODM4NDU3LAogICAgImhlbGRTdGF0ZSI6IHsKICAgICAgImFjdGl2ZVZvaWNlcyI6IDIsCiAgICAgICJrZXlEb3duTm90ZXMiOiBbXSwKICAgICAgInN1c3RhaW4iOiB0cnVlCiAgICB9LAogICAgInJlbGVhc2VkU3RhdGUiOiB7CiAgICAgICJhY3RpdmVWb2ljZXMiOiAxLAogICAgICAia2V5RG93bk5vdGVzIjogW10sCiAgICAgICJzdXN0YWluIjogZmFsc2UKICAgIH0sCiAgICAicHJlcGFyZWRTdGF0cyI6IHsKICAgICAgImJ1ZGdldEJ5dGVzIjogMjY4NDM1NDU2LAogICAgICAiaW5hY3RpdmVCdWRnZXRCeXRlcyI6IDY3MTA4ODY0LAogICAgICAiZGVjb2RlZEJ5dGVzIjogNzAxMTgwNzYsCiAgICAgICJwcmVwYXJpbmdCeXRlcyI6IDAsCiAgICAgICJpbmFjdGl2ZUJ5dGVzIjogMCwKICAgICAgInBpbm5lZEJ5dGVzIjogNzAxMTgwNzYsCiAgICAgICJjYWNoZWRTYW1wbGVzIjogMzgsCiAgICAgICJwcmVwYXJpbmdTYW1wbGVzIjogMCwKICAgICAgInJlYWRzIjogMzgsCiAgICAgICJkZWNvZGVzIjogMzgsCiAgICAgICJjYWNoZUhpdHMiOiA0CiAgICB9LAogICAgImJhc2VsaW5lU3RhdHMiOiB7CiAgICAgICJidWRnZXRCeXRlcyI6IDI2ODQzNTQ1NiwKICAgICAgImluYWN0aXZlQnVkZ2V0Qnl0ZXMiOiA2NzEwODg2NCwKICAgICAgImRlY29kZWRCeXRlcyI6IDI4MDI2MjkyLAogICAgICAicHJlcGFyaW5nQnl0ZXMiOiAwLAogICAgICAiaW5hY3RpdmVCeXRlcyI6IDAsCiAgICAgICJwaW5uZWRCeXRlcyI6IDI4MDI2MjkyLAogICAgICAiY2FjaGVkU2FtcGxlcyI6IDEyLAogICAgICAicHJlcGFyaW5nU2FtcGxlcyI6IDAsCiAgICAgICJyZWFkcyI6IDEyLAogICAgICAiZGVjb2RlcyI6IDEyLAogICAgICAiY2FjaGVIaXRzIjogMAogICAgfSwKICAgICJ2b2ljZXNBZnRlclJlbmRlciI6IDAsCiAgICAiY2xlYW51cFN0YXRzIjogewogICAgICAiYnVkZ2V0Qnl0ZXMiOiAyNjg0MzU0NTYsCiAgICAgICJpbmFjdGl2ZUJ1ZGdldEJ5dGVzIjogNjcxMDg4NjQsCiAgICAgICJkZWNvZGVkQnl0ZXMiOiA3MDExODA3NiwKICAgICAgInByZXBhcmluZ0J5dGVzIjogMCwKICAgICAgImluYWN0aXZlQnl0ZXMiOiA0MjA5MTc4NCwKICAgICAgInBpbm5lZEJ5dGVzIjogMjgwMjYyOTIsCiAgICAgICJjYWNoZWRTYW1wbGVzIjogMzgsCiAgICAgICJwcmVwYXJpbmdTYW1wbGVzIjogMCwKICAgICAgInJlYWRzIjogMzgsCiAgICAgICJkZWNvZGVzIjogMzgsCiAgICAgICJjYWNoZUhpdHMiOiA0CiAgICB9CiAgfQp9"
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "cd1c387d2259a2dd708b-bb4057e0438fe14c28f0",
+          "file": "soundfont-user-banks.spec.ts",
+          "line": 33,
+          "column": 3
+        },
+        {
+          "title": "user bank Nice-Steinway-Lite-v3.0.sf2 activates, plays, restores and renders low/mid/high probes",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 300000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 22569,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-16T11:36:41.837Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "user-bank-result",
+                      "contentType": "application/json",
+                      "body": "ewogICJmaWxlIjogIk5pY2UtU3RlaW53YXktTGl0ZS12My4wLnNmMiIsCiAgInNvdXJjZUhhc2hCZWZvcmUiOiAiNmYyZTQ2NWIzZWM0YTYxMTZjNmUyM2I3NjJhNmFkNDE0OGM5ZjQ0ZjQ2NjBhNzUwM2YwZDBiODljYzgyZmU5YiIsCiAgInNvdXJjZUhhc2hBZnRlciI6ICI2ZjJlNDY1YjNlYzRhNjExNmM2ZTIzYjc2MmE2YWQ0MTQ4YzlmNDRmNDY2MGE3NTAzZjBkMGI4OWNjODJmZTliIiwKICAicmVuZGVyIjogewogICAgImlkIjogIjZmMmU0NjViM2VjNGE2MTE2YzZlMjNiNzYyYTZhZDQxNDhjOWY0NGY0NjYwYTc1MDNmMGQwYjg5Y2M4MmZlOWIiLAogICAgImJ5dGVMZW5ndGgiOiA3NDM5ODI2NiwKICAgICJoZWFkZXIiOiB7CiAgICAgICJuYW1lIjogIk5pY2UtU3RlaW53YXktTGl0ZS12My4wIiwKICAgICAgInZlcnNpb25NYWpvciI6IDIsCiAgICAgICJ2ZXJzaW9uTWlub3IiOiAxLAogICAgICAic291bmRFbmdpbmUiOiAiRU1VODAwMCIKICAgIH0sCiAgICAicHJlc2V0IjogewogICAgICAibmFtZSI6ICJTdGVpbndheSBHcmFuZCIsCiAgICAgICJiYW5rTnVtYmVyIjogMCwKICAgICAgInByZXNldE51bWJlciI6IDAKICAgIH0sCiAgICAic2FtcGxlQ291bnQiOiA1OSwKICAgICJtb25vU2FtcGxlQ291bnQiOiAwLAogICAgImxlZnRTYW1wbGVDb3VudCI6IDI5LAogICAgInJpZ2h0U2FtcGxlQ291bnQiOiAyOSwKICAgICJ1c2VzU3RlcmVvUGFpciI6IHRydWUsCiAgICAibWVhc3VyZWRQcm9iZXMiOiBbCiAgICAgIHsKICAgICAgICAicGl0Y2giOiAzNiwKICAgICAgICAidmVsb2NpdHkiOiA0OCwKICAgICAgICAibm90ZUlkIjogImJhbmstcHJvYmUtMCIsCiAgICAgICAgImNoYW5uZWxSbXMiOiBbCiAgICAgICAgICAwLjAzMTQ1NTM3MTY2NTM1NjY1LAogICAgICAgICAgMC4wMjYzMzg4ODk5NzMxOTAyMjcKICAgICAgICBdCiAgICAgIH0sCiAgICAgIHsKICAgICAgICAicGl0Y2giOiAzNiwKICAgICAgICAidmVsb2NpdHkiOiA4MCwKICAgICAgICAibm90ZUlkIjogImJhbmstcHJvYmUtMSIsCiAgICAgICAgImNoYW5uZWxSbXMiOiBbCiAgICAgICAgICAwLjA2Nzc0MTA1MjIwNTY4NzYyLAogICAgICAgICAgMC4wNTY1MDE2NjQzNDE1OTM1MDQKICAgICAgICBdCiAgICAgIH0sCiAgICAgIHsKICAgICAgICAicGl0Y2giOiAzNiwKICAgICAgICAidmVsb2NpdHkiOiAxMTIsCiAgICAgICAgIm5vdGVJZCI6ICJiYW5rLXByb2JlLTIiLAogICAgICAgICJjaGFubmVsUm1zIjogWwogICAgICAgICAgMC4xMTIxMzIwMjIxNTY5OTQwNywKICAgICAgICAgIDAuMDkzNTIxODIxNjk5NDk1NDEKICAgICAgICBdCiAgICAgIH0sCiAgICAgIHsKICAgICAgICAicGl0Y2giOiA2MCwKICAgICAgICAidmVsb2NpdHkiOiA0OCwKICAgICAgICAibm90ZUlkIjogImJhbmstcHJvYmUtMyIsCiAgICAgICAgImNoYW5uZWxSbXMiOiBbCiAgICAgICAgICAwLjAyNDczNzA2MDg3MzMyMjkwMiwKICAgICAgICAgIDAuMDQwMTg2NDk3MTU4OTc2ODYKICAgICAgICBdCiAgICAgIH0sCiAgICAgIHsKICAgICAgICAicGl0Y2giOiA2MCwKICAgICAgICAidmVsb2NpdHkiOiA4MCwKICAgICAgICAibm90ZUlkIjogImJhbmstcHJvYmUtNCIsCiAgICAgICAgImNoYW5uZWxSbXMiOiBbCiAgICAgICAgICAwLjA0Njc5OTg0ODM0NTM4NzkyNSwKICAgICAgICAgIDAuMDg5MTc5MjIyODQxMDMwMzkKICAgICAgICBdCiAgICAgIH0sCiAgICAgIHsKICAgICAgICAicGl0Y2giOiA2MCwKICAgICAgICAidmVsb2NpdHkiOiAxMTIsCiAgICAgICAgIm5vdGVJZCI6ICJiYW5rLXByb2JlLTUiLAogICAgICAgICJjaGFubmVsUm1zIjogWwogICAgICAgICAgMC4wNzc1NDY2MDg5NTQ4NTIwOCwKICAgICAgICAgIDAuMTQ4MTIwMzgzODE4MDYzCiAgICAgICAgXQogICAgICB9LAogICAgICB7CiAgICAgICAgInBpdGNoIjogODQsCiAgICAgICAgInZlbG9jaXR5IjogNDgsCiAgICAgICAgIm5vdGVJZCI6ICJiYW5rLXByb2JlLTYiLAogICAgICAgICJjaGFubmVsUm1zIjogWwogICAgICAgICAgMC4wMjEwMTU5OTAzMTU0OTk2NDIsCiAgICAgICAgICAwLjAxMDcyNjIyNjgxMzM0Nzc0CiAgICAgICAgXQogICAgICB9LAogICAgICB7CiAgICAgICAgInBpdGNoIjogODQsCiAgICAgICAgInZlbG9jaXR5IjogODAsCiAgICAgICAgIm5vdGVJZCI6ICJiYW5rLXByb2JlLTciLAogICAgICAgICJjaGFubmVsUm1zIjogWwogICAgICAgICAgMC4wNDQ4NTQ3NTQ2MjcxNjQ1NCwKICAgICAgICAgIDAuMDE5Nzg5NzY5MTY0MjUzMjgKICAgICAgICBdCiAgICAgIH0sCiAgICAgIHsKICAgICAgICAicGl0Y2giOiA4NCwKICAgICAgICAidmVsb2NpdHkiOiAxMTIsCiAgICAgICAgIm5vdGVJZCI6ICJiYW5rLXByb2JlLTgiLAogICAgICAgICJjaGFubmVsUm1zIjogWwogICAgICAgICAgMC4wNzQ0MTc2NTk1MzA5MTU2NiwKICAgICAgICAgIDAuMDMyNzU1Njk4NTQwNDk1MzEKICAgICAgICBdCiAgICAgIH0KICAgIF0sCiAgICAicGVkYWxQcm9iZVJtcyI6IFsKICAgICAgMC4wNTE4Mjc0MzU1MzY4MzgwMywKICAgICAgMC4wOTk2NDEwOTY1NzgzMjE2NQogICAgXSwKICAgICJwZWFrIjogMC4zNzkyNjY3Njg2OTM5MjM5NSwKICAgICJub25GaW5pdGVTYW1wbGVzIjogMCwKICAgICJkaWZmZXJlbmNlUm1zIjogMC4wNzA1NDA1NjQzNzkyOTkxMywKICAgICJoZWxkU3RhdGUiOiB7CiAgICAgICJhY3RpdmVWb2ljZXMiOiAyLAogICAgICAia2V5RG93bk5vdGVzIjogW10sCiAgICAgICJzdXN0YWluIjogdHJ1ZQogICAgfSwKICAgICJyZWxlYXNlZFN0YXRlIjogewogICAgICAiYWN0aXZlVm9pY2VzIjogMSwKICAgICAgImtleURvd25Ob3RlcyI6IFtdLAogICAgICAic3VzdGFpbiI6IGZhbHNlCiAgICB9LAogICAgInByZXBhcmVkU3RhdHMiOiB7CiAgICAgICJidWRnZXRCeXRlcyI6IDI2ODQzNTQ1NiwKICAgICAgImluYWN0aXZlQnVkZ2V0Qnl0ZXMiOiA2NzEwODg2NCwKICAgICAgImRlY29kZWRCeXRlcyI6IDI2NDY2Njg4LAogICAgICAicHJlcGFyaW5nQnl0ZXMiOiAwLAogICAgICAiaW5hY3RpdmVCeXRlcyI6IDAsCiAgICAgICJwaW5uZWRCeXRlcyI6IDI2NDY2Njg4LAogICAgICAiY2FjaGVkU2FtcGxlcyI6IDEwLAogICAgICAicHJlcGFyaW5nU2FtcGxlcyI6IDAsCiAgICAgICJyZWFkcyI6IDEwLAogICAgICAiZGVjb2RlcyI6IDEwLAogICAgICAiY2FjaGVIaXRzIjogMgogICAgfSwKICAgICJiYXNlbGluZVN0YXRzIjogewogICAgICAiYnVkZ2V0Qnl0ZXMiOiAyNjg0MzU0NTYsCiAgICAgICJpbmFjdGl2ZUJ1ZGdldEJ5dGVzIjogNjcxMDg4NjQsCiAgICAgICJkZWNvZGVkQnl0ZXMiOiAxNDgwODI1NiwKICAgICAgInByZXBhcmluZ0J5dGVzIjogMCwKICAgICAgImluYWN0aXZlQnl0ZXMiOiAwLAogICAgICAicGlubmVkQnl0ZXMiOiAxNDgwODI1NiwKICAgICAgImNhY2hlZFNhbXBsZXMiOiA2LAogICAgICAicHJlcGFyaW5nU2FtcGxlcyI6IDAsCiAgICAgICJyZWFkcyI6IDYsCiAgICAgICJkZWNvZGVzIjogNiwKICAgICAgImNhY2hlSGl0cyI6IDAKICAgIH0sCiAgICAidm9pY2VzQWZ0ZXJSZW5kZXIiOiAwLAogICAgImNsZWFudXBTdGF0cyI6IHsKICAgICAgImJ1ZGdldEJ5dGVzIjogMjY4NDM1NDU2LAogICAgICAiaW5hY3RpdmVCdWRnZXRCeXRlcyI6IDY3MTA4ODY0LAogICAgICAiZGVjb2RlZEJ5dGVzIjogMjY0NjY2ODgsCiAgICAgICJwcmVwYXJpbmdCeXRlcyI6IDAsCiAgICAgICJpbmFjdGl2ZUJ5dGVzIjogMTE2NTg0MzIsCiAgICAgICJwaW5uZWRCeXRlcyI6IDE0ODA4MjU2LAogICAgICAiY2FjaGVkU2FtcGxlcyI6IDEwLAogICAgICAicHJlcGFyaW5nU2FtcGxlcyI6IDAsCiAgICAgICJyZWFkcyI6IDEwLAogICAgICAiZGVjb2RlcyI6IDEwLAogICAgICAiY2FjaGVIaXRzIjogMgogICAgfQogIH0KfQ=="
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "cd1c387d2259a2dd708b-51b3fa2658ceb54e3c77",
+          "file": "soundfont-user-banks.spec.ts",
+          "line": 33,
+          "column": 3
+        },
+        {
+          "title": "user bank Nice-Steinway-v3.8.sf2 activates, plays, restores and renders low/mid/high probes",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 300000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 32186,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-16T11:37:08.825Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "user-bank-result",
+                      "contentType": "application/json",
+                      "body": "ewogICJmaWxlIjogIk5pY2UtU3RlaW53YXktdjMuOC5zZjIiLAogICJzb3VyY2VIYXNoQmVmb3JlIjogImYyOTEyZTY1ZDAyZjdmNjUwMzI0NTFjNjVhYTczNGU0NDIwNTRiYjM3NGNjNjQxZDQ3MjVlM2RkMTA3ZGY3N2UiLAogICJzb3VyY2VIYXNoQWZ0ZXIiOiAiZjI5MTJlNjVkMDJmN2Y2NTAzMjQ1MWM2NWFhNzM0ZTQ0MjA1NGJiMzc0Y2M2NDFkNDcyNWUzZGQxMDdkZjc3ZSIsCiAgInJlbmRlciI6IHsKICAgICJpZCI6ICJmMjkxMmU2NWQwMmY3ZjY1MDMyNDUxYzY1YWE3MzRlNDQyMDU0YmIzNzRjYzY0MWQ0NzI1ZTNkZDEwN2RmNzdlIiwKICAgICJieXRlTGVuZ3RoIjogMjE0ODcwNDE0LAogICAgImhlYWRlciI6IHsKICAgICAgIm5hbWUiOiAiTmljZS1TdGVpbndheS12My44IiwKICAgICAgInZlcnNpb25NYWpvciI6IDIsCiAgICAgICJ2ZXJzaW9uTWlub3IiOiAxLAogICAgICAic291bmRFbmdpbmUiOiAiRU1VODAwMCIKICAgIH0sCiAgICAicHJlc2V0IjogewogICAgICAibmFtZSI6ICJCcmlnaHQgU3RlaW53YXkiLAogICAgICAiYmFua051bWJlciI6IDAsCiAgICAgICJwcmVzZXROdW1iZXIiOiAxCiAgICB9LAogICAgInNhbXBsZUNvdW50IjogMTcxLAogICAgIm1vbm9TYW1wbGVDb3VudCI6IDAsCiAgICAibGVmdFNhbXBsZUNvdW50IjogODUsCiAgICAicmlnaHRTYW1wbGVDb3VudCI6IDg1LAogICAgInVzZXNTdGVyZW9QYWlyIjogdHJ1ZSwKICAgICJtZWFzdXJlZFByb2JlcyI6IFsKICAgICAgewogICAgICAgICJwaXRjaCI6IDM2LAogICAgICAgICJ2ZWxvY2l0eSI6IDQ4LAogICAgICAgICJub3RlSWQiOiAiYmFuay1wcm9iZS0wIiwKICAgICAgICAiY2hhbm5lbFJtcyI6IFsKICAgICAgICAgIDAuMDM1ODg5NTY4NDExNjAzNjEsCiAgICAgICAgICAwLjAzODE5OTE4OTU3MDI5OTcxCiAgICAgICAgXQogICAgICB9LAogICAgICB7CiAgICAgICAgInBpdGNoIjogMzYsCiAgICAgICAgInZlbG9jaXR5IjogODAsCiAgICAgICAgIm5vdGVJZCI6ICJiYW5rLXByb2JlLTEiLAogICAgICAgICJjaGFubmVsUm1zIjogWwogICAgICAgICAgMC4wNzgzODI4MzA5MDQ0NzE3OSwKICAgICAgICAgIDAuMDgzOTUxMDk4NjA3MTIxNzYKICAgICAgICBdCiAgICAgIH0sCiAgICAgIHsKICAgICAgICAicGl0Y2giOiAzNiwKICAgICAgICAidmVsb2NpdHkiOiAxMTIsCiAgICAgICAgIm5vdGVJZCI6ICJiYW5rLXByb2JlLTIiLAogICAgICAgICJjaGFubmVsUm1zIjogWwogICAgICAgICAgMC4xMzE2NjExNDAxMDUxNDY4NywKICAgICAgICAgIDAuMTQwMjYzNzYzMTQxOTM5OTcKICAgICAgICBdCiAgICAgIH0sCiAgICAgIHsKICAgICAgICAicGl0Y2giOiA2MCwKICAgICAgICAidmVsb2NpdHkiOiA0OCwKICAgICAgICAibm90ZUlkIjogImJhbmstcHJvYmUtMyIsCiAgICAgICAgImNoYW5uZWxSbXMiOiBbCiAgICAgICAgICAwLjAzMTkwOTg4MzI4NTk0MTk4LAogICAgICAgICAgMC4wMzkzNjEzNzU3MjQ3NDMwNwogICAgICAgIF0KICAgICAgfSwKICAgICAgewogICAgICAgICJwaXRjaCI6IDYwLAogICAgICAgICJ2ZWxvY2l0eSI6IDgwLAogICAgICAgICJub3RlSWQiOiAiYmFuay1wcm9iZS00IiwKICAgICAgICAiY2hhbm5lbFJtcyI6IFsKICAgICAgICAgIDAuMDYxOTg0NjEwNjM5MzczMzYsCiAgICAgICAgICAwLjA3NzEzMzc0NTUxMTkzMjAxCiAgICAgICAgXQogICAgICB9LAogICAgICB7CiAgICAgICAgInBpdGNoIjogNjAsCiAgICAgICAgInZlbG9jaXR5IjogMTEyLAogICAgICAgICJub3RlSWQiOiAiYmFuay1wcm9iZS01IiwKICAgICAgICAiY2hhbm5lbFJtcyI6IFsKICAgICAgICAgIDAuMTAzMjkwMzcwODQwODQzMjYsCiAgICAgICAgICAwLjEyODUzMTQ4NDI4NTgxNjg0CiAgICAgICAgXQogICAgICB9LAogICAgICB7CiAgICAgICAgInBpdGNoIjogODQsCiAgICAgICAgInZlbG9jaXR5IjogNDgsCiAgICAgICAgIm5vdGVJZCI6ICJiYW5rLXByb2JlLTYiLAogICAgICAgICJjaGFubmVsUm1zIjogWwogICAgICAgICAgMC4wMTk2ODkwMDQ4MzQ1NzIyNCwKICAgICAgICAgIDAuMDA4NTIyNDQzNDE4OTI0NjMKICAgICAgICBdCiAgICAgIH0sCiAgICAgIHsKICAgICAgICAicGl0Y2giOiA4NCwKICAgICAgICAidmVsb2NpdHkiOiA4MCwKICAgICAgICAibm90ZUlkIjogImJhbmstcHJvYmUtNyIsCiAgICAgICAgImNoYW5uZWxSbXMiOiBbCiAgICAgICAgICAwLjA0MTg5OTc2ODQyMDAzNTEzNiwKICAgICAgICAgIDAuMDE1OTczMDQzODQ4MDQ2NTk3CiAgICAgICAgXQogICAgICB9LAogICAgICB7CiAgICAgICAgInBpdGNoIjogODQsCiAgICAgICAgInZlbG9jaXR5IjogMTEyLAogICAgICAgICJub3RlSWQiOiAiYmFuay1wcm9iZS04IiwKICAgICAgICAiY2hhbm5lbFJtcyI6IFsKICAgICAgICAgIDAuMDcwNTI2ODQ1MDE3NzQyLAogICAgICAgICAgMC4wMjYyNjg3MTEyOTI4ODg4NgogICAgICAgIF0KICAgICAgfQogICAgXSwKICAgICJwZWRhbFByb2JlUm1zIjogWwogICAgICAwLjA2ODUwNjE1MzYzNzQxMjY1LAogICAgICAwLjA4NTgzNjMyNTI4NTg0MjQ4CiAgICBdLAogICAgInBlYWsiOiAwLjQwOTQ4MDc1MDU2MDc2MDUsCiAgICAibm9uRmluaXRlU2FtcGxlcyI6IDAsCiAgICAiZGlmZmVyZW5jZVJtcyI6IDAuMDc2NDYyMDI0OTE1NTI2MjMsCiAgICAiaGVsZFN0YXRlIjogewogICAgICAiYWN0aXZlVm9pY2VzIjogMiwKICAgICAgImtleURvd25Ob3RlcyI6IFtdLAogICAgICAic3VzdGFpbiI6IHRydWUKICAgIH0sCiAgICAicmVsZWFzZWRTdGF0ZSI6IHsKICAgICAgImFjdGl2ZVZvaWNlcyI6IDEsCiAgICAgICJrZXlEb3duTm90ZXMiOiBbXSwKICAgICAgInN1c3RhaW4iOiBmYWxzZQogICAgfSwKICAgICJwcmVwYXJlZFN0YXRzIjogewogICAgICAiYnVkZ2V0Qnl0ZXMiOiAyNjg0MzU0NTYsCiAgICAgICJpbmFjdGl2ZUJ1ZGdldEJ5dGVzIjogNjcxMDg4NjQsCiAgICAgICJkZWNvZGVkQnl0ZXMiOiAzOTY0NDc1MiwKICAgICAgInByZXBhcmluZ0J5dGVzIjogMCwKICAgICAgImluYWN0aXZlQnl0ZXMiOiA1MjEzNjU2LAogICAgICAicGlubmVkQnl0ZXMiOiAzNDQzMTA5NiwKICAgICAgImNhY2hlZFNhbXBsZXMiOiAxNCwKICAgICAgInByZXBhcmluZ1NhbXBsZXMiOiAwLAogICAgICAicmVhZHMiOiAxNCwKICAgICAgImRlY29kZXMiOiAxNCwKICAgICAgImNhY2hlSGl0cyI6IDEwCiAgICB9LAogICAgImJhc2VsaW5lU3RhdHMiOiB7CiAgICAgICJidWRnZXRCeXRlcyI6IDI2ODQzNTQ1NiwKICAgICAgImluYWN0aXZlQnVkZ2V0Qnl0ZXMiOiA2NzEwODg2NCwKICAgICAgImRlY29kZWRCeXRlcyI6IDI3ODkxODYwLAogICAgICAicHJlcGFyaW5nQnl0ZXMiOiAwLAogICAgICAiaW5hY3RpdmVCeXRlcyI6IDUyMTM2NTYsCiAgICAgICJwaW5uZWRCeXRlcyI6IDIyNjc4MjA0LAogICAgICAiY2FjaGVkU2FtcGxlcyI6IDEwLAogICAgICAicHJlcGFyaW5nU2FtcGxlcyI6IDAsCiAgICAgICJyZWFkcyI6IDEwLAogICAgICAiZGVjb2RlcyI6IDEwLAogICAgICAiY2FjaGVIaXRzIjogOAogICAgfSwKICAgICJ2b2ljZXNBZnRlclJlbmRlciI6IDAsCiAgICAiY2xlYW51cFN0YXRzIjogewogICAgICAiYnVkZ2V0Qnl0ZXMiOiAyNjg0MzU0NTYsCiAgICAgICJpbmFjdGl2ZUJ1ZGdldEJ5dGVzIjogNjcxMDg4NjQsCiAgICAgICJkZWNvZGVkQnl0ZXMiOiAzOTY0NDc1MiwKICAgICAgInByZXBhcmluZ0J5dGVzIjogMCwKICAgICAgImluYWN0aXZlQnl0ZXMiOiAxNjk2NjU0OCwKICAgICAgInBpbm5lZEJ5dGVzIjogMjI2NzgyMDQsCiAgICAgICJjYWNoZWRTYW1wbGVzIjogMTQsCiAgICAgICJwcmVwYXJpbmdTYW1wbGVzIjogMCwKICAgICAgInJlYWRzIjogMTQsCiAgICAgICJkZWNvZGVzIjogMTQsCiAgICAgICJjYWNoZUhpdHMiOiAxMAogICAgfQogIH0KfQ=="
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "cd1c387d2259a2dd708b-c28f229ef270d807069a",
+          "file": "soundfont-user-banks.spec.ts",
+          "line": 33,
+          "column": 3
+        },
+        {
+          "title": "user bank NY-Steinway-Model-B-v5.2.sf2 activates, plays, restores and renders low/mid/high probes",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 300000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 25354,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-16T11:37:41.024Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "user-bank-result",
+                      "contentType": "application/json",
+                      "body": "ewogICJmaWxlIjogIk5ZLVN0ZWlud2F5LU1vZGVsLUItdjUuMi5zZjIiLAogICJzb3VyY2VIYXNoQmVmb3JlIjogImY3ZGJkMjZkMGYwNzEwZDA1MWU0NTZlZTk0MWY4ZmIyM2IyNjljMmFlMjZkZjUyNzQ3OTFmYWMxM2EzOTU0ZTMiLAogICJzb3VyY2VIYXNoQWZ0ZXIiOiAiZjdkYmQyNmQwZjA3MTBkMDUxZTQ1NmVlOTQxZjhmYjIzYjI2OWMyYWUyNmRmNTI3NDc5MWZhYzEzYTM5NTRlMyIsCiAgInJlbmRlciI6IHsKICAgICJpZCI6ICJmN2RiZDI2ZDBmMDcxMGQwNTFlNDU2ZWU5NDFmOGZiMjNiMjY5YzJhZTI2ZGY1Mjc0NzkxZmFjMTNhMzk1NGUzIiwKICAgICJieXRlTGVuZ3RoIjogMjQ4OTQwNTEwLAogICAgImhlYWRlciI6IHsKICAgICAgIm5hbWUiOiAiRG9yZSBNYXJrJ3MgTlkgUyZTIE1vZGVsIEIiLAogICAgICAidmVyc2lvbk1ham9yIjogMiwKICAgICAgInZlcnNpb25NaW5vciI6IDEsCiAgICAgICJzb3VuZEVuZ2luZSI6ICJFTVU4MDAwIgogICAgfSwKICAgICJwcmVzZXQiOiB7CiAgICAgICJuYW1lIjogIlMmUyBNb2QgQihEb3JlIE1hcmspIiwKICAgICAgImJhbmtOdW1iZXIiOiAwLAogICAgICAicHJlc2V0TnVtYmVyIjogMAogICAgfSwKICAgICJzYW1wbGVDb3VudCI6IDQwMywKICAgICJtb25vU2FtcGxlQ291bnQiOiAwLAogICAgImxlZnRTYW1wbGVDb3VudCI6IDIwMSwKICAgICJyaWdodFNhbXBsZUNvdW50IjogMjAxLAogICAgInVzZXNTdGVyZW9QYWlyIjogdHJ1ZSwKICAgICJtZWFzdXJlZFByb2JlcyI6IFsKICAgICAgewogICAgICAgICJwaXRjaCI6IDM2LAogICAgICAgICJ2ZWxvY2l0eSI6IDQ4LAogICAgICAgICJub3RlSWQiOiAiYmFuay1wcm9iZS0wIiwKICAgICAgICAiY2hhbm5lbFJtcyI6IFsKICAgICAgICAgIDAuMDA4MzU2OTU1NzI4NDczNTAzLAogICAgICAgICAgMC4wMTA0MDY4OTY0OTMxMTQ1NTMKICAgICAgICBdCiAgICAgIH0sCiAgICAgIHsKICAgICAgICAicGl0Y2giOiAzNiwKICAgICAgICAidmVsb2NpdHkiOiA4MCwKICAgICAgICAibm90ZUlkIjogImJhbmstcHJvYmUtMSIsCiAgICAgICAgImNoYW5uZWxSbXMiOiBbCiAgICAgICAgICAwLjAyNzY2NTIxMTE5NjYzMzc4OCwKICAgICAgICAgIDAuMDM1MTkxMTkyMzE3MDExNjQKICAgICAgICBdCiAgICAgIH0sCiAgICAgIHsKICAgICAgICAicGl0Y2giOiAzNiwKICAgICAgICAidmVsb2NpdHkiOiAxMTIsCiAgICAgICAgIm5vdGVJZCI6ICJiYW5rLXByb2JlLTIiLAogICAgICAgICJjaGFubmVsUm1zIjogWwogICAgICAgICAgMC4wNzIwMzMwNjAzMTYyMTUyLAogICAgICAgICAgMC4wODc4NTExODY5NDYyMjEyNAogICAgICAgIF0KICAgICAgfSwKICAgICAgewogICAgICAgICJwaXRjaCI6IDYwLAogICAgICAgICJ2ZWxvY2l0eSI6IDQ4LAogICAgICAgICJub3RlSWQiOiAiYmFuay1wcm9iZS0zIiwKICAgICAgICAiY2hhbm5lbFJtcyI6IFsKICAgICAgICAgIDAuMDExMDYzODM0NjYzMzM5MzcxLAogICAgICAgICAgMC4wMTM3MTQ3MzcxNDgwMjM3NTQKICAgICAgICBdCiAgICAgIH0sCiAgICAgIHsKICAgICAgICAicGl0Y2giOiA2MCwKICAgICAgICAidmVsb2NpdHkiOiA4MCwKICAgICAgICAibm90ZUlkIjogImJhbmstcHJvYmUtNCIsCiAgICAgICAgImNoYW5uZWxSbXMiOiBbCiAgICAgICAgICAwLjAyODU3NTQxMTM2MjM5MjA4NywKICAgICAgICAgIDAuMDMyODkwODU3NTY2MjQ4NDUKICAgICAgICBdCiAgICAgIH0sCiAgICAgIHsKICAgICAgICAicGl0Y2giOiA2MCwKICAgICAgICAidmVsb2NpdHkiOiAxMTIsCiAgICAgICAgIm5vdGVJZCI6ICJiYW5rLXByb2JlLTUiLAogICAgICAgICJjaGFubmVsUm1zIjogWwogICAgICAgICAgMC4wNjk2ODYzNjA4MDYxMzY1MiwKICAgICAgICAgIDAuMDgxOTUzNzM5NjYyMTM4NjMKICAgICAgICBdCiAgICAgIH0sCiAgICAgIHsKICAgICAgICAicGl0Y2giOiA4NCwKICAgICAgICAidmVsb2NpdHkiOiA0OCwKICAgICAgICAibm90ZUlkIjogImJhbmstcHJvYmUtNiIsCiAgICAgICAgImNoYW5uZWxSbXMiOiBbCiAgICAgICAgICAwLjAwODczNzI3OTk0MTI3MzczMSwKICAgICAgICAgIDAuMDA4OTA3MzYyMjM5NzUzMzAzCiAgICAgICAgXQogICAgICB9LAogICAgICB7CiAgICAgICAgInBpdGNoIjogODQsCiAgICAgICAgInZlbG9jaXR5IjogODAsCiAgICAgICAgIm5vdGVJZCI6ICJiYW5rLXByb2JlLTciLAogICAgICAgICJjaGFubmVsUm1zIjogWwogICAgICAgICAgMC4wMTc3MDQ4Nzc4NzU3MDQ5MTYsCiAgICAgICAgICAwLjAyNTA3MzY0Mzg3NDEyNTAyMgogICAgICAgIF0KICAgICAgfSwKICAgICAgewogICAgICAgICJwaXRjaCI6IDg0LAogICAgICAgICJ2ZWxvY2l0eSI6IDExMiwKICAgICAgICAibm90ZUlkIjogImJhbmstcHJvYmUtOCIsCiAgICAgICAgImNoYW5uZWxSbXMiOiBbCiAgICAgICAgICAwLjA0NDA2NTc2NTg0MzY4MDk2LAogICAgICAgICAgMC4wNjY3MzA5MzkwMDAwMjE3CiAgICAgICAgXQogICAgICB9CiAgICBdLAogICAgInBlZGFsUHJvYmVSbXMiOiBbCiAgICAgIDAuMDI5MzQxNzQyMTMyMTMwOTMsCiAgICAgIDAuMDM1MjkyOTI0NzkxNTYzODQ2CiAgICBdLAogICAgInBlYWsiOiAwLjI4NzE0Nzc5MDE5MzU1Nzc0LAogICAgIm5vbkZpbml0ZVNhbXBsZXMiOiAwLAogICAgImRpZmZlcmVuY2VSbXMiOiAwLjA0NjgwNDc0NDU4NDA3NDI1LAogICAgImhlbGRTdGF0ZSI6IHsKICAgICAgImFjdGl2ZVZvaWNlcyI6IDIsCiAgICAgICJrZXlEb3duTm90ZXMiOiBbXSwKICAgICAgInN1c3RhaW4iOiB0cnVlCiAgICB9LAogICAgInJlbGVhc2VkU3RhdGUiOiB7CiAgICAgICJhY3RpdmVWb2ljZXMiOiAxLAogICAgICAia2V5RG93bk5vdGVzIjogW10sCiAgICAgICJzdXN0YWluIjogZmFsc2UKICAgIH0sCiAgICAicHJlcGFyZWRTdGF0cyI6IHsKICAgICAgImJ1ZGdldEJ5dGVzIjogMjY4NDM1NDU2LAogICAgICAiaW5hY3RpdmVCdWRnZXRCeXRlcyI6IDY3MTA4ODY0LAogICAgICAiZGVjb2RlZEJ5dGVzIjogNDQ4ODg0ODgsCiAgICAgICJwcmVwYXJpbmdCeXRlcyI6IDAsCiAgICAgICJpbmFjdGl2ZUJ5dGVzIjogMCwKICAgICAgInBpbm5lZEJ5dGVzIjogNDQ4ODg0ODgsCiAgICAgICJjYWNoZWRTYW1wbGVzIjogMzgsCiAgICAgICJwcmVwYXJpbmdTYW1wbGVzIjogMCwKICAgICAgInJlYWRzIjogMzgsCiAgICAgICJkZWNvZGVzIjogMzgsCiAgICAgICJjYWNoZUhpdHMiOiA0CiAgICB9LAogICAgImJhc2VsaW5lU3RhdHMiOiB7CiAgICAgICJidWRnZXRCeXRlcyI6IDI2ODQzNTQ1NiwKICAgICAgImluYWN0aXZlQnVkZ2V0Qnl0ZXMiOiA2NzEwODg2NCwKICAgICAgImRlY29kZWRCeXRlcyI6IDExODkyODQwLAogICAgICAicHJlcGFyaW5nQnl0ZXMiOiAwLAogICAgICAiaW5hY3RpdmVCeXRlcyI6IDAsCiAgICAgICJwaW5uZWRCeXRlcyI6IDExODkyODQwLAogICAgICAiY2FjaGVkU2FtcGxlcyI6IDEyLAogICAgICAicHJlcGFyaW5nU2FtcGxlcyI6IDAsCiAgICAgICJyZWFkcyI6IDEyLAogICAgICAiZGVjb2RlcyI6IDEyLAogICAgICAiY2FjaGVIaXRzIjogMAogICAgfSwKICAgICJ2b2ljZXNBZnRlclJlbmRlciI6IDAsCiAgICAiY2xlYW51cFN0YXRzIjogewogICAgICAiYnVkZ2V0Qnl0ZXMiOiAyNjg0MzU0NTYsCiAgICAgICJpbmFjdGl2ZUJ1ZGdldEJ5dGVzIjogNjcxMDg4NjQsCiAgICAgICJkZWNvZGVkQnl0ZXMiOiA0NDg4ODQ4OCwKICAgICAgInByZXBhcmluZ0J5dGVzIjogMCwKICAgICAgImluYWN0aXZlQnl0ZXMiOiAzMjk5NTY0OCwKICAgICAgInBpbm5lZEJ5dGVzIjogMTE4OTI4NDAsCiAgICAgICJjYWNoZWRTYW1wbGVzIjogMzgsCiAgICAgICJwcmVwYXJpbmdTYW1wbGVzIjogMCwKICAgICAgInJlYWRzIjogMzgsCiAgICAgICJkZWNvZGVzIjogMzgsCiAgICAgICJjYWNoZUhpdHMiOiA0CiAgICB9CiAgfQp9"
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "cd1c387d2259a2dd708b-456dff47bcf07ea135f5",
+          "file": "soundfont-user-banks.spec.ts",
+          "line": 33,
+          "column": 3
+        },
+        {
+          "title": "user bank YDP-GrandPiano-20160804.sf2 activates, plays, restores and renders low/mid/high probes",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 300000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 24669,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-16T11:38:06.393Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "user-bank-result",
+                      "contentType": "application/json",
+                      "body": "ewogICJmaWxlIjogIllEUC1HcmFuZFBpYW5vLTIwMTYwODA0LnNmMiIsCiAgInNvdXJjZUhhc2hCZWZvcmUiOiAiODc1NzA3NmFlY2Y4MGFiZGFkMWU4ZjhmNjE2ODM3MDM5OWIwNmY5NDQ4MTc5Njk4NmU2ZTc1Y2VjYTA5YWQyMSIsCiAgInNvdXJjZUhhc2hBZnRlciI6ICI4NzU3MDc2YWVjZjgwYWJkYWQxZThmOGY2MTY4MzcwMzk5YjA2Zjk0NDgxNzk2OTg2ZTZlNzVjZWNhMDlhZDIxIiwKICAicmVuZGVyIjogewogICAgImlkIjogIjg3NTcwNzZhZWNmODBhYmRhZDFlOGY4ZjYxNjgzNzAzOTliMDZmOTQ0ODE3OTY5ODZlNmU3NWNlY2EwOWFkMjEiLAogICAgImJ5dGVMZW5ndGgiOiAxMTgzOTg4MzYsCiAgICAiaGVhZGVyIjogewogICAgICAibmFtZSI6ICJHcmFuZCBQaWFubyIsCiAgICAgICJ2ZXJzaW9uTWFqb3IiOiAyLAogICAgICAidmVyc2lvbk1pbm9yIjogMSwKICAgICAgInNvdW5kRW5naW5lIjogIkVNVTgwMDAiCiAgICB9LAogICAgInByZXNldCI6IHsKICAgICAgIm5hbWUiOiAiR3JhbmQgUGlhbm8iLAogICAgICAiYmFua051bWJlciI6IDAsCiAgICAgICJwcmVzZXROdW1iZXIiOiAwCiAgICB9LAogICAgInNhbXBsZUNvdW50IjogMTIyLAogICAgIm1vbm9TYW1wbGVDb3VudCI6IDEyMSwKICAgICJsZWZ0U2FtcGxlQ291bnQiOiAwLAogICAgInJpZ2h0U2FtcGxlQ291bnQiOiAwLAogICAgInVzZXNTdGVyZW9QYWlyIjogZmFsc2UsCiAgICAibWVhc3VyZWRQcm9iZXMiOiBbCiAgICAgIHsKICAgICAgICAicGl0Y2giOiAzNiwKICAgICAgICAidmVsb2NpdHkiOiA0OCwKICAgICAgICAibm90ZUlkIjogImJhbmstcHJvYmUtMCIsCiAgICAgICAgImNoYW5uZWxSbXMiOiBbCiAgICAgICAgICAwLjAzNTI5MDIzNjAzMTEyMTYyLAogICAgICAgICAgMC4wMTU5MzQxNTIyNTAwNjk1NTIKICAgICAgICBdCiAgICAgIH0sCiAgICAgIHsKICAgICAgICAicGl0Y2giOiAzNiwKICAgICAgICAidmVsb2NpdHkiOiA4MCwKICAgICAgICAibm90ZUlkIjogImJhbmstcHJvYmUtMSIsCiAgICAgICAgImNoYW5uZWxSbXMiOiBbCiAgICAgICAgICAwLjA3NzU0NjIxMDU1NTY4MzIxLAogICAgICAgICAgMC4wMzUwMTM0NTYwNDgyODUwOTcKICAgICAgICBdCiAgICAgIH0sCiAgICAgIHsKICAgICAgICAicGl0Y2giOiAzNiwKICAgICAgICAidmVsb2NpdHkiOiAxMTIsCiAgICAgICAgIm5vdGVJZCI6ICJiYW5rLXByb2JlLTIiLAogICAgICAgICJjaGFubmVsUm1zIjogWwogICAgICAgICAgMC4xMjU5NDQ4MDI0MDk4NjE0MiwKICAgICAgICAgIDAuMDU2ODY2MjU3ODY4NzQzODcKICAgICAgICBdCiAgICAgIH0sCiAgICAgIHsKICAgICAgICAicGl0Y2giOiA2MCwKICAgICAgICAidmVsb2NpdHkiOiA0OCwKICAgICAgICAibm90ZUlkIjogImJhbmstcHJvYmUtMyIsCiAgICAgICAgImNoYW5uZWxSbXMiOiBbCiAgICAgICAgICAwLjAyMjE5NTA1MzkxNTM0OTY0NiwKICAgICAgICAgIDAuMDE5OTAzNjYyODE1MjY1OTkKICAgICAgICBdCiAgICAgIH0sCiAgICAgIHsKICAgICAgICAicGl0Y2giOiA2MCwKICAgICAgICAidmVsb2NpdHkiOiA4MCwKICAgICAgICAibm90ZUlkIjogImJhbmstcHJvYmUtNCIsCiAgICAgICAgImNoYW5uZWxSbXMiOiBbCiAgICAgICAgICAwLjA0MzY1NDQ1NDc3NzI0NzQ5LAogICAgICAgICAgMC4wNDIzMDQ2MzQwMjU0OTM3MwogICAgICAgIF0KICAgICAgfSwKICAgICAgewogICAgICAgICJwaXRjaCI6IDYwLAogICAgICAgICJ2ZWxvY2l0eSI6IDExMiwKICAgICAgICAibm90ZUlkIjogImJhbmstcHJvYmUtNSIsCiAgICAgICAgImNoYW5uZWxSbXMiOiBbCiAgICAgICAgICAwLjA2MzM2NDgxMjA0NjgyMzY4LAogICAgICAgICAgMC4wNjE0MDQ3NzQ3MzYxMTg1NjQKICAgICAgICBdCiAgICAgIH0sCiAgICAgIHsKICAgICAgICAicGl0Y2giOiA4NCwKICAgICAgICAidmVsb2NpdHkiOiA0OCwKICAgICAgICAibm90ZUlkIjogImJhbmstcHJvYmUtNiIsCiAgICAgICAgImNoYW5uZWxSbXMiOiBbCiAgICAgICAgICAwLjAwODM1MTg0NTgyODI2OTI0NSwKICAgICAgICAgIDAuMDE3NjQ4NTk3NDA0MjI3MzgKICAgICAgICBdCiAgICAgIH0sCiAgICAgIHsKICAgICAgICAicGl0Y2giOiA4NCwKICAgICAgICAidmVsb2NpdHkiOiA4MCwKICAgICAgICAibm90ZUlkIjogImJhbmstcHJvYmUtNyIsCiAgICAgICAgImNoYW5uZWxSbXMiOiBbCiAgICAgICAgICAwLjAxODEzNTg1NTkwNDI3ODI2MywKICAgICAgICAgIDAuMDM4NTQ1NTY5NDEyNDk5MjY2CiAgICAgICAgXQogICAgICB9LAogICAgICB7CiAgICAgICAgInBpdGNoIjogODQsCiAgICAgICAgInZlbG9jaXR5IjogMTEyLAogICAgICAgICJub3RlSWQiOiAiYmFuay1wcm9iZS04IiwKICAgICAgICAiY2hhbm5lbFJtcyI6IFsKICAgICAgICAgIDAuMDI3MzM4MTc4NTM2MjU2OTMyLAogICAgICAgICAgMC4wNTgwOTY1ODYxNzAxMDY2NwogICAgICAgIF0KICAgICAgfQogICAgXSwKICAgICJwZWRhbFByb2JlUm1zIjogWwogICAgICAwLjA0OTU5Mzk0NDYzNTIzNjc0LAogICAgICAwLjA0ODA1NDM3MTU2NTMyMTQxCiAgICBdLAogICAgInBlYWsiOiAwLjM3NTc4OTI4NDcwNjExNTcsCiAgICAibm9uRmluaXRlU2FtcGxlcyI6IDAsCiAgICAiZGlmZmVyZW5jZVJtcyI6IDAuMDIxNzk2Mjg4MTUwNjg3MzM1LAogICAgImhlbGRTdGF0ZSI6IHsKICAgICAgImFjdGl2ZVZvaWNlcyI6IDEsCiAgICAgICJrZXlEb3duTm90ZXMiOiBbXSwKICAgICAgInN1c3RhaW4iOiB0cnVlCiAgICB9LAogICAgInJlbGVhc2VkU3RhdGUiOiB7CiAgICAgICJhY3RpdmVWb2ljZXMiOiAxLAogICAgICAia2V5RG93bk5vdGVzIjogW10sCiAgICAgICJzdXN0YWluIjogZmFsc2UKICAgIH0sCiAgICAicHJlcGFyZWRTdGF0cyI6IHsKICAgICAgImJ1ZGdldEJ5dGVzIjogMjY4NDM1NDU2LAogICAgICAiaW5hY3RpdmVCdWRnZXRCeXRlcyI6IDY3MTA4ODY0LAogICAgICAiZGVjb2RlZEJ5dGVzIjogMjU4NTYxMzIsCiAgICAgICJwcmVwYXJpbmdCeXRlcyI6IDAsCiAgICAgICJpbmFjdGl2ZUJ5dGVzIjogMCwKICAgICAgInBpbm5lZEJ5dGVzIjogMjU4NTYxMzIsCiAgICAgICJjYWNoZWRTYW1wbGVzIjogMTMsCiAgICAgICJwcmVwYXJpbmdTYW1wbGVzIjogMCwKICAgICAgInJlYWRzIjogMTMsCiAgICAgICJkZWNvZGVzIjogMTMsCiAgICAgICJjYWNoZUhpdHMiOiAyCiAgICB9LAogICAgImJhc2VsaW5lU3RhdHMiOiB7CiAgICAgICJidWRnZXRCeXRlcyI6IDI2ODQzNTQ1NiwKICAgICAgImluYWN0aXZlQnVkZ2V0Qnl0ZXMiOiA2NzEwODg2NCwKICAgICAgImRlY29kZWRCeXRlcyI6IDExMDM1NDMyLAogICAgICAicHJlcGFyaW5nQnl0ZXMiOiAwLAogICAgICAiaW5hY3RpdmVCeXRlcyI6IDAsCiAgICAgICJwaW5uZWRCeXRlcyI6IDExMDM1NDMyLAogICAgICAiY2FjaGVkU2FtcGxlcyI6IDYsCiAgICAgICJwcmVwYXJpbmdTYW1wbGVzIjogMCwKICAgICAgInJlYWRzIjogNiwKICAgICAgImRlY29kZXMiOiA2LAogICAgICAiY2FjaGVIaXRzIjogMAogICAgfSwKICAgICJ2b2ljZXNBZnRlclJlbmRlciI6IDAsCiAgICAiY2xlYW51cFN0YXRzIjogewogICAgICAiYnVkZ2V0Qnl0ZXMiOiAyNjg0MzU0NTYsCiAgICAgICJpbmFjdGl2ZUJ1ZGdldEJ5dGVzIjogNjcxMDg4NjQsCiAgICAgICJkZWNvZGVkQnl0ZXMiOiAyNTg1NjEzMiwKICAgICAgInByZXBhcmluZ0J5dGVzIjogMCwKICAgICAgImluYWN0aXZlQnl0ZXMiOiAxNDgyMDcwMCwKICAgICAgInBpbm5lZEJ5dGVzIjogMTEwMzU0MzIsCiAgICAgICJjYWNoZWRTYW1wbGVzIjogMTMsCiAgICAgICJwcmVwYXJpbmdTYW1wbGVzIjogMCwKICAgICAgInJlYWRzIjogMTMsCiAgICAgICJkZWNvZGVzIjogMTMsCiAgICAgICJjYWNoZUhpdHMiOiAyCiAgICB9CiAgfQp9"
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "cd1c387d2259a2dd708b-bd8603757610c2d81961",
+          "file": "soundfont-user-banks.spec.ts",
+          "line": 33,
+          "column": 3
+        },
+        {
+          "title": "Unsupported SF3 MuseScore_General.sf3 is rejected clearly while the current output remains active",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 17559,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-16T11:38:31.076Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "rejected-user-bank-result",
+                      "contentType": "application/json",
+                      "body": "ewogICJmaWxlIjogIk11c2VTY29yZV9HZW5lcmFsLnNmMyIsCiAgInNvdXJjZUhhc2hCZWZvcmUiOiAiNWI4NWI2YzJjNjFkMTBiMmI5MWNkZGQ0MWVmY2NlN2IyNWNkMzFjODI3MWQ1MTFjNzNhZmFmYmVmMjBiNmZhMyIsCiAgInNvdXJjZUhhc2hBZnRlciI6ICI1Yjg1YjZjMmM2MWQxMGIyYjkxY2RkZDQxZWZjY2U3YjI1Y2QzMWM4MjcxZDUxMWM3M2FmYWZiZWYyMGI2ZmEzIiwKICAiaW5zdGFsbGVkQXNzZXRDb3VudCI6IDAsCiAgInJlYXNvbiI6ICJ1bnN1cHBvcnRlZCBTRjMiLAogICJhY3RpdmVPdXRwdXRBZnRlclJlamVjdCI6ICJCdWlsdC1pbiBzeW50aGVzaXplciIKfQ=="
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "cd1c387d2259a2dd708b-c98fa5c2a84ac2dfdb5d",
+          "file": "soundfont-user-banks.spec.ts",
+          "line": 267,
+          "column": 3
+        },
+        {
+          "title": "Malformed stereo SF2 Fazioli-F308-v2.6.sf2 is rejected clearly while the current output remains active",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 18492,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-16T11:38:48.647Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "rejected-user-bank-result",
+                      "contentType": "application/json",
+                      "body": "ewogICJmaWxlIjogIkZhemlvbGktRjMwOC12Mi42LnNmMiIsCiAgInNvdXJjZUhhc2hCZWZvcmUiOiAiYmJhNTI0MTBjN2FkNTczNmFhYjY3YzNiMjc4ODk4MTliYzliMWM5OTk1ZTBhMjJiNjhiZWMxMDcxMjg5OTg0YiIsCiAgInNvdXJjZUhhc2hBZnRlciI6ICJiYmE1MjQxMGM3YWQ1NzM2YWFiNjdjM2IyNzg4OTgxOWJjOWIxYzk5OTVlMGEyMmI2OGJlYzEwNzEyODk5ODRiIiwKICAiaW5zdGFsbGVkQXNzZXRDb3VudCI6IDAsCiAgInJlYXNvbiI6ICJzYW1wbGUgMjg3IGxpbmtzIHRvIG1vbm8gc2FtcGxlIDI4OCB3aXRob3V0IGEgcmVjaXByb2NhbCBsaW5rIiwKICAiYWN0aXZlT3V0cHV0QWZ0ZXJSZWplY3QiOiAiQnVpbHQtaW4gc3ludGhlc2l6ZXIiCn0="
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "cd1c387d2259a2dd708b-dbb956bbbd934e0cfd0b",
+          "file": "soundfont-user-banks.spec.ts",
+          "line": 267,
+          "column": 3
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-10-16T11:35:24.690Z",
+    "duration": 233930.005,
+    "expected": 8,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}

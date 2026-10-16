@@ -131,6 +131,31 @@ describe("MotionStreamController", () => {
     controller.dispose();
   });
 
+  it("re-requests a narrow endpoint window when the pose cap omits the requested end pose", () => {
+    const worker = new TestWorker();
+    let resultCount = 0;
+    const { controller, errors } = makeController(worker, {
+      onResult: () => ++resultCount === 1,
+    });
+
+    controller.requestWindow(0, 4, 200);
+    const original = worker.requests[0]!;
+    emit(worker, resultFor(original, {
+      truncated: true,
+      continuationTimeSeconds: 4,
+    }));
+
+    expect(worker.requests).toHaveLength(2);
+    expect(worker.requests[1]!.startTimeSeconds).toBe(3.999);
+    expect(worker.requests[1]!.endTimeSeconds).toBe(4);
+    emit(worker, resultFor(worker.requests[1]!));
+
+    expect(resultCount).toBe(2);
+    expect(controller.inFlightRequest).toBeNull();
+    expect(errors).toEqual([]);
+    controller.dispose();
+  });
+
   it("streams full 200-pose continuation chunks through verified coverage across a short bridge", () => {
     const worker = new TestWorker();
     const buffer = new MotionBuffer({ expectedHands: ["right"] });

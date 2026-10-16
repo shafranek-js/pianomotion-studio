@@ -2,6 +2,9 @@
 /apps/client/public/pyodide/
 /apps/client/public/python-core/
 /apps/client/public/m1-fixtures/
+/apps/client/public/builtin-melodies/
+# User-provided banks are local test material, never release assets.
+/soundfonts/
 /apps/client/public/offline-manifest.json
 dist/
 /apps/client/dist/

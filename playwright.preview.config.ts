@@ -4,7 +4,7 @@ process.env.PLAYWRIGHT_PWA_PRODUCTION = "1";
 
 export default defineConfig({
   testDir: "./tests/browser",
-  testMatch: ["**/offline-pwa.spec.ts", "**/pwa-deployment-m8.spec.ts"],
+  testMatch: ["**/offline-pwa.spec.ts", "**/pwa-deployment-m8.spec.ts", "**/soundfont-offline.spec.ts", "**/builtin-melodies-offline.spec.ts"],
   fullyParallel: false,
   workers: 1,
   retries: 0,

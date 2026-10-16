@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { generateOfflineManifest } from "./generate-offline-manifest.mjs";
+import { prepareBuiltinMelodies } from "./prepare-builtin-melodies.mjs";
 
 const webRoot = fileURLToPath(new URL("../", import.meta.url));
 const clientRoot = path.join(webRoot, "apps", "client");
@@ -62,6 +63,7 @@ async function buildInputFiles() {
     publicRoot,
     path.join(webRoot, "python-core"),
     path.join(webRoot, "packages", "contracts", "src"),
+    path.join(webRoot, "builtin_melodies", "midi"),
   ];
   for (const directory of directoryInputs) {
     for (const file of await filesBelow(directory)) {
@@ -85,6 +87,7 @@ async function buildInputFiles() {
     "tools/build-release.mjs",
     "tools/generate-offline-manifest.mjs",
     "tools/prepare-pyodide-runtime.mjs",
+    "tools/prepare-builtin-melodies.mjs",
     "tools/package-python-core.mjs",
     "tools/pyodide-runtime-manifest.json",
   ];
@@ -247,6 +250,7 @@ async function embedBuildIdInWorker(distRoot, buildId) {
 }
 
 async function main() {
+  await prepareBuiltinMelodies();
   const appBase = normalizeAppBase(process.env.APP_BASE ?? process.env.VITE_APP_BASE_PATH ?? process.env.VITE_BASE ?? "/");
   const buildId = await computeBuildId(appBase);
   const assetBase = `${appBase}releases/${buildId}/`;

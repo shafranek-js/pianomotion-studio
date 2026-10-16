@@ -1,13 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Music2 } from "lucide-react";
 import { deleteProject, getRecentSavedProjects, listProjects, type ProjectSummary, type SavedProject } from "../storage";
 import styles from "./ProjectsPanel.module.css";
 
 export interface ProjectsPanelProps {
   onOpenProject(projectId: string): void;
+  onOpenBuiltinMelodies?(): void;
   activeProjectId?: string | null;
 }
 
-export function ProjectsPanel({ onOpenProject, activeProjectId }: ProjectsPanelProps) {
+export function ProjectsPanel({ onOpenProject, onOpenBuiltinMelodies, activeProjectId }: ProjectsPanelProps) {
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
   const [recent, setRecent] = useState<SavedProject[]>([]);
   const [query, setQuery] = useState("");
@@ -61,6 +63,12 @@ export function ProjectsPanel({ onOpenProject, activeProjectId }: ProjectsPanelP
 
   return (
     <section className={styles.panel} aria-label="Projects">
+      {onOpenBuiltinMelodies && (
+        <button className={styles.builtins} type="button" onClick={onOpenBuiltinMelodies}>
+          <Music2 size={17} aria-hidden="true" />
+          <span>Built-in melodies</span>
+        </button>
+      )}
       <label className={styles.searchLabel} htmlFor="studio-project-search">Search projects</label>
       <input
         id="studio-project-search"

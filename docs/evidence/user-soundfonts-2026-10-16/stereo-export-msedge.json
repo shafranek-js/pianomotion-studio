@@ -1,0 +1,168 @@
+{
+  "config": {
+    "argv": [
+      "C:\\nvm4w\\nodejs\\node.exe",
+      "C:\\Projects\\pianomotion-studio\\node_modules\\@playwright\\test\\cli.js",
+      "test",
+      "--config",
+      "playwright.audio.config.ts",
+      "tests/browser/soundfont-stereo.spec.ts"
+    ],
+    "configFile": "C:\\Projects\\pianomotion-studio\\playwright.audio.config.ts",
+    "rootDir": "C:/Projects/pianomotion-studio/tests/browser",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "C:/Projects/pianomotion-studio/test-results/audio-msedge",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "",
+        "name": "",
+        "testDir": "C:/Projects/pianomotion-studio/tests/browser",
+        "testIgnore": [],
+        "testMatch": [
+          "**/audio-dsp.spec.ts",
+          "**/audio-output.spec.ts",
+          "**/soundfont-stereo.spec.ts",
+          "**/soundfont-storage.spec.ts"
+        ],
+        "timeout": 180000
+      }
+    ],
+    "filteredProjects": [
+      {
+        "grep": {},
+        "grepInvert": null,
+        "outputDir": "C:\\Projects\\pianomotion-studio\\test-results\\audio-msedge",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "name": "",
+        "testDir": "C:\\Projects\\pianomotion-studio\\tests\\browser",
+        "snapshotDir": "C:\\Projects\\pianomotion-studio\\tests\\browser",
+        "testIgnore": [],
+        "testMatch": [
+          "**/audio-dsp.spec.ts",
+          "**/audio-output.spec.ts",
+          "**/soundfont-stereo.spec.ts",
+          "**/soundfont-storage.spec.ts"
+        ],
+        "timeout": 180000,
+        "use": {
+          "baseURL": "http://127.0.0.1:4173",
+          "browserName": "chromium",
+          "channel": "msedge",
+          "headless": true
+        },
+        "dependencies": [],
+        "ignoreSnapshots": false,
+        "__projectId": ""
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "list",
+        null
+      ],
+      [
+        "json",
+        {
+          "outputFile": "test-results/reports/audio-msedge.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "default",
+    "updateSourceMethod": "patch",
+    "version": "1.64.0",
+    "workers": 1,
+    "webServer": {
+      "command": "npm run dev -- --host 127.0.0.1 --port 4173 --strictPort",
+      "url": "http://127.0.0.1:4173",
+      "reuseExistingServer": false,
+      "timeout": 60000
+    }
+  },
+  "suites": [
+    {
+      "title": "soundfont-stereo.spec.ts",
+      "file": "soundfont-stereo.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "file-backed linked stereo SF2 stays stereo through WAV, MP4, and WebM export",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 600000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 31161,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-16T11:53:50.048Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "soundfont-stereo-export-metrics.json",
+                      "contentType": "application/json",
+                      "body": "ewogICJ3YXYiOiB7CiAgICAic2FtcGxlQ291bnQiOiAzMzA3NiwKICAgICJtYXRlcmlhbGl6ZWRXaG9sZUJhbmsiOiBmYWxzZSwKICAgICJ3YXZCeXRlcyI6IDExMDI5NiwKICAgICJzYW1wbGVSYXRlIjogMjIwNTAsCiAgICAiYWZ0ZXJMaXZlUHJlcGFyYXRpb24iOiB7CiAgICAgICJidWRnZXRCeXRlcyI6IDI2ODQzNTQ1NiwKICAgICAgImluYWN0aXZlQnVkZ2V0Qnl0ZXMiOiA2NzEwODg2NCwKICAgICAgImRlY29kZWRCeXRlcyI6IDEzMjMwNCwKICAgICAgInByZXBhcmluZ0J5dGVzIjogMCwKICAgICAgImluYWN0aXZlQnl0ZXMiOiAwLAogICAgICAicGlubmVkQnl0ZXMiOiAxMzIzMDQsCiAgICAgICJjYWNoZWRTYW1wbGVzIjogMiwKICAgICAgInByZXBhcmluZ1NhbXBsZXMiOiAwLAogICAgICAicmVhZHMiOiAyLAogICAgICAiZGVjb2RlcyI6IDIsCiAgICAgICJjYWNoZUhpdHMiOiAyCiAgICB9LAogICAgInByb3ZpZGVyU3RhdHMiOiB7CiAgICAgICJidWRnZXRCeXRlcyI6IDI2ODQzNTQ1NiwKICAgICAgImluYWN0aXZlQnVkZ2V0Qnl0ZXMiOiA2NzEwODg2NCwKICAgICAgImRlY29kZWRCeXRlcyI6IDEzMjMwNCwKICAgICAgInByZXBhcmluZ0J5dGVzIjogMCwKICAgICAgImluYWN0aXZlQnl0ZXMiOiAwLAogICAgICAicGlubmVkQnl0ZXMiOiAxMzIzMDQsCiAgICAgICJjYWNoZWRTYW1wbGVzIjogMiwKICAgICAgInByZXBhcmluZ1NhbXBsZXMiOiAwLAogICAgICAicmVhZHMiOiAyLAogICAgICAiZGVjb2RlcyI6IDIsCiAgICAgICJjYWNoZUhpdHMiOiA0CiAgICB9LAogICAgInNoYXJlZENhY2hlIjogewogICAgICAicmVhZHNVbmNoYW5nZWQiOiB0cnVlLAogICAgICAiY2FjaGVIaXRzQWRkZWQiOiAyCiAgICB9LAogICAgImJlZm9yZVJtcyI6IFsKICAgICAgMCwKICAgICAgMAogICAgXSwKICAgICJkdXJpbmdSbXMiOiBbCiAgICAgIDAuNjI5MzI1MTIyOTg0NjgxOSwKICAgICAgMC40Mjc5NDE1MjcxNjE4MzMyNgogICAgXSwKICAgICJkdXJpbmdDb3JyZWxhdGlvbiI6IDMuODc5MjMyOTkzMTU4Njk2ZS04LAogICAgImxlZnRQaGFzZSI6IDMuODc5ODU5NDQ1MjEzNjk0ZS04LAogICAgInJpZ2h0UGhhc2UiOiAxLjU3MDc5NjMyNjc5NDg3MTcsCiAgICAicGhhc2VEaWZmZXJlbmNlIjogMS41NzA3OTYyODc5OTYyNzcxLAogICAgImFmdGVyUm1zIjogWwogICAgICAwLAogICAgICAwCiAgICBdCiAgfSwKICAibmF0aXZlUmVzdWx0cyI6IHsKICAgICJtcDQiOiB7CiAgICAgICJkdXJhdGlvblNlY29uZHMiOiAyMC4xNTQ5MjEsCiAgICAgICJiZWZvcmVSbXMiOiBbCiAgICAgICAgMCwKICAgICAgICAwCiAgICAgIF0sCiAgICAgICJkdXJpbmdSbXMiOiBbCiAgICAgICAgMC40MTM2ODcwOTM2ODk1NTkxNCwKICAgICAgICAwLjI4MTY3MjkxMzk4ODAxMTAzCiAgICAgIF0sCiAgICAgICJjaGFubmVsQ29ycmVsYXRpb24iOiAwLjAwNjMxODQ5MDkwNjI1MzIxOTYKICAgIH0sCiAgICAid2VibSI6IHsKICAgICAgImR1cmF0aW9uU2Vjb25kcyI6IDIwLjE0LAogICAgICAiYmVmb3JlUm1zIjogWwogICAgICAgIDIuMDM0NTg2OTQ4Mzc2MzcyZS0zNCwKICAgICAgICAyLjAzNDU4Njk0ODM3NjM3MmUtMzQKICAgICAgXSwKICAgICAgImR1cmluZ1JtcyI6IFsKICAgICAgICAwLjQxNTQ2NzY4NzgyMjMyMTYsCiAgICAgICAgMC4yODA2MzQ1MDM0ODY4MDE2CiAgICAgIF0sCiAgICAgICJjaGFubmVsQ29ycmVsYXRpb24iOiAwLjAwMDc4NjIwMDMxNjE4ODYzOTUKICAgIH0KICB9LAogICJhc3NldElkIjogImZjYTMxOWEzNGI5ZWRjYjZjYWQ5NjJmYjQ0ZDU1ZTBjYzBmZmUxN2M5ZWI1Y2YyNGIwZWMzM2M5ZDZkMDQyMzEiLAogICJmaXJzdFByZXNzIjogMCwKICAibm90ZVByb2JlT2Zmc2V0IjogMC4xMgp9"
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "2dc8e1a97898124a43f6-16763d49e5de277cf619",
+          "file": "soundfont-stereo.spec.ts",
+          "line": 362,
+          "column": 1
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-10-16T11:53:44.024Z",
+    "duration": 43928.668000000005,
+    "expected": 1,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}

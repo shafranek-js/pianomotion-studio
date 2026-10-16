@@ -13,6 +13,8 @@ import {
   saveSoundFontAsset,
   deleteSoundFontAsset,
   type SoundFontAssetMetadata,
+  MAX_SF2_FILE_BYTES,
+  type Sf2Progress,
 } from "../audio/soundfont/index.ts";
 import { WebMidiOutputManager, getSharedWebMidiOutputManager } from "../midi/webMidiOutput.ts";
 import type { WebMidiStatus } from "../midi/types.ts";
@@ -32,6 +34,8 @@ export function SettingsModal({ isOpen, onClose, onSettingsChanged, presentation
   const [soundfonts, setSoundfonts] = useState<SoundFontAssetMetadata[]>([]);
   const [sfUploading, setSfUploading] = useState(false);
   const [sfError, setSfError] = useState<string | null>(null);
+  const [sfProgress, setSfProgress] = useState<Sf2Progress | null>(null);
+  const sfAbortController = useRef<AbortController | null>(null);
   const [midiStatus, setMidiStatus] = useState<WebMidiStatus | null>(null);
   const midiManagerRef = useRef<WebMidiOutputManager | null>(null);
   const pendingValues = useRef<Partial<AppSettings>>({});
@@ -77,6 +81,12 @@ export function SettingsModal({ isOpen, onClose, onSettingsChanged, presentation
   }, [isOpen, settings.soundfontAssetId, handleChange]);
 
   useEffect(() => {
+    if (!isOpen) sfAbortController.current?.abort();
+  }, [isOpen]);
+
+  useEffect(() => () => sfAbortController.current?.abort(), []);
+
+  useEffect(() => {
     if (isOpen && settings.soundOutput === "webmidi") {
       if (!midiManagerRef.current) {
         midiManagerRef.current = getSharedWebMidiOutputManager();
@@ -106,26 +116,46 @@ export function SettingsModal({ isOpen, onClose, onSettingsChanged, presentation
   const handleSoundFontUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 128 * 1024 * 1024) {
-      setSfError("SoundFont exceeds the 128 MiB limit.");
+    if (file.size > MAX_SF2_FILE_BYTES) {
+      setSfError("SoundFont exceeds the 1 GiB limit.");
       e.target.value = "";
       return;
     }
+    sfAbortController.current?.abort();
+    const controller = new AbortController();
+    sfAbortController.current = controller;
     setSfUploading(true);
     setSfError(null);
+    setSfProgress({ phase: "reading", loadedBytes: 0, totalBytes: file.size });
     try {
-      const buffer = await file.arrayBuffer();
-      const meta = await saveSoundFontAsset(file.name, buffer);
+      const meta = await saveSoundFontAsset(file.name, file, {
+        signal: controller.signal,
+        onProgress: (progress) => {
+          if (sfAbortController.current === controller) setSfProgress(progress);
+        },
+      });
       const list = await listSoundFontAssets();
+      if (controller.signal.aborted || sfAbortController.current !== controller) return;
       setSoundfonts(list);
       await handleChange("soundfontAssetId", meta.id);
+      if (controller.signal.aborted || sfAbortController.current !== controller) return;
       setFeedback(`SoundFont "${meta.name}" loaded successfully.`);
       setTimeout(() => setFeedback(null), 3000);
     } catch (err: unknown) {
-      setSfError(err instanceof Error ? err.message : String(err));
+      if (sfAbortController.current !== controller) return;
+      if (err instanceof Error && err.name === "AbortError") {
+        setFeedback("SoundFont import cancelled.");
+        setTimeout(() => setFeedback(null), 2500);
+      } else {
+        setSfError(err instanceof Error ? err.message : String(err));
+      }
     } finally {
-      setSfUploading(false);
-      e.target.value = "";
+      if (sfAbortController.current === controller) {
+        sfAbortController.current = null;
+        setSfUploading(false);
+        setSfProgress(null);
+        e.target.value = "";
+      }
     }
   };
 
@@ -171,10 +201,10 @@ export function SettingsModal({ isOpen, onClose, onSettingsChanged, presentation
     }
   };
 
-  const formatMb = (bytes: number) => {
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-    return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+  const formatBytes = (bytes: number) => {
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KiB`;
+    if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MiB`;
+    return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GiB`;
   };
 
   return (
@@ -508,6 +538,23 @@ export function SettingsModal({ isOpen, onClose, onSettingsChanged, presentation
                         style={{ display: "none" }}
                       />
                     </label>
+                    {sfUploading && (
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.55rem", marginTop: "0.5rem" }}>
+                        <progress
+                          aria-label="SoundFont import progress"
+                          max={sfProgress?.totalBytes || 1}
+                          value={Math.min(sfProgress?.loadedBytes ?? 0, sfProgress?.totalBytes || 1)}
+                          style={{ flex: 1, height: "0.55rem", accentColor: "var(--mint, #a9d3bb)" }}
+                        />
+                        <span aria-live="polite" style={{ color: "var(--muted, #9fac9f)", fontSize: "0.72rem", whiteSpace: "nowrap" }}>
+                          {sfProgress?.phase === "hashing" ? "Hashing" : sfProgress?.phase === "saving" ? "Saving" : sfProgress?.phase === "parsing" ? "Checking bank" : "Reading"}
+                          {sfProgress?.totalBytes ? ` ${Math.floor((sfProgress.loadedBytes / sfProgress.totalBytes) * 100)}%` : ""}
+                        </span>
+                        <button type="button" onClick={() => sfAbortController.current?.abort()} style={{ fontSize: "0.72rem" }}>
+                          Cancel
+                        </button>
+                      </div>
+                    )}
                   </div>
                   {sfError && (
                     <p role="alert" style={{ margin: "0.2rem 0 0", color: "#f87171", fontSize: "0.75rem" }}>
@@ -515,8 +562,8 @@ export function SettingsModal({ isOpen, onClose, onSettingsChanged, presentation
                     </p>
                   )}
                   <p className="settings-help">
-                    Up to 128 MiB. Supports mono PCM SF2 samples and loop modes 0, 1 and 3.
-                    Compressed SF3, ROM and linked stereo samples are currently unsupported.
+                    Up to 1 GiB. Supports mono and linked stereo PCM SF2 samples. SF3 is not supported; some banks’ filter and modulation effects may sound different.
+                    Compressed SF3, ROM-backed, and linked sample type 8 banks are unsupported.
                   </p>
                 </div>
               )}
@@ -661,8 +708,8 @@ export function SettingsModal({ isOpen, onClose, onSettingsChanged, presentation
 
             {quotaInfo ? (
               <div style={{ fontSize: "0.8rem", color: "var(--muted, #9fac9f)", marginBottom: "0.8rem" }}>
-                Storage usage: <strong style={{ color: "#edf2ed" }}>{formatMb(quotaInfo.usageBytes)}</strong> of{" "}
-                <strong style={{ color: "#edf2ed" }}>{formatMb(quotaInfo.quotaBytes)}</strong> (
+                Storage usage: <strong style={{ color: "#edf2ed" }}>{formatBytes(quotaInfo.usageBytes)}</strong> of{" "}
+                <strong style={{ color: "#edf2ed" }}>{formatBytes(quotaInfo.quotaBytes)}</strong> (
                 {(quotaInfo.percentUsed * 100).toFixed(1)}% used)
               </div>
             ) : (

@@ -1,0 +1,1185 @@
+{
+  "config": {
+    "argv": [
+      "C:\\nvm4w\\nodejs\\node.exe",
+      "C:\\Projects\\pianomotion-studio\\node_modules\\@playwright\\test\\cli.js",
+      "test",
+      "--config",
+      "playwright.worker.config.ts",
+      "tests/browser/parity-m1.spec.ts"
+    ],
+    "configFile": "C:\\Projects\\pianomotion-studio\\playwright.worker.config.ts",
+    "rootDir": "C:/Projects/pianomotion-studio/tests/browser",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "C:/Projects/pianomotion-studio/test-results/worker-chrome",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "",
+        "name": "",
+        "testDir": "C:/Projects/pianomotion-studio/tests/browser",
+        "testIgnore": [],
+        "testMatch": [
+          "**/parity-m1.spec.ts",
+          "**/motion-streaming.spec.ts",
+          "**/motion-playback.spec.ts"
+        ],
+        "timeout": 300000
+      }
+    ],
+    "filteredProjects": [
+      {
+        "grep": {},
+        "grepInvert": null,
+        "outputDir": "C:\\Projects\\pianomotion-studio\\test-results\\worker-chrome",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "name": "",
+        "testDir": "C:\\Projects\\pianomotion-studio\\tests\\browser",
+        "snapshotDir": "C:\\Projects\\pianomotion-studio\\tests\\browser",
+        "testIgnore": [],
+        "testMatch": [
+          "**/parity-m1.spec.ts",
+          "**/motion-streaming.spec.ts",
+          "**/motion-playback.spec.ts"
+        ],
+        "timeout": 300000,
+        "use": {
+          "baseURL": "http://127.0.0.1:4173",
+          "browserName": "chromium",
+          "channel": "chrome",
+          "headless": true
+        },
+        "dependencies": [],
+        "ignoreSnapshots": false,
+        "__projectId": ""
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "list",
+        null
+      ],
+      [
+        "json",
+        {
+          "outputFile": "test-results/reports/worker-chrome.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "default",
+    "updateSourceMethod": "patch",
+    "version": "1.64.0",
+    "workers": 1,
+    "webServer": {
+      "command": "npm run dev -- --host 127.0.0.1 --port 4173 --strictPort",
+      "url": "http://127.0.0.1:4173",
+      "reuseExistingServer": false,
+      "timeout": 60000
+    }
+  },
+  "suites": [
+    {
+      "title": "parity-m1.spec.ts",
+      "file": "parity-m1.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [],
+      "suites": [
+        {
+          "title": "M1 Pyodide browser verification suite",
+          "file": "parity-m1.spec.ts",
+          "line": 30,
+          "column": 15,
+          "specs": [
+            {
+              "title": "fixture parity (1/13): synthetic-crossing-wide-chord",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 240000,
+                  "annotations": [
+                    {
+                      "type": "serial",
+                      "location": {
+                        "file": "C:\\Projects\\pianomotion-studio\\tests\\browser\\parity-m1.spec.ts",
+                        "line": 30,
+                        "column": 15
+                      }
+                    }
+                  ],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 6458,
+                      "errors": [],
+                      "stdout": [
+                        {
+                          "text": "[BROWSER info] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold\n"
+                        },
+                        {
+                          "text": "[WORKER CREATED] blob:http://127.0.0.1:4173/25ae0d27-4c7e-467e-8815-0673e642d454\n"
+                        },
+                        {
+                          "text": "[WORKER CREATED] blob:http://127.0.0.1:4173/b95d3675-1e7c-42c7-a106-84115991013a\n"
+                        },
+                        {
+                          "text": "[WORKER CREATED] blob:http://127.0.0.1:4173/b95d3675-1e7c-42c7-a106-84115991013a\n"
+                        },
+                        {
+                          "text": "[WORKER CREATED] blob:http://127.0.0.1:4173/b95d3675-1e7c-42c7-a106-84115991013a\n"
+                        },
+                        {
+                          "text": "[WORKER CREATED] blob:http://127.0.0.1:4173/b95d3675-1e7c-42c7-a106-84115991013a\n"
+                        },
+                        {
+                          "text": "[WORKER CREATED] blob:http://127.0.0.1:4173/b95d3675-1e7c-42c7-a106-84115991013a\n"
+                        },
+                        {
+                          "text": "[WORKER CREATED] blob:http://127.0.0.1:4173/b95d3675-1e7c-42c7-a106-84115991013a\n"
+                        },
+                        {
+                          "text": "[WORKER CREATED] blob:http://127.0.0.1:4173/b95d3675-1e7c-42c7-a106-84115991013a\n"
+                        },
+                        {
+                          "text": "[WORKER CREATED] blob:http://127.0.0.1:4173/b95d3675-1e7c-42c7-a106-84115991013a\n"
+                        },
+                        {
+                          "text": "[WORKER CREATED] blob:http://127.0.0.1:4173/b95d3675-1e7c-42c7-a106-84115991013a\n"
+                        },
+                        {
+                          "text": "[WORKER CREATED] blob:http://127.0.0.1:4173/b95d3675-1e7c-42c7-a106-84115991013a\n"
+                        },
+                        {
+                          "text": "[WORKER CREATED] blob:http://127.0.0.1:4173/b95d3675-1e7c-42c7-a106-84115991013a\n"
+                        },
+                        {
+                          "text": "[WORKER CREATED] blob:http://127.0.0.1:4173/b95d3675-1e7c-42c7-a106-84115991013a\n"
+                        },
+                        {
+                          "text": "[WORKER CREATED] blob:http://127.0.0.1:4173/b95d3675-1e7c-42c7-a106-84115991013a\n"
+                        },
+                        {
+                          "text": "[WORKER CREATED] blob:http://127.0.0.1:4173/b95d3675-1e7c-42c7-a106-84115991013a\n"
+                        },
+                        {
+                          "text": "[WORKER CREATED] blob:http://127.0.0.1:4173/b95d3675-1e7c-42c7-a106-84115991013a\n"
+                        },
+                        {
+                          "text": "[WORKER CREATED] blob:http://127.0.0.1:4173/b95d3675-1e7c-42c7-a106-84115991013a\n"
+                        },
+                        {
+                          "text": "[WORKER CREATED] http://127.0.0.1:4173/src/workers/midi-analysis.worker.ts?worker_file&type=module\n"
+                        },
+                        {
+                          "text": "[BROWSER log] Loading micropip, numpy, packaging, six\n"
+                        },
+                        {
+                          "text": "[BROWSER log] Loaded micropip, numpy, packaging, six\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-16T06:59:27.693Z",
+                      "annotations": [
+                        {
+                          "type": "serial",
+                          "location": {
+                            "file": "C:\\Projects\\pianomotion-studio\\tests\\browser\\parity-m1.spec.ts",
+                            "line": 30,
+                            "column": 15
+                          }
+                        }
+                      ],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "df0b53b4625f490a49b0-45c2f5d3a7f229eebe07",
+              "file": "parity-m1.spec.ts",
+              "line": 162,
+              "column": 5
+            },
+            {
+              "title": "fixture parity (2/13): synthetic-duplicate-identities",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 240000,
+                  "annotations": [
+                    {
+                      "type": "serial",
+                      "location": {
+                        "file": "C:\\Projects\\pianomotion-studio\\tests\\browser\\parity-m1.spec.ts",
+                        "line": 30,
+                        "column": 15
+                      }
+                    }
+                  ],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 4700,
+                      "errors": [],
+                      "stdout": [
+                        {
+                          "text": "[WORKER CREATED] http://127.0.0.1:4173/src/workers/midi-analysis.worker.ts?worker_file&type=module\n"
+                        },
+                        {
+                          "text": "[BROWSER log] Loading micropip, numpy, packaging, six\n"
+                        },
+                        {
+                          "text": "[BROWSER log] Loaded micropip, numpy, packaging, six\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-16T06:59:35.679Z",
+                      "annotations": [
+                        {
+                          "type": "serial",
+                          "location": {
+                            "file": "C:\\Projects\\pianomotion-studio\\tests\\browser\\parity-m1.spec.ts",
+                            "line": 30,
+                            "column": 15
+                          }
+                        }
+                      ],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "df0b53b4625f490a49b0-c670010e6aae8ebe2d39",
+              "file": "parity-m1.spec.ts",
+              "line": 162,
+              "column": 5
+            },
+            {
+              "title": "fixture parity (3/13): synthetic-invalid-empty",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 240000,
+                  "annotations": [
+                    {
+                      "type": "serial",
+                      "location": {
+                        "file": "C:\\Projects\\pianomotion-studio\\tests\\browser\\parity-m1.spec.ts",
+                        "line": 30,
+                        "column": 15
+                      }
+                    }
+                  ],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 4628,
+                      "errors": [],
+                      "stdout": [
+                        {
+                          "text": "[WORKER CREATED] http://127.0.0.1:4173/src/workers/midi-analysis.worker.ts?worker_file&type=module\n"
+                        },
+                        {
+                          "text": "[BROWSER log] Loading micropip, numpy, packaging, six\n"
+                        },
+                        {
+                          "text": "[BROWSER log] Loaded micropip, numpy, packaging, six\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-16T06:59:40.399Z",
+                      "annotations": [
+                        {
+                          "type": "serial",
+                          "location": {
+                            "file": "C:\\Projects\\pianomotion-studio\\tests\\browser\\parity-m1.spec.ts",
+                            "line": 30,
+                            "column": 15
+                          }
+                        }
+                      ],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "df0b53b4625f490a49b0-603be062496b458a9e14",
+              "file": "parity-m1.spec.ts",
+              "line": 162,
+              "column": 5
+            },
+            {
+              "title": "fixture parity (4/13): synthetic-invalid-non-midi",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 240000,
+                  "annotations": [
+                    {
+                      "type": "serial",
+                      "location": {
+                        "file": "C:\\Projects\\pianomotion-studio\\tests\\browser\\parity-m1.spec.ts",
+                        "line": 30,
+                        "column": 15
+                      }
+                    }
+                  ],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 4859,
+                      "errors": [],
+                      "stdout": [
+                        {
+                          "text": "[WORKER CREATED] http://127.0.0.1:4173/src/workers/midi-analysis.worker.ts?worker_file&type=module\n"
+                        },
+                        {
+                          "text": "[BROWSER log] Loading micropip, numpy, packaging, six\n"
+                        },
+                        {
+                          "text": "[BROWSER log] Loaded micropip, numpy, packaging, six\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-16T06:59:45.042Z",
+                      "annotations": [
+                        {
+                          "type": "serial",
+                          "location": {
+                            "file": "C:\\Projects\\pianomotion-studio\\tests\\browser\\parity-m1.spec.ts",
+                            "line": 30,
+                            "column": 15
+                          }
+                        }
+                      ],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "df0b53b4625f490a49b0-b3dcace66b631cc858c1",
+              "file": "parity-m1.spec.ts",
+              "line": 162,
+              "column": 5
+            },
+            {
+              "title": "fixture parity (5/13): synthetic-invalid-truncated",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 240000,
+                  "annotations": [
+                    {
+                      "type": "serial",
+                      "location": {
+                        "file": "C:\\Projects\\pianomotion-studio\\tests\\browser\\parity-m1.spec.ts",
+                        "line": 30,
+                        "column": 15
+                      }
+                    }
+                  ],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 3816,
+                      "errors": [],
+                      "stdout": [
+                        {
+                          "text": "[WORKER CREATED] http://127.0.0.1:4173/src/workers/midi-analysis.worker.ts?worker_file&type=module\n"
+                        },
+                        {
+                          "text": "[BROWSER log] Loading micropip, numpy, packaging, six\n"
+                        },
+                        {
+                          "text": "[BROWSER log] Loaded micropip, numpy, packaging, six\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-16T06:59:49.915Z",
+                      "annotations": [
+                        {
+                          "type": "serial",
+                          "location": {
+                            "file": "C:\\Projects\\pianomotion-studio\\tests\\browser\\parity-m1.spec.ts",
+                            "line": 30,
+                            "column": 15
+                          }
+                        }
+                      ],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "df0b53b4625f490a49b0-22802a6a074c1fe68bdd",
+              "file": "parity-m1.spec.ts",
+              "line": 162,
+              "column": 5
+            },
+            {
+              "title": "fixture parity (6/13): synthetic-manual-fingering-gliss",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 240000,
+                  "annotations": [
+                    {
+                      "type": "serial",
+                      "location": {
+                        "file": "C:\\Projects\\pianomotion-studio\\tests\\browser\\parity-m1.spec.ts",
+                        "line": 30,
+                        "column": 15
+                      }
+                    }
+                  ],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 4200,
+                      "errors": [],
+                      "stdout": [
+                        {
+                          "text": "[WORKER CREATED] http://127.0.0.1:4173/src/workers/midi-analysis.worker.ts?worker_file&type=module\n"
+                        },
+                        {
+                          "text": "[BROWSER log] Loading micropip, numpy, packaging, six\n"
+                        },
+                        {
+                          "text": "[BROWSER log] Loaded micropip, numpy, packaging, six\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-16T06:59:53.746Z",
+                      "annotations": [
+                        {
+                          "type": "serial",
+                          "location": {
+                            "file": "C:\\Projects\\pianomotion-studio\\tests\\browser\\parity-m1.spec.ts",
+                            "line": 30,
+                            "column": 15
+                          }
+                        }
+                      ],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "df0b53b4625f490a49b0-544c2e7dde785114ea02",
+              "file": "parity-m1.spec.ts",
+              "line": 162,
+              "column": 5
+            },
+            {
+              "title": "fixture parity (7/13): synthetic-mismatched-track-labels",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 240000,
+                  "annotations": [
+                    {
+                      "type": "serial",
+                      "location": {
+                        "file": "C:\\Projects\\pianomotion-studio\\tests\\browser\\parity-m1.spec.ts",
+                        "line": 30,
+                        "column": 15
+                      }
+                    }
+                  ],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 4911,
+                      "errors": [],
+                      "stdout": [
+                        {
+                          "text": "[WORKER CREATED] http://127.0.0.1:4173/src/workers/midi-analysis.worker.ts?worker_file&type=module\n"
+                        },
+                        {
+                          "text": "[BROWSER log] Loading micropip, numpy, packaging, six\n"
+                        },
+                        {
+                          "text": "[BROWSER log] Loaded micropip, numpy, packaging, six\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-16T06:59:57.963Z",
+                      "annotations": [
+                        {
+                          "type": "serial",
+                          "location": {
+                            "file": "C:\\Projects\\pianomotion-studio\\tests\\browser\\parity-m1.spec.ts",
+                            "line": 30,
+                            "column": 15
+                          }
+                        }
+                      ],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "df0b53b4625f490a49b0-2dd75767284236e5e040",
+              "file": "parity-m1.spec.ts",
+              "line": 162,
+              "column": 5
+            },
+            {
+              "title": "fixture parity (8/13): synthetic-scale-chords",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 240000,
+                  "annotations": [
+                    {
+                      "type": "serial",
+                      "location": {
+                        "file": "C:\\Projects\\pianomotion-studio\\tests\\browser\\parity-m1.spec.ts",
+                        "line": 30,
+                        "column": 15
+                      }
+                    }
+                  ],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 5624,
+                      "errors": [],
+                      "stdout": [
+                        {
+                          "text": "[WORKER CREATED] http://127.0.0.1:4173/src/workers/midi-analysis.worker.ts?worker_file&type=module\n"
+                        },
+                        {
+                          "text": "[BROWSER log] Loading micropip, numpy, packaging, six\n"
+                        },
+                        {
+                          "text": "[BROWSER log] Loaded micropip, numpy, packaging, six\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-16T07:00:02.883Z",
+                      "annotations": [
+                        {
+                          "type": "serial",
+                          "location": {
+                            "file": "C:\\Projects\\pianomotion-studio\\tests\\browser\\parity-m1.spec.ts",
+                            "line": 30,
+                            "column": 15
+                          }
+                        }
+                      ],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "df0b53b4625f490a49b0-677b8801171fd228649e",
+              "file": "parity-m1.spec.ts",
+              "line": 162,
+              "column": 5
+            },
+            {
+              "title": "fixture parity (9/13): synthetic-stress-512",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 240000,
+                  "annotations": [
+                    {
+                      "type": "serial",
+                      "location": {
+                        "file": "C:\\Projects\\pianomotion-studio\\tests\\browser\\parity-m1.spec.ts",
+                        "line": 30,
+                        "column": 15
+                      }
+                    }
+                  ],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 7842,
+                      "errors": [],
+                      "stdout": [
+                        {
+                          "text": "[WORKER CREATED] http://127.0.0.1:4173/src/workers/midi-analysis.worker.ts?worker_file&type=module\n"
+                        },
+                        {
+                          "text": "[BROWSER log] Loading micropip, numpy, packaging, six\n"
+                        },
+                        {
+                          "text": "[BROWSER log] Loaded micropip, numpy, packaging, six\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-16T07:00:08.520Z",
+                      "annotations": [
+                        {
+                          "type": "serial",
+                          "location": {
+                            "file": "C:\\Projects\\pianomotion-studio\\tests\\browser\\parity-m1.spec.ts",
+                            "line": 30,
+                            "column": 15
+                          }
+                        }
+                      ],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "df0b53b4625f490a49b0-ee26419f2e2ae0596e3d",
+              "file": "parity-m1.spec.ts",
+              "line": 162,
+              "column": 5
+            },
+            {
+              "title": "fixture parity (10/13): synthetic-tempo-pedals-overlap",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 240000,
+                  "annotations": [
+                    {
+                      "type": "serial",
+                      "location": {
+                        "file": "C:\\Projects\\pianomotion-studio\\tests\\browser\\parity-m1.spec.ts",
+                        "line": 30,
+                        "column": 15
+                      }
+                    }
+                  ],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 5317,
+                      "errors": [],
+                      "stdout": [
+                        {
+                          "text": "[WORKER CREATED] http://127.0.0.1:4173/src/workers/midi-analysis.worker.ts?worker_file&type=module\n"
+                        },
+                        {
+                          "text": "[BROWSER log] Loading micropip, numpy, packaging, six\n"
+                        },
+                        {
+                          "text": "[BROWSER log] Loaded micropip, numpy, packaging, six\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-16T07:00:16.378Z",
+                      "annotations": [
+                        {
+                          "type": "serial",
+                          "location": {
+                            "file": "C:\\Projects\\pianomotion-studio\\tests\\browser\\parity-m1.spec.ts",
+                            "line": 30,
+                            "column": 15
+                          }
+                        }
+                      ],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "df0b53b4625f490a49b0-4f788606134971552726",
+              "file": "parity-m1.spec.ts",
+              "line": 162,
+              "column": 5
+            },
+            {
+              "title": "fixture parity (11/13): tracked-demo-song",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 240000,
+                  "annotations": [
+                    {
+                      "type": "serial",
+                      "location": {
+                        "file": "C:\\Projects\\pianomotion-studio\\tests\\browser\\parity-m1.spec.ts",
+                        "line": 30,
+                        "column": 15
+                      }
+                    }
+                  ],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 7337,
+                      "errors": [],
+                      "stdout": [
+                        {
+                          "text": "[WORKER CREATED] http://127.0.0.1:4173/src/workers/midi-analysis.worker.ts?worker_file&type=module\n"
+                        },
+                        {
+                          "text": "[BROWSER log] Loading micropip, numpy, packaging, six\n"
+                        },
+                        {
+                          "text": "[BROWSER log] Loaded micropip, numpy, packaging, six\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-16T07:00:21.708Z",
+                      "annotations": [
+                        {
+                          "type": "serial",
+                          "location": {
+                            "file": "C:\\Projects\\pianomotion-studio\\tests\\browser\\parity-m1.spec.ts",
+                            "line": 30,
+                            "column": 15
+                          }
+                        }
+                      ],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "df0b53b4625f490a49b0-235b8055eca094d324c8",
+              "file": "parity-m1.spec.ts",
+              "line": 162,
+              "column": 5
+            },
+            {
+              "title": "fixture parity (12/13): tracked-right-hand",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 240000,
+                  "annotations": [
+                    {
+                      "type": "serial",
+                      "location": {
+                        "file": "C:\\Projects\\pianomotion-studio\\tests\\browser\\parity-m1.spec.ts",
+                        "line": 30,
+                        "column": 15
+                      }
+                    }
+                  ],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 5110,
+                      "errors": [],
+                      "stdout": [
+                        {
+                          "text": "[WORKER CREATED] http://127.0.0.1:4173/src/workers/midi-analysis.worker.ts?worker_file&type=module\n"
+                        },
+                        {
+                          "text": "[BROWSER log] Loading micropip, numpy, packaging, six\n"
+                        },
+                        {
+                          "text": "[BROWSER log] Loaded micropip, numpy, packaging, six\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-16T07:00:29.058Z",
+                      "annotations": [
+                        {
+                          "type": "serial",
+                          "location": {
+                            "file": "C:\\Projects\\pianomotion-studio\\tests\\browser\\parity-m1.spec.ts",
+                            "line": 30,
+                            "column": 15
+                          }
+                        }
+                      ],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "df0b53b4625f490a49b0-7b2f304cb83f8daf21e2",
+              "file": "parity-m1.spec.ts",
+              "line": 162,
+              "column": 5
+            },
+            {
+              "title": "fixture parity (13/13): tracked-right-hand-octaves",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 240000,
+                  "annotations": [
+                    {
+                      "type": "serial",
+                      "location": {
+                        "file": "C:\\Projects\\pianomotion-studio\\tests\\browser\\parity-m1.spec.ts",
+                        "line": 30,
+                        "column": 15
+                      }
+                    }
+                  ],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 4816,
+                      "errors": [],
+                      "stdout": [
+                        {
+                          "text": "[WORKER CREATED] http://127.0.0.1:4173/src/workers/midi-analysis.worker.ts?worker_file&type=module\n"
+                        },
+                        {
+                          "text": "[BROWSER log] Loading micropip, numpy, packaging, six\n"
+                        },
+                        {
+                          "text": "[BROWSER log] Loaded micropip, numpy, packaging, six\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-16T07:00:34.181Z",
+                      "annotations": [
+                        {
+                          "type": "serial",
+                          "location": {
+                            "file": "C:\\Projects\\pianomotion-studio\\tests\\browser\\parity-m1.spec.ts",
+                            "line": 30,
+                            "column": 15
+                          }
+                        }
+                      ],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "df0b53b4625f490a49b0-267c5aa108b8955602f5",
+              "file": "parity-m1.spec.ts",
+              "line": 162,
+              "column": 5
+            },
+            {
+              "title": "cancellation terminates worker and disposes job",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 240000,
+                  "annotations": [
+                    {
+                      "type": "serial",
+                      "location": {
+                        "file": "C:\\Projects\\pianomotion-studio\\tests\\browser\\parity-m1.spec.ts",
+                        "line": 30,
+                        "column": 15
+                      }
+                    }
+                  ],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 7095,
+                      "errors": [],
+                      "stdout": [
+                        {
+                          "text": "[WORKER CREATED] http://127.0.0.1:4173/src/workers/midi-analysis.worker.ts?worker_file&type=module\n"
+                        },
+                        {
+                          "text": "[WORKER CREATED] http://127.0.0.1:4173/src/workers/midi-analysis.worker.ts?worker_file&type=module\n"
+                        },
+                        {
+                          "text": "[BROWSER log] Loading micropip, numpy, packaging, six\n"
+                        },
+                        {
+                          "text": "[BROWSER log] Loaded micropip, numpy, packaging, six\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-16T07:00:39.008Z",
+                      "annotations": [
+                        {
+                          "type": "serial",
+                          "location": {
+                            "file": "C:\\Projects\\pianomotion-studio\\tests\\browser\\parity-m1.spec.ts",
+                            "line": 30,
+                            "column": 15
+                          }
+                        }
+                      ],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "df0b53b4625f490a49b0-a78787c74f2310886b18",
+              "file": "parity-m1.spec.ts",
+              "line": 194,
+              "column": 3
+            },
+            {
+              "title": "rejects invalid/corrupt MIDI input without crashing the worker",
+              "ok": true,
+              "tags": [],
+              "tests": [
+                {
+                  "timeout": 240000,
+                  "annotations": [
+                    {
+                      "type": "serial",
+                      "location": {
+                        "file": "C:\\Projects\\pianomotion-studio\\tests\\browser\\parity-m1.spec.ts",
+                        "line": 30,
+                        "column": 15
+                      }
+                    }
+                  ],
+                  "expectedStatus": "passed",
+                  "projectId": "",
+                  "projectName": "",
+                  "results": [
+                    {
+                      "workerIndex": 0,
+                      "parallelIndex": 0,
+                      "status": "passed",
+                      "duration": 11734,
+                      "errors": [],
+                      "stdout": [
+                        {
+                          "text": "[WORKER CREATED] http://127.0.0.1:4173/src/workers/midi-analysis.worker.ts?worker_file&type=module\n"
+                        },
+                        {
+                          "text": "[BROWSER log] Loading micropip, numpy, packaging, six\n"
+                        },
+                        {
+                          "text": "[BROWSER log] Loaded micropip, numpy, packaging, six\n"
+                        },
+                        {
+                          "text": "[WORKER CREATED] http://127.0.0.1:4173/src/workers/midi-analysis.worker.ts?worker_file&type=module\n"
+                        },
+                        {
+                          "text": "[BROWSER log] Loading micropip, numpy, packaging, six\n"
+                        },
+                        {
+                          "text": "[BROWSER log] Loaded micropip, numpy, packaging, six\n"
+                        },
+                        {
+                          "text": "[WORKER CREATED] http://127.0.0.1:4173/src/workers/midi-analysis.worker.ts?worker_file&type=module\n"
+                        },
+                        {
+                          "text": "[BROWSER log] Loading micropip, numpy, packaging, six\n"
+                        },
+                        {
+                          "text": "[BROWSER log] Loaded micropip, numpy, packaging, six\n"
+                        },
+                        {
+                          "text": "\n=== M1 BENCHMARK SUMMARY ===\n"
+                        },
+                        {
+                          "text": "{\"fixture\":\"synthetic-crossing-wide-chord\",\"durationMs\":5727,\"cold\":true,\"status\":\"loaded\",\"differences\":0,\"memoryMb\":75.49}\n"
+                        },
+                        {
+                          "text": "{\"fixture\":\"synthetic-duplicate-identities\",\"durationMs\":4254,\"cold\":false,\"status\":\"loaded\",\"differences\":0,\"memoryMb\":110.84}\n"
+                        },
+                        {
+                          "text": "{\"fixture\":\"synthetic-invalid-empty\",\"durationMs\":4425,\"cold\":false,\"status\":\"invalid\",\"differences\":0,\"memoryMb\":89.2}\n"
+                        },
+                        {
+                          "text": "{\"fixture\":\"synthetic-invalid-non-midi\",\"durationMs\":4697,\"cold\":false,\"status\":\"invalid\",\"differences\":0,\"memoryMb\":87.59}\n"
+                        },
+                        {
+                          "text": "{\"fixture\":\"synthetic-invalid-truncated\",\"durationMs\":3615,\"cold\":false,\"status\":\"repaired\",\"differences\":0,\"memoryMb\":106.53}\n"
+                        },
+                        {
+                          "text": "{\"fixture\":\"synthetic-manual-fingering-gliss\",\"durationMs\":3829,\"cold\":false,\"status\":\"loaded\",\"differences\":0,\"memoryMb\":83.1}\n"
+                        },
+                        {
+                          "text": "{\"fixture\":\"synthetic-mismatched-track-labels\",\"durationMs\":4507,\"cold\":false,\"status\":\"loaded\",\"differences\":0,\"memoryMb\":98.97}\n"
+                        },
+                        {
+                          "text": "{\"fixture\":\"synthetic-scale-chords\",\"durationMs\":5249,\"cold\":false,\"status\":\"loaded\",\"differences\":0,\"memoryMb\":111.93}\n"
+                        },
+                        {
+                          "text": "{\"fixture\":\"synthetic-stress-512\",\"durationMs\":6542,\"cold\":false,\"status\":\"loaded\",\"differences\":0,\"memoryMb\":157.4}\n"
+                        },
+                        {
+                          "text": "{\"fixture\":\"synthetic-tempo-pedals-overlap\",\"durationMs\":4849,\"cold\":false,\"status\":\"loaded\",\"differences\":0,\"memoryMb\":143.09}\n"
+                        },
+                        {
+                          "text": "{\"fixture\":\"tracked-demo-song\",\"durationMs\":6565,\"cold\":false,\"status\":\"loaded\",\"differences\":0,\"memoryMb\":200.14}\n"
+                        },
+                        {
+                          "text": "{\"fixture\":\"tracked-right-hand\",\"durationMs\":4775,\"cold\":false,\"status\":\"loaded\",\"differences\":0,\"memoryMb\":138.61}\n"
+                        },
+                        {
+                          "text": "{\"fixture\":\"tracked-right-hand-octaves\",\"durationMs\":4445,\"cold\":false,\"status\":\"loaded\",\"differences\":0,\"memoryMb\":154.92}\n"
+                        },
+                        {
+                          "text": "============================\n\n"
+                        }
+                      ],
+                      "stderr": [],
+                      "retry": 0,
+                      "startTime": "2026-10-16T07:00:46.118Z",
+                      "annotations": [
+                        {
+                          "type": "serial",
+                          "location": {
+                            "file": "C:\\Projects\\pianomotion-studio\\tests\\browser\\parity-m1.spec.ts",
+                            "line": 30,
+                            "column": 15
+                          }
+                        }
+                      ],
+                      "attachments": []
+                    }
+                  ],
+                  "status": "expected"
+                }
+              ],
+              "id": "df0b53b4625f490a49b0-0fbc730b1f5a29ca0c5f",
+              "file": "parity-m1.spec.ts",
+              "line": 232,
+              "column": 3
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-10-16T06:59:22.693Z",
+    "duration": 96282.859,
+    "expected": 15,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}

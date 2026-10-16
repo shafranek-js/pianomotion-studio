@@ -1,0 +1,322 @@
+{
+  "config": {
+    "argv": [
+      "C:\\nvm4w\\nodejs\\node.exe",
+      "C:\\Projects\\pianomotion-studio\\node_modules\\@playwright\\test\\cli.js",
+      "test",
+      "--config",
+      "playwright.audio.config.ts",
+      "tests/browser/audio-output.spec.ts",
+      "tests/browser/soundfont-stereo.spec.ts",
+      "tests/browser/soundfont-storage.spec.ts"
+    ],
+    "configFile": "C:\\Projects\\pianomotion-studio\\playwright.audio.config.ts",
+    "rootDir": "C:/Projects/pianomotion-studio/tests/browser",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "C:/Projects/pianomotion-studio/test-results/audio-msedge",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "",
+        "name": "",
+        "testDir": "C:/Projects/pianomotion-studio/tests/browser",
+        "testIgnore": [],
+        "testMatch": [
+          "**/audio-dsp.spec.ts",
+          "**/audio-output.spec.ts",
+          "**/soundfont-stereo.spec.ts",
+          "**/soundfont-storage.spec.ts"
+        ],
+        "timeout": 180000
+      }
+    ],
+    "filteredProjects": [
+      {
+        "grep": {},
+        "grepInvert": null,
+        "outputDir": "C:\\Projects\\pianomotion-studio\\test-results\\audio-msedge",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "name": "",
+        "testDir": "C:\\Projects\\pianomotion-studio\\tests\\browser",
+        "snapshotDir": "C:\\Projects\\pianomotion-studio\\tests\\browser",
+        "testIgnore": [],
+        "testMatch": [
+          "**/audio-dsp.spec.ts",
+          "**/audio-output.spec.ts",
+          "**/soundfont-stereo.spec.ts",
+          "**/soundfont-storage.spec.ts"
+        ],
+        "timeout": 180000,
+        "use": {
+          "baseURL": "http://127.0.0.1:4173",
+          "browserName": "chromium",
+          "channel": "msedge",
+          "headless": true
+        },
+        "dependencies": [],
+        "ignoreSnapshots": false,
+        "__projectId": ""
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "list",
+        null
+      ],
+      [
+        "json",
+        {
+          "outputFile": "test-results/reports/audio-msedge.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "default",
+    "updateSourceMethod": "patch",
+    "version": "1.64.0",
+    "workers": 1,
+    "webServer": {
+      "command": "npm run dev -- --host 127.0.0.1 --port 4173 --strictPort",
+      "url": "http://127.0.0.1:4173",
+      "reuseExistingServer": false,
+      "timeout": 60000
+    }
+  },
+  "suites": [
+    {
+      "title": "audio-output.spec.ts",
+      "file": "audio-output.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "uploads, parses, activates and reloads a real synthetic mono SF2 output",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 180000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 19200,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-16T06:39:37.120Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "42d735ec217b13c6bd7a-fe533bc4d3867f991a51",
+          "file": "audio-output.spec.ts",
+          "line": 6,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "soundfont-stereo.spec.ts",
+      "file": "soundfont-stereo.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "file-backed linked stereo SF2 stays stereo through WAV, MP4, and WebM export",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 600000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 36385,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-16T06:39:57.692Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "soundfont-stereo-export-metrics.json",
+                      "contentType": "application/json",
+                      "body": "ewogICJ3YXYiOiB7CiAgICAic2FtcGxlQ291bnQiOiAzMzA3NiwKICAgICJtYXRlcmlhbGl6ZWRXaG9sZUJhbmsiOiBmYWxzZSwKICAgICJ3YXZCeXRlcyI6IDExMDI5NiwKICAgICJzYW1wbGVSYXRlIjogMjIwNTAsCiAgICAiYWZ0ZXJMaXZlUHJlcGFyYXRpb24iOiB7CiAgICAgICJidWRnZXRCeXRlcyI6IDI2ODQzNTQ1NiwKICAgICAgImluYWN0aXZlQnVkZ2V0Qnl0ZXMiOiA2NzEwODg2NCwKICAgICAgImRlY29kZWRCeXRlcyI6IDEzMjMwNCwKICAgICAgInByZXBhcmluZ0J5dGVzIjogMCwKICAgICAgImluYWN0aXZlQnl0ZXMiOiAwLAogICAgICAicGlubmVkQnl0ZXMiOiAxMzIzMDQsCiAgICAgICJjYWNoZWRTYW1wbGVzIjogMiwKICAgICAgInByZXBhcmluZ1NhbXBsZXMiOiAwLAogICAgICAicmVhZHMiOiAyLAogICAgICAiZGVjb2RlcyI6IDIsCiAgICAgICJjYWNoZUhpdHMiOiAyCiAgICB9LAogICAgInByb3ZpZGVyU3RhdHMiOiB7CiAgICAgICJidWRnZXRCeXRlcyI6IDI2ODQzNTQ1NiwKICAgICAgImluYWN0aXZlQnVkZ2V0Qnl0ZXMiOiA2NzEwODg2NCwKICAgICAgImRlY29kZWRCeXRlcyI6IDEzMjMwNCwKICAgICAgInByZXBhcmluZ0J5dGVzIjogMCwKICAgICAgImluYWN0aXZlQnl0ZXMiOiAwLAogICAgICAicGlubmVkQnl0ZXMiOiAxMzIzMDQsCiAgICAgICJjYWNoZWRTYW1wbGVzIjogMiwKICAgICAgInByZXBhcmluZ1NhbXBsZXMiOiAwLAogICAgICAicmVhZHMiOiAyLAogICAgICAiZGVjb2RlcyI6IDIsCiAgICAgICJjYWNoZUhpdHMiOiA0CiAgICB9LAogICAgInNoYXJlZENhY2hlIjogewogICAgICAicmVhZHNVbmNoYW5nZWQiOiB0cnVlLAogICAgICAiY2FjaGVIaXRzQWRkZWQiOiAyCiAgICB9LAogICAgImJlZm9yZVJtcyI6IFsKICAgICAgMCwKICAgICAgMAogICAgXSwKICAgICJkdXJpbmdSbXMiOiBbCiAgICAgIDAuNjI5MzI1MTIyOTg0NjgxOSwKICAgICAgMC40Mjc5NDE1MjcxNjE4MzMyNgogICAgXSwKICAgICJkdXJpbmdDb3JyZWxhdGlvbiI6IDMuODc5MjMyOTkzMTU4Njk2ZS04LAogICAgImxlZnRQaGFzZSI6IDMuODc5ODU5NDQ1MjEzNjk0ZS04LAogICAgInJpZ2h0UGhhc2UiOiAxLjU3MDc5NjMyNjc5NDg3MTcsCiAgICAicGhhc2VEaWZmZXJlbmNlIjogMS41NzA3OTYyODc5OTYyNzcxLAogICAgImFmdGVyUm1zIjogWwogICAgICAwLAogICAgICAwCiAgICBdCiAgfSwKICAibmF0aXZlUmVzdWx0cyI6IHsKICAgICJtcDQiOiB7CiAgICAgICJkdXJhdGlvblNlY29uZHMiOiAyMC4xNTQ5MjEsCiAgICAgICJiZWZvcmVSbXMiOiBbCiAgICAgICAgMCwKICAgICAgICAwCiAgICAgIF0sCiAgICAgICJkdXJpbmdSbXMiOiBbCiAgICAgICAgMC40MTQ4OTUyNDY0NTI1MTM5NywKICAgICAgICAwLjI4MDg0NzI0Mjg5NTg5ODEKICAgICAgXSwKICAgICAgImNoYW5uZWxDb3JyZWxhdGlvbiI6IDAuMDA0NDAyNDUzMDYxMTM3MDc4CiAgICB9LAogICAgIndlYm0iOiB7CiAgICAgICJkdXJhdGlvblNlY29uZHMiOiAyMC4xNCwKICAgICAgImJlZm9yZVJtcyI6IFsKICAgICAgICAyLjAzNDU4Njk0ODM3NjM3MmUtMzQsCiAgICAgICAgMi4wMzQ1ODY5NDgzNzYzNzJlLTM0CiAgICAgIF0sCiAgICAgICJkdXJpbmdSbXMiOiBbCiAgICAgICAgMC40MTI5NjAxODcyMDYzODc1NSwKICAgICAgICAwLjI4MjM1Mjk4ODY1MTE4NTQ3CiAgICAgIF0sCiAgICAgICJjaGFubmVsQ29ycmVsYXRpb24iOiAwLjAwMzA5OTc0OTU1OTU0MjAwNzUKICAgIH0KICB9LAogICJhc3NldElkIjogImZjYTMxOWEzNGI5ZWRjYjZjYWQ5NjJmYjQ0ZDU1ZTBjYzBmZmUxN2M5ZWI1Y2YyNGIwZWMzM2M5ZDZkMDQyMzEiLAogICJmaXJzdFByZXNzIjogMCwKICAibm90ZVByb2JlT2Zmc2V0IjogMC4xMgp9"
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "2dc8e1a97898124a43f6-16763d49e5de277cf619",
+          "file": "soundfont-stereo.spec.ts",
+          "line": 362,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "soundfont-storage.spec.ts",
+      "file": "soundfont-storage.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "native IndexedDB v1 SoundFont records migrate atomically to Blob storage without changing selection",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 180000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 6448,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-16T06:40:34.124Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "766e29d1a9dfde0563a8-5bc0b649ff18023b447a",
+          "file": "soundfont-storage.spec.ts",
+          "line": 11,
+          "column": 1
+        },
+        {
+          "title": "native IndexedDB aborts after request success reject save/delete and preserve the prior bank",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 180000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 6936,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-16T06:40:40.584Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "766e29d1a9dfde0563a8-3f0689cd42936c6ec1e2",
+          "file": "soundfont-storage.spec.ts",
+          "line": 97,
+          "column": 1
+        },
+        {
+          "title": "aborting parse and hash workers leaves no partial asset and keeps the selected bank",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 180000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 6607,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-16T06:40:47.532Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "766e29d1a9dfde0563a8-6fe6a68c1d3d60071441",
+          "file": "soundfont-storage.spec.ts",
+          "line": 202,
+          "column": 1
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-10-16T06:39:26.959Z",
+    "duration": 90969.22600000001,
+    "expected": 5,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}

@@ -80,13 +80,13 @@ function createMinimalValidSf2(): ArrayBuffer {
   // LIST INFO
   let offset = 12;
   bytes.set(new TextEncoder().encode("LIST"), offset);
-  view.setUint32(offset + 4, 24, true);
+  view.setUint32(offset + 4, 20, true);
   bytes.set(new TextEncoder().encode("INFO"), offset + 8);
   bytes.set(new TextEncoder().encode("INAM"), offset + 12);
   view.setUint32(offset + 16, 8, true);
   bytes.set(new TextEncoder().encode("TestSF2\0"), offset + 20);
 
-  offset += 8 + 24; // 44
+  offset += 8 + 20; // 40
 
   // LIST sdta
   bytes.set(new TextEncoder().encode("LIST"), offset);
@@ -98,7 +98,7 @@ function createMinimalValidSf2(): ArrayBuffer {
     view.setInt16(offset + 20 + i * 2, i * 100, true);
   }
 
-  offset += 8 + 32; // 84
+  offset += 8 + 32; // 80
 
   // LIST pdta with shdr
   bytes.set(new TextEncoder().encode("LIST"), offset);
@@ -118,6 +118,7 @@ function createMinimalValidSf2(): ArrayBuffer {
   view.setUint8(shdrBase + 40, 60); // originalPitch
   view.setInt8(shdrBase + 41, 0); // pitchCorrection
   view.setUint16(shdrBase + 44, 1, true); // mono sample
+  view.setUint32(4, offset + 58, true); // RIFF ends after the complete pdta list
 
   return buffer;
 }
@@ -157,13 +158,16 @@ class MockIDBStore {
   }
 
   openCursor(): { result: unknown; onsuccess: (() => void) | null; onerror: null } {
-    const entries = Array.from(this.records.values());
+    const entries = Array.from(this.records.entries());
     let idx = 0;
     const req = { result: null as unknown, onsuccess: null as (() => void) | null, onerror: null };
     const advance = () => {
       if (idx < entries.length) {
+        const [key, value] = entries[idx++]!;
         req.result = {
-          value: entries[idx++],
+          value,
+          primaryKey: key,
+          delete: () => this.delete(String(key)),
           continue: () => advance(),
         };
       } else {
@@ -178,44 +182,44 @@ class MockIDBStore {
 }
 
 class MockIDBDatabase {
-  store = new MockIDBStore();
-  objectStoreNames = {
-    contains: (name: string) => name === "assets",
-  };
-  createObjectStore() {
-    return this.store;
+  stores = new Map<string, MockIDBStore>();
+  objectStoreNames = { contains: (name: string) => this.stores.has(name) };
+  createObjectStore(name: string) {
+    const store = new MockIDBStore();
+    this.stores.set(name, store);
+    return store;
   }
-  transaction(_stores?: string[], mode?: IDBTransactionMode) {
-    const snapshot = new Map(this.store.records);
+  transaction(storeNames: string[] = [], mode?: IDBTransactionMode) {
+    const selectedStores = storeNames.map((name) => this.stores.get(name)!).filter(Boolean);
+    const snapshots = new Map(selectedStores.map((store) => [store, new Map(store.records)]));
     const abortThisTransaction = mode === "readwrite" && abortNextSoundFontWrite;
     if (abortThisTransaction) abortNextSoundFontWrite = false;
     const transaction: {
-      objectStore: () => MockIDBStore;
+      objectStore: (name: string) => MockIDBStore;
       onerror: (() => void) | null;
       oncomplete: (() => void) | null;
       onabort: (() => void) | null;
       error: DOMException | null;
     } = {
-      objectStore: () => this.store,
+      objectStore: (name: string) => this.stores.get(name)!,
       onerror: null,
       oncomplete: null,
       onabort: null,
       error: null,
     };
     const completeTransaction = () => {
-      if (this.store.completeTransaction === completeTransaction) {
-        this.store.completeTransaction = null;
-      }
+      for (const store of selectedStores) if (store.completeTransaction === completeTransaction) store.completeTransaction = null;
       setTimeout(() => {
         if (abortThisTransaction) {
-          this.store.records = snapshot;
+          for (const [store, snapshot] of snapshots) store.records = snapshot;
+          transaction.error = new DOMException("Mock transaction aborted", "AbortError");
           transaction.onabort?.();
         } else {
           transaction.oncomplete?.();
         }
       }, 0);
     };
-    this.store.completeTransaction = mode === "readwrite" ? completeTransaction : null;
+    for (const store of selectedStores) store.completeTransaction = mode === "readwrite" ? completeTransaction : null;
     return transaction;
   }
   close() {}
@@ -232,6 +236,7 @@ const mockIdbFactory = {
       onupgradeneeded: null as (() => void) | null,
     };
     setTimeout(() => {
+      req.onupgradeneeded?.();
       req.onsuccess?.();
     }, 0);
     return req;
@@ -480,7 +485,7 @@ describe("PerformanceOutput Architecture & Outputs (A06, SF2, Web MIDI)", () => 
       const oversizedBuffer = new ArrayBuffer(12);
       Object.defineProperty(oversizedBuffer, "byteLength", { value: MAX_SF2_FILE_BYTES + 1 });
 
-      await expect(saveSoundFontAsset("oversized.sf2", oversizedBuffer)).rejects.toThrow(/128 MiB/i);
+      await expect(saveSoundFontAsset("oversized.sf2", oversizedBuffer)).rejects.toThrow(/1 GiB/i);
     });
 
     it("saves valid SF2 buffer, lists assets, loads asset and deletes asset", async () => {
@@ -501,7 +506,8 @@ describe("PerformanceOutput Architecture & Outputs (A06, SF2, Web MIDI)", () => 
       const loaded = await loadSoundFontAsset(meta.id);
       expect(loaded).not.toBeNull();
       expect(loaded?.name).toBe("MyPiano.sf2");
-      expect(loaded?.data.byteLength).toBe(validBuffer.byteLength);
+      expect(loaded?.data).toBeInstanceOf(Blob);
+      expect(loaded?.data.size).toBe(validBuffer.byteLength);
 
       // Delete asset
       await deleteSoundFontAsset(meta.id);

@@ -1,0 +1,20 @@
+[
+  {
+    "channel": "chrome",
+    "analysis": {
+      "elapsedMs": 12842,
+      "notes": 1969,
+      "duration": 304,
+      "playedBeyondSeconds": 5
+    }
+  },
+  {
+    "channel": "msedge",
+    "analysis": {
+      "elapsedMs": 21312,
+      "notes": 1969,
+      "duration": 304,
+      "playedBeyondSeconds": 5
+    }
+  }
+]

@@ -6,6 +6,17 @@ export function getCurrentServiceWorkerRegistration(): ServiceWorkerRegistration
   return currentRegistration;
 }
 
+/** Retire only this app's old dev-origin registration; keep caches and IndexedDB. */
+export async function unregisterDevelopmentServiceWorker(): Promise<void> {
+  if (!import.meta.env.DEV || typeof navigator === "undefined" || !navigator.serviceWorker?.getRegistrations) return;
+  const scope = appBaseUrl().href;
+  const workerUrl = appBaseUrl("sw.js").href;
+  const registrations = await navigator.serviceWorker.getRegistrations();
+  await Promise.all(registrations.filter(registration => registration.scope === scope &&
+    [registration.active, registration.installing, registration.waiting].some(worker => worker?.scriptURL === workerUrl),
+  ).map(registration => registration.unregister()));
+}
+
 export interface ServiceWorkerRegistrationCallbacks {
   onUpdate?: (registration: ServiceWorkerRegistration) => void;
   onSuccess?: (registration: ServiceWorkerRegistration) => void;

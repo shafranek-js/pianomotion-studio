@@ -1,6 +1,6 @@
 # PianoMotion Studio — recovery and rollback
 
-Current implementation: 2026-10-15 remediation. See AUDIT_REPAIR_PROGRESS.md for actual acceptance; historical milestone reports are not current release evidence.
+Current local implementation: 2026-10-16, dev.6. Built-in MIDI sources are read-only inputs in `builtin_melodies/midi`; rebuild their generated catalog with `npm run prepare:melodies`. Opening a melody creates a separate project: repairing/rebuilding the library must never delete project data. See `evidence/builtin-melodies-2026-10-16/VERIFICATION.md`, SOUNDFONT_STEREO_IMPLEMENTATION.md and AUDIT_REPAIR_PROGRESS.md for acceptance; historical milestone reports are not current release evidence.
 
 ## Protect data first
 
@@ -23,6 +23,10 @@ An update is offered through the status bar, including an update already waiting
 ## Inspect storage without modifying it
 
 The project database is handthesia_db, schema version 2, with projects, profiles, settings and session stores. SF2 source bytes live in the separate asset database implemented by audio/soundfont/soundfontAssetStore.ts; musical packages do not embed them automatically. Layout preferences live separately from musical documents.
+
+Dev.5 upgrades `handthesia_soundfonts` to schema version 2, retaining legacy records until their atomic Blob/metadata migration commits. Musical project storage is separate and unchanged. An older application that requests SF2 database version 1 cannot open version 2; use the built-in synthesizer while investigating a source rollback, or restore a compatible dev.5 build. Do not delete or downgrade the asset database to make old code open it. Keep the original SF2 file independently.
+
+The development build unregisters only its own exact-scope Service Worker and does not remove caches or databases. Reload a local tab once after replacing development modules to discard stale synth instances; this is distinct from clearing site data. Production uses its versioned offline release as before.
 
 Record origin, build ID, engine hash, project ID/revision, error text and whether a transaction committed. Use read-only DevTools inspection or copy records for diagnosis. Do not overwrite a damaged record automatically: retain the original for developer-assisted recovery. A request-success event alone is not evidence of commit.
 

@@ -1,0 +1,282 @@
+{
+  "config": {
+    "argv": [
+      "C:\\nvm4w\\nodejs\\node.exe",
+      "C:\\Projects\\pianomotion-studio\\node_modules\\@playwright\\test\\cli.js",
+      "test",
+      "--config",
+      "playwright.config.ts",
+      "tests/browser/builtin-melodies.spec.ts"
+    ],
+    "configFile": "C:\\Projects\\pianomotion-studio\\playwright.config.ts",
+    "rootDir": "C:/Projects/pianomotion-studio/tests/browser",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "C:/Projects/pianomotion-studio/test-results/ui-chrome",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "",
+        "name": "",
+        "testDir": "C:/Projects/pianomotion-studio/tests/browser",
+        "testIgnore": [
+          "**/offline-pwa.spec.ts",
+          "**/pwa-deployment-m8.spec.ts",
+          "**/media-export.spec.ts",
+          "**/video-export-m7.spec.ts",
+          "**/parity-m1.spec.ts",
+          "**/motion-streaming.spec.ts",
+          "**/motion-playback.spec.ts",
+          "**/audio-dsp.spec.ts",
+          "**/audio-output.spec.ts",
+          "**/soundfont-stereo.spec.ts",
+          "**/soundfont-storage.spec.ts",
+          "**/soundfont-large.spec.ts",
+          "**/soundfont-offline.spec.ts",
+          "**/builtin-melodies-offline.spec.ts"
+        ],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 90000
+      }
+    ],
+    "filteredProjects": [
+      {
+        "grep": {},
+        "grepInvert": null,
+        "outputDir": "C:\\Projects\\pianomotion-studio\\test-results\\ui-chrome",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "name": "",
+        "testDir": "C:\\Projects\\pianomotion-studio\\tests\\browser",
+        "snapshotDir": "C:\\Projects\\pianomotion-studio\\tests\\browser",
+        "testIgnore": [
+          "**/offline-pwa.spec.ts",
+          "**/pwa-deployment-m8.spec.ts",
+          "**/media-export.spec.ts",
+          "**/video-export-m7.spec.ts",
+          "**/parity-m1.spec.ts",
+          "**/motion-streaming.spec.ts",
+          "**/motion-playback.spec.ts",
+          "**/audio-dsp.spec.ts",
+          "**/audio-output.spec.ts",
+          "**/soundfont-stereo.spec.ts",
+          "**/soundfont-storage.spec.ts",
+          "**/soundfont-large.spec.ts",
+          "**/soundfont-offline.spec.ts",
+          "**/builtin-melodies-offline.spec.ts"
+        ],
+        "testMatch": "**/*.@(spec|test).?(c|m)[jt]s?(x)",
+        "timeout": 90000,
+        "use": {
+          "baseURL": "http://127.0.0.1:4173",
+          "browserName": "chromium",
+          "channel": "chrome",
+          "headless": true
+        },
+        "dependencies": [],
+        "ignoreSnapshots": false,
+        "__projectId": ""
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "list",
+        null
+      ],
+      [
+        "json",
+        {
+          "outputFile": "test-results/reports/ui-chrome.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "default",
+    "updateSourceMethod": "patch",
+    "version": "1.64.0",
+    "workers": 1,
+    "webServer": {
+      "command": "npm run dev -- --host 127.0.0.1 --port 4173 --strictPort",
+      "url": "http://127.0.0.1:4173",
+      "reuseExistingServer": false,
+      "timeout": 60000
+    }
+  },
+  "suites": [
+    {
+      "title": "builtin-melodies.spec.ts",
+      "file": "builtin-melodies.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "built-in melody opens, plays, edits, saves and restores with exact source identities",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 180000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 33914,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-16T07:34:41.997Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "94bf1f200ad7d2d8f37d-ee6aa28ebb61d507839e",
+          "file": "builtin-melodies.spec.ts",
+          "line": 12,
+          "column": 1
+        },
+        {
+          "title": "mobile catalog handles search, Escape, retry and damaged assets without replacing the open project",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 150000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 7615,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-16T07:35:16.475Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "94bf1f200ad7d2d8f37d-2c06a6910654623dfbfe",
+          "file": "builtin-melodies.spec.ts",
+          "line": 60,
+          "column": 1
+        },
+        {
+          "title": "the largest built-in MIDI opens through the real analysis Worker",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 240000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 181182,
+                  "error": {
+                    "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: locator('#piano-canvas-container canvas')\nExpected: visible\nTimeout: 180000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" locator('#piano-canvas-container canvas') with timeout 180000ms\u001b[22m\n\u001b[2m  - waiting for locator('#piano-canvas-container canvas')\u001b[22m\n",
+                    "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: locator('#piano-canvas-container canvas')\nExpected: visible\nTimeout: 180000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" locator('#piano-canvas-container canvas') with timeout 180000ms\u001b[22m\n\u001b[2m  - waiting for locator('#piano-canvas-container canvas')\u001b[22m\n\n    at C:\\Projects\\pianomotion-studio\\tests\\browser\\builtin-melodies.spec.ts:103:64",
+                    "location": {
+                      "file": "C:\\Projects\\pianomotion-studio\\tests\\browser\\builtin-melodies.spec.ts",
+                      "column": 64,
+                      "line": 103
+                    },
+                    "snippet": "  101 |   const start = Date.now();\n  102 |   await dialog.getByRole(\"button\", { name: \"Open Megalovania\", exact: true }).click();\n> 103 |   await expect(page.locator(\"#piano-canvas-container canvas\")).toBeVisible({ timeout: 180_000 });\n      |                                                                ^\n  104 |   const snapshot = await settledStudio(page, 0);\n  105 |   expect(snapshot.result.document!.notes.length).toBeGreaterThan(1000);\n  106 |   await testInfo.attach(\"largest-built-in-analysis\", { contentType: \"application/json\", body: JSON.stringify({ elapsedMs: Date.now() - start, notes: snapshot.result.document!.notes.length, duration: snapshot.result.document!.durationSeconds }) });"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "C:\\Projects\\pianomotion-studio\\tests\\browser\\builtin-melodies.spec.ts",
+                        "column": 64,
+                        "line": 103
+                      },
+                      "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: locator('#piano-canvas-container canvas')\nExpected: visible\nTimeout: 180000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" locator('#piano-canvas-container canvas') with timeout 180000ms\u001b[22m\n\u001b[2m  - waiting for locator('#piano-canvas-container canvas')\u001b[22m\n\n\n  101 |   const start = Date.now();\n  102 |   await dialog.getByRole(\"button\", { name: \"Open Megalovania\", exact: true }).click();\n> 103 |   await expect(page.locator(\"#piano-canvas-container canvas\")).toBeVisible({ timeout: 180_000 });\n      |                                                                ^\n  104 |   const snapshot = await settledStudio(page, 0);\n  105 |   expect(snapshot.result.document!.notes.length).toBeGreaterThan(1000);\n  106 |   await testInfo.attach(\"largest-built-in-analysis\", { contentType: \"application/json\", body: JSON.stringify({ elapsedMs: Date.now() - start, notes: snapshot.result.document!.notes.length, duration: snapshot.result.document!.durationSeconds }) });\n    at C:\\Projects\\pianomotion-studio\\tests\\browser\\builtin-melodies.spec.ts:103:64"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-16T07:35:24.104Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "C:\\Projects\\pianomotion-studio\\test-results\\ui-chrome\\builtin-melodies-the-large-16478-gh-the-real-analysis-Worker\\error-context.md"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "C:\\Projects\\pianomotion-studio\\tests\\browser\\builtin-melodies.spec.ts",
+                    "column": 64,
+                    "line": 103
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "94bf1f200ad7d2d8f37d-42019446ac19d4066410",
+          "file": "builtin-melodies.spec.ts",
+          "line": 95,
+          "column": 1
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-10-16T07:34:36.175Z",
+    "duration": 230105.085,
+    "expected": 2,
+    "skipped": 0,
+    "unexpected": 1,
+    "flaky": 0
+  }
+}

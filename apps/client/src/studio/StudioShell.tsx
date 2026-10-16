@@ -91,6 +91,7 @@ export function StudioShell(props: StudioShellProps) {
     status,
     busy = false,
     onOpenMidi,
+    onOpenBuiltinMelodies,
     onOpenPackage,
     onSave,
     onExportMidi,
@@ -441,6 +442,7 @@ export function StudioShell(props: StudioShellProps) {
             <div className="studio-menu-popover" role="menu" aria-label="File" onKeyDown={handleMenuKeyDown}>
               <span className="studio-menu-label">Project</span>
               <MenuItem icon={<FileUp />} onClick={() => chooseFromMenu(onOpenMidi)}>Open MIDI…</MenuItem>
+              {onOpenBuiltinMelodies && <MenuItem icon={<FolderOpen />} onClick={() => chooseFromMenu(onOpenBuiltinMelodies)}>Built-in melodies…</MenuItem>}
               <MenuItem icon={<FolderOpen />} onClick={() => chooseFromMenu(onOpenPackage)}>Open project package…</MenuItem>
               <MenuItem icon={<FolderOpen />} onClick={() => chooseFromMenu(() => openPanel("projects", fileMenuTriggerRef.current ?? undefined))}>Open saved project…</MenuItem>
               <span className="studio-menu-divider" />

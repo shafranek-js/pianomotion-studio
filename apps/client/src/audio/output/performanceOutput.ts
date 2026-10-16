@@ -3,6 +3,8 @@ import type { PedalState, RestoredPianoVoice } from "../sampler.ts";
 import { PianoSampler } from "../sampler.ts";
 import { SoundFontSynth } from "../soundfont/soundfontSynth.ts";
 import { WebMidiOutputManager } from "../../midi/webMidiOutput.ts";
+import type { PerformancePlan } from "@handthesia/contracts";
+import { derivePerformanceStateAt } from "../performancePlan.ts";
 
 export interface PlaybackState {
   voices: RestoredPianoVoice[];
@@ -23,6 +25,9 @@ export interface PerformanceOutput {
   panic(): void;
   cancelScheduledFutureEvents(time: number): void;
   restoreState(state: PlaybackState): void;
+  /** Optional file-backed output readiness; includes voices held at startSeconds. */
+  prepareWindow?(plan: PerformancePlan, startSeconds: number, endSeconds: number, signal?: AbortSignal): Promise<void>;
+  isWindowPrepared?(plan: PerformancePlan, startSeconds: number, endSeconds: number): boolean;
   setVolume?(volume: number): void;
   subscribeUnavailable?(listener: (error: Error) => void): () => void;
   dispose(): void;
@@ -93,6 +98,12 @@ export class SoundFontPerformanceOutput implements PerformanceOutput {
   readonly id = "soundfont" as const;
   private readonly synth: SoundFontSynth;
   private readonly activeNotes = new Map<string, number>();
+  private preparedWindow: {
+    plan: PerformancePlan;
+    startSeconds: number;
+    endSeconds: number;
+    notes: Array<{ pitch: number; velocity: number }>;
+  } | null = null;
 
   constructor(synth: SoundFontSynth) {
     this.synth = synth;
@@ -100,6 +111,29 @@ export class SoundFontPerformanceOutput implements PerformanceOutput {
 
   public getSynth(): SoundFontSynth {
     return this.synth;
+  }
+
+  public async prepareWindow(
+    plan: PerformancePlan,
+    startSeconds: number,
+    endSeconds: number,
+    signal?: AbortSignal,
+  ): Promise<void> {
+    if (!Number.isFinite(startSeconds) || !Number.isFinite(endSeconds) || endSeconds < startSeconds) {
+      throw new Error("SoundFont preparation window must have finite, ordered bounds.");
+    }
+    if (this.isWindowPrepared(plan, startSeconds, endSeconds)) return;
+    if (signal?.aborted) throw new DOMException("SoundFont window preparation was cancelled.", "AbortError");
+    const notes = collectWindowNotes(plan, startSeconds, endSeconds);
+    await this.synth.prepareNotes(notes, signal);
+    if (signal?.aborted) throw new DOMException("SoundFont window preparation was cancelled.", "AbortError");
+    this.preparedWindow = { plan, startSeconds, endSeconds, notes };
+  }
+
+  public isWindowPrepared(plan: PerformancePlan, startSeconds: number, endSeconds: number): boolean {
+    const prepared = this.preparedWindow;
+    return Boolean(prepared && prepared.plan === plan && startSeconds >= prepared.startSeconds &&
+      endSeconds <= prepared.endSeconds && this.synth.areNotesPrepared(prepared.notes));
   }
 
   public noteOn(noteId: string, pitch: number, velocity: number, scheduledTime?: number): void {
@@ -143,8 +177,34 @@ export class SoundFontPerformanceOutput implements PerformanceOutput {
 
   public dispose(): void {
     this.panic();
+    this.preparedWindow = null;
     this.synth.dispose();
   }
+}
+
+function collectWindowNotes(
+  plan: PerformancePlan,
+  startSeconds: number,
+  endSeconds: number,
+): Array<{ pitch: number; velocity: number }> {
+  const notes = new Map<string, { pitch: number; velocity: number }>();
+  for (const voice of derivePerformanceStateAt(plan, startSeconds).voices) {
+    notes.set(voice.noteId, { pitch: voice.pitch, velocity: voice.velocity });
+  }
+  const events = plan.events;
+  let low = 0;
+  let high = events.length;
+  while (low < high) {
+    const middle = (low + high) >> 1;
+    if (events[middle]!.timeSeconds <= startSeconds) low = middle + 1;
+    else high = middle;
+  }
+  for (let index = low; index < events.length; index++) {
+    const event = events[index]!;
+    if (event.timeSeconds > endSeconds) break;
+    if (event.type === "press") notes.set(event.noteId, { pitch: event.pitch, velocity: event.velocity });
+  }
+  return [...notes.values()];
 }
 
 /**

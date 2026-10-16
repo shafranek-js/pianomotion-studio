@@ -41,6 +41,7 @@ const DEFAULT_MAX_POSES = 200;
 const DEFAULT_TIMEOUT_MS = 45_000;
 const DEFAULT_RETRY_COOLDOWN_MS = 1_500;
 const TIME_EPSILON = 1e-4;
+const ENDPOINT_CONTINUATION_OVERLAP_SECONDS = 0.001;
 
 export class MotionStreamError extends Error {
   public constructor(
@@ -320,20 +321,29 @@ export class MotionStreamController {
       return;
     }
     if (!Number.isFinite(nextStart) || nextStart <= flight.request.startTimeSeconds + TIME_EPSILON ||
-        nextStart >= flight.demandEndTimeSeconds - TIME_EPSILON) {
+        nextStart > flight.demandEndTimeSeconds + TIME_EPSILON) {
       this.block(flight);
       this.reportError(new MotionStreamCapacityError("Motion window capacity was reached before coverage advanced."), flight, false);
       return;
     }
+    const resumesAtEndpoint = nextStart >= flight.demandEndTimeSeconds - TIME_EPSILON;
+    const continuationStart = resumesAtEndpoint
+      ? Math.max(0, flight.demandEndTimeSeconds - ENDPOINT_CONTINUATION_OVERLAP_SECONDS)
+      : nextStart;
+    if (resumesAtEndpoint && continuationStart <= flight.request.startTimeSeconds + TIME_EPSILON) {
+      this.block(flight);
+      this.reportError(new MotionStreamCapacityError("Motion window capacity was reached before the final endpoint could be sampled."), flight, false);
+      return;
+    }
     const demand: MotionStreamDemand = {
-      startTimeSeconds: nextStart,
+      startTimeSeconds: continuationStart,
       demandStartTimeSeconds: flight.demandStartTimeSeconds,
       endTimeSeconds: flight.demandEndTimeSeconds,
       maxPoses: flight.request.maxPoses,
       seekEpoch: flight.seekEpoch,
       generation: flight.generation,
     };
-    this.dispatch(demand, nextStart);
+    this.dispatch(demand, continuationStart);
   }
 
   private fail(error: MotionStreamError, retryable: boolean): void {

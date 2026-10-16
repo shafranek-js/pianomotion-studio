@@ -1,0 +1,10 @@
+{
+  "running": {
+    "buffering": false,
+    "pauseCount": 0,
+    "requestCount": 9,
+    "roundTripMs": 3104
+  },
+  "stoppedAt": 37,
+  "errors": []
+}

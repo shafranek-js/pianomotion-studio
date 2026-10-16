@@ -45,5 +45,6 @@ jobs:
           name: evidence-${{ matrix.channel }}
           path: |
             pianomotion-studio/test-results/
+            !pianomotion-studio/test-results/soundfont-inputs/**
             pianomotion-studio/playwright-report/
             pianomotion-studio/docs/evidence/audit-repair-2026-10-15/

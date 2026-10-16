@@ -1,7 +1,7 @@
 import { spawn } from "node:child_process";
 
 // These groups are deliberately sequential: Pyodide/MSAA cold starts contend for memory and CPU.
-for (const script of ["test:browser", "test:worker", "test:audio", "test:offline", "test:media"]) {
+for (const script of ["test:browser", "test:worker", "test:audio", "test:soundfont", "test:offline", "test:media"]) {
   const exitCode = await new Promise(resolve => {
     const child = spawn(process.platform === "win32" ? "npm.cmd" : "npm", ["run", script], {
       stdio: "inherit", shell: process.platform === "win32",

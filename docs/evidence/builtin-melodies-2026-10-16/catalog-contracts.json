@@ -1,0 +1,3958 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-10-16T11:42:16.558Z",
+  "validator": "M1AnalyzeMidiResultSchema",
+  "catalogManifest": "apps/client/public/builtin-melodies/manifest.json",
+  "sourceDirectory": "builtin_melodies/midi",
+  "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a",
+  "catalogCount": 162,
+  "checkedCount": 162,
+  "schemaValidCount": 162,
+  "failureCount": 0,
+  "totals": {
+    "sourceNotes": 44654,
+    "normalizedNotes": 38570,
+    "motionPlanPoses": 2146,
+    "initialMotionWindowPoses": 0,
+    "identityStatuses": {
+      "exact": 38566,
+      "unmapped": 6003,
+      "ambiguous": 85
+    },
+    "resultDiagnostics": {
+      "source-identity-ambiguous": 5,
+      "source-event-ambiguous": 4
+    }
+  },
+  "files": [
+    {
+      "id": "677f597f67d3ff9859ede8655397ee867791102c44860a12514aec03cebf95c2",
+      "title": "A Mighty Fortress is Our God",
+      "fileName": "A Mighty Fortress is Our God.mid",
+      "fixtureId": "builtin-677f597f67d3ff9859ede8655397ee867791102c44860a12514aec03cebf95c2",
+      "sourceSha256": "6ea1b6826131c7c54cb963c2534ae70fde399997956d8ba5c068449d5956c43a",
+      "byteLength": 937,
+      "status": "loaded",
+      "sourceNotes": 122,
+      "normalizedNotes": 122,
+      "identityStatuses": {
+        "exact": 122
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 14,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "648e9c8c77ddfe8fc43426b396d45d43504da1df248e16e73c687b802b2ae391",
+      "title": "A Tisket, A Tasket",
+      "fileName": "A Tisket, A Tasket.mid",
+      "fixtureId": "builtin-648e9c8c77ddfe8fc43426b396d45d43504da1df248e16e73c687b802b2ae391",
+      "sourceSha256": "8703646f125b4159d2871e4955cc9b013b310ef6d1376af9ed176ea0d250eae8",
+      "byteLength": 236,
+      "status": "loaded",
+      "sourceNotes": 28,
+      "normalizedNotes": 28,
+      "identityStatuses": {
+        "exact": 28
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 16,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "9d4449701bbced0e43421a1e0b5c503cb6a1399409e60a7b4a7898130e37a317",
+      "title": "A la Claire Fontaine",
+      "fileName": "A la Claire Fontaine.mid",
+      "fixtureId": "builtin-9d4449701bbced0e43421a1e0b5c503cb6a1399409e60a7b4a7898130e37a317",
+      "sourceSha256": "630e0bfce466f98eccfa3cb6b49a040bd656caebd5e98a07069ed33086d3bfdb",
+      "byteLength": 481,
+      "status": "loaded",
+      "sourceNotes": 66,
+      "normalizedNotes": 66,
+      "identityStatuses": {
+        "exact": 66
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 10,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "324411a851973590561065664779361197845c0541f8805681f94bc1c0e3d83e",
+      "title": "Alouette",
+      "fileName": "Alouette.mid",
+      "fixtureId": "builtin-324411a851973590561065664779361197845c0541f8805681f94bc1c0e3d83e",
+      "sourceSha256": "1478efc6fb7c456156817966794b962bab4f2a72a267d5a935dc333228027e3a",
+      "byteLength": 470,
+      "status": "loaded",
+      "sourceNotes": 63,
+      "normalizedNotes": 63,
+      "identityStatuses": {
+        "exact": 63
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 16,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "d2f114374a60ed9531c2403ed5abee2453d13743c488520df3c55a24567346f0",
+      "title": "Amazing Grace",
+      "fileName": "Amazing Grace.mid",
+      "fixtureId": "builtin-d2f114374a60ed9531c2403ed5abee2453d13743c488520df3c55a24567346f0",
+      "sourceSha256": "1afe953fd171574593405bf7e1dca9f34d833af8d82b5ed63f674ae15809ab28",
+      "byteLength": 1635,
+      "status": "loaded",
+      "sourceNotes": 252,
+      "normalizedNotes": 252,
+      "identityStatuses": {
+        "exact": 252
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 14,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "b8c1c1c5e38d28752f6ac111faa744789a0765e178cafc5491067eadaaa83b09",
+      "title": "America",
+      "fileName": "America.mid",
+      "fixtureId": "builtin-b8c1c1c5e38d28752f6ac111faa744789a0765e178cafc5491067eadaaa83b09",
+      "sourceSha256": "7e6107f2cafabaf3fd753f4ac814eca174c9d07972a557c61246d123c5b0e32a",
+      "byteLength": 601,
+      "status": "loaded",
+      "sourceNotes": 84,
+      "normalizedNotes": 84,
+      "identityStatuses": {
+        "exact": 84
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 12,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "fde7d6ecc30a9124d07defab2bf476dd539ba918ef844955b30ecc69e4c7c627",
+      "title": "America, the Beautiful",
+      "fileName": "America, the Beautiful.mid",
+      "fixtureId": "builtin-fde7d6ecc30a9124d07defab2bf476dd539ba918ef844955b30ecc69e4c7c627",
+      "sourceSha256": "44d1e80947f6aa5c5ffe89aaf655c3e3abcc546496fc55edf43762cfcedb56ba",
+      "byteLength": 489,
+      "status": "loaded",
+      "sourceNotes": 64,
+      "normalizedNotes": 64,
+      "identityStatuses": {
+        "exact": 64
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 14,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "f21a9e6d9c7342379a4ec69871fdd9451530b248c892749d9ef69e9bd892f1ca",
+      "title": "Angels We Have Heard on High",
+      "fileName": "Angels We Have Heard on High.mid",
+      "fixtureId": "builtin-f21a9e6d9c7342379a4ec69871fdd9451530b248c892749d9ef69e9bd892f1ca",
+      "sourceSha256": "ccab81a5ce92b1c368408afd82a734528723346d2395466e15f98a59df02f6ba",
+      "byteLength": 899,
+      "status": "loaded",
+      "sourceNotes": 129,
+      "normalizedNotes": 129,
+      "identityStatuses": {
+        "exact": 129
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 12,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "b1f11d3e9c38df44c4a0a86613fbab572e95f09edb7c32432955574e53ecc3d7",
+      "title": "Are You Sleeping",
+      "fileName": "Are You Sleeping.mid",
+      "fixtureId": "builtin-b1f11d3e9c38df44c4a0a86613fbab572e95f09edb7c32432955574e53ecc3d7",
+      "sourceSha256": "af81cf4337d8e35b84571ac07d7248ed9a46635dd91c0fd14b5280257901d11f",
+      "byteLength": 277,
+      "status": "loaded",
+      "sourceNotes": 32,
+      "normalizedNotes": 32,
+      "identityStatuses": {
+        "exact": 32
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 14,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "87f7cbbb9ef50b832db78efc2f4dd0c78ae81b993389291e3ec0e5d1ac494d54",
+      "title": "Aria-Notebook",
+      "fileName": "Aria-Notebook.mid",
+      "fixtureId": "builtin-87f7cbbb9ef50b832db78efc2f4dd0c78ae81b993389291e3ec0e5d1ac494d54",
+      "sourceSha256": "f420b73ef85cf1ea12ec9abaffc385ead0b78a965db623f9f46abdbaed43458c",
+      "byteLength": 1248,
+      "status": "loaded",
+      "sourceNotes": 192,
+      "normalizedNotes": 192,
+      "identityStatuses": {
+        "exact": 192
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 14,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "68800c133da71d2f193aa3b3576f4480059a361c4e7d6dec0dc78a5518000f20",
+      "title": "Au Clair de la Lune",
+      "fileName": "Au Clair de la Lune.mid",
+      "fixtureId": "builtin-68800c133da71d2f193aa3b3576f4480059a361c4e7d6dec0dc78a5518000f20",
+      "sourceSha256": "61f1b7f1dfc427b775ee27821f5117e53d3ce09dea5f347c018884ad125bec4d",
+      "byteLength": 602,
+      "status": "loaded",
+      "sourceNotes": 82,
+      "normalizedNotes": 82,
+      "identityStatuses": {
+        "exact": 82
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 10,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "18f7871972be798a11c4f40f1935654ec06b13a4b2fb021c398690a50a2b295e",
+      "title": "Aupres de ma Blonde",
+      "fileName": "Aupres de ma Blonde.mid",
+      "fixtureId": "builtin-18f7871972be798a11c4f40f1935654ec06b13a4b2fb021c398690a50a2b295e",
+      "sourceSha256": "6ed4ebcde2773564eb3e5db3134799cb5870538059188689cf6c0de3d7ef67c5",
+      "byteLength": 862,
+      "status": "loaded",
+      "sourceNotes": 121,
+      "normalizedNotes": 121,
+      "identityStatuses": {
+        "exact": 121
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 14,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "11a5f0fd5fad02adf332747c27a42b91f7e3e63d32aa074a8ddcaf8722d28229",
+      "title": "Aura Lee (Love Me Tender)",
+      "fileName": "Aura Lee (Love Me Tender).mid",
+      "fixtureId": "builtin-11a5f0fd5fad02adf332747c27a42b91f7e3e63d32aa074a8ddcaf8722d28229",
+      "sourceSha256": "f152e8fcd7d210aca6636f5d125534f961ce6f1e845315ebea3257a1b27dd490",
+      "byteLength": 211,
+      "status": "loaded",
+      "sourceNotes": 24,
+      "normalizedNotes": 24,
+      "identityStatuses": {
+        "exact": 24
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 16,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "5a7b6f511d3efbc03fcd47a297aaea699335e04149e0906db847e74c829e10cf",
+      "title": "Ave Maria",
+      "fileName": "Ave Maria.mid",
+      "fixtureId": "builtin-5a7b6f511d3efbc03fcd47a297aaea699335e04149e0906db847e74c829e10cf",
+      "sourceSha256": "a6a19b413c6bed9bfadbb99cefc7a7340cc45eda436b245a053a7351303da6d8",
+      "byteLength": 1305,
+      "status": "loaded",
+      "sourceNotes": 201,
+      "normalizedNotes": 201,
+      "identityStatuses": {
+        "exact": 201
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 16,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "7cbac3b0cdcf89a6e6ab3f3d5ac8726b39dfb8f43c5df1b43ef8a2c54757fede",
+      "title": "Away in a Manger",
+      "fileName": "Away in a Manger.mid",
+      "fixtureId": "builtin-7cbac3b0cdcf89a6e6ab3f3d5ac8726b39dfb8f43c5df1b43ef8a2c54757fede",
+      "sourceSha256": "3b0f06793c07b3ae9cc0aae0958b09ccc5577405cb40a155bc5ed26b9a7cbf71",
+      "byteLength": 357,
+      "status": "loaded",
+      "sourceNotes": 44,
+      "normalizedNotes": 44,
+      "identityStatuses": {
+        "exact": 44
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 16,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "e1054ed4e07121260735c850e36d65ef7b5c4189aa1ff3877179d1ec7a111bf9",
+      "title": "Away in the Deep Forest",
+      "fileName": "Away in the Deep Forest.mid",
+      "fixtureId": "builtin-e1054ed4e07121260735c850e36d65ef7b5c4189aa1ff3877179d1ec7a111bf9",
+      "sourceSha256": "7cc210ea2b1b1c008302cfb1f38bbfc29baa96498248a39bf67121229d0bad5d",
+      "byteLength": 350,
+      "status": "loaded",
+      "sourceNotes": 46,
+      "normalizedNotes": 46,
+      "identityStatuses": {
+        "exact": 46
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 16,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "b2d18e44ee5506bfef532d197ffc17741356956de2a23f2079a476d721a7d6d0",
+      "title": "Bahay Kubo My Palm Leaf Hut",
+      "fileName": "Bahay Kubo My Palm Leaf Hut.mid",
+      "fixtureId": "builtin-b2d18e44ee5506bfef532d197ffc17741356956de2a23f2079a476d721a7d6d0",
+      "sourceSha256": "5f570a74e7976696989a62608b1d22938340bf1d2da6d973309a2b491d8ccecb",
+      "byteLength": 509,
+      "status": "loaded",
+      "sourceNotes": 66,
+      "normalizedNotes": 66,
+      "identityStatuses": {
+        "exact": 66
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 16,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "d780fa7ffa7c241e9b7ca088e45b71b054ccddb569cfb059a2e17718ec8b3cfb",
+      "title": "Beethoven's Fifth Symphony",
+      "fileName": "Beethoven's Fifth Symphony.mid",
+      "fixtureId": "builtin-d780fa7ffa7c241e9b7ca088e45b71b054ccddb569cfb059a2e17718ec8b3cfb",
+      "sourceSha256": "70b32259fd8d939f0c03d436aacb9d26aff55fdd21e9df1f2aa421a375c51c95",
+      "byteLength": 2035,
+      "status": "loaded",
+      "sourceNotes": 307,
+      "normalizedNotes": 307,
+      "identityStatuses": {
+        "exact": 307
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 18,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "59af7b0f9ea655818a1d5efe5d94cef08d95b234abb8051b96f01fd6f15f6df0",
+      "title": "Big Bad Goblin Blues",
+      "fileName": "Big Bad Goblin Blues.mid",
+      "fixtureId": "builtin-59af7b0f9ea655818a1d5efe5d94cef08d95b234abb8051b96f01fd6f15f6df0",
+      "sourceSha256": "fe03bc8b80b25b9ebf9f813056ccd78e4a239b165c8cbd9ceea426f0efc83571",
+      "byteLength": 2061,
+      "status": "loaded",
+      "sourceNotes": 319,
+      "normalizedNotes": 319,
+      "identityStatuses": {
+        "exact": 319
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 14,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "3b559a473a95770b8f982026a8923436b117d2f19a22144c7b7cfd12faa98ddb",
+      "title": "Bingo",
+      "fileName": "Bingo.mid",
+      "fixtureId": "builtin-3b559a473a95770b8f982026a8923436b117d2f19a22144c7b7cfd12faa98ddb",
+      "sourceSha256": "93da26204519f8da34302207189b10dfbecbe980935c5ea6a401011e0ecc45af",
+      "byteLength": 352,
+      "status": "loaded",
+      "sourceNotes": 43,
+      "normalizedNotes": 43,
+      "identityStatuses": {
+        "exact": 43
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 16,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "ff70d386d5096948117db0a50c2c61f89d0e42a319113d5204558b2fc5f05790",
+      "title": "Brahms' Lullaby",
+      "fileName": "Brahms' Lullaby.mid",
+      "fixtureId": "builtin-ff70d386d5096948117db0a50c2c61f89d0e42a319113d5204558b2fc5f05790",
+      "sourceSha256": "a090cec223c9ab8c6548871ea22749039d38eace92f0aa04dd1c0562e03cab7f",
+      "byteLength": 724,
+      "status": "loaded",
+      "sourceNotes": 103,
+      "normalizedNotes": 103,
+      "identityStatuses": {
+        "exact": 103
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 14,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "e810dc2e5a6cb799a3e04755c1ca16cd11e4361255589b6c0d2853ed628f53b3",
+      "title": "Bridal March",
+      "fileName": "Bridal March.mid",
+      "fixtureId": "builtin-e810dc2e5a6cb799a3e04755c1ca16cd11e4361255589b6c0d2853ed628f53b3",
+      "sourceSha256": "4d37373185586ed481864b04ba9bd2365b99c6f7de6725395f513a5345a51a04",
+      "byteLength": 1016,
+      "status": "loaded",
+      "sourceNotes": 148,
+      "normalizedNotes": 148,
+      "identityStatuses": {
+        "exact": 148
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 12,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "3954d275ebf6c0f781bed4b37010256743d5fce6f58c7c3473250d5453ab3ad6",
+      "title": "Can You Plant your Cabbage So",
+      "fileName": "Can You Plant your Cabbage So.mid",
+      "fixtureId": "builtin-3954d275ebf6c0f781bed4b37010256743d5fce6f58c7c3473250d5453ab3ad6",
+      "sourceSha256": "6b8f5cd0251f7be0bd6e56b2f035f7c456bc64c1df3385a011e8d553dd3eba21",
+      "byteLength": 323,
+      "status": "loaded",
+      "sourceNotes": 37,
+      "normalizedNotes": 37,
+      "identityStatuses": {
+        "exact": 37
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 14,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "e058b06739287ab8d87b089fd9aa1a44ee1e3909bddb997928960fc106e7d43d",
+      "title": "Canon in D",
+      "fileName": "Canon in D.mid",
+      "fixtureId": "builtin-e058b06739287ab8d87b089fd9aa1a44ee1e3909bddb997928960fc106e7d43d",
+      "sourceSha256": "1d5229a41c582fc21c8fc10fd2d0b93789a7f495b9231324a36091a31a111fe5",
+      "byteLength": 981,
+      "status": "loaded",
+      "sourceNotes": 140,
+      "normalizedNotes": 140,
+      "identityStatuses": {
+        "exact": 140
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 10,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "ac9c815bc646f38d3442b1122da950581f47340954fe6820400fa553b4f85593",
+      "title": "Carribean Cruise",
+      "fileName": "Carribean Cruise.mid",
+      "fixtureId": "builtin-ac9c815bc646f38d3442b1122da950581f47340954fe6820400fa553b4f85593",
+      "sourceSha256": "ec3292fe108be52f85acb781d3d0a813af6fcfa694959aff85726f2d713ad91e",
+      "byteLength": 2471,
+      "status": "loaded",
+      "sourceNotes": 388,
+      "normalizedNotes": 388,
+      "identityStatuses": {
+        "exact": 388
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 14,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "5fbb495bcc018ce0f4b232fd44caf9b31c9d429f36a9a4eeac47149d701b114e",
+      "title": "Chinese Folk Song",
+      "fileName": "Chinese Folk Song.mid",
+      "fixtureId": "builtin-5fbb495bcc018ce0f4b232fd44caf9b31c9d429f36a9a4eeac47149d701b114e",
+      "sourceSha256": "4674b207ff076972d651757783763decddb392e085e2cce5c64cc25fc003626d",
+      "byteLength": 1254,
+      "status": "loaded",
+      "sourceNotes": 189,
+      "normalizedNotes": 189,
+      "identityStatuses": {
+        "exact": 189
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 18,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "ede39a9d229c86519ed247f2b709e62c8f0267bd836308cb0b0e9decd972355d",
+      "title": "Chopsticks",
+      "fileName": "Chopsticks.mid",
+      "fixtureId": "builtin-ede39a9d229c86519ed247f2b709e62c8f0267bd836308cb0b0e9decd972355d",
+      "sourceSha256": "edc547142c51b9c8caaff8f7f2b755b00cc3ed39b1e296c4ca7b0c0c89d3920b",
+      "byteLength": 1069,
+      "status": "loaded",
+      "sourceNotes": 162,
+      "normalizedNotes": 162,
+      "identityStatuses": {
+        "exact": 162
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 4,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "a217c3655f8e8ad5579ab67ffc75bdfd66f188cd6a86dd3d9c99afeb2399366b",
+      "title": "Chopsticks (Short Version)",
+      "fileName": "Chopsticks (Short Version).mid",
+      "fixtureId": "builtin-a217c3655f8e8ad5579ab67ffc75bdfd66f188cd6a86dd3d9c99afeb2399366b",
+      "sourceSha256": "4f8b3a9d05f96ecf7a8b6e77fd234c3bd9c8dbe2316f9af0aacf2bd3bc0a5820",
+      "byteLength": 619,
+      "status": "loaded",
+      "sourceNotes": 90,
+      "normalizedNotes": 90,
+      "identityStatuses": {
+        "exact": 90
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 4,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "4e02a26d52820b5aecd6ec809216d2385296e65fb6374ed6ac32d5496a77b2b9",
+      "title": "Chorale Setting in F Major",
+      "fileName": "Chorale Setting in F Major.mid",
+      "fixtureId": "builtin-4e02a26d52820b5aecd6ec809216d2385296e65fb6374ed6ac32d5496a77b2b9",
+      "sourceSha256": "3a4ceee5e1efbc5ae4e0f0fb698d85bdf8cc125a98f8337321530206bf39d238",
+      "byteLength": 816,
+      "status": "loaded",
+      "sourceNotes": 107,
+      "normalizedNotes": 107,
+      "identityStatuses": {
+        "exact": 107
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 14,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "04e1e0166e3dc209d9a1ed447a7b5beed1d6d541878f933be8da73e74c35021c",
+      "title": "Clementi Opus 36 no 1 First Movement",
+      "fileName": "Clementi Opus 36 no 1 First Movement.mid",
+      "fixtureId": "builtin-04e1e0166e3dc209d9a1ed447a7b5beed1d6d541878f933be8da73e74c35021c",
+      "sourceSha256": "0e75b6f795e5ebe86c29693704f1d3e95b61d08fb5005b92f28f7f70c87d127d",
+      "byteLength": 4120,
+      "status": "loaded",
+      "sourceNotes": 666,
+      "normalizedNotes": 666,
+      "identityStatuses": {
+        "exact": 666
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 14,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "a3094b8df63facf2b2470210cd6bdcffb86b713f0a33efab01514a31a5f1d894",
+      "title": "Clementine",
+      "fileName": "Clementine.mid",
+      "fixtureId": "builtin-a3094b8df63facf2b2470210cd6bdcffb86b713f0a33efab01514a31a5f1d894",
+      "sourceSha256": "f07aa91b6def7ef0d113b9589ef75b26f23fbd2c302d261ae406ca745a9c6c12",
+      "byteLength": 264,
+      "status": "loaded",
+      "sourceNotes": 30,
+      "normalizedNotes": 30,
+      "identityStatuses": {
+        "exact": 30
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 14,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "2dc5902dd8ebcb0c710f9b917d6af809b37f20343fad4c32833006db7affdbc8",
+      "title": "Cripple Creek",
+      "fileName": "Cripple Creek.mid",
+      "fixtureId": "builtin-2dc5902dd8ebcb0c710f9b917d6af809b37f20343fad4c32833006db7affdbc8",
+      "sourceSha256": "9958f0ca1ec7cae452715e0905e173b3777faae2e19ded7e4292845bd805cb66",
+      "byteLength": 833,
+      "status": "loaded",
+      "sourceNotes": 123,
+      "normalizedNotes": 123,
+      "identityStatuses": {
+        "exact": 123
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 14,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "de6f84d777eb5cc0b46c462ed1fb7d5249cacbd9788f9e70d787f9013e257fcb",
+      "title": "Danny Boy",
+      "fileName": "Danny Boy.mid",
+      "fixtureId": "builtin-de6f84d777eb5cc0b46c462ed1fb7d5249cacbd9788f9e70d787f9013e257fcb",
+      "sourceSha256": "7609ee90b8570f7ff7749ee0ec9e3f331bdb4655a68266e81c96d7d0bd8c9c2e",
+      "byteLength": 1500,
+      "status": "loaded",
+      "sourceNotes": 232,
+      "normalizedNotes": 232,
+      "identityStatuses": {
+        "exact": 232
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 20,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "e62d4464981e682ba4138f1d9fd6cf15641d7c5814e8a533191efe9f7f374bfb",
+      "title": "Do Your Ears Hang Low",
+      "fileName": "Do Your Ears Hang Low.mid",
+      "fixtureId": "builtin-e62d4464981e682ba4138f1d9fd6cf15641d7c5814e8a533191efe9f7f374bfb",
+      "sourceSha256": "9d9aab9c3071f9de54c64347015c4562a037ab61205078f3ababca688b710cf7",
+      "byteLength": 497,
+      "status": "loaded",
+      "sourceNotes": 68,
+      "normalizedNotes": 68,
+      "identityStatuses": {
+        "exact": 68
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 14,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "a93c82bbe6d3c15b2cdb5255cafe306bb355412671279cb296230c19bc68b494",
+      "title": "Eine kleine Nachtmusik",
+      "fileName": "Eine kleine Nachtmusik.mid",
+      "fixtureId": "builtin-a93c82bbe6d3c15b2cdb5255cafe306bb355412671279cb296230c19bc68b494",
+      "sourceSha256": "9708e5d9d979150e68ca846c0f611cf9ea9479b750f49cf2dea33404fcc565c9",
+      "byteLength": 727,
+      "status": "loaded",
+      "sourceNotes": 104,
+      "normalizedNotes": 104,
+      "identityStatuses": {
+        "exact": 104
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 12,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "8f50f5aa325ab0632e7d5c78f3777c93375077c28c2747b9c4e8efc21e505938",
+      "title": "Evening Falls",
+      "fileName": "Evening Falls.mid",
+      "fixtureId": "builtin-8f50f5aa325ab0632e7d5c78f3777c93375077c28c2747b9c4e8efc21e505938",
+      "sourceSha256": "4c73b9b7cc8d4f0d032b24c9f93d79d15405277d3c00a00bd6936cbfcbf22d5d",
+      "byteLength": 1712,
+      "status": "loaded",
+      "sourceNotes": 263,
+      "normalizedNotes": 263,
+      "identityStatuses": {
+        "exact": 263
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 14,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "73581368c970660eb88a7127eef04d4f069deb0b9f8a59c8ba994a43ff34ea6c",
+      "title": "FNaF 1",
+      "fileName": "FNaF 1.mid",
+      "fixtureId": "builtin-73581368c970660eb88a7127eef04d4f069deb0b9f8a59c8ba994a43ff34ea6c",
+      "sourceSha256": "5a5577d9cb60edfa7bb53f079b4e549fecde6f3c5c4d947a06dadfcbc3aeb29e",
+      "byteLength": 19389,
+      "status": "loaded",
+      "sourceNotes": 2361,
+      "normalizedNotes": 1324,
+      "identityStatuses": {
+        "unmapped": 1037,
+        "exact": 1324
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 14,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "a7e5898575e8bb8f17db2098c062ba02b9d4054688cf79e4f5e68d3fe94da878",
+      "title": "FNaF 2",
+      "fileName": "FNaF 2.mid",
+      "fixtureId": "builtin-a7e5898575e8bb8f17db2098c062ba02b9d4054688cf79e4f5e68d3fe94da878",
+      "sourceSha256": "3ed1b4e67431966328f431365283dc7ada88f545290b53a8bc8d488093885231",
+      "byteLength": 18430,
+      "status": "loaded",
+      "sourceNotes": 2189,
+      "normalizedNotes": 1029,
+      "identityStatuses": {
+        "unmapped": 1160,
+        "exact": 1029
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 14,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "808e759ce014e12eaa7445a42f7bb5ccb17c0e8a27b54bff0e15e3683bc7027f",
+      "title": "FNaF 3",
+      "fileName": "FNaF 3.mid",
+      "fixtureId": "builtin-808e759ce014e12eaa7445a42f7bb5ccb17c0e8a27b54bff0e15e3683bc7027f",
+      "sourceSha256": "bc0e819b7d0ef98fdc840b5dac0fc2926ee7f9798bbea977b4d669b24f46a8b2",
+      "byteLength": 22524,
+      "status": "loaded",
+      "sourceNotes": 2736,
+      "normalizedNotes": 1257,
+      "identityStatuses": {
+        "unmapped": 1479,
+        "exact": 1257
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 16,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "9059a4eef32e65d795aca71680ddf9350783ee6ed6061f0877eb5f921b12afc2",
+      "title": "FNaF 4",
+      "fileName": "FNaF 4.mid",
+      "fixtureId": "builtin-9059a4eef32e65d795aca71680ddf9350783ee6ed6061f0877eb5f921b12afc2",
+      "sourceSha256": "611304d9658bd6b057e811daff2e11f7ee37ff52ce49e8660f29dec27b9920ca",
+      "byteLength": 18161,
+      "status": "loaded",
+      "sourceNotes": 2206,
+      "normalizedNotes": 1036,
+      "identityStatuses": {
+        "unmapped": 1108,
+        "ambiguous": 62,
+        "exact": 1036
+      },
+      "diagnostics": {
+        "result": {
+          "source-identity-ambiguous": 1
+        },
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 16,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "eb6ba8cf28e8ac396116163f40af3914fc002bde3a149a6c467475195941ced0",
+      "title": "Fais Dodo",
+      "fileName": "Fais Dodo.mid",
+      "fixtureId": "builtin-eb6ba8cf28e8ac396116163f40af3914fc002bde3a149a6c467475195941ced0",
+      "sourceSha256": "4d3e40e4cc142130cd23bcdd5a0b9e206e69f50959f19e2f663be71223d382ae",
+      "byteLength": 403,
+      "status": "loaded",
+      "sourceNotes": 54,
+      "normalizedNotes": 54,
+      "identityStatuses": {
+        "exact": 54
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 16,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "17d0e92c2b9c0c17b92ae6d12fe97bd2e4075b547739762724f910e48282a28f",
+      "title": "Five Fat Turkeys Are We",
+      "fileName": "Five Fat Turkeys Are We.mid",
+      "fixtureId": "builtin-17d0e92c2b9c0c17b92ae6d12fe97bd2e4075b547739762724f910e48282a28f",
+      "sourceSha256": "35c00784fa8278403200dbd2583e9a9741b3caaadf605d8d9f3b4e11f292ba86",
+      "byteLength": 265,
+      "status": "loaded",
+      "sourceNotes": 30,
+      "normalizedNotes": 30,
+      "identityStatuses": {
+        "exact": 30
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 16,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "4762fb1842cb81e31afaa4052afa6cba27e9e8da4b0adc7ebd2323763cf9660a",
+      "title": "For Health and Strength",
+      "fileName": "For Health and Strength.mid",
+      "fixtureId": "builtin-4762fb1842cb81e31afaa4052afa6cba27e9e8da4b0adc7ebd2323763cf9660a",
+      "sourceSha256": "011a13bbec21132b9e34616fa3da5782be3a3de78cd5a59f8f87d8be81753658",
+      "byteLength": 167,
+      "status": "loaded",
+      "sourceNotes": 14,
+      "normalizedNotes": 14,
+      "identityStatuses": {
+        "exact": 14
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 16,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "0242056239b3107f2a9ae49601c4f28a3543ca5e391e6e324d15eb881a6b61d1",
+      "title": "Fur Elise",
+      "fileName": "Fur Elise.mid",
+      "fixtureId": "builtin-0242056239b3107f2a9ae49601c4f28a3543ca5e391e6e324d15eb881a6b61d1",
+      "sourceSha256": "3566fbf96e979798cf8984a609f6c11bad3a6fc919b7b20ab6e4bd01669a9e5f",
+      "byteLength": 979,
+      "status": "loaded",
+      "sourceNotes": 112,
+      "normalizedNotes": 112,
+      "identityStatuses": {
+        "exact": 112
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 18,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "669728bbce1f9caffc5a929299b5c04ef12f90e1f487d42463da74d6adbd2810",
+      "title": "Go Tell It on the Mountain",
+      "fileName": "Go Tell It on the Mountain.mid",
+      "fixtureId": "builtin-669728bbce1f9caffc5a929299b5c04ef12f90e1f487d42463da74d6adbd2810",
+      "sourceSha256": "9f620ca6e0724ceb9a25c45657ebe55b1bcb7694ef98fcdb35ccc3578b2c8aae",
+      "byteLength": 277,
+      "status": "loaded",
+      "sourceNotes": 29,
+      "normalizedNotes": 29,
+      "identityStatuses": {
+        "exact": 29
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 16,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "ebd4338d77e7fae5f8ee833cfd9b8e9eb64ade8b72c0d9ec97d31caef8150a45",
+      "title": "God Rest Ye Merry Gentlemen",
+      "fileName": "God Rest Ye Merry Gentlemen.mid",
+      "fixtureId": "builtin-ebd4338d77e7fae5f8ee833cfd9b8e9eb64ade8b72c0d9ec97d31caef8150a45",
+      "sourceSha256": "24bdde0db430da85dbba896bc37163a6bbb43bffb6489276adcc1ced29e30e23",
+      "byteLength": 852,
+      "status": "loaded",
+      "sourceNotes": 126,
+      "normalizedNotes": 126,
+      "identityStatuses": {
+        "exact": 126
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 10,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "33d2ec2721eb9abe93bb801ce90144db05c2b0ae997d334b69f5d65362838a7a",
+      "title": "God Save the Queen",
+      "fileName": "God Save the Queen.mid",
+      "fixtureId": "builtin-33d2ec2721eb9abe93bb801ce90144db05c2b0ae997d334b69f5d65362838a7a",
+      "sourceSha256": "4515e713d0601226ba8c8d038fa24d84f8eabc94546bfceef8047ba3328cd3c9",
+      "byteLength": 601,
+      "status": "loaded",
+      "sourceNotes": 84,
+      "normalizedNotes": 84,
+      "identityStatuses": {
+        "exact": 84
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 12,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "94813ab5853b3906cb26de60966f2ac9d8f001839b05e4eb62913330ac33d7e9",
+      "title": "Going Home - Dvorak",
+      "fileName": "Going Home - Dvorak.mid",
+      "fixtureId": "builtin-94813ab5853b3906cb26de60966f2ac9d8f001839b05e4eb62913330ac33d7e9",
+      "sourceSha256": "9614a9678a6b960bf4cc8a50184c03693ae534119c8469445e516435450a566c",
+      "byteLength": 809,
+      "status": "loaded",
+      "sourceNotes": 112,
+      "normalizedNotes": 112,
+      "identityStatuses": {
+        "exact": 112
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 10,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "687ba59ff6c58c21687dc9f79204a71a433aed1e86d6983e8e50b7c0fc19ad2e",
+      "title": "Good King Wenceslas",
+      "fileName": "Good King Wenceslas.mid",
+      "fixtureId": "builtin-687ba59ff6c58c21687dc9f79204a71a433aed1e86d6983e8e50b7c0fc19ad2e",
+      "sourceSha256": "4fa7b17b304cce52832a69ecb432372ee0584565ecef87d973979b5413de1636",
+      "byteLength": 225,
+      "status": "loaded",
+      "sourceNotes": 26,
+      "normalizedNotes": 26,
+      "identityStatuses": {
+        "exact": 26
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 20,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "4cfe754ea4f89dce727b5f5d77c2f51f1852667dd72d7dc4c9b2ef8e43d85642",
+      "title": "Greensleeves",
+      "fileName": "Greensleeves.mid",
+      "fixtureId": "builtin-4cfe754ea4f89dce727b5f5d77c2f51f1852667dd72d7dc4c9b2ef8e43d85642",
+      "sourceSha256": "1b7634a06740e6e555fc79f18fd92b6dabfee4a8a2c9150ead11f9218cab4afd",
+      "byteLength": 1051,
+      "status": "loaded",
+      "sourceNotes": 160,
+      "normalizedNotes": 160,
+      "identityStatuses": {
+        "exact": 160
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 12,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "c47d87a458e823f92ee0b0a89e2c08892234077f78f106214d2066c4ae8774d2",
+      "title": "Greensleeves (A)",
+      "fileName": "Greensleeves (A).mid",
+      "fixtureId": "builtin-c47d87a458e823f92ee0b0a89e2c08892234077f78f106214d2066c4ae8774d2",
+      "sourceSha256": "4a985ee30de61433c134a0416f9ad903eb5647cfa381d9e4f636b00b0e6c5d5c",
+      "byteLength": 715,
+      "status": "loaded",
+      "sourceNotes": 81,
+      "normalizedNotes": 81,
+      "identityStatuses": {
+        "exact": 81
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 16,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "3d045c3467bff4bc1ec6d70263be697d37b8d4f077f1b315073e5b106b88c0de",
+      "title": "Habanera from Carmen",
+      "fileName": "Habanera from Carmen.mid",
+      "fixtureId": "builtin-3d045c3467bff4bc1ec6d70263be697d37b8d4f077f1b315073e5b106b88c0de",
+      "sourceSha256": "e26052abe6f2297bbd218134d72286b285793407586e943a03469c36a1f88b62",
+      "byteLength": 2403,
+      "status": "loaded",
+      "sourceNotes": 373,
+      "normalizedNotes": 373,
+      "identityStatuses": {
+        "exact": 373
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 14,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "28eb89ff6edaf0eb3da975c2e3cfb0a35d6f248692d5f99b79791ae8b51ac736",
+      "title": "Hanukkah, Hanukkah",
+      "fileName": "Hanukkah, Hanukkah.mid",
+      "fixtureId": "builtin-28eb89ff6edaf0eb3da975c2e3cfb0a35d6f248692d5f99b79791ae8b51ac736",
+      "sourceSha256": "b93a66bb53ed37d45ace61d7402a26eea812ea85ca4fe7abd2177e730a67d8ef",
+      "byteLength": 589,
+      "status": "loaded",
+      "sourceNotes": 84,
+      "normalizedNotes": 84,
+      "identityStatuses": {
+        "exact": 84
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 12,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "cb1ef8a2533b7e21dd0bd911333665d57c60a4c5d96a59efb238e6dbfd74d1e0",
+      "title": "Hark! The Herald Angels Sing",
+      "fileName": "Hark! The Herald Angels Sing.mid",
+      "fixtureId": "builtin-cb1ef8a2533b7e21dd0bd911333665d57c60a4c5d96a59efb238e6dbfd74d1e0",
+      "sourceSha256": "0752a561597d40b4cc4ba8530105a4151afe15137be15beb4385990ad91f9a95",
+      "byteLength": 1123,
+      "status": "loaded",
+      "sourceNotes": 168,
+      "normalizedNotes": 167,
+      "identityStatuses": {
+        "exact": 166,
+        "ambiguous": 2
+      },
+      "diagnostics": {
+        "result": {
+          "source-event-ambiguous": 1,
+          "source-identity-ambiguous": 1
+        },
+        "fingeringPlan": {
+          "source-event-ambiguous": 1
+        },
+        "performancePlan": {
+          "source-event-ambiguous": 1
+        },
+        "motionPlan": {
+          "source-event-ambiguous": 1
+        }
+      },
+      "motionPlanPoses": 12,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "e60ad319ad2f4a36e4c34fb97c5561cbefa3fa8a871e632ee15d45a0fccf9362",
+      "title": "Head, Shoulders, Knees and Toes",
+      "fileName": "Head, Shoulders, Knees and Toes.mid",
+      "fixtureId": "builtin-e60ad319ad2f4a36e4c34fb97c5561cbefa3fa8a871e632ee15d45a0fccf9362",
+      "sourceSha256": "67c34e3c13e15c014704b6681431d32152738b9b176e99ccda1ec54382a58655",
+      "byteLength": 527,
+      "status": "loaded",
+      "sourceNotes": 73,
+      "normalizedNotes": 73,
+      "identityStatuses": {
+        "exact": 73
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 12,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "348e6e89aa0e3ce392c09a25de8cbbd1854771e5d74b660060cc0314ae9ff2fb",
+      "title": "Hot Cross Buns",
+      "fileName": "Hot Cross Buns.mid",
+      "fixtureId": "builtin-348e6e89aa0e3ce392c09a25de8cbbd1854771e5d74b660060cc0314ae9ff2fb",
+      "sourceSha256": "66e8a555135b293066eaed96d5c0043575e62b120e3f80881ac93cffcde45fb4",
+      "byteLength": 174,
+      "status": "loaded",
+      "sourceNotes": 17,
+      "normalizedNotes": 17,
+      "identityStatuses": {
+        "exact": 17
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 18,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "e5a35965a30d68e89ff1ca4d0b458e1c863e9a4ae560948455509371825b6a92",
+      "title": "How They Dance, Dance",
+      "fileName": "How They Dance, Dance.mid",
+      "fixtureId": "builtin-e5a35965a30d68e89ff1ca4d0b458e1c863e9a4ae560948455509371825b6a92",
+      "sourceSha256": "6245a6875c4325c890dd24a7dc3701f0755c6c630c526869678d590fb32ec5e9",
+      "byteLength": 346,
+      "status": "loaded",
+      "sourceNotes": 43,
+      "normalizedNotes": 43,
+      "identityStatuses": {
+        "exact": 43
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 14,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "ddbf68c6d3524edc4e5c0b3c12d6fa16a0ae3193f23c025acc978b799da01b3d",
+      "title": "I Have a Little Dreidle",
+      "fileName": "I Have a Little Dreidle.mid",
+      "fixtureId": "builtin-ddbf68c6d3524edc4e5c0b3c12d6fa16a0ae3193f23c025acc978b799da01b3d",
+      "sourceSha256": "32f9b9ec914196c5427889c25566d9cff8681931c2eeb093862c9e7d3585578f",
+      "byteLength": 517,
+      "status": "loaded",
+      "sourceNotes": 69,
+      "normalizedNotes": 69,
+      "identityStatuses": {
+        "exact": 69
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 14,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "c0b7d43dd5b954ab532838e48b41172033c4e67e0a80e0b349c0f8b3a40ca5d1",
+      "title": "I Saw Three Ships",
+      "fileName": "I Saw Three Ships.mid",
+      "fixtureId": "builtin-c0b7d43dd5b954ab532838e48b41172033c4e67e0a80e0b349c0f8b3a40ca5d1",
+      "sourceSha256": "e75e51e9f4a50761bd6fbd859d87a6e80735d0c1552dbbde051ddc88750954fe",
+      "byteLength": 277,
+      "status": "loaded",
+      "sourceNotes": 32,
+      "normalizedNotes": 32,
+      "identityStatuses": {
+        "exact": 32
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 16,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "1db54147e9cdd4e69bfef63536be28bf7833bb5d8f956ef383c7a08c71bdaefb",
+      "title": "I've Been Working on the Railroad",
+      "fileName": "I've Been Working on the Railroad.mid",
+      "fixtureId": "builtin-1db54147e9cdd4e69bfef63536be28bf7833bb5d8f956ef383c7a08c71bdaefb",
+      "sourceSha256": "9b882f74fd572abad15f770e147c881bd6566c3ca26a1c5806a3c3b563753bf0",
+      "byteLength": 1114,
+      "status": "loaded",
+      "sourceNotes": 161,
+      "normalizedNotes": 161,
+      "identityStatuses": {
+        "exact": 161
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 16,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "ad20ad0daa82da1dc22b4af9b6a9e844f1de4060e8863401d532ed0ed3bf22bb",
+      "title": "In My Hot Air Balloon",
+      "fileName": "In My Hot Air Balloon.mid",
+      "fixtureId": "builtin-ad20ad0daa82da1dc22b4af9b6a9e844f1de4060e8863401d532ed0ed3bf22bb",
+      "sourceSha256": "051a39cf3dc163b615bd94f50698f199448f394f062ae4d488405163831b11e7",
+      "byteLength": 1049,
+      "status": "loaded",
+      "sourceNotes": 147,
+      "normalizedNotes": 147,
+      "identityStatuses": {
+        "exact": 147
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 10,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "84a3b3fd128c610ca11ecbde658d847cacf2909d90e3404fa6f15e9f58f861da",
+      "title": "In a Cabin in the Woods",
+      "fileName": "In a Cabin in the Woods.mid",
+      "fixtureId": "builtin-84a3b3fd128c610ca11ecbde658d847cacf2909d90e3404fa6f15e9f58f861da",
+      "sourceSha256": "28deade6681f523d5234ce6185718a997c9db46e1338dc4cc94876893627d807",
+      "byteLength": 802,
+      "status": "loaded",
+      "sourceNotes": 117,
+      "normalizedNotes": 117,
+      "identityStatuses": {
+        "exact": 117
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 12,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "2020621af1f0db222cbd5e3cb82b17db33f6c977e4587dac3c742549e1976d5c",
+      "title": "Jana-Gana-Mana",
+      "fileName": "Jana-Gana-Mana.mid",
+      "fixtureId": "builtin-2020621af1f0db222cbd5e3cb82b17db33f6c977e4587dac3c742549e1976d5c",
+      "sourceSha256": "02f0feacee7bff4d5947b473aaf5e930b2c3c5204f6c32cf831d8aa6d14819d4",
+      "byteLength": 890,
+      "status": "loaded",
+      "sourceNotes": 136,
+      "normalizedNotes": 136,
+      "identityStatuses": {
+        "exact": 136
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 20,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "a85362afcbdce55ad40c07f03d15b2af7c2edd3313c1e3b4d1a1d459014b90c3",
+      "title": "Jesu, Joy of Man's Desiring",
+      "fileName": "Jesu, Joy of Man's Desiring.mid",
+      "fixtureId": "builtin-a85362afcbdce55ad40c07f03d15b2af7c2edd3313c1e3b4d1a1d459014b90c3",
+      "sourceSha256": "aa0dc6faf49c20c13503138f6b42865987c085a0c753a595ae7bf317bb13935c",
+      "byteLength": 503,
+      "status": "loaded",
+      "sourceNotes": 69,
+      "normalizedNotes": 69,
+      "identityStatuses": {
+        "exact": 69
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 16,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "77fc6594707399a77e6497fd8c7e5934a465b24c6efda22ed9caa2b2db5f9ff4",
+      "title": "Jingle Bells",
+      "fileName": "Jingle Bells.mid",
+      "fixtureId": "builtin-77fc6594707399a77e6497fd8c7e5934a465b24c6efda22ed9caa2b2db5f9ff4",
+      "sourceSha256": "8d65a83acbd4aebb09199f5aa4f18122ff3a234295d3ea27e3a3919293349840",
+      "byteLength": 746,
+      "status": "loaded",
+      "sourceNotes": 107,
+      "normalizedNotes": 107,
+      "identityStatuses": {
+        "exact": 107
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 12,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "6bd941c6cdd45a877d49b9ba07732562329b7ded4e8c74fa702029520390e1be",
+      "title": "Jingle Bells (Short Version)",
+      "fileName": "Jingle Bells (Short Version).mid",
+      "fixtureId": "builtin-6bd941c6cdd45a877d49b9ba07732562329b7ded4e8c74fa702029520390e1be",
+      "sourceSha256": "440f8ddada9ec420bf6e46ce06923540dfa5acc106610475d480ad19bb7bc24a",
+      "byteLength": 211,
+      "status": "loaded",
+      "sourceNotes": 24,
+      "normalizedNotes": 24,
+      "identityStatuses": {
+        "exact": 24
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 16,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "b417c5dd133d14cb255bcde02018608d9509144145eea70ea8819d7e868130f1",
+      "title": "Jolly Old Saint Nicholas",
+      "fileName": "Jolly Old Saint Nicholas.mid",
+      "fixtureId": "builtin-b417c5dd133d14cb255bcde02018608d9509144145eea70ea8819d7e868130f1",
+      "sourceSha256": "07e0f0af6856b051f31b82b4e30edabcdab7b6efdf201d4b3dfe3e2354bd25df",
+      "byteLength": 379,
+      "status": "loaded",
+      "sourceNotes": 48,
+      "normalizedNotes": 48,
+      "identityStatuses": {
+        "exact": 48
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 16,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "e64cf4b6ea88d7f2c75967f676d83de10078eb6465911201116452fbc07ee5bd",
+      "title": "Joy to the World",
+      "fileName": "Joy to the World.mid",
+      "fixtureId": "builtin-e64cf4b6ea88d7f2c75967f676d83de10078eb6465911201116452fbc07ee5bd",
+      "sourceSha256": "6f3039faf842d4f085aee952db1883964ebd49e80cdcd749e0986b7a4553a1a7",
+      "byteLength": 872,
+      "status": "loaded",
+      "sourceNotes": 125,
+      "normalizedNotes": 125,
+      "identityStatuses": {
+        "exact": 125
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 12,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "d001b33224105fe4d75cfbd68b102a41f8cc0a4506740054e90e239a65e8c452",
+      "title": "La Cucaracha",
+      "fileName": "La Cucaracha.mid",
+      "fixtureId": "builtin-d001b33224105fe4d75cfbd68b102a41f8cc0a4506740054e90e239a65e8c452",
+      "sourceSha256": "1eb8a9d4c6e3b4968586ad784a91f2bf80a9cb98b520775c3ba534266898a63e",
+      "byteLength": 369,
+      "status": "loaded",
+      "sourceNotes": 44,
+      "normalizedNotes": 44,
+      "identityStatuses": {
+        "exact": 44
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 16,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "4491c00054311ca226c36e2d04b5039a388a5e688af9f5f7f88ae40af1cc7f6a",
+      "title": "La Marseillaise",
+      "fileName": "La Marseillaise.mid",
+      "fixtureId": "builtin-4491c00054311ca226c36e2d04b5039a388a5e688af9f5f7f88ae40af1cc7f6a",
+      "sourceSha256": "10ae83a57517e317e29db38d39726d4258da12cfdc33ee9f0b72d13adf83e9ea",
+      "byteLength": 1583,
+      "status": "loaded",
+      "sourceNotes": 241,
+      "normalizedNotes": 239,
+      "identityStatuses": {
+        "exact": 237,
+        "ambiguous": 4
+      },
+      "diagnostics": {
+        "result": {
+          "source-event-ambiguous": 2,
+          "source-identity-ambiguous": 1
+        },
+        "fingeringPlan": {
+          "source-event-ambiguous": 2
+        },
+        "performancePlan": {
+          "source-event-ambiguous": 2
+        },
+        "motionPlan": {
+          "source-event-ambiguous": 2
+        }
+      },
+      "motionPlanPoses": 16,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "ded269926f32b6077a9db5457f20ed22787157030885d5a06ef6a05d83fe027a",
+      "title": "Les Cloches (The Bells)",
+      "fileName": "Les Cloches (The Bells).mid",
+      "fixtureId": "builtin-ded269926f32b6077a9db5457f20ed22787157030885d5a06ef6a05d83fe027a",
+      "sourceSha256": "522fb2e508fac649c984ac9d9d3d76a0745a7e462daa972a25a057be2812f130",
+      "byteLength": 205,
+      "status": "loaded",
+      "sourceNotes": 19,
+      "normalizedNotes": 19,
+      "identityStatuses": {
+        "exact": 19
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 16,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "4f6c1bdd36144cbfa8e1b6b1bc0d45ed0333d3cf1f22476030ce99991ecb4255",
+      "title": "Lightly Row",
+      "fileName": "Lightly Row.mid",
+      "fixtureId": "builtin-4f6c1bdd36144cbfa8e1b6b1bc0d45ed0333d3cf1f22476030ce99991ecb4255",
+      "sourceSha256": "4c9a4c349f511338b1907e7b2acc6aa4c1080699a18adc460c139ceae9514116",
+      "byteLength": 537,
+      "status": "loaded",
+      "sourceNotes": 72,
+      "normalizedNotes": 72,
+      "identityStatuses": {
+        "exact": 72
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 12,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "61f06f55db0a4e96f665fad20c1b714193e5a85501ddbea859d1335b202f80a0",
+      "title": "London Bridge",
+      "fileName": "London Bridge.mid",
+      "fixtureId": "builtin-61f06f55db0a4e96f665fad20c1b714193e5a85501ddbea859d1335b202f80a0",
+      "sourceSha256": "f09dc05c425d74ed7d44eef421ab95ea07c9d253b8120665030d5d5838e9573e",
+      "byteLength": 238,
+      "status": "loaded",
+      "sourceNotes": 24,
+      "normalizedNotes": 24,
+      "identityStatuses": {
+        "exact": 24
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 16,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "9d0fad7b69402088e94cb4d64428cb19c73d1eed3743edd9bb3139c0d2a5cd4a",
+      "title": "Lupang Hinirang",
+      "fileName": "Lupang Hinirang.mid",
+      "fixtureId": "builtin-9d0fad7b69402088e94cb4d64428cb19c73d1eed3743edd9bb3139c0d2a5cd4a",
+      "sourceSha256": "0a73f92bfa3e40335533d57a1df3d73f790b8219b0c6657b88bfdbcb8f149c41",
+      "byteLength": 2144,
+      "status": "loaded",
+      "sourceNotes": 317,
+      "normalizedNotes": 317,
+      "identityStatuses": {
+        "exact": 317
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 10,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "dc3b3639bc6e72982e42194d702b5b91705ad054ee5eb941d1e1818cb469f524",
+      "title": "March on Android Moon",
+      "fileName": "March on Android Moon.mid",
+      "fixtureId": "builtin-dc3b3639bc6e72982e42194d702b5b91705ad054ee5eb941d1e1818cb469f524",
+      "sourceSha256": "2ee095f38f38fecafc819e4f31435bddd49d81efc0b1ab16750382612b131d72",
+      "byteLength": 2995,
+      "status": "loaded",
+      "sourceNotes": 474,
+      "normalizedNotes": 473,
+      "identityStatuses": {
+        "exact": 472,
+        "ambiguous": 2
+      },
+      "diagnostics": {
+        "result": {
+          "source-event-ambiguous": 1,
+          "source-identity-ambiguous": 1
+        },
+        "fingeringPlan": {
+          "source-event-ambiguous": 1
+        },
+        "performancePlan": {
+          "source-event-ambiguous": 1
+        },
+        "motionPlan": {
+          "source-event-ambiguous": 1
+        }
+      },
+      "motionPlanPoses": 18,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "6d60b5ee15ede898c49059bdec5bdac23ca8967eee4f8fb2189da856f2ecaefc",
+      "title": "Mary Had a Little Lamb",
+      "fileName": "Mary Had a Little Lamb.mid",
+      "fixtureId": "builtin-6d60b5ee15ede898c49059bdec5bdac23ca8967eee4f8fb2189da856f2ecaefc",
+      "sourceSha256": "e0d3a5c600ab55a187c1e797d4aee9506f6d0009e069213eb17daf0b3929b869",
+      "byteLength": 223,
+      "status": "loaded",
+      "sourceNotes": 26,
+      "normalizedNotes": 26,
+      "identityStatuses": {
+        "exact": 26
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 16,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "83d9866c88eef6038fbe5f4bacfd1c121fb53e59d87897f23f7540e6d9369fa5",
+      "title": "Megalovania",
+      "fileName": "Megalovania.mid",
+      "fixtureId": "builtin-83d9866c88eef6038fbe5f4bacfd1c121fb53e59d87897f23f7540e6d9369fa5",
+      "sourceSha256": "df44d4daf35ea423eec1375f6dabb59c00a1e79fb47d7973f083361d41d6b57c",
+      "byteLength": 25926,
+      "status": "loaded",
+      "sourceNotes": 3203,
+      "normalizedNotes": 1969,
+      "identityStatuses": {
+        "unmapped": 1219,
+        "ambiguous": 15,
+        "exact": 1969
+      },
+      "diagnostics": {
+        "result": {
+          "source-identity-ambiguous": 1
+        },
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 20,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "4b86b2e6e8a95bc659e040970137fe2fb561ace4712623fbcb5e82f3bbe95bb5",
+      "title": "Menuet (Trio), by G.F. Handel",
+      "fileName": "Menuet (Trio), by G.F. Handel.mid",
+      "fixtureId": "builtin-4b86b2e6e8a95bc659e040970137fe2fb561ace4712623fbcb5e82f3bbe95bb5",
+      "sourceSha256": "4c1d691cbf0a40282b89dd376c01bbcfa3f0807bee609dd025a60a3e76a28c9a",
+      "byteLength": 1325,
+      "status": "loaded",
+      "sourceNotes": 206,
+      "normalizedNotes": 206,
+      "identityStatuses": {
+        "exact": 206
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 12,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "8f8bdbd5eda1c290d35a651b8172b89a305ebb42cfcda7f1246c0cf86a554cb8",
+      "title": "Mexican Hat Dance",
+      "fileName": "Mexican Hat Dance.mid",
+      "fixtureId": "builtin-8f8bdbd5eda1c290d35a651b8172b89a305ebb42cfcda7f1246c0cf86a554cb8",
+      "sourceSha256": "128226e162ccd58ab211909b7b46983518be8fc2f4788aa1a49c3726e39c201c",
+      "byteLength": 960,
+      "status": "loaded",
+      "sourceNotes": 134,
+      "normalizedNotes": 134,
+      "identityStatuses": {
+        "exact": 134
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 16,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "85f49ef2d5b57d1c6b1b2129a378cafea4d783298734d0307c5fb904d0cc06b6",
+      "title": "Minuet in F",
+      "fileName": "Minuet in F.mid",
+      "fixtureId": "builtin-85f49ef2d5b57d1c6b1b2129a378cafea4d783298734d0307c5fb904d0cc06b6",
+      "sourceSha256": "13293bd55c813e852d9a76d93ac9bfdc7cc728fdbf506bfaa5f7130ade221209",
+      "byteLength": 1402,
+      "status": "loaded",
+      "sourceNotes": 216,
+      "normalizedNotes": 216,
+      "identityStatuses": {
+        "exact": 216
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 16,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "1bc20f82b005e48922d794fcaa3f6679a9e0978e04324442e3199c95f6fbd905",
+      "title": "Minuet in G",
+      "fileName": "Minuet in G.mid",
+      "fixtureId": "builtin-1bc20f82b005e48922d794fcaa3f6679a9e0978e04324442e3199c95f6fbd905",
+      "sourceSha256": "abe536a67ed79a922c9115dda5e2d748e576c2ffb652adafc622e75f5f9d4e42",
+      "byteLength": 704,
+      "status": "loaded",
+      "sourceNotes": 102,
+      "normalizedNotes": 102,
+      "identityStatuses": {
+        "exact": 102
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 14,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "20ef5bd861cbca4fa59cef8066a7d08e0f057d2da3df16ae62675887fbd1c3bd",
+      "title": "Moonlight Sonata",
+      "fileName": "Moonlight Sonata.mid",
+      "fixtureId": "builtin-20ef5bd861cbca4fa59cef8066a7d08e0f057d2da3df16ae62675887fbd1c3bd",
+      "sourceSha256": "10f2515b0708e4b39a2cd89042d910657daefa496cd44d4d6b0da6d5a2b8d97a",
+      "byteLength": 1326,
+      "status": "loaded",
+      "sourceNotes": 204,
+      "normalizedNotes": 204,
+      "identityStatuses": {
+        "exact": 204
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 16,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "ddfab7d1e1360acaca6a64d7178cd2930e0f6fc93f1347199f91f263823c5135",
+      "title": "Morning Song",
+      "fileName": "Morning Song.mid",
+      "fixtureId": "builtin-ddfab7d1e1360acaca6a64d7178cd2930e0f6fc93f1347199f91f263823c5135",
+      "sourceSha256": "0831aa91c89c1d27d2f33da4010c017f6d2b45cb2f173e8b2b8e2f57a0180c5e",
+      "byteLength": 907,
+      "status": "loaded",
+      "sourceNotes": 134,
+      "normalizedNotes": 134,
+      "identityStatuses": {
+        "exact": 134
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 12,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "58f781d87df5eb7ae291e425c245a61a47c4b142834d33673df044bf5963aba9",
+      "title": "My Bonnie Lies Over the Ocean",
+      "fileName": "My Bonnie Lies Over the Ocean.mid",
+      "fixtureId": "builtin-58f781d87df5eb7ae291e425c245a61a47c4b142834d33673df044bf5963aba9",
+      "sourceSha256": "76dd623917e1f7f093e89ceec0a4547fc082e045d1c7860a9483c1f15237bb1b",
+      "byteLength": 933,
+      "status": "loaded",
+      "sourceNotes": 134,
+      "normalizedNotes": 134,
+      "identityStatuses": {
+        "exact": 134
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 14,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "d21bad27af55ea4a043b15f1719f93e414677a02e983ba968395832fd5fc87d1",
+      "title": "My Grandfather's Clock",
+      "fileName": "My Grandfather's Clock.mid",
+      "fixtureId": "builtin-d21bad27af55ea4a043b15f1719f93e414677a02e983ba968395832fd5fc87d1",
+      "sourceSha256": "aa3a5685d682c9689f3b5d5876d95e45769adc0e3aec10d2a4f0e6aa7076a3a0",
+      "byteLength": 1504,
+      "status": "loaded",
+      "sourceNotes": 223,
+      "normalizedNotes": 223,
+      "identityStatuses": {
+        "exact": 223
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 16,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "4f6f6d00d9b05a1deee4f829cf3d4b8efe3688b052f2cd22a6431a5f4838792c",
+      "title": "My Palm Leaf Hut",
+      "fileName": "My Palm Leaf Hut.mid",
+      "fixtureId": "builtin-4f6f6d00d9b05a1deee4f829cf3d4b8efe3688b052f2cd22a6431a5f4838792c",
+      "sourceSha256": "676513c63724f71ad5de3ddace42aa3992e9d0bf938fab666ece620a7dcdfa9f",
+      "byteLength": 345,
+      "status": "loaded",
+      "sourceNotes": 40,
+      "normalizedNotes": 40,
+      "identityStatuses": {
+        "exact": 40
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 14,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "a4e8b759f57c98bd7f010517a3900cd77093d240ebb63a4356a2ea2ce8db298d",
+      "title": "O Canada!",
+      "fileName": "O Canada!.mid",
+      "fixtureId": "builtin-a4e8b759f57c98bd7f010517a3900cd77093d240ebb63a4356a2ea2ce8db298d",
+      "sourceSha256": "efd73d87b41dc68054274fdd66212e483afa41fe536e65e8a80eec583089233c",
+      "byteLength": 1325,
+      "status": "loaded",
+      "sourceNotes": 198,
+      "normalizedNotes": 198,
+      "identityStatuses": {
+        "exact": 198
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 10,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "a9ae0a115f2a6601e6ef44929dde49d7b509d4736ddde45c6604ae53f4e59829",
+      "title": "O Christmas Tree",
+      "fileName": "O Christmas Tree.mid",
+      "fixtureId": "builtin-a9ae0a115f2a6601e6ef44929dde49d7b509d4736ddde45c6604ae53f4e59829",
+      "sourceSha256": "b20256a09f05ae3a160bd4cc010d1d96f4dbf9d2e48e5ed3edaa369f5789688e",
+      "byteLength": 625,
+      "status": "loaded",
+      "sourceNotes": 87,
+      "normalizedNotes": 87,
+      "identityStatuses": {
+        "exact": 87
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 16,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "cc34d9978a581c3d58347d7c16063d1631e0936a0e044cbe4d18a72d3bc0130c",
+      "title": "Ode to Joy",
+      "fileName": "Ode to Joy.mid",
+      "fixtureId": "builtin-cc34d9978a581c3d58347d7c16063d1631e0936a0e044cbe4d18a72d3bc0130c",
+      "sourceSha256": "9b6050f61f19fccbd46f836a7c1b05417356331fd7f65ffaa15e7ab183fd2a12",
+      "byteLength": 582,
+      "status": "loaded",
+      "sourceNotes": 80,
+      "normalizedNotes": 80,
+      "identityStatuses": {
+        "exact": 80
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 10,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "e626621c923ec3f564435df8c28e7d75cec151bcce4f5772162a0fa6b3baf44e",
+      "title": "Oh Hanukah",
+      "fileName": "Oh Hanukah.mid",
+      "fixtureId": "builtin-e626621c923ec3f564435df8c28e7d75cec151bcce4f5772162a0fa6b3baf44e",
+      "sourceSha256": "6187cb17b7b77fd0b361c17804bfcafa16817c616b47b088203b41ddc414913d",
+      "byteLength": 1039,
+      "status": "loaded",
+      "sourceNotes": 152,
+      "normalizedNotes": 152,
+      "identityStatuses": {
+        "exact": 152
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 14,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "a96b458fbe30e152d48413a964fc94c5f55caca1d6b6305233f930a4b1611f2b",
+      "title": "Oh There Was Once a Little Ship",
+      "fileName": "Oh There Was Once a Little Ship.mid",
+      "fixtureId": "builtin-a96b458fbe30e152d48413a964fc94c5f55caca1d6b6305233f930a4b1611f2b",
+      "sourceSha256": "e2b43184a6f0a7c470d7c0afd8f1e0c81fb702bc0e84292590b7f381792be633",
+      "byteLength": 403,
+      "status": "loaded",
+      "sourceNotes": 49,
+      "normalizedNotes": 49,
+      "identityStatuses": {
+        "exact": 49
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 14,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "a1a5a4d95e7f2e8984c0ca786111c1d7b083f564c0dc64b2bc44dba48ee9d836",
+      "title": "Oh, When the Saints",
+      "fileName": "Oh, When the Saints.mid",
+      "fixtureId": "builtin-a1a5a4d95e7f2e8984c0ca786111c1d7b083f564c0dc64b2bc44dba48ee9d836",
+      "sourceSha256": "992fdbb2752aa9b2cc66442e6bd306e966d8bb39d2bd0e92de3be5d04623f574",
+      "byteLength": 643,
+      "status": "loaded",
+      "sourceNotes": 89,
+      "normalizedNotes": 89,
+      "identityStatuses": {
+        "exact": 89
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 16,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "901a75803805008319197ec9201543a73046fd39557a3188bf58078edd171133",
+      "title": "Old MacDonald",
+      "fileName": "Old MacDonald.mid",
+      "fixtureId": "builtin-901a75803805008319197ec9201543a73046fd39557a3188bf58078edd171133",
+      "sourceSha256": "3495c71066ae1d7ceeddd26d58aff23ae8b1725d0f987d049d82272d8dfa207f",
+      "byteLength": 390,
+      "status": "loaded",
+      "sourceNotes": 49,
+      "normalizedNotes": 49,
+      "identityStatuses": {
+        "exact": 49
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 16,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "1d559b0a4deaeaf0642d53fe9bf65ecda1f22628ec47b89e2f4f5c5a05aee2e5",
+      "title": "Once a Canadian Lad",
+      "fileName": "Once a Canadian Lad.mid",
+      "fixtureId": "builtin-1d559b0a4deaeaf0642d53fe9bf65ecda1f22628ec47b89e2f4f5c5a05aee2e5",
+      "sourceSha256": "7f56fee74f6fc8b01d00a6273dc1111325e6389b1f3e1f16fdd5c14fb4857d03",
+      "byteLength": 806,
+      "status": "loaded",
+      "sourceNotes": 115,
+      "normalizedNotes": 115,
+      "identityStatuses": {
+        "exact": 115
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 12,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "b73636ef17589b61eb1e28f47f57fa4448afb87cc5ec3c39ab9e4194d9de72b3",
+      "title": "Once a Small Green Mousie",
+      "fileName": "Once a Small Green Mousie.mid",
+      "fixtureId": "builtin-b73636ef17589b61eb1e28f47f57fa4448afb87cc5ec3c39ab9e4194d9de72b3",
+      "sourceSha256": "2cdf0f916f281522daba525b84b5db3322363ac03b1d487fc88b9e17cbebeb4e",
+      "byteLength": 416,
+      "status": "loaded",
+      "sourceNotes": 53,
+      "normalizedNotes": 53,
+      "identityStatuses": {
+        "exact": 53
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 16,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "8a903827d9f08d85aab91c3000bb979f66fc8587e164c00a145a941e41ac9c66",
+      "title": "Over the River and Through the Woods",
+      "fileName": "Over the River and Through the Woods.mid",
+      "fixtureId": "builtin-8a903827d9f08d85aab91c3000bb979f66fc8587e164c00a145a941e41ac9c66",
+      "sourceSha256": "f55bfbf1e621290479162ef0bf877a3c950d5eb5766e4f4b328004953fb17916",
+      "byteLength": 1027,
+      "status": "loaded",
+      "sourceNotes": 157,
+      "normalizedNotes": 157,
+      "identityStatuses": {
+        "exact": 157
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 12,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "c45f2fcf525fcfd179fc0a5c9f8d8478b1bcefe87e0b3f03e953131aacb93b4a",
+      "title": "Persian Market Monkey",
+      "fileName": "Persian Market Monkey.mid",
+      "fixtureId": "builtin-c45f2fcf525fcfd179fc0a5c9f8d8478b1bcefe87e0b3f03e953131aacb93b4a",
+      "sourceSha256": "d9f51eda3d107fb6b0e3034f157cb3a27318cc157f8d3a890c733333b36bb785",
+      "byteLength": 443,
+      "status": "loaded",
+      "sourceNotes": 58,
+      "normalizedNotes": 58,
+      "identityStatuses": {
+        "exact": 58
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 12,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "b4bb3d72de5a8524cd803d06c5e7e92f4310a01485aede37bbf28a16cdc6e1ca",
+      "title": "Rain, Rain, Go Away",
+      "fileName": "Rain, Rain, Go Away.mid",
+      "fixtureId": "builtin-b4bb3d72de5a8524cd803d06c5e7e92f4310a01485aede37bbf28a16cdc6e1ca",
+      "sourceSha256": "80ac0770b929ad59f2f2c97d9cf6b07f5b18f3bcf8d4e5fa8ea802a4cfed1c9f",
+      "byteLength": 139,
+      "status": "loaded",
+      "sourceNotes": 12,
+      "normalizedNotes": 12,
+      "identityStatuses": {
+        "exact": 12
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 14,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "80c77c7aa2f2abcd87a99599dc86f150685f4be5ad7c368046259fa44757ba21",
+      "title": "Rock Solid Blues",
+      "fileName": "Rock Solid Blues.mid",
+      "fixtureId": "builtin-80c77c7aa2f2abcd87a99599dc86f150685f4be5ad7c368046259fa44757ba21",
+      "sourceSha256": "b105787686463eca74025f987cfd3848bc0d800479827a4b7fcd13782ce434bc",
+      "byteLength": 1646,
+      "status": "loaded",
+      "sourceNotes": 257,
+      "normalizedNotes": 257,
+      "identityStatuses": {
+        "exact": 257
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 14,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "fc9c7ac3f4b95e4aee2ed8df38928473092e946eef2c533eccd6c5b4463a94aa",
+      "title": "Rondino",
+      "fileName": "Rondino.mid",
+      "fixtureId": "builtin-fc9c7ac3f4b95e4aee2ed8df38928473092e946eef2c533eccd6c5b4463a94aa",
+      "sourceSha256": "6b05001b78791e0c5676ffdbe826551881c888208d43cb566dd97bd0bb1d5694",
+      "byteLength": 1598,
+      "status": "loaded",
+      "sourceNotes": 250,
+      "normalizedNotes": 250,
+      "identityStatuses": {
+        "exact": 250
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 14,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "c5f8ac53aa9a5593a483699eb58e0e5dbf65a7e6dba2510ff039576a21e9e806",
+      "title": "Row, Row, Row your Boat",
+      "fileName": "Row, Row, Row your Boat.mid",
+      "fixtureId": "builtin-c5f8ac53aa9a5593a483699eb58e0e5dbf65a7e6dba2510ff039576a21e9e806",
+      "sourceSha256": "a74d21cd1663469fc8dd5087f0658deb2a0e3c92a9df9e25a8b0eb7956478fd2",
+      "byteLength": 253,
+      "status": "loaded",
+      "sourceNotes": 27,
+      "normalizedNotes": 27,
+      "identityStatuses": {
+        "exact": 27
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 16,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "3a75fa98b787896ba9718979df5decfd61a55d62dbf41d77f11d1c17353730fa",
+      "title": "Russian Folksong",
+      "fileName": "Russian Folksong.mid",
+      "fixtureId": "builtin-3a75fa98b787896ba9718979df5decfd61a55d62dbf41d77f11d1c17353730fa",
+      "sourceSha256": "cd426535d18f3f5f117bd9f516bec35c247db149425954c1148cc70d4382dde5",
+      "byteLength": 1115,
+      "status": "loaded",
+      "sourceNotes": 172,
+      "normalizedNotes": 172,
+      "identityStatuses": {
+        "exact": 172
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 14,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "3dc3adb03ddca68610bea6c5545da45ffb111eedd1228385e68bc2d6822143c2",
+      "title": "See How the Night Arrives",
+      "fileName": "See How the Night Arrives.mid",
+      "fixtureId": "builtin-3dc3adb03ddca68610bea6c5545da45ffb111eedd1228385e68bc2d6822143c2",
+      "sourceSha256": "1d2e7254b15ebbb62aa45c2a5abf0bee5e06301fbace4219b0639bb0fc3fc1bd",
+      "byteLength": 1886,
+      "status": "loaded",
+      "sourceNotes": 295,
+      "normalizedNotes": 295,
+      "identityStatuses": {
+        "exact": 295
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 16,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "4232481a81495879e8ba808b81fa56d1a0fc3b29cbdd925adcdfef2fead4fafa",
+      "title": "Sevivon, Sov, Sov, Sov",
+      "fileName": "Sevivon, Sov, Sov, Sov.mid",
+      "fixtureId": "builtin-4232481a81495879e8ba808b81fa56d1a0fc3b29cbdd925adcdfef2fead4fafa",
+      "sourceSha256": "6248e162a96e1fe3962b488672894aa93d14eddc0f40195961c37eee0371f949",
+      "byteLength": 784,
+      "status": "loaded",
+      "sourceNotes": 114,
+      "normalizedNotes": 114,
+      "identityStatuses": {
+        "exact": 114
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 10,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "e009465a5d19d338c1ed0d03afd4c369ef100bba5194a2b23dfb60c9bb741745",
+      "title": "Shuha D-Maryam",
+      "fileName": "Shuha D-Maryam.mid",
+      "fixtureId": "builtin-e009465a5d19d338c1ed0d03afd4c369ef100bba5194a2b23dfb60c9bb741745",
+      "sourceSha256": "17bd73eba7d9f453ab84c51d6fb35008e065c0383baa9036eafbde4604e80466",
+      "byteLength": 741,
+      "status": "loaded",
+      "sourceNotes": 108,
+      "normalizedNotes": 108,
+      "identityStatuses": {
+        "exact": 108
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 12,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "5b7841542a69e99d7a70395c73784b0f999e486a851c04e88497c4e57266f3d0",
+      "title": "Silent Night",
+      "fileName": "Silent Night.mid",
+      "fixtureId": "builtin-5b7841542a69e99d7a70395c73784b0f999e486a851c04e88497c4e57266f3d0",
+      "sourceSha256": "d44949f2a9dd2c5807c63462ddc748b2cc8cd8809cf9338ec08a747a139a7e2f",
+      "byteLength": 735,
+      "status": "loaded",
+      "sourceNotes": 102,
+      "normalizedNotes": 102,
+      "identityStatuses": {
+        "exact": 102
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 14,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "417e2ef96619360d19a8c27b1814eb2c32007c56bcc2476c56e782f595024dbb",
+      "title": "Skip to my Lou",
+      "fileName": "Skip to my Lou.mid",
+      "fixtureId": "builtin-417e2ef96619360d19a8c27b1814eb2c32007c56bcc2476c56e782f595024dbb",
+      "sourceSha256": "fd5b439d9ee9dd041f89d1206fa1357c7895620528d657a148aca42ed14f0f63",
+      "byteLength": 1004,
+      "status": "loaded",
+      "sourceNotes": 143,
+      "normalizedNotes": 143,
+      "identityStatuses": {
+        "exact": 143
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 8,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "8bbcc5a2247fa31ee4d2655b0eab5223a73955edd5eb955b4f1accbadae10973",
+      "title": "Sonatina Piccolina",
+      "fileName": "Sonatina Piccolina.mid",
+      "fixtureId": "builtin-8bbcc5a2247fa31ee4d2655b0eab5223a73955edd5eb955b4f1accbadae10973",
+      "sourceSha256": "083216ad38ccaf7517af4c9640338537eefecae2e58fd2172bb07d20c43f296e",
+      "byteLength": 3176,
+      "status": "loaded",
+      "sourceNotes": 479,
+      "normalizedNotes": 479,
+      "identityStatuses": {
+        "exact": 479
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 18,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "11e8ba375e2933066a426ec048c4d0de96622c70d0f37e1ae55f754419874615",
+      "title": "Sonatina in C",
+      "fileName": "Sonatina in C.mid",
+      "fixtureId": "builtin-11e8ba375e2933066a426ec048c4d0de96622c70d0f37e1ae55f754419874615",
+      "sourceSha256": "c508b07a0f8986353dd1a06874ef4545d7a283fe1300ca401497612c7e106a8a",
+      "byteLength": 587,
+      "status": "loaded",
+      "sourceNotes": 81,
+      "normalizedNotes": 81,
+      "identityStatuses": {
+        "exact": 81
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 12,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "2fc4686c16d14b29c1e0d61341e1fd3b8052824898ac4232b2cddbbdc0e13cf5",
+      "title": "Sonatina in G",
+      "fileName": "Sonatina in G.mid",
+      "fixtureId": "builtin-2fc4686c16d14b29c1e0d61341e1fd3b8052824898ac4232b2cddbbdc0e13cf5",
+      "sourceSha256": "33f0b7d8dbd65f01c78b6ecda8c8657ca4cc2c802c3f97fad94ba311e7dcfe7a",
+      "byteLength": 3615,
+      "status": "loaded",
+      "sourceNotes": 563,
+      "normalizedNotes": 563,
+      "identityStatuses": {
+        "exact": 563
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 20,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "ad366e5e4219eed550b0ab491b2ee7b05d4b668aca64c1a64037005f1592faee",
+      "title": "Sur le Pont d'Avignon",
+      "fileName": "Sur le Pont d'Avignon.mid",
+      "fixtureId": "builtin-ad366e5e4219eed550b0ab491b2ee7b05d4b668aca64c1a64037005f1592faee",
+      "sourceSha256": "9dd127d4de3e6f5e1b70688227fe5c01050aecbf1fd9423f58b7c8f94f51ffe1",
+      "byteLength": 811,
+      "status": "loaded",
+      "sourceNotes": 119,
+      "normalizedNotes": 119,
+      "identityStatuses": {
+        "exact": 119
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 12,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "58b913e083a3dab9750c08ae6221e885d5f59f7170c97d417dcc8433d5ef2439",
+      "title": "Surprise!",
+      "fileName": "Surprise!.mid",
+      "fixtureId": "builtin-58b913e083a3dab9750c08ae6221e885d5f59f7170c97d417dcc8433d5ef2439",
+      "sourceSha256": "d019a10b1c1903fc6f48d453c1879df8d46a4574829250a80f726a2ccfc2cfc0",
+      "byteLength": 261,
+      "status": "loaded",
+      "sourceNotes": 29,
+      "normalizedNotes": 29,
+      "identityStatuses": {
+        "exact": 29
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 14,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "9b4c092ace6eeca31b3b4b70c2da96186395d3358fb678e9b6ddf32f7c47e017",
+      "title": "Swing Low, Sweet Chariot",
+      "fileName": "Swing Low, Sweet Chariot.mid",
+      "fixtureId": "builtin-9b4c092ace6eeca31b3b4b70c2da96186395d3358fb678e9b6ddf32f7c47e017",
+      "sourceSha256": "6f072e129a511306b03014193eab4207d13f9bfa629db71e12d86926e341b907",
+      "byteLength": 951,
+      "status": "loaded",
+      "sourceNotes": 140,
+      "normalizedNotes": 140,
+      "identityStatuses": {
+        "exact": 140
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 16,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "f9998035ec9bf99ee60f69b944cc407c7dbb2d8c875aca174620868d8f34e69c",
+      "title": "The Ants Go Marching",
+      "fileName": "The Ants Go Marching.mid",
+      "fixtureId": "builtin-f9998035ec9bf99ee60f69b944cc407c7dbb2d8c875aca174620868d8f34e69c",
+      "sourceSha256": "06266b4e187d488cda3b2a57e9f2e257e9da8c2b441144c2a4199b1fc2e07ca6",
+      "byteLength": 1302,
+      "status": "loaded",
+      "sourceNotes": 185,
+      "normalizedNotes": 185,
+      "identityStatuses": {
+        "exact": 185
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 16,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "aaba830929cd4082c1eb27fe3e41b65e3c9f09d14f2151a39b82c4b5fb366e52",
+      "title": "The Barn Cat",
+      "fileName": "The Barn Cat.mid",
+      "fixtureId": "builtin-aaba830929cd4082c1eb27fe3e41b65e3c9f09d14f2151a39b82c4b5fb366e52",
+      "sourceSha256": "f3b57ef051db3cbec786ed8934a5fd1275670602f5effdc461ddeb45e8ed40c5",
+      "byteLength": 932,
+      "status": "loaded",
+      "sourceNotes": 134,
+      "normalizedNotes": 134,
+      "identityStatuses": {
+        "exact": 134
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 14,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "e7cfae2b6f08225f1287939ef12347c8fa84c59e6afebff6995425e336bd93ed",
+      "title": "The Chimes",
+      "fileName": "The Chimes.mid",
+      "fixtureId": "builtin-e7cfae2b6f08225f1287939ef12347c8fa84c59e6afebff6995425e336bd93ed",
+      "sourceSha256": "6ff37405510e7ac6a50bd64a778e17665936152d42f0225c0cd2ccd7083726fe",
+      "byteLength": 244,
+      "status": "loaded",
+      "sourceNotes": 25,
+      "normalizedNotes": 25,
+      "identityStatuses": {
+        "exact": 25
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 14,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "8d151faaf7361d6024e851d1d656199ee1311b01e4a0622c1a5e367796e2f5d5",
+      "title": "The Entertainer",
+      "fileName": "The Entertainer.mid",
+      "fixtureId": "builtin-8d151faaf7361d6024e851d1d656199ee1311b01e4a0622c1a5e367796e2f5d5",
+      "sourceSha256": "88525d7a7d1a6966370ef8efb6535d42e570a5f21bedc46c17d3d78fe75e199c",
+      "byteLength": 1214,
+      "status": "loaded",
+      "sourceNotes": 176,
+      "normalizedNotes": 176,
+      "identityStatuses": {
+        "exact": 176
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 16,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "5bfa77fa42b802391806b544381b9fd70b8ba1c16f73a7a176763921a4566049",
+      "title": "The First Noel",
+      "fileName": "The First Noel.mid",
+      "fixtureId": "builtin-5bfa77fa42b802391806b544381b9fd70b8ba1c16f73a7a176763921a4566049",
+      "sourceSha256": "ce146c206d1c7d3411c456f934ce40db9f3bb20e5cacbfc147eaa020a2a4d82d",
+      "byteLength": 544,
+      "status": "loaded",
+      "sourceNotes": 74,
+      "normalizedNotes": 74,
+      "identityStatuses": {
+        "exact": 74
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 14,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "d5a03e633506c50ccb5c84fec6339a2654781829255935cceefa8df4b762d94d",
+      "title": "The Four Seasons - Autumn",
+      "fileName": "The Four Seasons - Autumn.mid",
+      "fixtureId": "builtin-d5a03e633506c50ccb5c84fec6339a2654781829255935cceefa8df4b762d94d",
+      "sourceSha256": "3c01d3ce38a4f62d48bc0e20c3075fbc65ac71c348c1efcbdd6b1ca21852a420",
+      "byteLength": 2987,
+      "status": "loaded",
+      "sourceNotes": 477,
+      "normalizedNotes": 477,
+      "identityStatuses": {
+        "exact": 477
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 14,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "060733b5c7fa791614856c57f15b16217e29670e9a631b8f7db03efb425da298",
+      "title": "The Ghost Of Tom",
+      "fileName": "The Ghost Of Tom.mid",
+      "fixtureId": "builtin-060733b5c7fa791614856c57f15b16217e29670e9a631b8f7db03efb425da298",
+      "sourceSha256": "f3d4c226ef814784cb65561262168bfebcd0a5f83bef339cc8c626cc3a9a0c3c",
+      "byteLength": 478,
+      "status": "loaded",
+      "sourceNotes": 65,
+      "normalizedNotes": 65,
+      "identityStatuses": {
+        "exact": 65
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 14,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "644ee346cac77fbb0318a00abc6f93d04807310dee1b78d78068309b5e31e182",
+      "title": "The Monkey and the Mirror",
+      "fileName": "The Monkey and the Mirror.mid",
+      "fixtureId": "builtin-644ee346cac77fbb0318a00abc6f93d04807310dee1b78d78068309b5e31e182",
+      "sourceSha256": "becaa893707e9fe71aa4a20652418b7bc751a997ae82e0750be96bd99ddfc963",
+      "byteLength": 334,
+      "status": "loaded",
+      "sourceNotes": 40,
+      "normalizedNotes": 40,
+      "identityStatuses": {
+        "exact": 40
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 16,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "95b57cac5b09a0e5b74b52bb52050baa48f8ea94fde0c91d3a1c0ea2f797fede",
+      "title": "The Muffin Man",
+      "fileName": "The Muffin Man.mid",
+      "fixtureId": "builtin-95b57cac5b09a0e5b74b52bb52050baa48f8ea94fde0c91d3a1c0ea2f797fede",
+      "sourceSha256": "742ad1bc6c92287c251f4dd4443214ffbc5aaaca68cb02a032da546d1b5a343f",
+      "byteLength": 755,
+      "status": "loaded",
+      "sourceNotes": 104,
+      "normalizedNotes": 104,
+      "identityStatuses": {
+        "exact": 104
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 12,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "4f36290d1a37a7ffd9d63490882612889383e0d43764ff1d261f9852b2633574",
+      "title": "The Silly Seal",
+      "fileName": "The Silly Seal.mid",
+      "fixtureId": "builtin-4f36290d1a37a7ffd9d63490882612889383e0d43764ff1d261f9852b2633574",
+      "sourceSha256": "454266646ee4e0b0aa3bbde260107fecd069f30fb818affd822252df8dea9a61",
+      "byteLength": 427,
+      "status": "loaded",
+      "sourceNotes": 54,
+      "normalizedNotes": 54,
+      "identityStatuses": {
+        "exact": 54
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 16,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "a7975f2d7734b91d0cfea8a8c238786d2cb9d9d1b840426a2d9ed859e4b6e20a",
+      "title": "The Star-Spangled Banner",
+      "fileName": "The Star-Spangled Banner.mid",
+      "fixtureId": "builtin-a7975f2d7734b91d0cfea8a8c238786d2cb9d9d1b840426a2d9ed859e4b6e20a",
+      "sourceSha256": "0eee802638985612ddb844363032a932c3bbd6302d0e96f50ee53c568e831711",
+      "byteLength": 1176,
+      "status": "loaded",
+      "sourceNotes": 171,
+      "normalizedNotes": 171,
+      "identityStatuses": {
+        "exact": 171
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 14,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "7804a2d87d9ee975943d690d414792567a1f4b122db04ba3c552b887608ef41e",
+      "title": "The Wheels on the Bus",
+      "fileName": "The Wheels on the Bus.mid",
+      "fixtureId": "builtin-7804a2d87d9ee975943d690d414792567a1f4b122db04ba3c552b887608ef41e",
+      "sourceSha256": "0196b672d7711b1c7a0c3d1822588c0b1327f1e5a430e263e25d5f3a258860c5",
+      "byteLength": 346,
+      "status": "loaded",
+      "sourceNotes": 41,
+      "normalizedNotes": 41,
+      "identityStatuses": {
+        "exact": 41
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 14,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "6540fccb264717e700fdbc0a267028f8e29d5f140ce616e63166b390bb7dab49",
+      "title": "The Yellow Rose of Texas",
+      "fileName": "The Yellow Rose of Texas.mid",
+      "fixtureId": "builtin-6540fccb264717e700fdbc0a267028f8e29d5f140ce616e63166b390bb7dab49",
+      "sourceSha256": "103e189e2cd52d25fd82addad070a2874c3991fd9d8f055635b30149ac7f6680",
+      "byteLength": 788,
+      "status": "loaded",
+      "sourceNotes": 110,
+      "normalizedNotes": 110,
+      "identityStatuses": {
+        "exact": 110
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 16,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "a8f2a4e25b54bbe83f9701f12659a850b5f91435d691efd30baa7600198fbb20",
+      "title": "This Old Man",
+      "fileName": "This Old Man.mid",
+      "fixtureId": "builtin-a8f2a4e25b54bbe83f9701f12659a850b5f91435d691efd30baa7600198fbb20",
+      "sourceSha256": "3df11a9a153d9551eeca3622a417792da23772b34b652872ce33693fb95184b0",
+      "byteLength": 468,
+      "status": "loaded",
+      "sourceNotes": 63,
+      "normalizedNotes": 63,
+      "identityStatuses": {
+        "exact": 63
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 10,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "822c06d925aa8ed1d35247dd7b6321afe0773da33700574ce5be67bdff4bab79",
+      "title": "Toccata and Fugue in D minor - intro",
+      "fileName": "Toccata and Fugue in D minor - intro.mid",
+      "fixtureId": "builtin-822c06d925aa8ed1d35247dd7b6321afe0773da33700574ce5be67bdff4bab79",
+      "sourceSha256": "d8993d9062bcf8d237e756d6863b25f0fbed69bdb487073e0c24c09347392fc3",
+      "byteLength": 314,
+      "status": "loaded",
+      "sourceNotes": 37,
+      "normalizedNotes": 37,
+      "identityStatuses": {
+        "exact": 37
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 16,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "1cab8ed76b92ef76c1a732b1787c524b011993e282d2ad1cded36bcf51dcfc69",
+      "title": "Toreador from Carmen",
+      "fileName": "Toreador from Carmen.mid",
+      "fixtureId": "builtin-1cab8ed76b92ef76c1a732b1787c524b011993e282d2ad1cded36bcf51dcfc69",
+      "sourceSha256": "1da7e293d44f3da87186b50399756e5156ee2b7f02e9e7979324a2303542e246",
+      "byteLength": 1660,
+      "status": "loaded",
+      "sourceNotes": 258,
+      "normalizedNotes": 258,
+      "identityStatuses": {
+        "exact": 258
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 10,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "9b813a2aff4c6dfc9b891422944e174ead94458b3b475f6e7fea361437eb609b",
+      "title": "Turkey in the Straw",
+      "fileName": "Turkey in the Straw.mid",
+      "fixtureId": "builtin-9b813a2aff4c6dfc9b891422944e174ead94458b3b475f6e7fea361437eb609b",
+      "sourceSha256": "23d1d875b6852d9d1c38408f92160bbedf1ee5dbaaae1752e27cf25d1e3f557f",
+      "byteLength": 472,
+      "status": "loaded",
+      "sourceNotes": 64,
+      "normalizedNotes": 64,
+      "identityStatuses": {
+        "exact": 64
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 14,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "fce145ffe45f75b0ab38d67ba086f366da90dfce9a2e5f954d8adf8c13e4aa1a",
+      "title": "Twinkle, Twinkle, Little Star",
+      "fileName": "Twinkle, Twinkle, Little Star.mid",
+      "fixtureId": "builtin-fce145ffe45f75b0ab38d67ba086f366da90dfce9a2e5f954d8adf8c13e4aa1a",
+      "sourceSha256": "4c87e81095b181a4124c2b0212d77d8787bc5c780be2c7faca00f50064894874",
+      "byteLength": 345,
+      "status": "loaded",
+      "sourceNotes": 42,
+      "normalizedNotes": 42,
+      "identityStatuses": {
+        "exact": 42
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 16,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "6fe01d1a46f53a7337149ff8f68f2bf66561759359d4be198bf0c00f3b8c8506",
+      "title": "Waltzing Matilda",
+      "fileName": "Waltzing Matilda.mid",
+      "fixtureId": "builtin-6fe01d1a46f53a7337149ff8f68f2bf66561759359d4be198bf0c00f3b8c8506",
+      "sourceSha256": "49cdde786e3a6c40b948ff15765e9577c62783e8e3fd1afe53b1c195874f783e",
+      "byteLength": 982,
+      "status": "loaded",
+      "sourceNotes": 139,
+      "normalizedNotes": 139,
+      "identityStatuses": {
+        "exact": 139
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 12,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "1d3b3e84f5ce852e26d11b7b3673f02bc84fc642389d3d7f2bab9172d7bdfe4a",
+      "title": "We Gather Together",
+      "fileName": "We Gather Together.mid",
+      "fixtureId": "builtin-1d3b3e84f5ce852e26d11b7b3673f02bc84fc642389d3d7f2bab9172d7bdfe4a",
+      "sourceSha256": "a51e13e5fd81156addfc80d4afeab89e601a8e65ee431c655d3fbf3639150ddc",
+      "byteLength": 382,
+      "status": "loaded",
+      "sourceNotes": 48,
+      "normalizedNotes": 48,
+      "identityStatuses": {
+        "exact": 48
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 16,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "1d32561fd0c6bdaf02aefb44145f6bacd969cb7b40008dc7d3620483cf7f2051",
+      "title": "We Three Kings",
+      "fileName": "We Three Kings.mid",
+      "fixtureId": "builtin-1d32561fd0c6bdaf02aefb44145f6bacd969cb7b40008dc7d3620483cf7f2051",
+      "sourceSha256": "f80b2e7b3673ec46d1714dce6d765cb6542accb26088493a0794efd0ba5ac512",
+      "byteLength": 906,
+      "status": "loaded",
+      "sourceNotes": 128,
+      "normalizedNotes": 128,
+      "identityStatuses": {
+        "exact": 128
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 12,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "7dac01f25349bc78f3f197dd69c1a651315f0d013a55e7369d3781914b0d7f12",
+      "title": "We Three Kings (Short Version)",
+      "fileName": "We Three Kings (Short Version).mid",
+      "fixtureId": "builtin-7dac01f25349bc78f3f197dd69c1a651315f0d013a55e7369d3781914b0d7f12",
+      "sourceSha256": "59922ecde503fe76606f0f36ca691d1afc23fd71c1f54a6033d2a139025780d3",
+      "byteLength": 184,
+      "status": "loaded",
+      "sourceNotes": 16,
+      "normalizedNotes": 16,
+      "identityStatuses": {
+        "exact": 16
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 16,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "30c01f4b019de551ca5f2c6bd000e9ebc912d97e42e3a9eee520194dfd7bd3d3",
+      "title": "We Wish You a Merry Christmas",
+      "fileName": "We Wish You a Merry Christmas.mid",
+      "fixtureId": "builtin-30c01f4b019de551ca5f2c6bd000e9ebc912d97e42e3a9eee520194dfd7bd3d3",
+      "sourceSha256": "269ad931353c916ba6df6bf8594ac2404001442dffd0cb212550f52b02245c93",
+      "byteLength": 268,
+      "status": "loaded",
+      "sourceNotes": 30,
+      "normalizedNotes": 30,
+      "identityStatuses": {
+        "exact": 30
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 14,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "cb56ea87f0e4842797eb76d4d8b90d4aa4c1165fd91d75103dca85a98980879c",
+      "title": "Yankee Doodle",
+      "fileName": "Yankee Doodle.mid",
+      "fixtureId": "builtin-cb56ea87f0e4842797eb76d4d8b90d4aa4c1165fd91d75103dca85a98980879c",
+      "sourceSha256": "9a69b4784e16b453991b7c3a1e0ec21e430135e39b8d378b73347fc2967f572f",
+      "byteLength": 256,
+      "status": "loaded",
+      "sourceNotes": 28,
+      "normalizedNotes": 28,
+      "identityStatuses": {
+        "exact": 28
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 16,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "e500b8f8271cf6e1bf21fc1d30b5986e909c3fb8ebf5fd7944500188013c716f",
+      "title": "Ye Knights of the Round Table",
+      "fileName": "Ye Knights of the Round Table.mid",
+      "fixtureId": "builtin-e500b8f8271cf6e1bf21fc1d30b5986e909c3fb8ebf5fd7944500188013c716f",
+      "sourceSha256": "f860a19c294efccf5c76fba9a46f8f8c0a97d0b51b577f14a63e65972a944909",
+      "byteLength": 961,
+      "status": "loaded",
+      "sourceNotes": 130,
+      "normalizedNotes": 130,
+      "identityStatuses": {
+        "exact": 130
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 12,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "8311d6fd7f6f7cbeb0e99622bbde7f5b47e9df05ae21c2759d66ea504e9cf1b0",
+      "title": "major arpeggios - parallel 8ve apart - 1 octave - 1st inversion - legato - simple",
+      "fileName": "major arpeggios - parallel 8ve apart - 1 octave - 1st inversion - legato - simple.mid",
+      "fixtureId": "builtin-8311d6fd7f6f7cbeb0e99622bbde7f5b47e9df05ae21c2759d66ea504e9cf1b0",
+      "sourceSha256": "5838a3b218500231616bdcc24d44615139ecfa298be148e78a9707d32fbe1f3b",
+      "byteLength": 2245,
+      "status": "loaded",
+      "sourceNotes": 168,
+      "normalizedNotes": 168,
+      "identityStatuses": {
+        "exact": 168
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 8,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "1f599084987ee7c17acabe6ffff6da4042ca9551a515924be6f6116d7a5c6221",
+      "title": "major arpeggios - parallel 8ve apart - 1 octave - 2nd inversion - legato - simple",
+      "fileName": "major arpeggios - parallel 8ve apart - 1 octave - 2nd inversion - legato - simple.mid",
+      "fixtureId": "builtin-1f599084987ee7c17acabe6ffff6da4042ca9551a515924be6f6116d7a5c6221",
+      "sourceSha256": "7369c765dd767ba8e56f8c363191640e56ded16044a3924c1c3e6873efba64bd",
+      "byteLength": 2239,
+      "status": "loaded",
+      "sourceNotes": 168,
+      "normalizedNotes": 168,
+      "identityStatuses": {
+        "exact": 168
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 8,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "1ec34fc9539847419afda28edbe5191a2b1c36a833ff839c0bf86c7b54a06330",
+      "title": "major arpeggios - parallel 8ve apart - 1 octave - root position - legato - simple",
+      "fileName": "major arpeggios - parallel 8ve apart - 1 octave - root position - legato - simple.mid",
+      "fixtureId": "builtin-1ec34fc9539847419afda28edbe5191a2b1c36a833ff839c0bf86c7b54a06330",
+      "sourceSha256": "13d2a41ab2a70b6cd56552735173da88c538ef137a9ed99a7ef9ff0bf6f98bde",
+      "byteLength": 2245,
+      "status": "loaded",
+      "sourceNotes": 168,
+      "normalizedNotes": 168,
+      "identityStatuses": {
+        "exact": 168
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 8,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "9299c04e09c682a7adba87fd1c5089758e94cfc5d1ee898602da7094ec7982c2",
+      "title": "major arpeggios - parallel 8ve apart - 2 octaves - 1st inversion - legato - simple",
+      "fileName": "major arpeggios - parallel 8ve apart - 2 octaves - 1st inversion - legato - simple.mid",
+      "fixtureId": "builtin-9299c04e09c682a7adba87fd1c5089758e94cfc5d1ee898602da7094ec7982c2",
+      "sourceSha256": "8c7a7962060d9eb2a42df6738e86f60e0d9d65e9e40cd6d87f160cfaefc35ad8",
+      "byteLength": 3550,
+      "status": "loaded",
+      "sourceNotes": 312,
+      "normalizedNotes": 312,
+      "identityStatuses": {
+        "exact": 312
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 8,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "5abb3643649ce20f8fc8e4666a83012767edd1e449b1662459dea5e03fd89d34",
+      "title": "major arpeggios - parallel 8ve apart - 2 octaves - 2nd inversion - legato - simple",
+      "fileName": "major arpeggios - parallel 8ve apart - 2 octaves - 2nd inversion - legato - simple.mid",
+      "fixtureId": "builtin-5abb3643649ce20f8fc8e4666a83012767edd1e449b1662459dea5e03fd89d34",
+      "sourceSha256": "18ae134833571f58fe5aee9231b4ce1dd474bab7bd6b9d791c806cef99756437",
+      "byteLength": 3544,
+      "status": "loaded",
+      "sourceNotes": 312,
+      "normalizedNotes": 312,
+      "identityStatuses": {
+        "exact": 312
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 8,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "3a9345d273c0b19d1b8cef73573f21a2dcb8e09cd67ea6bfaed748aa7b85a691",
+      "title": "major arpeggios - parallel 8ve apart - 2 octaves - root position - legato - simple",
+      "fileName": "major arpeggios - parallel 8ve apart - 2 octaves - root position - legato - simple.mid",
+      "fixtureId": "builtin-3a9345d273c0b19d1b8cef73573f21a2dcb8e09cd67ea6bfaed748aa7b85a691",
+      "sourceSha256": "d17448adc378c960e9827dd9760f49aeeac784bdf84944376071ddfae3a7767d",
+      "byteLength": 3546,
+      "status": "loaded",
+      "sourceNotes": 312,
+      "normalizedNotes": 312,
+      "identityStatuses": {
+        "exact": 312
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 8,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "7fd6939a6eae0afa16630f9cdf3f9c01e31bb662682d23066653d65f76bbe608",
+      "title": "major arpeggios - parallel 8ve apart - 3 octaves - 1st inversion - legato - simple",
+      "fileName": "major arpeggios - parallel 8ve apart - 3 octaves - 1st inversion - legato - simple.mid",
+      "fixtureId": "builtin-7fd6939a6eae0afa16630f9cdf3f9c01e31bb662682d23066653d65f76bbe608",
+      "sourceSha256": "d8cf481956831ac4714a6fee56bebdc97354edb347b229e7193116652e914fcd",
+      "byteLength": 4828,
+      "status": "loaded",
+      "sourceNotes": 456,
+      "normalizedNotes": 456,
+      "identityStatuses": {
+        "exact": 456
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 8,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "ea805173cc6cc593f2ed271c9c62c1d6f0fde23da001357e9cdda796949453f4",
+      "title": "major arpeggios - parallel 8ve apart - 3 octaves - 2nd inversion - legato - simple",
+      "fileName": "major arpeggios - parallel 8ve apart - 3 octaves - 2nd inversion - legato - simple.mid",
+      "fixtureId": "builtin-ea805173cc6cc593f2ed271c9c62c1d6f0fde23da001357e9cdda796949453f4",
+      "sourceSha256": "568b32c008a639d6eef9ca451e2aeb7d2db6f29861b2f715555ce828d67c76f4",
+      "byteLength": 4842,
+      "status": "loaded",
+      "sourceNotes": 456,
+      "normalizedNotes": 456,
+      "identityStatuses": {
+        "exact": 456
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 8,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "a161f34128bd3044bfb88d31398f954aff74d33dbfeff411d4387637b4b2de06",
+      "title": "major arpeggios - parallel 8ve apart - 3 octaves - root position - legato - simple",
+      "fileName": "major arpeggios - parallel 8ve apart - 3 octaves - root position - legato - simple.mid",
+      "fixtureId": "builtin-a161f34128bd3044bfb88d31398f954aff74d33dbfeff411d4387637b4b2de06",
+      "sourceSha256": "009d6f4f47bfb42f1cc0386d5de76a09442ff5bd75fa68d98f5eaaf764bb5588",
+      "byteLength": 4846,
+      "status": "loaded",
+      "sourceNotes": 456,
+      "normalizedNotes": 456,
+      "identityStatuses": {
+        "exact": 456
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 8,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "ddc7643886446154084c4b909459556a8321f2f820b4123bf7ee073e7c257863",
+      "title": "major arpeggios - parallel 8ve apart - 4 octaves - 1st inversion - legato - simple",
+      "fileName": "major arpeggios - parallel 8ve apart - 4 octaves - 1st inversion - legato - simple.mid",
+      "fixtureId": "builtin-ddc7643886446154084c4b909459556a8321f2f820b4123bf7ee073e7c257863",
+      "sourceSha256": "c6d51df4ed1409a070a3c5cac74f3660bdcaf1030276736e379f79c86b16a699",
+      "byteLength": 6146,
+      "status": "loaded",
+      "sourceNotes": 600,
+      "normalizedNotes": 600,
+      "identityStatuses": {
+        "exact": 600
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 8,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "1429e0601428b0c32af9df3e255a8bb6b2453baabd43d44cc1a3e012d6fcadd6",
+      "title": "major arpeggios - parallel 8ve apart - 4 octaves - 2nd inversion - legato - simple",
+      "fileName": "major arpeggios - parallel 8ve apart - 4 octaves - 2nd inversion - legato - simple.mid",
+      "fixtureId": "builtin-1429e0601428b0c32af9df3e255a8bb6b2453baabd43d44cc1a3e012d6fcadd6",
+      "sourceSha256": "b04c575e95848a0e5045690fb13843bafcc854afd2f0c71cb4471848d69003e8",
+      "byteLength": 6142,
+      "status": "loaded",
+      "sourceNotes": 600,
+      "normalizedNotes": 600,
+      "identityStatuses": {
+        "exact": 600
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 8,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "21bc11b530964d212c3c9f2caa15c2047ae6c216ce3be32182ce01df8beca028",
+      "title": "major arpeggios - parallel 8ve apart - 4 octaves - root position - legato - simple",
+      "fileName": "major arpeggios - parallel 8ve apart - 4 octaves - root position - legato - simple.mid",
+      "fixtureId": "builtin-21bc11b530964d212c3c9f2caa15c2047ae6c216ce3be32182ce01df8beca028",
+      "sourceSha256": "d686e0903792e1970f1d99a90505e2475387bd90039e6d209f50f83eb466cd1b",
+      "byteLength": 6142,
+      "status": "loaded",
+      "sourceNotes": 600,
+      "normalizedNotes": 600,
+      "identityStatuses": {
+        "exact": 600
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 8,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "5de5db3c4857820624aa3a5dfac72845e3e70b70ba49c4956de65f360dd49b89",
+      "title": "major scales - parallel 8ve apart - 1 octave - legato - simple",
+      "fileName": "major scales - parallel 8ve apart - 1 octave - legato - simple.mid",
+      "fixtureId": "builtin-5de5db3c4857820624aa3a5dfac72845e3e70b70ba49c4956de65f360dd49b89",
+      "sourceSha256": "d7e6e7ec35cd3594800592f74e957c31d1ae85d9f129f9ebd4fbdcf7f5a75ff6",
+      "byteLength": 3956,
+      "status": "loaded",
+      "sourceNotes": 360,
+      "normalizedNotes": 360,
+      "identityStatuses": {
+        "exact": 360
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 8,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "c9dc810c888efac4c1bc24584f8685edec688aceff85bd67534a554af1f85498",
+      "title": "major scales - parallel 8ve apart - 2 octaves - legato - simple",
+      "fileName": "major scales - parallel 8ve apart - 2 octaves - legato - simple.mid",
+      "fixtureId": "builtin-c9dc810c888efac4c1bc24584f8685edec688aceff85bd67534a554af1f85498",
+      "sourceSha256": "c57b3ddaa14a48461567c57b6b3629b2be0d9f7b0eb3a97d3df69cf01537342f",
+      "byteLength": 6981,
+      "status": "loaded",
+      "sourceNotes": 696,
+      "normalizedNotes": 696,
+      "identityStatuses": {
+        "exact": 696
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 8,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "48f31f0ee1c5b3d55dbdbe0e1c8a85f0c93e532c3fea0a5ed6b88cf1803ed641",
+      "title": "major scales - parallel 8ve apart - 3 octaves - legato - simple",
+      "fileName": "major scales - parallel 8ve apart - 3 octaves - legato - simple.mid",
+      "fixtureId": "builtin-48f31f0ee1c5b3d55dbdbe0e1c8a85f0c93e532c3fea0a5ed6b88cf1803ed641",
+      "sourceSha256": "d52d42d9dd22b400ef8f13ec8bb218310e2e5b1f159e0297d8af877ddb1dd26e",
+      "byteLength": 9993,
+      "status": "loaded",
+      "sourceNotes": 1032,
+      "normalizedNotes": 1032,
+      "identityStatuses": {
+        "exact": 1032
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 8,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "abbd586be92a928ebf013f059f6eab18196e4e3b87027c04a4800d0348aa498b",
+      "title": "major scales - parallel 8ve apart - 4 octaves - legato - simple",
+      "fileName": "major scales - parallel 8ve apart - 4 octaves - legato - simple.mid",
+      "fixtureId": "builtin-abbd586be92a928ebf013f059f6eab18196e4e3b87027c04a4800d0348aa498b",
+      "sourceSha256": "30b8259c96dfa07aaed660ac2b385b80329d4b2f98b5839882f7963b5d1583d3",
+      "byteLength": 13031,
+      "status": "loaded",
+      "sourceNotes": 1368,
+      "normalizedNotes": 1368,
+      "identityStatuses": {
+        "exact": 1368
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 8,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "1989726cb67252f41a39c61be24799c510ebef25786f8bbfc3366cdc17b63e74",
+      "title": "minor (harmonic) scales - parallel 8ve apart - 1 octave - legato - simple",
+      "fileName": "minor (harmonic) scales - parallel 8ve apart - 1 octave - legato - simple.mid",
+      "fixtureId": "builtin-1989726cb67252f41a39c61be24799c510ebef25786f8bbfc3366cdc17b63e74",
+      "sourceSha256": "c69d113ae7d499599d5183edbf0d6a9fef904efeee22f2e6ff6373b55131237f",
+      "byteLength": 3989,
+      "status": "loaded",
+      "sourceNotes": 360,
+      "normalizedNotes": 360,
+      "identityStatuses": {
+        "exact": 360
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 8,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "5d54bf892ab0cfd780946ef3de28183e129d2bb1440fde304bd1c5089f9dc864",
+      "title": "minor (harmonic) scales - parallel 8ve apart - 2 octaves - legato - simple",
+      "fileName": "minor (harmonic) scales - parallel 8ve apart - 2 octaves - legato - simple.mid",
+      "fixtureId": "builtin-5d54bf892ab0cfd780946ef3de28183e129d2bb1440fde304bd1c5089f9dc864",
+      "sourceSha256": "684b694c40aa19b2535528c678061d3666ceeeacd85376fbad471d8ffb8679e6",
+      "byteLength": 7018,
+      "status": "loaded",
+      "sourceNotes": 696,
+      "normalizedNotes": 696,
+      "identityStatuses": {
+        "exact": 696
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 8,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "3e347d32b0e8e99b4e7dc35b680874c557c29defb9b2d30594161233a1d5dec8",
+      "title": "minor (harmonic) scales - parallel 8ve apart - 3 octaves - legato - simple",
+      "fileName": "minor (harmonic) scales - parallel 8ve apart - 3 octaves - legato - simple.mid",
+      "fixtureId": "builtin-3e347d32b0e8e99b4e7dc35b680874c557c29defb9b2d30594161233a1d5dec8",
+      "sourceSha256": "0c213459ccf57a6166b44b7f75af6cebf3063909e9ed1ed5c0e57e3ca0ca394a",
+      "byteLength": 10046,
+      "status": "loaded",
+      "sourceNotes": 1032,
+      "normalizedNotes": 1032,
+      "identityStatuses": {
+        "exact": 1032
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 8,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "6fc34d73fcdb7a0f4ca14f0bf5c0bc4b5c58a5ce08fdd406081a0e2c0d9f8ad2",
+      "title": "minor (harmonic) scales - parallel 8ve apart - 4 octaves - legato - simple",
+      "fileName": "minor (harmonic) scales - parallel 8ve apart - 4 octaves - legato - simple.mid",
+      "fixtureId": "builtin-6fc34d73fcdb7a0f4ca14f0bf5c0bc4b5c58a5ce08fdd406081a0e2c0d9f8ad2",
+      "sourceSha256": "84098f4279f4e5e96ece8c14e9fe9bdfdba899e174f796be4378e44f10bbbc35",
+      "byteLength": 13070,
+      "status": "loaded",
+      "sourceNotes": 1368,
+      "normalizedNotes": 1368,
+      "identityStatuses": {
+        "exact": 1368
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 8,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "a5f06ad752f5024c8faaa2bcfb1a7cc1a2b382fdee0c26d62ef694e03fd69de4",
+      "title": "minor (melodic) scales - parallel 8ve apart - 1 octave - legato - simple",
+      "fileName": "minor (melodic) scales - parallel 8ve apart - 1 octave - legato - simple.mid",
+      "fixtureId": "builtin-a5f06ad752f5024c8faaa2bcfb1a7cc1a2b382fdee0c26d62ef694e03fd69de4",
+      "sourceSha256": "87eec5f78b3420d343d12967b5f7fbd03a3933d5725080ed915b43b6e4f27998",
+      "byteLength": 3992,
+      "status": "loaded",
+      "sourceNotes": 360,
+      "normalizedNotes": 360,
+      "identityStatuses": {
+        "exact": 360
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 8,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "ce59ebdafc7c16e54f580eaf8503c66f873202898cb3bdf360908942164670de",
+      "title": "minor (melodic) scales - parallel 8ve apart - 2 octaves - legato - simple",
+      "fileName": "minor (melodic) scales - parallel 8ve apart - 2 octaves - legato - simple.mid",
+      "fixtureId": "builtin-ce59ebdafc7c16e54f580eaf8503c66f873202898cb3bdf360908942164670de",
+      "sourceSha256": "1ed7d12ded8148cd1f656ee0e4cfedc4cc35e8976f08da47c63723ecdc37be41",
+      "byteLength": 7017,
+      "status": "loaded",
+      "sourceNotes": 696,
+      "normalizedNotes": 696,
+      "identityStatuses": {
+        "exact": 696
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 8,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "14f5795fdc3d535b6d141ac5192c47457463d012558f2a44bdee4953b4cba618",
+      "title": "minor (melodic) scales - parallel 8ve apart - 3 octaves - legato - simple",
+      "fileName": "minor (melodic) scales - parallel 8ve apart - 3 octaves - legato - simple.mid",
+      "fixtureId": "builtin-14f5795fdc3d535b6d141ac5192c47457463d012558f2a44bdee4953b4cba618",
+      "sourceSha256": "4c3d6d765376e2d0e1bba4dad826907afdcf492be4999d1f6220eca8a328b25b",
+      "byteLength": 10029,
+      "status": "loaded",
+      "sourceNotes": 1032,
+      "normalizedNotes": 1032,
+      "identityStatuses": {
+        "exact": 1032
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 8,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    },
+    {
+      "id": "02368a036385dcad98c800a82da3273d7d2ed78822a9333d9864675da379827d",
+      "title": "minor (melodic) scales - parallel 8ve apart - 4 octaves - legato - simple",
+      "fileName": "minor (melodic) scales - parallel 8ve apart - 4 octaves - legato - simple.mid",
+      "fixtureId": "builtin-02368a036385dcad98c800a82da3273d7d2ed78822a9333d9864675da379827d",
+      "sourceSha256": "b7fe14c2bf21ea8aec3d1e26426831b9a202a7a192f59b059f1d41e30181dfd2",
+      "byteLength": 13057,
+      "status": "loaded",
+      "sourceNotes": 1368,
+      "normalizedNotes": 1368,
+      "identityStatuses": {
+        "exact": 1368
+      },
+      "diagnostics": {
+        "result": {},
+        "fingeringPlan": {},
+        "performancePlan": {},
+        "motionPlan": {}
+      },
+      "motionPlanPoses": 8,
+      "initialMotionWindowPoses": 0,
+      "schemaValid": true,
+      "issues": []
+    }
+  ]
+}

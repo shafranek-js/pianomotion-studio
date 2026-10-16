@@ -21,6 +21,7 @@ import {
   parseSf2Async,
   prepareSoundFontPerformanceOutput,
   loadSoundFontAsset,
+  computeSha256Hex,
   WebMidiPerformanceOutput,
   type DecodedAudioRecording,
 } from "../audio";
@@ -56,7 +57,8 @@ import { type InspectorTab, type StudioStatus, type StudioView, normalizeStudioV
 import { StudioWorkspace } from "../studio/StudioWorkspace";
 import { runWorkerJob } from "./workerJob";
 import type { SaveResult, SaveSession } from "./saveResult";
-import { MotionStreamController } from "./motionStreamController";
+import { MotionStreamController, type MotionStreamFlight } from "./motionStreamController";
+import { motionPlaybackWindow, MOTION_REQUEST_SECONDS, MOTION_RETENTION_AHEAD_SECONDS } from "./motionPlaybackPolicy";
 import { VideoExportModal, type ExportSceneDataSource } from "../export";
 
 export interface PianoPlayerProps {
@@ -77,6 +79,7 @@ export interface PianoPlayerProps {
   onStatusChange(status: StudioStatus): void;
   onDirtyChange(dirty: boolean): void;
   onOpenMidi(): void;
+  onOpenBuiltinMelodies?(): void;
   onOpenPackage(): void;
   onOpenPreferences(): void;
   onOpenPianist(): void;
@@ -86,6 +89,14 @@ export interface PianoPlayerProps {
   onProfileStateChange?(profile: PianistProfile): void;
   analysisWorker?: Worker;
   footerAddon?: ReactNode;
+}
+
+interface MotionBufferPauseSnapshot {
+  time: number;
+  guardEnd: number;
+  left: ReturnType<MotionBuffer["getHandCoverageIntervals"]>;
+  right: ReturnType<MotionBuffer["getHandCoverageIntervals"]>;
+  inFlight: MotionStreamFlight | null;
 }
 
 declare global {
@@ -100,6 +111,7 @@ declare global {
       scene?: ReturnType<PianoScene["getGeometrySnapshot"]>;
       editorSelectedNoteIds?: string[];
       editorViewTime?: number | null;
+      motionStreaming?: { buffering: boolean; pauseCount: number; requestCount: number; roundTripMs: number; lastPause: MotionBufferPauseSnapshot | null };
     };
   }
 }
@@ -121,7 +133,7 @@ function createPlaybackMotionBuffer(analysis: M1AnalyzeMidiResult): MotionBuffer
     return hand === "left" || hand === "right" ? [{ hand, timeSeconds: event.timeSeconds }] : [];
   });
   const buffer = new MotionBuffer({
-    windowAheadSeconds: 4, windowBehindSeconds: 1,
+    windowAheadSeconds: MOTION_RETENTION_AHEAD_SECONDS, windowBehindSeconds: 1,
     expectedHands: [...new Set(requiredAnchors.map(anchor => anchor.hand))], requiredAnchors,
   });
   if (analysis.motionPlan?.poses) buffer.addPoses(analysis.motionPlan.poses);
@@ -149,6 +161,7 @@ export function PianoPlayer({
   onProfileStateChange,
   analysisWorker,
   onOpenMidi,
+  onOpenBuiltinMelodies,
   onOpenPackage,
   onOpenPreferences,
   onOpenPianist,
@@ -174,6 +187,10 @@ export function PianoPlayer({
   const motionErrorRef = useRef<string | null>(null);
   const seekEpochRef = useRef(0);
   const bufferingPausedRef = useRef(false);
+  const motionRoundTripMsRef = useRef(0);
+  const motionPauseCountRef = useRef(0);
+  const motionLastPauseRef = useRef<MotionBufferPauseSnapshot | null>(null);
+  const motionRequestCountRef = useRef(0);
   const playIntentRef = useRef(false);
   const latestStateRef = useRef({ analysis: result, draftPlan: initialSession?.draftFingeringPlan ?? result.fingeringPlan!, profile: initialSession?.profile ?? result.profile });
   const dirtyRef = useRef(isDirty);
@@ -196,8 +213,9 @@ export function PianoPlayer({
   const [playbackError, setPlaybackError] = useState<string | null>(null);
   const [activeOutputId, setActiveOutputId] = useState<"synth" | "soundfont" | "webmidi">("synth");
   const [activeSoundfontAssetId, setActiveSoundfontAssetId] = useState<string | null>(null);
-  const [activeSoundfontAssetBytes, setActiveSoundfontAssetBytes] = useState<ArrayBuffer | null>(null);
+  const [activeSoundfontAssetBlob, setActiveSoundfontAssetBlob] = useState<Blob | null>(null);
   const [preparingOutput, setPreparingOutput] = useState(false);
+  const [preparingSamples, setPreparingSamples] = useState(false);
   const [outputEpoch, setOutputEpoch] = useState(0);
   const [currentTime, setCurrentTime] = useState(settingsAtStart.leadInSeconds);
   const [speed, setSpeed] = useState(settingsAtStart.playbackSpeed);
@@ -314,8 +332,10 @@ export function PianoPlayer({
         const curTime = Math.max(0, transport?.getCurrentTime() ?? 0);
         const duration = latestStateRef.current.analysis.document?.durationSeconds ?? 0;
         buffer.addSampleMotionResult(message, curTime);
+        motionRoundTripMsRef.current = Math.max(motionRoundTripMsRef.current * 0.85, Date.now() - flight.startedAt);
+        const playbackWindow = motionPlaybackWindow(curTime, duration, transport?.getSpeed() ?? 1, motionRoundTripMsRef.current);
         if (bufferingPausedRef.current && playIntentRef.current &&
-            buffer.hasCoverage(curTime, Math.min(duration, curTime + 0.2))) {
+            buffer.hasCoverage(playbackWindow.start, playbackWindow.resumeEnd)) {
           bufferingPausedRef.current = false;
           setIsBuffering(false);
           onStatusChangeRef.current({ kind: dirtyRef.current ? "modified" : "saved", message: "Animation is ready." });
@@ -326,7 +346,11 @@ export function PianoPlayer({
         }
         return !buffer.hasCoverage(curTime, Math.min(duration, flight.demandEndTimeSeconds));
       },
-      onError: (error) => {
+      onError: (error, _flight, retryable) => {
+        if (retryable && error.code === "WORKER_BUSY") {
+          onStatusChangeRef.current({ kind: "calculating", message: "Animation Worker is busy; preparing the next window…" });
+          return;
+        }
         motionErrorRef.current = errorMessage(error);
         bufferingPausedRef.current = false;
         playIntentRef.current = false;
@@ -369,6 +393,15 @@ export function PianoPlayer({
     transport.setVolume(volume);
     transport.getSampler().setTimbre(settings.soundTimbre);
     const unsubscribe = transport.subscribeState(state => setIsPlaying(state === "playing"));
+    let wasPreparingSamples = false;
+    const unsubscribePreparation = transport.subscribePreparingOutput(preparing => {
+      setPreparingSamples(preparing);
+      if (preparing) onStatusChangeRef.current({ kind: "loading", message: "Preparing SoundFont samples…" });
+      else if (wasPreparingSamples) onStatusChangeRef.current({
+        kind: dirtyRef.current ? "modified" : "idle", message: "SoundFont preparation finished.",
+      });
+      wasPreparingSamples = preparing;
+    });
     const unsubscribeEnded = transport.subscribeEnded(() => {
       playIntentRef.current = false;
       bufferingPausedRef.current = false;
@@ -421,6 +454,7 @@ export function PianoPlayer({
     return () => {
       live = false;
       unsubscribe();
+      unsubscribePreparation();
       unsubscribeEnded();
       unsubscribeOutputError();
       recordingGenerationRef.current += 1;
@@ -480,6 +514,7 @@ export function PianoPlayer({
     if (!transport) return;
 
     let live = true;
+    const outputPreparation = new AbortController();
 
     async function syncOutputEngine() {
       const activeTransport = transportRef.current;
@@ -498,16 +533,36 @@ export function PianoPlayer({
           }
           if (!live || !transportRef.current) return;
 
-          const sf = await parseSf2Async(asset.data);
+          const digest = await computeSha256Hex(asset.data, { signal: outputPreparation.signal });
+          if (digest !== asset.id) throw new Error("Stored SoundFont content does not match its asset identity.");
+          const sf = await parseSf2Async(asset.data, { signal: outputPreparation.signal });
+          if (sf.sampleSource) sf.sampleSource.assetId = asset.id;
           if (!live) return;
           const sfOutput = await prepareSoundFontPerformanceOutput(sf, {
             audioContext: getAudioContext(), destinationNode: getMasterGain(),
+            plan: latestStateRef.current.analysis.performancePlan ?? undefined,
+            startSeconds: activeTransport.getCurrentTime(),
+            signal: outputPreparation.signal,
           });
-          if (!live || !transportRef.current) { sfOutput.dispose(); return; }
-          transportRef.current.setOutput(sfOutput);
+          try {
+            // Playback/replan may advance while a candidate is decoded. Keep the
+            // current output until the candidate covers the actual handover.
+            while (live && transportRef.current) {
+              const plan = latestStateRef.current.analysis.performancePlan;
+              if (!plan) throw new Error("No performance plan is available for this SoundFont.");
+              const position = transportRef.current.getCurrentTime();
+              if (sfOutput.isWindowPrepared(plan, position, position + 0.2)) break;
+              await sfOutput.prepareWindow(plan, position, position + 4, outputPreparation.signal);
+            }
+            if (!live || !transportRef.current) { sfOutput.dispose(); return; }
+            transportRef.current.setOutput(sfOutput);
+          } catch (error) {
+            sfOutput.dispose();
+            throw error;
+          }
           setActiveOutputId(transportRef.current.getOutputId());
           setActiveSoundfontAssetId(settings.soundfontAssetId);
-          setActiveSoundfontAssetBytes(asset.data);
+          setActiveSoundfontAssetBlob(asset.data);
         } catch (err: unknown) {
           if (!live) return;
           onStatusChange({
@@ -543,7 +598,7 @@ export function PianoPlayer({
           transportRef.current?.setOutput(midiOutput);
           setActiveOutputId(transportRef.current!.getOutputId());
           setActiveSoundfontAssetId(null);
-          setActiveSoundfontAssetBytes(null);
+          setActiveSoundfontAssetBlob(null);
         } catch (err: unknown) {
           if (!live) return;
           onStatusChange({
@@ -556,7 +611,7 @@ export function PianoPlayer({
         transportRef.current?.getSampler().setTimbre(settings.soundTimbre);
         setActiveOutputId("synth");
         setActiveSoundfontAssetId(null);
-        setActiveSoundfontAssetBytes(null);
+        setActiveSoundfontAssetBlob(null);
       }
       } finally { if (live) setPreparingOutput(false); }
     }
@@ -565,6 +620,7 @@ export function PianoPlayer({
 
     return () => {
       live = false;
+      outputPreparation.abort();
     };
   }, [settings.soundOutput, settings.soundfontAssetId, settings.webMidiDeviceId, settings.webMidiChannel, settings.soundTimbre, outputEpoch, onStatusChange]);
 
@@ -713,6 +769,13 @@ export function PianoPlayer({
       sceneRef.current?.update(time);
       const snapshot = window.__playerSnapshot;
       if (snapshot) {
+        snapshot.motionStreaming = {
+          buffering: bufferingPausedRef.current,
+          pauseCount: motionPauseCountRef.current,
+          requestCount: motionRequestCountRef.current,
+          roundTripMs: motionRoundTripMsRef.current,
+          lastPause: motionLastPauseRef.current,
+        };
         snapshot.scene = sceneRef.current?.getGeometrySnapshot();
         snapshot.editorSelectedNoteIds = [...(editorBridgeRef.current?.selectedNoteIds ?? [])];
         snapshot.editorViewTime = sceneRef.current?.getEditorViewTime() ?? null;
@@ -726,8 +789,9 @@ export function PianoPlayer({
       const worker = workerRef.current;
       const identity = workerIdentityRef.current;
       const songEnd = analysis.document?.durationSeconds ?? 0;
+      const playbackWindow = motionPlaybackWindow(time, songEnd, transport?.getSpeed() ?? 1, motionRoundTripMsRef.current);
       if (bufferingPausedRef.current && playIntentRef.current && buffer &&
-          buffer.hasCoverage(Math.max(0, time), Math.min(songEnd, Math.max(0, time) + 0.2))) {
+          buffer.hasCoverage(playbackWindow.start, playbackWindow.resumeEnd)) {
         bufferingPausedRef.current = false;
         setIsBuffering(false);
         void transport?.play().catch(error => {
@@ -738,10 +802,13 @@ export function PianoPlayer({
 
       // Check if playback needs to pause for buffering
       if (transport?.getState() === "playing" && buffer && time >= 0 && time < (analysis.document?.durationSeconds ?? 0)) {
-        const lookaheadNeeded = Math.min(0.2, (analysis.document?.durationSeconds ?? 0) - time);
-        if (!buffer.hasCoverage(time, time + lookaheadNeeded)) {
+        if (!buffer.hasCoverage(playbackWindow.start, playbackWindow.guardEnd)) {
           transport.pause();
           bufferingPausedRef.current = true;
+          motionPauseCountRef.current += 1;
+          motionLastPauseRef.current = { time, guardEnd: playbackWindow.guardEnd,
+            left: buffer.getHandCoverageIntervals("left"), right: buffer.getHandCoverageIntervals("right"),
+            inFlight: motionStreamRef.current?.inFlightRequest ?? null };
           setIsBuffering(true);
           onStatusChangeRef.current({
             kind: "calculating",
@@ -752,12 +819,12 @@ export function PianoPlayer({
 
       if (worker && workerReadyRef.current && buffer && identity && !needsReplanRef.current &&
           !motionErrorRef.current && !motionStreamRef.current?.inFlightRequest && identity.projectId === analysis.projectId &&
-          identity.revision === draftPlan.inputRevision && time >= 0 && time < (analysis.document?.durationSeconds ?? 0) &&
-          !buffer.hasCoverage(time, Math.min(songEnd, time + 1.5))) {
-        const missing = buffer.getMissingWindow(time);
+          identity.revision === draftPlan.inputRevision && time < songEnd &&
+          !buffer.hasCoverage(playbackWindow.start, playbackWindow.prefetchEnd)) {
+        const missing = buffer.getMissingWindow(playbackWindow.start);
         const start = Math.max(0, missing.start);
-        const end = Math.min(songEnd, missing.end);
-        if (end > start) motionStreamRef.current?.requestWindow(start, end, 200);
+        const end = Math.min(songEnd, missing.end, start + MOTION_REQUEST_SECONDS);
+        if (end > start && motionStreamRef.current?.requestWindow(start, end, 200)) motionRequestCountRef.current += 1;
       }
       raf = requestAnimationFrame(render);
     };
@@ -796,8 +863,18 @@ export function PianoPlayer({
       } else {
         if (motionErrorRef.current) throw new Error("Retry animation calculation in Diagnostics before playing.");
         playIntentRef.current = true;
-        await transportRef.current?.play();
         setPlaybackError(null);
+        const transport = transportRef.current;
+        const buffer = motionBufferRef.current;
+        const window = motionPlaybackWindow(transport?.getCurrentTime() ?? 0,
+          latestStateRef.current.analysis.document?.durationSeconds ?? 0, transport?.getSpeed() ?? 1, motionRoundTripMsRef.current);
+        if (buffer && !buffer.hasCoverage(window.start, window.resumeEnd)) {
+          bufferingPausedRef.current = true;
+          setIsBuffering(true);
+          onStatusChange({ kind: "calculating", message: "Preparing animation poses…" });
+          return;
+        }
+        await transportRef.current?.play();
       }
     } catch (error) {
       playIntentRef.current = false;
@@ -1052,7 +1129,7 @@ export function PianoPlayer({
       keyStyle={keyStyle}
       audioRecording={audioRecording}
       audioOffset={audioOffset}
-      audioOutputLabel={playbackError ? `Playback unavailable: ${playbackError}` : `${preparingOutput ? "Preparing selected output; currently active: " : "Active output: "}${activeOutputId === "synth" ? "Built-in synthesizer" : activeOutputId === "soundfont" ? "Local SoundFont" : "External MIDI device"}`}
+      audioOutputLabel={playbackError ? `Playback unavailable: ${playbackError}` : `${preparingSamples ? "Preparing SoundFont samples; currently active: " : preparingOutput ? "Preparing selected output; currently active: " : "Active output: "}${activeOutputId === "synth" ? "Built-in synthesizer" : activeOutputId === "soundfont" ? "Local SoundFont" : "External MIDI device"}`}
       sourceName={projectName}
       busy={needsReplan}
       developerTools={developerTools}
@@ -1075,7 +1152,7 @@ export function PianoPlayer({
     />
   ), [analysis, activeProfile, settings, keyStyle, audioRecording, audioOffset, projectName, needsReplan, developerTools,
     editorReport, handleDiagnosticNote, handleKeyStyleChange, onOpenPianist, handleAudioFileChange, handleClearAudio,
-    handleAudioOffsetChange, handleRetryCalculation, onStatusChange, status, preparingOutput, activeOutputId, playbackError]);
+    handleAudioOffsetChange, handleRetryCalculation, onStatusChange, status, preparingOutput, preparingSamples, activeOutputId, playbackError]);
 
   const editorState = <FingeringEditor
     document={document ?? result.document!}
@@ -1148,7 +1225,7 @@ export function PianoPlayer({
         resource: analysis.resource,
         activeOutputId,
         soundFontAssetId: activeSoundfontAssetId,
-        soundFontAssetBytes: activeSoundfontAssetBytes,
+        soundFontAssetBlob: activeSoundfontAssetBlob,
       },
       document,
       performancePlan: analysis.performancePlan,
@@ -1159,7 +1236,7 @@ export function PianoPlayer({
       audioRecording: audioRecording ?? null,
       audioOffset,
     };
-  }, [document, analysis, keyStyle, activeProfile, settings, audioRecording, audioOffset, rawMidiBytes, needsReplan, sourceContext, activeOutputId, activeSoundfontAssetId, activeSoundfontAssetBytes]);
+  }, [document, analysis, keyStyle, activeProfile, settings, audioRecording, audioOffset, rawMidiBytes, needsReplan, sourceContext, activeOutputId, activeSoundfontAssetId, activeSoundfontAssetBlob]);
 
   return <StudioShell
     projectName={projectName}
@@ -1169,6 +1246,7 @@ export function PianoPlayer({
     status={status.kind === "error" ? status : needsReplan && rebuildMessage ? { kind: "calculating", message: rebuildMessage } : status}
     busy={busy || needsReplan}
     onOpenMidi={onOpenMidi}
+    onOpenBuiltinMelodies={onOpenBuiltinMelodies}
     onOpenPackage={onOpenPackage}
     onSave={() => { void saveToDatabase(); }}
     onExportMidi={() => { void handleExportMidi(); }}
@@ -1179,12 +1257,12 @@ export function PianoPlayer({
     onOpenPreferences={onOpenPreferences}
     onOpenPianist={onOpenPianist}
     editActions={editActions}
-    projectsPanel={<ProjectsPanel onOpenProject={onOpenProject} activeProjectId={analysis.projectId} />}
+    projectsPanel={<ProjectsPanel onOpenProject={onOpenProject} activeProjectId={analysis.projectId} onOpenBuiltinMelodies={onOpenBuiltinMelodies} />}
     inspector={inspector}
     workspace={workspace}
     transport={transport}
     headerAddon={<div ref={setAssignmentControlsHost} className="studio-fingering-assignment-host" />}
-    footerAddon={footerAddon ?? <StudioReleaseDetails description="0.1.0-dev.4 preview: Edit and Help command menus, contextual fingering assignments and auto-advance, protected saves and offline updates, bounded animation streaming, pitch-preserving recording playback, local SF2/MIDI outputs and MP4/WebM export. Physical device and listening acceptance remains separate." />}
+    footerAddon={footerAddon ?? <StudioReleaseDetails description="0.1.0-dev.6 preview: 162 searchable built-in melodies, offline access and editable projects. Improved SoundFont parameter inheritance, volume envelopes and loops; linked stereo banks up to 1 GiB and adaptive animation streaming." />}
     dialogs={<>
       {dialogs}
       <VideoExportModal

@@ -47,6 +47,7 @@ export interface StudioShellProps {
   status: StudioStatus;
   busy?: boolean;
   onOpenMidi: () => void;
+  onOpenBuiltinMelodies?: () => void;
   onOpenPackage: () => void;
   onSave?: () => void;
   onExportMidi?: () => void;

@@ -79,7 +79,8 @@ function validateIdentity(source: ExportSceneDataSource, identity: ExportSourceI
 
 /**
  * Synchronously captures every live export input before the caller performs an await.
- * ArrayBuffers and recording channels are copied so later project edits cannot affect this export.
+ * Mutable DTOs, MIDI bytes, and recording channels are copied. The immutable SoundFont Blob is retained
+ * by reference, so a large bank is not duplicated and later asset-store changes cannot affect this export.
  */
 export function freezeVideoExportSnapshot(
   source: ExportSceneDataSource,
@@ -103,7 +104,11 @@ export function freezeVideoExportSnapshot(
       soundFontAssetId: identity.soundFontAssetId,
     }),
     originalMidiBytes: identity.originalMidiBytes.slice(0),
-    soundFontAssetBytes: identity.soundFontAssetBytes?.slice(0) ?? null,
+    soundFontAssetBlob: identity.soundFontAssetBlob ?? null,
+    // Compatibility only: production passes a Blob. Legacy test/adapters still get a frozen byte copy.
+    soundFontAssetBytes: identity.soundFontAssetBlob
+      ? null
+      : identity.soundFontAssetBytes?.slice(0) ?? null,
   };
   return {
     sourceIdentity: copiedIdentity,

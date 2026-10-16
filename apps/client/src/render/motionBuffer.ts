@@ -351,21 +351,6 @@ export class MotionBuffer {
   public getMissingWindow(currentTime: number): { start: number; end: number } {
     this.currentTime = currentTime;
     const targetEnd = currentTime + this.windowAheadSeconds;
-    let missingAnchor: MotionRequiredAnchor | undefined;
-    let anchorIndex = this.firstAnchorAtOrAfter(currentTime - 1e-4);
-    while (anchorIndex < this.requiredAnchors.length) {
-      const anchor = this.requiredAnchors[anchorIndex]!;
-      if (anchor.timeSeconds > targetEnd + 1e-4) break;
-      if (!this.hasPoseAtAnchor(anchor)) {
-        missingAnchor = anchor;
-        break;
-      }
-      anchorIndex += 1;
-    }
-    if (missingAnchor) {
-      const start = Math.max(0, missingAnchor.timeSeconds - MAX_POSE_GAP_SECONDS);
-      return { start, end: Math.max(targetEnd, start + this.windowAheadSeconds) };
-    }
     if (this.poses.length === 0) {
       return {
         start: currentTime,
@@ -375,26 +360,41 @@ export class MotionBuffer {
     const active = this.getActiveHands();
 
     let minContinuousEnd: number | null = null;
+    let coverageMissingAtCurrentTime = false;
     for (const hand of active) {
       const until = this.getHandContinuousCoverageUntil(hand, currentTime);
-      if (until === null) {
-        minContinuousEnd = null;
+      if (until === null || until < currentTime - 1e-4) {
+        coverageMissingAtCurrentTime = true;
         break;
       }
       minContinuousEnd = minContinuousEnd === null ? until : Math.min(minContinuousEnd, until);
     }
 
-    if (minContinuousEnd === null || minContinuousEnd < currentTime) {
-      const hasPriorPoses = this.poses.some((p) => p.transportTimeSeconds <= currentTime);
-      const start = hasPriorPoses ? Math.max(0, currentTime - MAX_POSE_GAP_SECONDS) : currentTime;
-      const end = Math.max(targetEnd, start + this.windowAheadSeconds);
-      return { start, end };
+    // Select the earliest unresolved point across continuous per-hand coverage
+    // and explicit event anchors. A later anchor must not make the caller skip
+    // an earlier gap in the interpolation stream.
+    let firstMissingTime = coverageMissingAtCurrentTime
+      ? currentTime
+      : Math.min(targetEnd, minContinuousEnd ?? currentTime);
+    let anchorIndex = this.firstAnchorAtOrAfter(currentTime - 1e-4);
+    while (anchorIndex < this.requiredAnchors.length) {
+      const anchor = this.requiredAnchors[anchorIndex]!;
+      if (anchor.timeSeconds > targetEnd + 1e-4) break;
+      if (!this.hasPoseAtAnchor(anchor)) {
+        firstMissingTime = Math.min(firstMissingTime, anchor.timeSeconds);
+        break;
+      }
+      anchorIndex += 1;
     }
 
-    // Current time is covered up to minContinuousEnd. Request next chunk with boundary overlap
-    const start = Math.max(0, minContinuousEnd - MAX_POSE_GAP_SECONDS);
-    const end = Math.max(targetEnd, start + this.windowAheadSeconds);
-    return { start, end };
+    // Keep the request end anchored to the configured horizon. The overlap is
+    // only on the start, so a rolling 24s lookahead can still be fetched in
+    // bounded chunks by its caller without silently growing each chunk.
+    const hasPriorPoses = this.poses.some((p) => p.transportTimeSeconds <= currentTime + 1e-4);
+    const start = firstMissingTime <= currentTime + 1e-4
+      ? hasPriorPoses ? Math.max(0, currentTime - MAX_POSE_GAP_SECONDS) : currentTime
+      : Math.max(0, firstMissingTime - MAX_POSE_GAP_SECONDS);
+    return { start, end: targetEnd };
   }
 
   public prune(currentTime: number): void {

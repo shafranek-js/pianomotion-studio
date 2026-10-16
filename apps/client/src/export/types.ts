@@ -80,6 +80,8 @@ export interface ExportSourceIdentity {
   resource: ResourceDescriptor;
   activeOutputId: "synth" | "soundfont" | "webmidi";
   soundFontAssetId: string | null;
-  /** Loaded SF2 bytes are frozen with the export snapshot; they are never written to a project package. */
+  /** Immutable loaded SF2 file retained by reference for this export; never written to a project package. */
+  soundFontAssetBlob?: Blob | null;
+  /** @deprecated Compatibility for tests and legacy adapters. Production exports use the immutable Blob above. */
   soundFontAssetBytes?: ArrayBuffer | null;
 }

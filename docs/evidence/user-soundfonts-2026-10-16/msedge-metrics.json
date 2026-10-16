@@ -1,0 +1,1008 @@
+[
+  {
+    "file": "Abbey-Steinway-D-v1.9.sf2",
+    "sourceHashBefore": "7d900db40312eff35636d995e4d96e8dcd765f760dd2793a8580cecb3416d310",
+    "sourceHashAfter": "7d900db40312eff35636d995e4d96e8dcd765f760dd2793a8580cecb3416d310",
+    "render": {
+      "id": "7d900db40312eff35636d995e4d96e8dcd765f760dd2793a8580cecb3416d310",
+      "byteLength": 40243712,
+      "header": {
+        "name": "Abbey-Steinway-D-v1.9",
+        "versionMajor": 2,
+        "versionMinor": 1,
+        "soundEngine": "EMU8000"
+      },
+      "preset": {
+        "name": "Steinway-D",
+        "bankNumber": 0,
+        "presetNumber": 0
+      },
+      "sampleCount": 45,
+      "monoSampleCount": 0,
+      "leftSampleCount": 22,
+      "rightSampleCount": 22,
+      "usesStereoPair": true,
+      "measuredProbes": [
+        {
+          "pitch": 36,
+          "velocity": 48,
+          "noteId": "bank-probe-0",
+          "channelRms": [
+            0.04033794272319305,
+            0.03650146399176437
+          ]
+        },
+        {
+          "pitch": 36,
+          "velocity": 80,
+          "noteId": "bank-probe-1",
+          "channelRms": [
+            0.08434758324302316,
+            0.07658686561832079
+          ]
+        },
+        {
+          "pitch": 36,
+          "velocity": 112,
+          "noteId": "bank-probe-2",
+          "channelRms": [
+            0.1338888751912202,
+            0.12284148084215339
+          ]
+        },
+        {
+          "pitch": 60,
+          "velocity": 48,
+          "noteId": "bank-probe-3",
+          "channelRms": [
+            0.034485111060688904,
+            0.0272336608590355
+          ]
+        },
+        {
+          "pitch": 60,
+          "velocity": 80,
+          "noteId": "bank-probe-4",
+          "channelRms": [
+            0.07332708158301318,
+            0.05080081105984503
+          ]
+        },
+        {
+          "pitch": 60,
+          "velocity": 112,
+          "noteId": "bank-probe-5",
+          "channelRms": [
+            0.10793734732237002,
+            0.06962971908672891
+          ]
+        },
+        {
+          "pitch": 84,
+          "velocity": 48,
+          "noteId": "bank-probe-6",
+          "channelRms": [
+            0.018909357011348552,
+            0.0230148972079156
+          ]
+        },
+        {
+          "pitch": 84,
+          "velocity": 80,
+          "noteId": "bank-probe-7",
+          "channelRms": [
+            0.02918086987305351,
+            0.04517612503499244
+          ]
+        },
+        {
+          "pitch": 84,
+          "velocity": 112,
+          "noteId": "bank-probe-8",
+          "channelRms": [
+            0.05306818287484655,
+            0.08733190200446721
+          ]
+        }
+      ],
+      "pedalProbeRms": [
+        0.07530896190037824,
+        0.0505733755162648
+      ],
+      "peak": 0.37426191568374634,
+      "nonFiniteSamples": 0,
+      "differenceRms": 0.06589501218040736,
+      "heldState": {
+        "activeVoices": 3,
+        "keyDownNotes": [],
+        "sustain": true
+      },
+      "releasedState": {
+        "activeVoices": 2,
+        "keyDownNotes": [],
+        "sustain": false
+      },
+      "preparedStats": {
+        "budgetBytes": 268435456,
+        "inactiveBudgetBytes": 67108864,
+        "decodedBytes": 26087672,
+        "preparingBytes": 0,
+        "inactiveBytes": 0,
+        "pinnedBytes": 26087672,
+        "cachedSamples": 14,
+        "preparingSamples": 0,
+        "reads": 14,
+        "decodes": 14,
+        "cacheHits": 2
+      },
+      "baselineStats": {
+        "budgetBytes": 268435456,
+        "inactiveBudgetBytes": 67108864,
+        "decodedBytes": 6735336,
+        "preparingBytes": 0,
+        "inactiveBytes": 0,
+        "pinnedBytes": 6735336,
+        "cachedSamples": 4,
+        "preparingSamples": 0,
+        "reads": 4,
+        "decodes": 4,
+        "cacheHits": 0
+      },
+      "voicesAfterRender": 0,
+      "cleanupStats": {
+        "budgetBytes": 268435456,
+        "inactiveBudgetBytes": 67108864,
+        "decodedBytes": 26087672,
+        "preparingBytes": 0,
+        "inactiveBytes": 19352336,
+        "pinnedBytes": 6735336,
+        "cachedSamples": 14,
+        "preparingSamples": 0,
+        "reads": 14,
+        "decodes": 14,
+        "cacheHits": 2
+      }
+    }
+  },
+  {
+    "file": "Chateau-Grand-v2.2.sf2",
+    "sourceHashBefore": "d3e9cf8721f941db8c964870ed7f51f97edce47140aba0f222c1b455990fdf8d",
+    "sourceHashAfter": "d3e9cf8721f941db8c964870ed7f51f97edce47140aba0f222c1b455990fdf8d",
+    "render": {
+      "id": "d3e9cf8721f941db8c964870ed7f51f97edce47140aba0f222c1b455990fdf8d",
+      "byteLength": 268562286,
+      "header": {
+        "name": "Chateau Grand-v2.2",
+        "versionMajor": 2,
+        "versionMinor": 1,
+        "soundEngine": "EMU8000"
+      },
+      "preset": {
+        "name": "Chateau Grand",
+        "bankNumber": 0,
+        "presetNumber": 0
+      },
+      "sampleCount": 343,
+      "monoSampleCount": 8,
+      "leftSampleCount": 167,
+      "rightSampleCount": 167,
+      "usesStereoPair": true,
+      "measuredProbes": [
+        {
+          "pitch": 36,
+          "velocity": 48,
+          "noteId": "bank-probe-0",
+          "channelRms": [
+            0.008444570152772533,
+            0.013057108027517588
+          ]
+        },
+        {
+          "pitch": 36,
+          "velocity": 80,
+          "noteId": "bank-probe-1",
+          "channelRms": [
+            0.030011682612820466,
+            0.04152516225926594
+          ]
+        },
+        {
+          "pitch": 36,
+          "velocity": 112,
+          "noteId": "bank-probe-2",
+          "channelRms": [
+            0.08698109416085714,
+            0.11405276164389147
+          ]
+        },
+        {
+          "pitch": 60,
+          "velocity": 48,
+          "noteId": "bank-probe-3",
+          "channelRms": [
+            0.011738807181019493,
+            0.015534086929934205
+          ]
+        },
+        {
+          "pitch": 60,
+          "velocity": 80,
+          "noteId": "bank-probe-4",
+          "channelRms": [
+            0.032103668517136044,
+            0.04749715764612781
+          ]
+        },
+        {
+          "pitch": 60,
+          "velocity": 112,
+          "noteId": "bank-probe-5",
+          "channelRms": [
+            0.08966606264063005,
+            0.13730610355402706
+          ]
+        },
+        {
+          "pitch": 84,
+          "velocity": 48,
+          "noteId": "bank-probe-6",
+          "channelRms": [
+            0.010833734115711273,
+            0.013545808699209629
+          ]
+        },
+        {
+          "pitch": 84,
+          "velocity": 80,
+          "noteId": "bank-probe-7",
+          "channelRms": [
+            0.030907432067665674,
+            0.0270812043368972
+          ]
+        },
+        {
+          "pitch": 84,
+          "velocity": 112,
+          "noteId": "bank-probe-8",
+          "channelRms": [
+            0.07184942333734678,
+            0.0500748684195089
+          ]
+        }
+      ],
+      "pedalProbeRms": [
+        0.037401405551502905,
+        0.05300047071190431
+      ],
+      "peak": 0.403632789850235,
+      "nonFiniteSamples": 0,
+      "differenceRms": 0.051100306619943775,
+      "heldState": {
+        "activeVoices": 2,
+        "keyDownNotes": [],
+        "sustain": true
+      },
+      "releasedState": {
+        "activeVoices": 1,
+        "keyDownNotes": [],
+        "sustain": false
+      },
+      "preparedStats": {
+        "budgetBytes": 268435456,
+        "inactiveBudgetBytes": 67108864,
+        "decodedBytes": 70118076,
+        "preparingBytes": 0,
+        "inactiveBytes": 0,
+        "pinnedBytes": 70118076,
+        "cachedSamples": 38,
+        "preparingSamples": 0,
+        "reads": 38,
+        "decodes": 38,
+        "cacheHits": 4
+      },
+      "baselineStats": {
+        "budgetBytes": 268435456,
+        "inactiveBudgetBytes": 67108864,
+        "decodedBytes": 28026292,
+        "preparingBytes": 0,
+        "inactiveBytes": 0,
+        "pinnedBytes": 28026292,
+        "cachedSamples": 12,
+        "preparingSamples": 0,
+        "reads": 12,
+        "decodes": 12,
+        "cacheHits": 0
+      },
+      "voicesAfterRender": 0,
+      "cleanupStats": {
+        "budgetBytes": 268435456,
+        "inactiveBudgetBytes": 67108864,
+        "decodedBytes": 70118076,
+        "preparingBytes": 0,
+        "inactiveBytes": 42091784,
+        "pinnedBytes": 28026292,
+        "cachedSamples": 38,
+        "preparingSamples": 0,
+        "reads": 38,
+        "decodes": 38,
+        "cacheHits": 4
+      }
+    }
+  },
+  {
+    "file": "Nice-Steinway-Lite-v3.0.sf2",
+    "sourceHashBefore": "6f2e465b3ec4a6116c6e23b762a6ad4148c9f44f4660a7503f0d0b89cc82fe9b",
+    "sourceHashAfter": "6f2e465b3ec4a6116c6e23b762a6ad4148c9f44f4660a7503f0d0b89cc82fe9b",
+    "render": {
+      "id": "6f2e465b3ec4a6116c6e23b762a6ad4148c9f44f4660a7503f0d0b89cc82fe9b",
+      "byteLength": 74398266,
+      "header": {
+        "name": "Nice-Steinway-Lite-v3.0",
+        "versionMajor": 2,
+        "versionMinor": 1,
+        "soundEngine": "EMU8000"
+      },
+      "preset": {
+        "name": "Steinway Grand",
+        "bankNumber": 0,
+        "presetNumber": 0
+      },
+      "sampleCount": 59,
+      "monoSampleCount": 0,
+      "leftSampleCount": 29,
+      "rightSampleCount": 29,
+      "usesStereoPair": true,
+      "measuredProbes": [
+        {
+          "pitch": 36,
+          "velocity": 48,
+          "noteId": "bank-probe-0",
+          "channelRms": [
+            0.03145537166535665,
+            0.026338889973190227
+          ]
+        },
+        {
+          "pitch": 36,
+          "velocity": 80,
+          "noteId": "bank-probe-1",
+          "channelRms": [
+            0.06774105220568762,
+            0.056501664341593504
+          ]
+        },
+        {
+          "pitch": 36,
+          "velocity": 112,
+          "noteId": "bank-probe-2",
+          "channelRms": [
+            0.11213202214692379,
+            0.09352182165848268
+          ]
+        },
+        {
+          "pitch": 60,
+          "velocity": 48,
+          "noteId": "bank-probe-3",
+          "channelRms": [
+            0.0247370609048205,
+            0.040186497155133984
+          ]
+        },
+        {
+          "pitch": 60,
+          "velocity": 80,
+          "noteId": "bank-probe-4",
+          "channelRms": [
+            0.04679984831682428,
+            0.08917922279620424
+          ]
+        },
+        {
+          "pitch": 60,
+          "velocity": 112,
+          "noteId": "bank-probe-5",
+          "channelRms": [
+            0.07754660895561348,
+            0.14812038380447556
+          ]
+        },
+        {
+          "pitch": 84,
+          "velocity": 48,
+          "noteId": "bank-probe-6",
+          "channelRms": [
+            0.021015990315499642,
+            0.01072622681334774
+          ]
+        },
+        {
+          "pitch": 84,
+          "velocity": 80,
+          "noteId": "bank-probe-7",
+          "channelRms": [
+            0.0448547546407874,
+            0.01978976917215709
+          ]
+        },
+        {
+          "pitch": 84,
+          "velocity": 112,
+          "noteId": "bank-probe-8",
+          "channelRms": [
+            0.0744176595423262,
+            0.03275569853334931
+          ]
+        }
+      ],
+      "pedalProbeRms": [
+        0.05182743546678701,
+        0.09964109677896693
+      ],
+      "peak": 0.37926679849624634,
+      "nonFiniteSamples": 0,
+      "differenceRms": 0.07054056438733368,
+      "heldState": {
+        "activeVoices": 2,
+        "keyDownNotes": [],
+        "sustain": true
+      },
+      "releasedState": {
+        "activeVoices": 1,
+        "keyDownNotes": [],
+        "sustain": false
+      },
+      "preparedStats": {
+        "budgetBytes": 268435456,
+        "inactiveBudgetBytes": 67108864,
+        "decodedBytes": 26466688,
+        "preparingBytes": 0,
+        "inactiveBytes": 0,
+        "pinnedBytes": 26466688,
+        "cachedSamples": 10,
+        "preparingSamples": 0,
+        "reads": 10,
+        "decodes": 10,
+        "cacheHits": 2
+      },
+      "baselineStats": {
+        "budgetBytes": 268435456,
+        "inactiveBudgetBytes": 67108864,
+        "decodedBytes": 14808256,
+        "preparingBytes": 0,
+        "inactiveBytes": 0,
+        "pinnedBytes": 14808256,
+        "cachedSamples": 6,
+        "preparingSamples": 0,
+        "reads": 6,
+        "decodes": 6,
+        "cacheHits": 0
+      },
+      "voicesAfterRender": 0,
+      "cleanupStats": {
+        "budgetBytes": 268435456,
+        "inactiveBudgetBytes": 67108864,
+        "decodedBytes": 26466688,
+        "preparingBytes": 0,
+        "inactiveBytes": 11658432,
+        "pinnedBytes": 14808256,
+        "cachedSamples": 10,
+        "preparingSamples": 0,
+        "reads": 10,
+        "decodes": 10,
+        "cacheHits": 2
+      }
+    }
+  },
+  {
+    "file": "Nice-Steinway-v3.8.sf2",
+    "sourceHashBefore": "f2912e65d02f7f65032451c65aa734e442054bb374cc641d4725e3dd107df77e",
+    "sourceHashAfter": "f2912e65d02f7f65032451c65aa734e442054bb374cc641d4725e3dd107df77e",
+    "render": {
+      "id": "f2912e65d02f7f65032451c65aa734e442054bb374cc641d4725e3dd107df77e",
+      "byteLength": 214870414,
+      "header": {
+        "name": "Nice-Steinway-v3.8",
+        "versionMajor": 2,
+        "versionMinor": 1,
+        "soundEngine": "EMU8000"
+      },
+      "preset": {
+        "name": "Bright Steinway",
+        "bankNumber": 0,
+        "presetNumber": 1
+      },
+      "sampleCount": 171,
+      "monoSampleCount": 0,
+      "leftSampleCount": 85,
+      "rightSampleCount": 85,
+      "usesStereoPair": true,
+      "measuredProbes": [
+        {
+          "pitch": 36,
+          "velocity": 48,
+          "noteId": "bank-probe-0",
+          "channelRms": [
+            0.03588956841160361,
+            0.03819918957029971
+          ]
+        },
+        {
+          "pitch": 36,
+          "velocity": 80,
+          "noteId": "bank-probe-1",
+          "channelRms": [
+            0.07838283090447179,
+            0.08395109860712176
+          ]
+        },
+        {
+          "pitch": 36,
+          "velocity": 112,
+          "noteId": "bank-probe-2",
+          "channelRms": [
+            0.13166114010514687,
+            0.14026376314193997
+          ]
+        },
+        {
+          "pitch": 60,
+          "velocity": 48,
+          "noteId": "bank-probe-3",
+          "channelRms": [
+            0.031909883248895175,
+            0.039361375763021254
+          ]
+        },
+        {
+          "pitch": 60,
+          "velocity": 80,
+          "noteId": "bank-probe-4",
+          "channelRms": [
+            0.061984610657391664,
+            0.07713374564189836
+          ]
+        },
+        {
+          "pitch": 60,
+          "velocity": 112,
+          "noteId": "bank-probe-5",
+          "channelRms": [
+            0.10329037086883687,
+            0.12853148434202222
+          ]
+        },
+        {
+          "pitch": 84,
+          "velocity": 48,
+          "noteId": "bank-probe-6",
+          "channelRms": [
+            0.01968900482850591,
+            0.00852244341892463
+          ]
+        },
+        {
+          "pitch": 84,
+          "velocity": 80,
+          "noteId": "bank-probe-7",
+          "channelRms": [
+            0.041899768411152276,
+            0.0159730438522884
+          ]
+        },
+        {
+          "pitch": 84,
+          "velocity": 112,
+          "noteId": "bank-probe-8",
+          "channelRms": [
+            0.070526845017742,
+            0.02626871129288886
+          ]
+        }
+      ],
+      "pedalProbeRms": [
+        0.06850615363741265,
+        0.08583632510434737
+      ],
+      "peak": 0.4094807505607605,
+      "nonFiniteSamples": 0,
+      "differenceRms": 0.07646202491464145,
+      "heldState": {
+        "activeVoices": 2,
+        "keyDownNotes": [],
+        "sustain": true
+      },
+      "releasedState": {
+        "activeVoices": 1,
+        "keyDownNotes": [],
+        "sustain": false
+      },
+      "preparedStats": {
+        "budgetBytes": 268435456,
+        "inactiveBudgetBytes": 67108864,
+        "decodedBytes": 39644752,
+        "preparingBytes": 0,
+        "inactiveBytes": 5213656,
+        "pinnedBytes": 34431096,
+        "cachedSamples": 14,
+        "preparingSamples": 0,
+        "reads": 14,
+        "decodes": 14,
+        "cacheHits": 10
+      },
+      "baselineStats": {
+        "budgetBytes": 268435456,
+        "inactiveBudgetBytes": 67108864,
+        "decodedBytes": 27891860,
+        "preparingBytes": 0,
+        "inactiveBytes": 5213656,
+        "pinnedBytes": 22678204,
+        "cachedSamples": 10,
+        "preparingSamples": 0,
+        "reads": 10,
+        "decodes": 10,
+        "cacheHits": 8
+      },
+      "voicesAfterRender": 0,
+      "cleanupStats": {
+        "budgetBytes": 268435456,
+        "inactiveBudgetBytes": 67108864,
+        "decodedBytes": 39644752,
+        "preparingBytes": 0,
+        "inactiveBytes": 16966548,
+        "pinnedBytes": 22678204,
+        "cachedSamples": 14,
+        "preparingSamples": 0,
+        "reads": 14,
+        "decodes": 14,
+        "cacheHits": 10
+      }
+    }
+  },
+  {
+    "file": "NY-Steinway-Model-B-v5.2.sf2",
+    "sourceHashBefore": "f7dbd26d0f0710d051e456ee941f8fb23b269c2ae26df5274791fac13a3954e3",
+    "sourceHashAfter": "f7dbd26d0f0710d051e456ee941f8fb23b269c2ae26df5274791fac13a3954e3",
+    "render": {
+      "id": "f7dbd26d0f0710d051e456ee941f8fb23b269c2ae26df5274791fac13a3954e3",
+      "byteLength": 248940510,
+      "header": {
+        "name": "Dore Mark's NY S&S Model B",
+        "versionMajor": 2,
+        "versionMinor": 1,
+        "soundEngine": "EMU8000"
+      },
+      "preset": {
+        "name": "S&S Mod B(Dore Mark)",
+        "bankNumber": 0,
+        "presetNumber": 0
+      },
+      "sampleCount": 403,
+      "monoSampleCount": 0,
+      "leftSampleCount": 201,
+      "rightSampleCount": 201,
+      "usesStereoPair": true,
+      "measuredProbes": [
+        {
+          "pitch": 36,
+          "velocity": 48,
+          "noteId": "bank-probe-0",
+          "channelRms": [
+            0.008356955728473503,
+            0.010406896493114553
+          ]
+        },
+        {
+          "pitch": 36,
+          "velocity": 80,
+          "noteId": "bank-probe-1",
+          "channelRms": [
+            0.027665211196633788,
+            0.03519119231701164
+          ]
+        },
+        {
+          "pitch": 36,
+          "velocity": 112,
+          "noteId": "bank-probe-2",
+          "channelRms": [
+            0.07203306035457865,
+            0.08785118674514816
+          ]
+        },
+        {
+          "pitch": 60,
+          "velocity": 48,
+          "noteId": "bank-probe-3",
+          "channelRms": [
+            0.011063834674990416,
+            0.0137147371061866
+          ]
+        },
+        {
+          "pitch": 60,
+          "velocity": 80,
+          "noteId": "bank-probe-4",
+          "channelRms": [
+            0.028575411362392087,
+            0.03289085752502744
+          ]
+        },
+        {
+          "pitch": 60,
+          "velocity": 112,
+          "noteId": "bank-probe-5",
+          "channelRms": [
+            0.06968636085155828,
+            0.08195373969938613
+          ]
+        },
+        {
+          "pitch": 84,
+          "velocity": 48,
+          "noteId": "bank-probe-6",
+          "channelRms": [
+            0.008737279927599232,
+            0.00890736225482693
+          ]
+        },
+        {
+          "pitch": 84,
+          "velocity": 80,
+          "noteId": "bank-probe-7",
+          "channelRms": [
+            0.01770487784985042,
+            0.02507364388136905
+          ]
+        },
+        {
+          "pitch": 84,
+          "velocity": 112,
+          "noteId": "bank-probe-8",
+          "channelRms": [
+            0.04406576579240188,
+            0.06673093905871565
+          ]
+        }
+      ],
+      "pedalProbeRms": [
+        0.02934174215609427,
+        0.03529292480208028
+      ],
+      "peak": 0.28714779019355774,
+      "nonFiniteSamples": 0,
+      "differenceRms": 0.04680474457111769,
+      "heldState": {
+        "activeVoices": 2,
+        "keyDownNotes": [],
+        "sustain": true
+      },
+      "releasedState": {
+        "activeVoices": 1,
+        "keyDownNotes": [],
+        "sustain": false
+      },
+      "preparedStats": {
+        "budgetBytes": 268435456,
+        "inactiveBudgetBytes": 67108864,
+        "decodedBytes": 44888488,
+        "preparingBytes": 0,
+        "inactiveBytes": 0,
+        "pinnedBytes": 44888488,
+        "cachedSamples": 38,
+        "preparingSamples": 0,
+        "reads": 38,
+        "decodes": 38,
+        "cacheHits": 4
+      },
+      "baselineStats": {
+        "budgetBytes": 268435456,
+        "inactiveBudgetBytes": 67108864,
+        "decodedBytes": 11892840,
+        "preparingBytes": 0,
+        "inactiveBytes": 0,
+        "pinnedBytes": 11892840,
+        "cachedSamples": 12,
+        "preparingSamples": 0,
+        "reads": 12,
+        "decodes": 12,
+        "cacheHits": 0
+      },
+      "voicesAfterRender": 0,
+      "cleanupStats": {
+        "budgetBytes": 268435456,
+        "inactiveBudgetBytes": 67108864,
+        "decodedBytes": 44888488,
+        "preparingBytes": 0,
+        "inactiveBytes": 32995648,
+        "pinnedBytes": 11892840,
+        "cachedSamples": 38,
+        "preparingSamples": 0,
+        "reads": 38,
+        "decodes": 38,
+        "cacheHits": 4
+      }
+    }
+  },
+  {
+    "file": "YDP-GrandPiano-20160804.sf2",
+    "sourceHashBefore": "8757076aecf80abdad1e8f8f6168370399b06f94481796986e6e75ceca09ad21",
+    "sourceHashAfter": "8757076aecf80abdad1e8f8f6168370399b06f94481796986e6e75ceca09ad21",
+    "render": {
+      "id": "8757076aecf80abdad1e8f8f6168370399b06f94481796986e6e75ceca09ad21",
+      "byteLength": 118398836,
+      "header": {
+        "name": "Grand Piano",
+        "versionMajor": 2,
+        "versionMinor": 1,
+        "soundEngine": "EMU8000"
+      },
+      "preset": {
+        "name": "Grand Piano",
+        "bankNumber": 0,
+        "presetNumber": 0
+      },
+      "sampleCount": 122,
+      "monoSampleCount": 121,
+      "leftSampleCount": 0,
+      "rightSampleCount": 0,
+      "usesStereoPair": false,
+      "measuredProbes": [
+        {
+          "pitch": 36,
+          "velocity": 48,
+          "noteId": "bank-probe-0",
+          "channelRms": [
+            0.03529023603112162,
+            0.015934152250069552
+          ]
+        },
+        {
+          "pitch": 36,
+          "velocity": 80,
+          "noteId": "bank-probe-1",
+          "channelRms": [
+            0.07754621055568321,
+            0.035013456048285097
+          ]
+        },
+        {
+          "pitch": 36,
+          "velocity": 112,
+          "noteId": "bank-probe-2",
+          "channelRms": [
+            0.1259448024348539,
+            0.05686625787089206
+          ]
+        },
+        {
+          "pitch": 60,
+          "velocity": 48,
+          "noteId": "bank-probe-3",
+          "channelRms": [
+            0.022195053915349646,
+            0.01990366281526599
+          ]
+        },
+        {
+          "pitch": 60,
+          "velocity": 80,
+          "noteId": "bank-probe-4",
+          "channelRms": [
+            0.04365445477724749,
+            0.04230463402549373
+          ]
+        },
+        {
+          "pitch": 60,
+          "velocity": 112,
+          "noteId": "bank-probe-5",
+          "channelRms": [
+            0.06336481204682368,
+            0.061404774736118564
+          ]
+        },
+        {
+          "pitch": 84,
+          "velocity": 48,
+          "noteId": "bank-probe-6",
+          "channelRms": [
+            0.008351845828269245,
+            0.01764859740422738
+          ]
+        },
+        {
+          "pitch": 84,
+          "velocity": 80,
+          "noteId": "bank-probe-7",
+          "channelRms": [
+            0.018135855904278263,
+            0.038545569412499266
+          ]
+        },
+        {
+          "pitch": 84,
+          "velocity": 112,
+          "noteId": "bank-probe-8",
+          "channelRms": [
+            0.027338178536256932,
+            0.05809658617010667
+          ]
+        }
+      ],
+      "pedalProbeRms": [
+        0.04959394463523674,
+        0.04805437156532141
+      ],
+      "peak": 0.3757892847061157,
+      "nonFiniteSamples": 0,
+      "differenceRms": 0.021796288153408012,
+      "heldState": {
+        "activeVoices": 1,
+        "keyDownNotes": [],
+        "sustain": true
+      },
+      "releasedState": {
+        "activeVoices": 1,
+        "keyDownNotes": [],
+        "sustain": false
+      },
+      "preparedStats": {
+        "budgetBytes": 268435456,
+        "inactiveBudgetBytes": 67108864,
+        "decodedBytes": 25856132,
+        "preparingBytes": 0,
+        "inactiveBytes": 0,
+        "pinnedBytes": 25856132,
+        "cachedSamples": 13,
+        "preparingSamples": 0,
+        "reads": 13,
+        "decodes": 13,
+        "cacheHits": 2
+      },
+      "baselineStats": {
+        "budgetBytes": 268435456,
+        "inactiveBudgetBytes": 67108864,
+        "decodedBytes": 11035432,
+        "preparingBytes": 0,
+        "inactiveBytes": 0,
+        "pinnedBytes": 11035432,
+        "cachedSamples": 6,
+        "preparingSamples": 0,
+        "reads": 6,
+        "decodes": 6,
+        "cacheHits": 0
+      },
+      "voicesAfterRender": 0,
+      "cleanupStats": {
+        "budgetBytes": 268435456,
+        "inactiveBudgetBytes": 67108864,
+        "decodedBytes": 25856132,
+        "preparingBytes": 0,
+        "inactiveBytes": 14820700,
+        "pinnedBytes": 11035432,
+        "cachedSamples": 13,
+        "preparingSamples": 0,
+        "reads": 13,
+        "decodes": 13,
+        "cacheHits": 2
+      }
+    }
+  },
+  {
+    "file": "MuseScore_General.sf3",
+    "sourceHashBefore": "5b85b6c2c61d10b2b91cddd41efcce7b25cd31c8271d511c73afafbef20b6fa3",
+    "sourceHashAfter": "5b85b6c2c61d10b2b91cddd41efcce7b25cd31c8271d511c73afafbef20b6fa3",
+    "installedAssetCount": 0,
+    "reason": "unsupported SF3",
+    "activeOutputAfterReject": "Built-in synthesizer"
+  },
+  {
+    "file": "Fazioli-F308-v2.6.sf2",
+    "sourceHashBefore": "bba52410c7ad5736aab67c3b27889819bc9b1c9995e0a22b68bec1071289984b",
+    "sourceHashAfter": "bba52410c7ad5736aab67c3b27889819bc9b1c9995e0a22b68bec1071289984b",
+    "installedAssetCount": 0,
+    "reason": "sample 287 links to mono sample 288 without a reciprocal link",
+    "activeOutputAfterReject": "Built-in synthesizer"
+  }
+]

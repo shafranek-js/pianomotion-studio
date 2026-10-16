@@ -6,6 +6,36 @@
   color: var(--studio-text, #f3f5f4);
 }
 
+.builtins {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  min-height: 2.8rem;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.6rem;
+  border: 1px solid var(--studio-border, #39423f);
+  border-radius: 0.7rem;
+  background: var(--studio-surface, #1d2421);
+  color: var(--studio-text, #f3f5f4);
+  padding: 0.55rem 0.75rem;
+  font: inherit;
+  font-size: 0.86rem;
+  font-weight: 650;
+  text-align: left;
+  cursor: pointer;
+}
+
+.builtins svg {
+  flex: 0 0 auto;
+  color: var(--studio-mint, #73d4bc);
+}
+
+.builtins:hover {
+  border-color: var(--studio-mint, #73d4bc);
+  background: var(--studio-hover, #28332e);
+}
+
 .recentSection {
   display: flex;
   flex-direction: column;

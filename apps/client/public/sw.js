@@ -3,6 +3,7 @@
 
 /** Build-time replacement makes this worker script change with every release. */
 const BUILD_ID = "__PIANOMOTION_BUILD_ID__";
+const IS_RELEASE_BUILD = /^[a-f0-9]{16,64}$/i.test(BUILD_ID);
 const SCOPE_URL = new URL(self.registration.scope);
 const BASE_PATH = SCOPE_URL.pathname.endsWith("/") ? SCOPE_URL.pathname : `${SCOPE_URL.pathname}/`;
 const PATH_SLUG = BASE_PATH === "/"
@@ -269,8 +270,11 @@ async function stageAndCommitBuild(manifest, expectedPaths) {
 
 self.addEventListener("install", (event) => {
   event.waitUntil((async () => {
-    if (!/^[a-f0-9]{16,64}$/i.test(BUILD_ID)) {
-      throw new Error("The service worker was not built with a release ID.");
+    if (!IS_RELEASE_BUILD) {
+      // A formerly registered worker may update from Vite's public directory.
+      // Retire it without fetching a release manifest or touching user caches.
+      await self.skipWaiting();
+      return;
     }
     const manifestResponse = await fetch(resolveUrl(MANIFEST_NAME), { cache: "no-store" });
     if (!manifestResponse.ok) {
@@ -283,6 +287,7 @@ self.addEventListener("install", (event) => {
 });
 
 self.addEventListener("message", (event) => {
+  if (!IS_RELEASE_BUILD) return;
   const message = event.data;
   if (message?.type === "SKIP_WAITING") {
     self.skipWaiting();
@@ -299,6 +304,13 @@ self.addEventListener("message", (event) => {
 });
 
 self.addEventListener("activate", (event) => {
+  if (!IS_RELEASE_BUILD) {
+    event.waitUntil((async () => {
+      await self.clients.claim();
+      await self.registration.unregister();
+    })());
+    return;
+  }
   event.waitUntil(serializeMaintenance(async () => {
     const names = await caches.keys();
     const stageNames = names.filter((name) => name.startsWith(STAGE_CACHE_PREFIX));
@@ -370,6 +382,7 @@ async function exactBuildCache(buildId) {
 }
 
 self.addEventListener("fetch", (event) => {
+  if (!IS_RELEASE_BUILD) return;
   const request = event.request;
   if (request.method !== "GET") {
     return;

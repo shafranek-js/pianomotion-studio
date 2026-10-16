@@ -1,0 +1,354 @@
+{
+  "config": {
+    "argv": [
+      "C:\\nvm4w\\nodejs\\node.exe",
+      "C:\\Projects\\pianomotion-studio\\node_modules\\@playwright\\test\\cli.js",
+      "test",
+      "--config",
+      "playwright.soundfont.config.ts"
+    ],
+    "configFile": "C:\\Projects\\pianomotion-studio\\playwright.soundfont.config.ts",
+    "rootDir": "C:/Projects/pianomotion-studio/tests/browser",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "C:/Projects/pianomotion-studio/test-results/soundfont-chrome",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "",
+        "name": "",
+        "testDir": "C:/Projects/pianomotion-studio/tests/browser",
+        "testIgnore": [],
+        "testMatch": [
+          "**/soundfont-large.spec.ts"
+        ],
+        "timeout": 300000
+      }
+    ],
+    "filteredProjects": [
+      {
+        "grep": {},
+        "grepInvert": null,
+        "outputDir": "C:\\Projects\\pianomotion-studio\\test-results\\soundfont-chrome",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "name": "",
+        "testDir": "C:\\Projects\\pianomotion-studio\\tests\\browser",
+        "snapshotDir": "C:\\Projects\\pianomotion-studio\\tests\\browser",
+        "testIgnore": [],
+        "testMatch": [
+          "**/soundfont-large.spec.ts"
+        ],
+        "timeout": 300000,
+        "use": {
+          "baseURL": "http://127.0.0.1:4173",
+          "browserName": "chromium",
+          "channel": "chrome",
+          "headless": true
+        },
+        "dependencies": [],
+        "ignoreSnapshots": false,
+        "__projectId": ""
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "list",
+        null
+      ],
+      [
+        "json",
+        {
+          "outputFile": "test-results/reports/soundfont-chrome.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "default",
+    "updateSourceMethod": "patch",
+    "version": "1.64.0",
+    "workers": 1,
+    "webServer": {
+      "command": "npm run dev -- --host 127.0.0.1 --port 4173 --strictPort",
+      "url": "http://127.0.0.1:4173",
+      "reuseExistingServer": false,
+      "timeout": 60000
+    }
+  },
+  "suites": [
+    {
+      "title": "soundfont-large.spec.ts",
+      "file": "soundfont-large.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "real 128 MiB PCM bank hashes, commits, reopens and decodes only referenced stereo samples",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 300000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 61746,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-16T06:41:06.781Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "large-bank-result",
+                      "contentType": "application/json",
+                      "body": "ewogICJtaWIiOiAxMjgsCiAgImVsYXBzZWRNcyI6IDMyOTkzLAogICJzdG9yZWQiOiB7CiAgICAiaWQiOiAiMGU5ZDAwOTAyYjFlMGNiYTA2NDJlOTg3NzM1YjgzNDgzY2I0OGQzNGJmZDc3Zjc2YjM1ZjA4MjUzYTBlMTM4YiIsCiAgICAic2l6ZSI6IDEzNDIxNzcyOCwKICAgICJibG9iQmFja2VkIjogdHJ1ZSwKICAgICJtYXRlcmlhbGl6ZWRQY20iOiAwLAogICAgImxhcmdlc3RNYWluVGhyZWFkUmVhZCI6IDAKICB9LAogICJyZXN0b3JlZCI6IHsKICAgICJpZCI6ICIwZTlkMDA5MDJiMWUwY2JhMDY0MmU5ODc3MzViODM0ODNjYjQ4ZDM0YmZkNzdmNzZiMzVmMDgyNTNhMGUxMzhiIiwKICAgICJzaXplIjogMTM0MjE3NzI4LAogICAgImJsb2JzIjogdHJ1ZSwKICAgICJsaXN0ZWQiOiAxLAogICAgInJtcyI6IFsKICAgICAgMC4xMjkzMDA2NzQxNzMzNzA2LAogICAgICAwLjA4NzkwOTEyNDUxNDI4NTQxCiAgICBdLAogICAgInN0YXRzIjogewogICAgICAiYnVkZ2V0Qnl0ZXMiOiAyNjg0MzU0NTYsCiAgICAgICJpbmFjdGl2ZUJ1ZGdldEJ5dGVzIjogNjcxMDg4NjQsCiAgICAgICJkZWNvZGVkQnl0ZXMiOiAxMzIzMDQsCiAgICAgICJwcmVwYXJpbmdCeXRlcyI6IDAsCiAgICAgICJpbmFjdGl2ZUJ5dGVzIjogMCwKICAgICAgInBpbm5lZEJ5dGVzIjogMTMyMzA0LAogICAgICAiY2FjaGVkU2FtcGxlcyI6IDIsCiAgICAgICJwcmVwYXJpbmdTYW1wbGVzIjogMCwKICAgICAgInJlYWRzIjogMiwKICAgICAgImRlY29kZXMiOiAyLAogICAgICAiY2FjaGVIaXRzIjogMAogICAgfQogIH0KfQ=="
+                    },
+                    {
+                      "name": "browser-private-memory-samples",
+                      "contentType": "application/json",
+                      "body": "ewogICJwbGF0Zm9ybSI6ICJ3aW4zMiIsCiAgImludGVydmFsTXMiOiAyMDAwLAogICJzYW1wbGVzIjogWwogICAgewogICAgICAiZWxhcHNlZE1zIjogMzE3MzAsCiAgICAgICJwcml2YXRlQnl0ZXMiOiA1MDQ5MTM5MjAKICAgIH0sCiAgICB7CiAgICAgICJlbGFwc2VkTXMiOiAzNDE1NSwKICAgICAgInByaXZhdGVCeXRlcyI6IDU2MzU2NDU0NAogICAgfQogIF0sCiAgImVycm9ycyI6IFtdLAogICJvYnNlcnZlZFBlYWtQcml2YXRlQnl0ZXMiOiA1NjM1NjQ1NDQKfQ=="
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "434233d160a2e1d552a0-46d8d2f61d9be07d5f9c",
+          "file": "soundfont-large.spec.ts",
+          "line": 85,
+          "column": 3
+        },
+        {
+          "title": "real 512 MiB PCM bank hashes, commits, reopens and decodes only referenced stereo samples",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 300000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 31839,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-16T06:42:09.805Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "large-bank-result",
+                      "contentType": "application/json",
+                      "body": "ewogICJtaWIiOiA1MTIsCiAgImVsYXBzZWRNcyI6IDU4NDQsCiAgInN0b3JlZCI6IHsKICAgICJpZCI6ICJmNzM4MGU5N2JmYzYzZThhZTIxM2UzZjllY2NkYjdmMjdiZGJhMWY3YWY4MzA2YzRkYjNmODgyMzI1ZjYxZGFlIiwKICAgICJzaXplIjogNTM2ODcwOTEyLAogICAgImJsb2JCYWNrZWQiOiB0cnVlLAogICAgIm1hdGVyaWFsaXplZFBjbSI6IDAsCiAgICAibGFyZ2VzdE1haW5UaHJlYWRSZWFkIjogMAogIH0sCiAgInJlc3RvcmVkIjogewogICAgImlkIjogImY3MzgwZTk3YmZjNjNlOGFlMjEzZTNmOWVjY2RiN2YyN2JkYmExZjdhZjgzMDZjNGRiM2Y4ODIzMjVmNjFkYWUiLAogICAgInNpemUiOiA1MzY4NzA5MTIsCiAgICAiYmxvYnMiOiB0cnVlLAogICAgImxpc3RlZCI6IDEsCiAgICAicm1zIjogWwogICAgICAwLjEyOTMwMDY3NDE3MzM3MDYsCiAgICAgIDAuMDg3OTA5MTI0NTE0Mjg1NDEKICAgIF0sCiAgICAic3RhdHMiOiB7CiAgICAgICJidWRnZXRCeXRlcyI6IDI2ODQzNTQ1NiwKICAgICAgImluYWN0aXZlQnVkZ2V0Qnl0ZXMiOiA2NzEwODg2NCwKICAgICAgImRlY29kZWRCeXRlcyI6IDEzMjMwNCwKICAgICAgInByZXBhcmluZ0J5dGVzIjogMCwKICAgICAgImluYWN0aXZlQnl0ZXMiOiAwLAogICAgICAicGlubmVkQnl0ZXMiOiAxMzIzMDQsCiAgICAgICJjYWNoZWRTYW1wbGVzIjogMiwKICAgICAgInByZXBhcmluZ1NhbXBsZXMiOiAwLAogICAgICAicmVhZHMiOiAyLAogICAgICAiZGVjb2RlcyI6IDIsCiAgICAgICJjYWNoZUhpdHMiOiAwCiAgICB9CiAgfQp9"
+                    },
+                    {
+                      "name": "browser-private-memory-samples",
+                      "contentType": "application/json",
+                      "body": "ewogICJwbGF0Zm9ybSI6ICJ3aW4zMiIsCiAgImludGVydmFsTXMiOiAyMDAwLAogICJzYW1wbGVzIjogWwogICAgewogICAgICAiZWxhcHNlZE1zIjogMTU4NiwKICAgICAgInByaXZhdGVCeXRlcyI6IDUxNzgxMjIyNAogICAgfSwKICAgIHsKICAgICAgImVsYXBzZWRNcyI6IDY1MjEsCiAgICAgICJwcml2YXRlQnl0ZXMiOiA1NzM5NjQyODgKICAgIH0sCiAgICB7CiAgICAgICJlbGFwc2VkTXMiOiA2OTk0LAogICAgICAicHJpdmF0ZUJ5dGVzIjogNTczOTY0Mjg4CiAgICB9CiAgXSwKICAiZXJyb3JzIjogW10sCiAgIm9ic2VydmVkUGVha1ByaXZhdGVCeXRlcyI6IDU3Mzk2NDI4OAp9"
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "434233d160a2e1d552a0-99f918855cd04b62b31a",
+          "file": "soundfont-large.spec.ts",
+          "line": 85,
+          "column": 3
+        },
+        {
+          "title": "real 1024 MiB PCM bank hashes, commits, reopens and decodes only referenced stereo samples",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 300000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 85689,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-16T06:42:41.663Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "large-bank-result",
+                      "contentType": "application/json",
+                      "body": "ewogICJtaWIiOiAxMDI0LAogICJlbGFwc2VkTXMiOiA5MTMxLAogICJzdG9yZWQiOiB7CiAgICAiaWQiOiAiZWJkZWUwM2UxOTBkMDAxY2E0NDYxYjYwNzc5MDI2YjZjMjNhNzRiNjM2NGU0NWVjMzMxMTljYzViMWUwYjRhZiIsCiAgICAic2l6ZSI6IDEwNzM3NDE4MjQsCiAgICAiYmxvYkJhY2tlZCI6IHRydWUsCiAgICAibWF0ZXJpYWxpemVkUGNtIjogMCwKICAgICJsYXJnZXN0TWFpblRocmVhZFJlYWQiOiAwCiAgfSwKICAicmVzdG9yZWQiOiB7CiAgICAiaWQiOiAiZWJkZWUwM2UxOTBkMDAxY2E0NDYxYjYwNzc5MDI2YjZjMjNhNzRiNjM2NGU0NWVjMzMxMTljYzViMWUwYjRhZiIsCiAgICAic2l6ZSI6IDEwNzM3NDE4MjQsCiAgICAiYmxvYnMiOiB0cnVlLAogICAgImxpc3RlZCI6IDEsCiAgICAicm1zIjogWwogICAgICAwLjEyOTMwMDY3NDE3MzM3MDYsCiAgICAgIDAuMDg3OTA5MTI0NTE0Mjg1NDEKICAgIF0sCiAgICAic3RhdHMiOiB7CiAgICAgICJidWRnZXRCeXRlcyI6IDI2ODQzNTQ1NiwKICAgICAgImluYWN0aXZlQnVkZ2V0Qnl0ZXMiOiA2NzEwODg2NCwKICAgICAgImRlY29kZWRCeXRlcyI6IDEzMjMwNCwKICAgICAgInByZXBhcmluZ0J5dGVzIjogMCwKICAgICAgImluYWN0aXZlQnl0ZXMiOiAwLAogICAgICAicGlubmVkQnl0ZXMiOiAxMzIzMDQsCiAgICAgICJjYWNoZWRTYW1wbGVzIjogMiwKICAgICAgInByZXBhcmluZ1NhbXBsZXMiOiAwLAogICAgICAicmVhZHMiOiAyLAogICAgICAiZGVjb2RlcyI6IDIsCiAgICAgICJjYWNoZUhpdHMiOiAwCiAgICB9CiAgfQp9"
+                    },
+                    {
+                      "name": "browser-private-memory-samples",
+                      "contentType": "application/json",
+                      "body": "ewogICJwbGF0Zm9ybSI6ICJ3aW4zMiIsCiAgImludGVydmFsTXMiOiAyMDAwLAogICJzYW1wbGVzIjogWwogICAgewogICAgICAiZWxhcHNlZE1zIjogMjE2OSwKICAgICAgInByaXZhdGVCeXRlcyI6IDUxMzY1ODg4MAogICAgfSwKICAgIHsKICAgICAgImVsYXBzZWRNcyI6IDU5NTksCiAgICAgICJwcml2YXRlQnl0ZXMiOiA1NTIyODAwNjQKICAgIH0sCiAgICB7CiAgICAgICJlbGFwc2VkTXMiOiA5NTc1LAogICAgICAicHJpdmF0ZUJ5dGVzIjogNTY2OTM1NTUyCiAgICB9LAogICAgewogICAgICAiZWxhcHNlZE1zIjogMTA1OTcsCiAgICAgICJwcml2YXRlQnl0ZXMiOiA1NjcxNDg1NDQKICAgIH0KICBdLAogICJlcnJvcnMiOiBbXSwKICAib2JzZXJ2ZWRQZWFrUHJpdmF0ZUJ5dGVzIjogNTY3MTQ4NTQ0Cn0="
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "434233d160a2e1d552a0-6f58eacf974aa0dbf9ae",
+          "file": "soundfont-large.spec.ts",
+          "line": 85,
+          "column": 3
+        },
+        {
+          "title": "rejects more than 1 GiB before reading the source",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 300000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 4370,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-16T06:44:07.371Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "434233d160a2e1d552a0-f0fdaaf2aad6b612e155",
+          "file": "soundfont-large.spec.ts",
+          "line": 157,
+          "column": 1
+        },
+        {
+          "title": "user-provided Nice Steinway stereo bank activates, plays and restores without changing source bytes",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 300000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 109645,
+                  "error": {
+                    "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoHaveValue\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator: locator('#settings-soundfont-select')\nExpected: \u001b[32m\"6f2e465b3ec4a6116c6e23b762a6ad4148c9f44f4660a7503f0d0b89cc82fe9b\"\u001b[39m\nTimeout: 90000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toHaveValue\" locator('#settings-soundfont-select') with timeout 90000ms\u001b[22m\n\u001b[2m  - waiting for locator('#settings-soundfont-select')\u001b[22m\n",
+                    "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoHaveValue\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator: locator('#settings-soundfont-select')\nExpected: \u001b[32m\"6f2e465b3ec4a6116c6e23b762a6ad4148c9f44f4660a7503f0d0b89cc82fe9b\"\u001b[39m\nTimeout: 90000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toHaveValue\" locator('#settings-soundfont-select') with timeout 90000ms\u001b[22m\n\u001b[2m  - waiting for locator('#settings-soundfont-select')\u001b[22m\n\n    at C:\\Projects\\pianomotion-studio\\tests\\browser\\soundfont-large.spec.ts:197:60",
+                    "location": {
+                      "file": "C:\\Projects\\pianomotion-studio\\tests\\browser\\soundfont-large.spec.ts",
+                      "column": 60,
+                      "line": 197
+                    },
+                    "snippet": "  195 |   await page.locator(\"#settings-sound-output\").selectOption(\"soundfont\");\n  196 |   await page.locator('input[type=\"file\"][accept=\".sf2\"]').setInputFiles(path);\n> 197 |   await expect(page.locator(\"#settings-soundfont-select\")).toHaveValue(expectedHash, { timeout: 90_000 });\n      |                                                            ^\n  198 |   await page.getByRole(\"button\", { name: \"Close\", exact: true }).click();\n  199 |   await openStudioInspector(page, \"Audio\");\n  200 |   await expect(page.getByText(\"Active output: Local SoundFont\", { exact: true })).toBeVisible({ timeout: 90_000 });"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "C:\\Projects\\pianomotion-studio\\tests\\browser\\soundfont-large.spec.ts",
+                        "column": 60,
+                        "line": 197
+                      },
+                      "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoHaveValue\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator: locator('#settings-soundfont-select')\nExpected: \u001b[32m\"6f2e465b3ec4a6116c6e23b762a6ad4148c9f44f4660a7503f0d0b89cc82fe9b\"\u001b[39m\nTimeout: 90000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toHaveValue\" locator('#settings-soundfont-select') with timeout 90000ms\u001b[22m\n\u001b[2m  - waiting for locator('#settings-soundfont-select')\u001b[22m\n\n\n  195 |   await page.locator(\"#settings-sound-output\").selectOption(\"soundfont\");\n  196 |   await page.locator('input[type=\"file\"][accept=\".sf2\"]').setInputFiles(path);\n> 197 |   await expect(page.locator(\"#settings-soundfont-select\")).toHaveValue(expectedHash, { timeout: 90_000 });\n      |                                                            ^\n  198 |   await page.getByRole(\"button\", { name: \"Close\", exact: true }).click();\n  199 |   await openStudioInspector(page, \"Audio\");\n  200 |   await expect(page.getByText(\"Active output: Local SoundFont\", { exact: true })).toBeVisible({ timeout: 90_000 });\n    at C:\\Projects\\pianomotion-studio\\tests\\browser\\soundfont-large.spec.ts:197:60"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-16T06:44:11.760Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "C:\\Projects\\pianomotion-studio\\test-results\\soundfont-chrome\\soundfont-large-user-provi-c1643-thout-changing-source-bytes\\error-context.md"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "C:\\Projects\\pianomotion-studio\\tests\\browser\\soundfont-large.spec.ts",
+                    "column": 60,
+                    "line": 197
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "434233d160a2e1d552a0-753914ab3984d08683dd",
+          "file": "soundfont-large.spec.ts",
+          "line": 185,
+          "column": 1
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-10-16T06:41:00.196Z",
+    "duration": 318703.865,
+    "expected": 4,
+    "skipped": 0,
+    "unexpected": 1,
+    "flaky": 0
+  }
+}
