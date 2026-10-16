@@ -169,6 +169,10 @@ describe("@handthesia/engine-ts", () => {
 
     const validatedExport = M1ExportMidiResultSchema.parse({
       ...exported,
+      exportedBytes: exported.exportedBytes.buffer.slice(
+        exported.exportedBytes.byteOffset,
+        exported.exportedBytes.byteOffset + exported.exportedBytes.byteLength,
+      ),
       type: "export-midi-result",
       requestId: "req-1",
       projectId: "test-proj",

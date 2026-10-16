@@ -2829,7 +2829,7 @@ export class HandAnimator {
     if (((cache).length > 20000)) {
       pyClear(cache);
     }
-    [at, tick] = [this._partner_x, IDLE_TICK_T];
+    [at, tick] = [this._partner_x.bind(this), IDLE_TICK_T];
     const ahead = (j: any = null): any => {
       let i0: any;
       i0 = Math.floor((pyMult(j, g) / tick));

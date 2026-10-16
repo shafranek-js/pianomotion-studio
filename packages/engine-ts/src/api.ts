@@ -222,14 +222,31 @@ export function _plan_id(kind: any = null, request_id: any = null): any {
   return `${kind}/${digest}`;
 }
 export function _same_json(left: any = null, right: any = null): any {
+  if (left === right) return true;
+  if (left === null || left === undefined || right === null || right === undefined) return left === right;
+  if (typeof left === "number" && typeof right === "number") {
+    if (Number.isNaN(left) && Number.isNaN(right)) return true;
+    return Math.abs(left - right) < 1e-7;
+  }
   // Compare JSON DTOs without relying on insertion order.
-  if ((bool((typeof left === 'object' && left !== null && !Array.isArray(left))) && bool((typeof right === 'object' && right !== null && !Array.isArray(right))))) {
-    return (((pyEq(pyKeys(left), pyKeys(right)))) && bool(Array.from(Array.from(pyIter(left)).map((key: any) => _same_json(left[key], right[key]))).every(Boolean)));
+  if (typeof left === 'object' && !Array.isArray(left) && typeof right === 'object' && !Array.isArray(right)) {
+    const keysLeft = Object.keys(left);
+    const keysRight = Object.keys(right);
+    if (keysLeft.length !== keysRight.length) return false;
+    for (const key of keysLeft) {
+      if (!Object.prototype.hasOwnProperty.call(right, key)) return false;
+      if (!_same_json(left[key], right[key])) return false;
+    }
+    return true;
   }
-  if ((bool(Array.isArray(left)) && bool(Array.isArray(right)))) {
-    return (((pyEq((left).length, (right).length))) && bool(Array.from(Array.from(pyIter(zip(left, right))).map(([a, b]: any) => _same_json(a, b))).every(Boolean)));
+  if (Array.isArray(left) && Array.isArray(right)) {
+    if (left.length !== right.length) return false;
+    for (let i = 0; i < left.length; i++) {
+      if (!_same_json(left[i], right[i])) return false;
+    }
+    return true;
   }
-  return (pyEq(left, right));
+  return pyEq(left, right);
 }
 export function _check_replan_document(expected: any = null, edited: any = null, plan: any = null, resource: any = null): any {
   let after: any, assignment: any, assignments: any, assignments_by_id: any, before: any, disposition: any, edited_notes: any, expected_notes: any, finger: any, finger_mode: any, gliss_mode: any, immutable_document_keys: any, key: any, note: any, note_id: any, value: any;

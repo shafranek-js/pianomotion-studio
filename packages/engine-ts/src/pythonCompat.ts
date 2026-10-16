@@ -251,6 +251,10 @@ export function pyEq(a: any, b: any): boolean {
   if (a === b) return true;
   if (a === null || a === undefined || b === null || b === undefined) return a === b;
   if (typeof a !== typeof b) return false;
+  if (typeof a === "number" && typeof b === "number") {
+    if (Number.isNaN(a) && Number.isNaN(b)) return true;
+    return Math.abs(a - b) < 1e-7;
+  }
   if (typeof a !== "object") return a === b;
   if (Array.isArray(a) !== Array.isArray(b)) return false;
   if (Array.isArray(a)) {
@@ -354,10 +358,10 @@ export function pyValues(obj: any): any[] {
   return Object.values(obj);
 }
 
-export function pyKeys(obj: any): any[] {
-  if (obj === null || obj === undefined) return [];
-  if (obj instanceof Map || obj instanceof Set) return Array.from(obj.keys());
-  return Object.keys(obj);
+export function pyKeys(obj: any): Set<any> {
+  if (obj === null || obj === undefined) return new Set();
+  if (obj instanceof Map || obj instanceof Set) return new Set(obj.keys());
+  return new Set(Object.keys(obj));
 }
 
 export function pyMin(iterableOrFirst: any, ...rest: any[]): any {
