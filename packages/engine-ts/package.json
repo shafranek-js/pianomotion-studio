@@ -1,6 +1,6 @@
 {
   "name": "@handthesia/engine-ts",
-  "version": "0.1.0-dev.11",
+  "version": "0.1.0-dev.12",
   "private": true,
   "type": "module",
   "exports": {
@@ -12,6 +12,6 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@handthesia/contracts": "0.1.0-dev.11"
+    "@handthesia/contracts": "0.1.0-dev.12"
   }
 }

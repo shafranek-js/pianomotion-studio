@@ -90,9 +90,13 @@ async function exportAndVerify(
   await expect(page.getByRole("dialog", { name: /Export Performance Video/ })).toHaveCount(0);
 }
 
-test("real MP4 at 1080p and WebM at 720p demux, decode, seek, move hands, and carry synchronized audio", async ({ page }, testInfo) => {
+test("real 3D MP4 at 1080p and WebM at 720p demux, decode, seek, move hands, and carry synchronized audio", async ({ page }, testInfo) => {
   await installOpfsSavePicker(page);
   const studio = await loadStudioSong(page);
+  const view3d = page.getByTestId("studio-3d-view-toggle");
+  if (await view3d.getAttribute("aria-pressed") !== "true") await view3d.click();
+  await expect(page.getByTestId("piano-canvas-3d")).toBeVisible();
+  await page.getByRole("button", { name: "Concert", exact: true }).click();
   const document = studio.result.document as SongDocument;
   expect(document).toBeTruthy();
   const firstNoteStart = Math.min(...document!.notes.map((note) => note.startSeconds));

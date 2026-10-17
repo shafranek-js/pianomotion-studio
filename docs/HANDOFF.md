@@ -1,7 +1,19 @@
 # PianoMotion Studio — Handoff
 
-Обновлено: 2026-10-16. Основной checkout: `C:\Projects\pianomotion-studio`.
+Обновлено: 2026-10-17. Основной checkout: `C:\Projects\pianomotion-studio`.
 Старый desktop checkout `C:\Projects\pygame-piano-animator` — отдельный проект.
+
+## Текущая сдача dev.12
+
+Dev.11 уже опубликована пользователем. Номер текущего цикла повышен до 0.1.0-dev.12 в manifests, lockfile и статус-баре. Функциональные результаты ниже собраны до переименования версии; screenshots сохраняют фактическую подпись dev.11.
+
+R3D-01–04: fixed/manual 3D-камера явно направляется на цель; пустой PerformancePlan сохраняет пустое исполнение; подъём пальцев непрерывен около нуля; шапка и камера адаптируются без перекрытий. Version/workspace/lockfile и release details синхронизированы. [Протокол, команды и ограничения](evidence/3d-repair-2026-10-17/VERIFICATION.md). Новые модели не интегрировались. После реализации пользователь отдельно разрешил commit/push/deploy dev.12; проверять deployment по Actions и live buildId. Состояние Git проверять отдельно: во время работы появился пользовательский коммит 74d0050; оркестратор commit/push/deploy не выполнял.
+
+Повторяемый dev-стенд: tests/browser/r3d/acceptance.html через Vite /@fs/C:/Projects/pianomotion-studio/tests/browser/r3d/acceptance.html. Кнопка запускает настоящий Native Worker, четыре фиксированных ракурса, MP4/WebM, demux/decode/audio/seek. Проверка типов: node node_modules/typescript/bin/tsc -p tests/browser/r3d/tsconfig.json. Production CI media-export.spec.ts явно выбирает 3D; browser helpers работают с видимым canvas. Edge и production-PWA не считать проверенными этим циклом.
+
+## Исторические сведения до dev.12
+
+Следующий статус dev.8 сохранён как история и не задаёт текущий движок по умолчанию.
 
 ## Цель и статус
 

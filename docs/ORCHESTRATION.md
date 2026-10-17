@@ -1,8 +1,10 @@
 # PianoMotion Studio: журнал оркестрации
 
-## R3D-01–04 — dev.11, 2026-10-17
+## R3D-01–04 — dev.12, 2026-10-17
 
-База d5caa72, пользовательские исправления dev.10 сохранены. Три GPT-6 Luna Extra High: r3d_scene — pianoScene3d и отдельные regression tests (камера/manual export, пустой PerformancePlan); r3d_hover — handRigBuilder/render3d.test (непрерывный release); r3d_ui — StudioShell/styles/types и UI tests (адаптивная камера). Root владеет версиями/lockfile, App/Player release text, документацией, интеграционной и media/browser проверкой. Общие файлы имеют одного владельца. Новые модели, зависимости, commit/push/deploy не входят. Результаты и ограничения будут записаны после проверки.
+Номер повышен с dev.11 по прямому указанию пользователя: dev.11 уже опубликована им на GitHub. Существующие скриншоты/метрики остаются историческим свидетельством проверенного кода до переименования; новая сборка dev.12 проверяется отдельно.
+
+База d5caa72, пользовательские исправления dev.10 сохранены. Три GPT-6 Luna Extra High: r3d_scene — pianoScene3d и отдельные regression tests (камера/manual export, пустой PerformancePlan); r3d_hover — handRigBuilder/render3d.test (непрерывный release); r3d_ui — StudioShell/styles/types и UI tests (адаптивная камера). Root владеет версиями/lockfile, App/Player release text, документацией, интеграционной и media/browser проверкой. Общие файлы имеют одного владельца. Новые модели и зависимости не входят. После реализации пользователь отдельно разрешил commit/push/deploy версии dev.12. Результаты: 556 unit, typecheck/lint/build, 13 numerical parity и независимые исходные repro PASS; реальный Chrome проверил четыре fixed-камеры, MP4/WebM, decode/audio/seek; 14 viewport measurements PASS после возврата UI на исправление. Edge и полный production-PWA/media CI остаются открыты. [Протокол dev.12](evidence/3d-repair-2026-10-17/VERIFICATION.md). Во время работы появился отдельный пользовательский коммит 74d0050; root commit/push/deploy не выполнял.
 
 ## Native full parity и локальный журнал — dev.9
 

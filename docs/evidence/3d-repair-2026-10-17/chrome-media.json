@@ -1,0 +1,62 @@
+{
+  "passed": true,
+  "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36",
+  "checks": [
+    {
+      "cameraPreset": "concert",
+      "keyboardPixels": 23615,
+      "skinPixels": 5210,
+      "width": 1280,
+      "height": 720
+    },
+    {
+      "cameraPreset": "overhead",
+      "keyboardPixels": 25634,
+      "skinPixels": 5576,
+      "width": 1280,
+      "height": 720
+    },
+    {
+      "cameraPreset": "pov",
+      "keyboardPixels": 48439,
+      "skinPixels": 23452,
+      "width": 1280,
+      "height": 720
+    },
+    {
+      "cameraPreset": "side_arch",
+      "keyboardPixels": 21565,
+      "skinPixels": 17122,
+      "width": 1280,
+      "height": 720
+    },
+    {
+      "format": "mp4",
+      "bytes": 382833,
+      "width": 1280,
+      "height": 720,
+      "duration": 2.2666666666666666,
+      "audioDuration": 2.2755555555555556,
+      "frames": 68,
+      "changed": 3723,
+      "skinChanged": 1292,
+      "bright": 23579,
+      "peakRms": 0.3010554704834305,
+      "nativeSeek": true
+    },
+    {
+      "format": "webm",
+      "bytes": 485279,
+      "width": 1280,
+      "height": 720,
+      "duration": 2.266,
+      "audioDuration": 2.26,
+      "frames": 68,
+      "changed": 3716,
+      "skinChanged": 1301,
+      "bright": 23589,
+      "peakRms": 0.30287049028343044,
+      "nativeSeek": true
+    }
+  ]
+}

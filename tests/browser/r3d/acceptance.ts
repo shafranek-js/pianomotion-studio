@@ -4,6 +4,9 @@ import { createM1AnalysisWorker } from "../../../apps/client/src/m1WorkerClient"
 import { DEFAULT_PROFILE } from "../../../apps/client/src/profiles/defaultProfiles";
 import { DEFAULT_SETTINGS } from "../../../apps/client/src/settings/types";
 import { VideoExporter } from "../../../apps/client/src/export/videoExporter";
+import { createVideoFrameScene } from "../../../apps/client/src/export/videoExportScene";
+import { freezeVideoExportSnapshot } from "../../../apps/client/src/export/videoExportSnapshot";
+import { MotionBuffer } from "../../../apps/client/src/render/motionBuffer";
 import type { ExportSceneDataSource } from "../../../apps/client/src/export/types";
 
 const status = document.querySelector<HTMLPreElement>("#status")!;
@@ -85,12 +88,32 @@ document.querySelector<HTMLButtonElement>("#run")!.onclick=async()=>{
       sceneView:{dimension:"3d",cameraPreset:"concert"},sourceIdentity:{projectId:analyzed.projectId,revision:analyzed.revision,engineVersion,
         originalMidiBytes:bytes,fingeringPlan:analyzed.fingeringPlan!,rawBaseline:analyzed.rawBaseline,resource:analyzed.resource,
         sourceContext:{fixtureId:"r3d-acceptance",keyStyle:"realistic"},activeOutputId:"synth",soundFontAssetId:null}};
+    const buffer=new MotionBuffer();buffer.addPoses(analyzed.motionPlan?.poses??[]);
+    for(const cameraPreset of ["concert","overhead","pov","side_arch"] as const) {
+      status.textContent=`Checking fixed camera: ${cameraPreset}`;
+      const canvas=document.createElement("canvas");canvas.width=1280;canvas.height=720;
+      const snapshot=freezeVideoExportSnapshot({...source,sceneView:{dimension:"3d",cameraPreset}},
+        {preset:"720p",width:1280,height:720,fps:30,speed:1,format:"mp4",includeAudio:false,audioSource:"none"});
+      const scene=await createVideoFrameScene(canvas,snapshot,buffer,"realistic");
+      const copy=document.createElement("canvas");copy.width=1280;copy.height=720;
+      const ctx=copy.getContext("2d",{willReadFrequently:true})!;
+      try {scene.renderAt(.25);ctx.drawImage(canvas,0,0);}finally{scene.destroy();}
+      const pixels=ctx.getImageData(0,0,1280,720).data;let keyboardPixels=0,skinPixels=0;
+      for(let i=0;i<pixels.length;i+=12){
+        if(pixels[i]!>140&&pixels[i+1]!>140&&pixels[i+2]!>140)keyboardPixels++;
+        if(pixels[i]!>65&&pixels[i]!>pixels[i+1]!*1.12&&pixels[i+1]!>pixels[i+2]!*1.06)skinPixels++;
+      }
+      assert(keyboardPixels>100&&skinPixels>30,`Fixed camera ${cameraPreset} lost keyboard/hands`);
+      const section=document.createElement("section"),heading=document.createElement("h2");
+      heading.textContent=`Fixed camera: ${cameraPreset}`;section.append(heading,copy);artifacts.append(section);
+      checks.push({cameraPreset,keyboardPixels,skinPixels,width:copy.width,height:copy.height});
+    }
     for(const format of ["mp4","webm"] as const){
       const exported=await new VideoExporter().exportVideo(source,{preset:"720p",width:1280,height:720,fps:30,speed:1,format,
         includeAudio:true,audioSource:"synth",tailSeconds:.5,outputMode:"bounded-blob"},p=>{status.textContent=`${format}: ${p.statusText}`;});
       assert(exported.boundedBlob,"Missing finalized file"); checks.push(await inspect(exported.boundedBlob,format));
     }
-    status.textContent="PASS: MP4 + WebM, real Worker, demux/decode, moving hands, audio, seek";
+    status.textContent="PASS: four fixed cameras; MP4 + WebM, real Worker, demux/decode, moving hands, audio, seek";
     result.textContent=JSON.stringify({passed:true,userAgent:navigator.userAgent,checks},null,2);
   }catch(error){status.textContent="FAIL";result.textContent=JSON.stringify({passed:false,error:String(error),checks},null,2);}
   finally{button.disabled=false;}

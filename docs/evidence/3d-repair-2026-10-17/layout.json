@@ -1,0 +1,114 @@
+[
+  {
+    "cameraSelectVisible": false,
+    "height": 1080,
+    "outside": [],
+    "overlaps": [],
+    "scrollWidth": 1920,
+    "width": 1920
+  },
+  {
+    "cameraSelectVisible": false,
+    "height": 900,
+    "outside": [],
+    "overlaps": [],
+    "scrollWidth": 1440,
+    "width": 1440
+  },
+  {
+    "cameraSelectVisible": false,
+    "height": 768,
+    "outside": [],
+    "overlaps": [],
+    "scrollWidth": 1366,
+    "width": 1366
+  },
+  {
+    "cameraSelectVisible": false,
+    "height": 768,
+    "outside": [],
+    "overlaps": [],
+    "scrollWidth": 1024,
+    "width": 1024
+  },
+  {
+    "cameraSelectVisible": true,
+    "height": 1024,
+    "outside": [],
+    "overlaps": [],
+    "scrollWidth": 768,
+    "width": 768
+  },
+  {
+    "cameraSelectVisible": true,
+    "height": 844,
+    "outside": [],
+    "overlaps": [],
+    "scrollWidth": 390,
+    "width": 390
+  },
+  {
+    "cameraSelectVisible": true,
+    "height": 844,
+    "outside": [],
+    "overlaps": [],
+    "scrollWidth": 560,
+    "width": 560
+  },
+  {
+    "cameraSelectVisible": true,
+    "height": 844,
+    "outside": [],
+    "overlaps": [],
+    "scrollWidth": 561,
+    "width": 561
+  },
+  {
+    "cameraSelectVisible": false,
+    "height": 768,
+    "outside": [],
+    "overlaps": [],
+    "scrollWidth": 899,
+    "width": 899
+  },
+  {
+    "cameraSelectVisible": false,
+    "height": 768,
+    "outside": [],
+    "overlaps": [],
+    "scrollWidth": 900,
+    "width": 900
+  },
+  {
+    "cameraSelectVisible": false,
+    "height": 900,
+    "outside": [],
+    "overlaps": [],
+    "scrollWidth": 1199,
+    "width": 1199
+  },
+  {
+    "cameraSelectVisible": false,
+    "height": 900,
+    "outside": [],
+    "overlaps": [],
+    "scrollWidth": 1200,
+    "width": 1200
+  },
+  {
+    "cameraSelectVisible": false,
+    "height": 900,
+    "outside": [],
+    "overlaps": [],
+    "scrollWidth": 1899,
+    "width": 1899
+  },
+  {
+    "cameraSelectVisible": false,
+    "height": 900,
+    "outside": [],
+    "overlaps": [],
+    "scrollWidth": 1900,
+    "width": 1900
+  }
+]
