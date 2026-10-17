@@ -1,4 +1,4 @@
-import { Check, Music, RotateCcw, SkipBack, SkipForward } from "lucide-react";
+import { Check, Hand, Music, RotateCcw, SkipBack, SkipForward } from "lucide-react";
 import type { PlayAlongHandMode, PlayAlongState, PlayAlongStep } from "../player/playAlongEngine";
 import "./workspace.css";
 
@@ -172,28 +172,102 @@ export function PlayAlongTransport({
 
       {/* 3. Hand Mode Selector & MIDI Input Status */}
       <div className="studio-transport-controls__options" style={{ display: "inline-flex", alignItems: "center", gap: "8px" }}>
-        {/* Hand practice mode */}
-        <div style={{ display: "inline-flex", borderRadius: "6px", background: "#1c2127", border: "1px solid #374151", padding: "2px" }}>
-          {(["both", "right", "left"] as const).map((mode) => (
-            <button
-              key={mode}
-              type="button"
-              onClick={() => onHandModeChange(mode)}
-              style={{
-                padding: "2px 8px",
-                fontSize: "11px",
-                fontWeight: handMode === mode ? 600 : 400,
-                color: handMode === mode ? "#ffffff" : "var(--studio-muted)",
-                background: handMode === mode ? "#374151" : "transparent",
-                border: "none",
-                borderRadius: "4px",
-                cursor: "pointer",
-              }}
-              title={mode === "both" ? "Practice both hands" : mode === "right" ? "Practice right hand only" : "Practice left hand only"}
-            >
-              {mode === "both" ? "Both hands" : mode === "right" ? "Right hand" : "Left hand"}
-            </button>
-          ))}
+        {/* Hand practice mode: Left | Both | Right */}
+        <div
+          role="group"
+          aria-label="Hand practice mode"
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "2px",
+            borderRadius: "6px",
+            background: "#1c2127",
+            border: "1px solid #374151",
+            padding: "2px",
+          }}
+        >
+          {(["left", "both", "right"] as const).map((mode) => {
+            const active = handMode === mode;
+            const label =
+              mode === "left" ? "Left hand" : mode === "both" ? "Both hands" : "Right hand";
+            const tooltip =
+              mode === "left"
+                ? "Practice left hand only"
+                : mode === "both"
+                  ? "Practice both hands"
+                  : "Practice right hand only";
+
+            return (
+              <button
+                key={mode}
+                type="button"
+                aria-label={label}
+                aria-pressed={active}
+                onClick={() => onHandModeChange(mode)}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "4px",
+                  padding: "3px 8px",
+                  fontSize: "11px",
+                  fontWeight: active ? 600 : 500,
+                  color: active ? "#ffffff" : "var(--studio-muted)",
+                  background: active ? "#374151" : "transparent",
+                  border: "none",
+                  borderRadius: "4px",
+                  cursor: "pointer",
+                  lineHeight: 1,
+                }}
+                title={tooltip}
+              >
+                {mode === "left" && (
+                  <>
+                    <Hand
+                      size={14}
+                      aria-hidden="true"
+                      style={{
+                        transform: "scaleX(-1)",
+                        color: active ? "#60a5fa" : "currentColor",
+                      }}
+                    />
+                    <span style={{ fontSize: "10px", opacity: active ? 1 : 0.8 }}>L</span>
+                  </>
+                )}
+                {mode === "both" && (
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: "2px" }}>
+                    <Hand
+                      size={14}
+                      aria-hidden="true"
+                      style={{
+                        transform: "scaleX(-1)",
+                        color: active ? "#60a5fa" : "currentColor",
+                      }}
+                    />
+                    <Hand
+                      size={14}
+                      aria-hidden="true"
+                      style={{
+                        color: active ? "#34d399" : "currentColor",
+                      }}
+                    />
+                  </span>
+                )}
+                {mode === "right" && (
+                  <>
+                    <span style={{ fontSize: "10px", opacity: active ? 1 : 0.8 }}>R</span>
+                    <Hand
+                      size={14}
+                      aria-hidden="true"
+                      style={{
+                        color: active ? "#34d399" : "currentColor",
+                      }}
+                    />
+                  </>
+                )}
+              </button>
+            );
+          })}
         </div>
 
         {/* Auto play other hand when isolated */}

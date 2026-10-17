@@ -9,7 +9,7 @@ import {
 } from "mediabunny";
 import { computeSha256Hex } from "../audio/soundfont/soundfontAssetStore";
 import { parseSf2Async } from "../audio/soundfont/sf2Parser";
-import { PianoScene } from "../render";
+import { createVideoFrameScene, type VideoFrameScene } from "./videoExportScene";
 import { renderOfflineAudio, type OfflineAudioRenderResult } from "./offlineAudioRenderer";
 import { calculateExportTiming } from "./videoDimensions";
 import {
@@ -260,7 +260,7 @@ export class VideoExporter {
     const initialMimeType = getSupportedVideoMimeType(format);
     const filename = makeFilename(snapshot.document.title, options.preset, options.fps, format);
     let pickerPromise: Promise<SaveFileHandleLike> | null;
-    let scene: PianoScene | null = null;
+    let scene: VideoFrameScene | null = null;
     let analysisWorker: VideoExportAnalysisWorker | null = null;
     let motionProvider: VideoExportMotionProvider;
     let output: Output | null = null;
@@ -337,25 +337,7 @@ export class VideoExporter {
         });
       });
       throwIfCancelled(signal);
-      scene = await PianoScene.create({
-        target: canvas,
-        fixedViewport: { width: safeWidth, height: safeHeight, resolution: 1 },
-        song: snapshot.document,
-        performancePlan: snapshot.performancePlan,
-        // The bounded streamed buffer wins when it has a current pose; the frozen
-        // sparse plan keeps hands visible during lead-in/tail and uncovered gaps.
-        motionPlan: snapshot.motionPlan ?? null,
-        motionBuffer: motionProvider.buffer,
-        keyStyle: replanned.keyStyle,
-        displaySettings: {
-          showFingerLabels: snapshot.settings.showFingerLabels,
-          showNoteNames: snapshot.settings.showNoteNames,
-          skinStyle: snapshot.settings.skinStyle,
-          showHandShadow: snapshot.settings.showHandShadow,
-          renderCapFps: 0,
-        },
-        pixelsPerSecond: 180,
-      });
+      scene = await createVideoFrameScene(canvas, snapshot, motionProvider.buffer, replanned.keyStyle);
 
       let soundFont: Awaited<ReturnType<typeof parseSf2Async>> | null = null;
       if (options.includeAudio && options.audioSource === "soundfont") {
@@ -444,8 +426,7 @@ export class VideoExporter {
         const motionEnd = Math.min(songDuration, motionStart + 1.5);
         await motionProvider.ensureCoverage(motionStart, motionEnd);
         throwIfCancelled(signal);
-        scene.update(songTime);
-        scene.getApp().renderer.render(scene.getApp().stage);
+        scene.renderAt(songTime);
         await canvasSource.add(timestampSeconds, 1 / timing.fps);
         await addReadyAudio(timestampSeconds + 1 / timing.fps);
         frameCount = i + 1;

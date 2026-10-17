@@ -2,7 +2,11 @@ import type { Graphics } from "pixi.js";
 import {
   drawBand,
   drawCapsule,
+  drawTaperedCapsule,
+  getSegmentDistalRadius,
+  getSortedFingersByDepth,
   inflate,
+  isThumbTucked,
   unitVector,
   type HandGeometry,
   type ScreenPoint,
@@ -91,7 +95,12 @@ function drawNail(
 }
 
 /**
- * Renders cartoon flesh hand using PixiJS Graphics
+ * Renders cartoon flesh hand using PixiJS Graphics with strict anatomical layering:
+ * 0. Tucked thumb distal phalanges (only during thumb-under crossing)
+ * 1. Unified Silhouette Outline Pass (wrist, web, palm, fingers)
+ * 2. Unified Flesh Fill Pass (wrist, web, palm, fingers in 3D depth order)
+ * 3. Anatomical Details Pass (web crease, MCP knuckles, PIP/DIP creases, nails)
+ * 4. Apparel Pass (shirt cuff and sleeve wrapping over wrist skin)
  */
 export function renderCartoonSkin(
   graphics: Graphics,
@@ -120,72 +129,54 @@ export function renderCartoonSkin(
     y: geom.wristCenter.y + u.y * d,
   });
 
-  // 1. Arm, Cuff, and Sleeve
-  if (skinSettings.sleeve) {
-    // Wrist forearm skin
-    drawCapsule(graphics, along(0), along(cuff0 + 4), hw + lw, lineCol);
-    drawCapsule(graphics, along(0), along(cuff0 + 4), hw, skinCol);
+  const tucked = isThumbTucked(geom);
+  const sortedFingers = getSortedFingersByDepth(geom);
+  const forearmSkinEnd = skinSettings.sleeve ? along(cuff0 + 4) : geom.armEnd;
 
-    // Cuff band
-    const sl0 = cuff0;
-    const sl1 = cuff0 + 0.42 * ppi;
-    const cuffMid = along((sl0 + sl1) / 2);
-    const cuffOutlineCol = rgbToHex(mixRgb(cols.line, [60, 60, 60], 0.4));
-    drawBand(graphics, cuffMid, u, (sl1 - sl0) / 2 + lw, hw * 1.28 + lw, cuffOutlineCol);
-    drawBand(graphics, cuffMid, u, (sl1 - sl0) / 2, hw * 1.28, 0xf2f2ee);
-
-    // Cuff button
-    const nx = -u.y;
-    const ny = u.x;
-    const bx = cuffMid.x + nx * hw * 0.8;
-    const by = cuffMid.y + ny * hw * 0.8;
-    graphics.circle(bx, by, Math.max(1.5, 0.05 * ppi)).fill(0x5a504c);
-
-    // Sleeve shirt fabric
-    const sleeveMid = along((sl1 + armLen) / 2);
-    const sleeveOutlineCol = rgbToHex(mixRgb(cols.sleeve, [0, 0, 0], 0.35));
-    drawBand(graphics, sleeveMid, u, (armLen - sl1) / 2 + lw, hw * 1.34 + lw, sleeveOutlineCol);
-    drawBand(graphics, sleeveMid, u, (armLen - sl1) / 2, hw * 1.34, sleeveCol);
-  } else {
-    // Bare forearm
-    drawCapsule(graphics, along(0), geom.armEnd, hw + lw, lineCol);
-    drawCapsule(graphics, along(0), geom.armEnd, hw, skinCol);
-  }
-
-  // Finger rendering helpers
-  const renderFingerOutline = (f: number) => {
+  const renderFingerSegmentsOutline = (f: number, startIdx: number, endIdx: number) => {
     const segs = geom.radius[f];
-    if (segs) {
-      for (const seg of segs) {
-        drawCapsule(graphics, seg.a, seg.b, seg.radius + lw, lineCol);
-      }
+    if (!segs) return;
+    for (let i = startIdx; i < Math.min(endIdx, segs.length); i++) {
+      const seg = segs[i]!;
+      const r2 = getSegmentDistalRadius(segs, i);
+      drawTaperedCapsule(graphics, seg.a, seg.b, seg.radius + lw, r2 + lw, lineCol);
     }
   };
 
-  const renderFingerFillAndDetails = (f: number) => {
+  const renderFingerSegmentsFill = (f: number, startIdx: number, endIdx: number) => {
+    const segs = geom.radius[f];
+    if (!segs) return;
+    for (let i = startIdx; i < Math.min(endIdx, segs.length); i++) {
+      const seg = segs[i]!;
+      const r2 = getSegmentDistalRadius(segs, i);
+      drawTaperedCapsule(graphics, seg.a, seg.b, seg.radius, r2, skinCol);
+    }
+  };
+
+  const renderFingerDetails = (f: number, includeBaseKnuckle: boolean, includeDistal: boolean) => {
+    if (!skinSettings.details) return;
     const segs = geom.radius[f];
     if (!segs || segs.length === 0) return;
 
-    for (const seg of segs) {
-      drawCapsule(graphics, seg.a, seg.b, seg.radius, skinCol);
-    }
-
-    if (skinSettings.details) {
-      // Phalanx joint creases
-      for (let i = 0; i < segs.length - 1; i++) {
-        const seg = segs[i]!;
-        drawJointCreases(graphics, seg.b, seg.u, seg.n, seg.radius, creaseCol);
-      }
-
-      // Knuckle arc at base/MCP
+    if (includeBaseKnuckle) {
       const baseSeg = segs[0]!;
       drawKnuckleCrease(graphics, baseSeg.a, baseSeg.u, baseSeg.n, baseSeg.radius, knuckleCol, ppi);
+      if (f === 1 && tucked && segs.length > 1) {
+        drawJointCreases(graphics, baseSeg.b, baseSeg.u, baseSeg.n, getSegmentDistalRadius(segs, 0), creaseCol);
+      }
+    }
 
-      // Distal nail plate
+    if (includeDistal) {
+      const creaseStart = f === 1 && tucked ? 1 : 0;
+      for (let i = creaseStart; i < segs.length - 1; i++) {
+        const seg = segs[i]!;
+        const jointR = getSegmentDistalRadius(segs, i);
+        drawJointCreases(graphics, seg.b, seg.u, seg.n, jointR, creaseCol);
+      }
+
       const distSeg = segs[segs.length - 1]!;
       let nailNormal = distSeg.n;
       if (f === 1) {
-        // Thumb nail points away from index finger
         const ixMcp = geom.chains[2]?.[1] ?? geom.wristCenter;
         if ((distSeg.b.x - ixMcp.x) * nailNormal.x + (distSeg.b.y - ixMcp.y) * nailNormal.y < 0) {
           nailNormal = { x: -nailNormal.x, y: -nailNormal.y };
@@ -195,14 +186,20 @@ export function renderCartoonSkin(
     }
   };
 
-  // 2. Anatomical Layer 1: Thumb (Finger 1)
-  // In top-down dorsal view, the thumb articulates on the palmar side and passes UNDER
-  // the dorsum and other fingers during thumb-under movements (подкладывание 1-го пальца).
-  renderFingerOutline(1);
-  renderFingerFillAndDetails(1);
+  // ---------------------------------------------------------------------------
+  // 0. Under-Palm Tucked Thumb Pass (ONLY when thumb is tucked under the palm)
+  // ---------------------------------------------------------------------------
+  if (tucked) {
+    renderFingerSegmentsOutline(1, 1, 3);
+    renderFingerSegmentsFill(1, 1, 3);
+    renderFingerDetails(1, false, true);
+  }
 
-  // 3. Anatomical Layer 2: Dorsum (Palm & Web)
-  // Drawn ON TOP of the thumb so thumb-under movements pass naturally underneath the dorsum.
+  // ---------------------------------------------------------------------------
+  // 1. Unified Silhouette Outline Pass (Wrist, Web, Palm, Fingers)
+  // ---------------------------------------------------------------------------
+  drawCapsule(graphics, along(0), forearmSkinEnd, hw + lw, lineCol);
+
   if (geom.web.length >= 3) {
     graphics.poly(geom.web.flat()).fill(lineCol);
     for (let i = 0; i < geom.webEdge.length - 1; i++) {
@@ -220,32 +217,84 @@ export function renderCartoonSkin(
     graphics.poly(inflatedPalm.flat()).fill(lineCol);
   }
 
+  for (const f of sortedFingers) {
+    if (f === 1 && tucked) {
+      renderFingerSegmentsOutline(1, 0, 1);
+    } else {
+      renderFingerSegmentsOutline(f, 0, 3);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // 2. Unified Flesh Fill Pass (Wrist, Web, Palm, Fingers)
+  // ---------------------------------------------------------------------------
+  drawCapsule(graphics, along(0), forearmSkinEnd, hw, skinCol);
+
   if (geom.web.length >= 3) {
     graphics.poly(geom.web.flat()).fill(skinCol);
   }
 
   if (geom.palm.length >= 3) {
     graphics.poly(geom.palm.flat()).fill(skinCol);
+  }
 
-    if (skinSettings.details && geom.webEdge.length >= 5) {
-      // Short crease where thenar web joins back of hand
-      const midEdge = geom.webEdge[Math.floor(geom.webEdge.length / 2)]!;
-      const d = unitVector(geom.wristCenter.x - midEdge[0], geom.wristCenter.y - midEdge[1]);
-      const p1x = midEdge[0] + d.x * 0.12 * ppi;
-      const p1y = midEdge[1] + d.y * 0.12 * ppi;
-      const p2x = midEdge[0] + d.x * 0.45 * ppi;
-      const p2y = midEdge[1] + d.y * 0.45 * ppi;
-      graphics
-        .moveTo(p1x, p1y)
-        .lineTo(p2x, p2y)
-        .stroke({ width: Math.max(1, 0.03 * ppi), color: webCreaseCol, cap: "round" });
+  for (const f of sortedFingers) {
+    if (f === 1 && tucked) {
+      renderFingerSegmentsFill(1, 0, 1);
+    } else {
+      renderFingerSegmentsFill(f, 0, 3);
     }
   }
 
-  // 4. Anatomical Layer 3: Fingers 2..5 (Index, Middle, Ring, Pinky)
-  // Fingers 2..5 lie on the dorsal-facing margin and also occlude thumb-under crossings.
-  for (let f = 2; f <= 5; f++) {
-    renderFingerOutline(f);
-    renderFingerFillAndDetails(f);
+  // ---------------------------------------------------------------------------
+  // 3. Anatomical Details Pass (Web Crease, Knuckles, Joint Creases, Nails)
+  // ---------------------------------------------------------------------------
+  if (skinSettings.details && geom.palm.length >= 3 && geom.webEdge.length >= 5) {
+    const midEdge = geom.webEdge[Math.floor(geom.webEdge.length / 2)]!;
+    const d = unitVector(geom.wristCenter.x - midEdge[0], geom.wristCenter.y - midEdge[1]);
+    const p1x = midEdge[0] + d.x * 0.12 * ppi;
+    const p1y = midEdge[1] + d.y * 0.12 * ppi;
+    const p2x = midEdge[0] + d.x * 0.45 * ppi;
+    const p2y = midEdge[1] + d.y * 0.45 * ppi;
+    graphics
+      .moveTo(p1x, p1y)
+      .lineTo(p2x, p2y)
+      .stroke({ width: Math.max(1, 0.03 * ppi), color: webCreaseCol, cap: "round" });
+  }
+
+  for (const f of sortedFingers) {
+    if (f === 1 && tucked) {
+      renderFingerDetails(1, true, false);
+    } else {
+      renderFingerDetails(f, true, true);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // 4. Apparel Pass (Cuff & Sleeve drawn over Wrist/Forearm Skin)
+  // ---------------------------------------------------------------------------
+  if (skinSettings.sleeve) {
+    const sl0 = cuff0;
+    const sl1 = cuff0 + 0.42 * ppi;
+    const cuffMid = along((sl0 + sl1) / 2);
+    const cuffOutlineCol = rgbToHex(mixRgb(cols.line, [60, 60, 60], 0.4));
+
+    // Sleeve shirt fabric
+    const sleeveMid = along((sl1 + armLen) / 2);
+    const sleeveOutlineCol = rgbToHex(mixRgb(cols.sleeve, [0, 0, 0], 0.35));
+    drawBand(graphics, sleeveMid, u, (armLen - sl1) / 2 + lw, hw * 1.34 + lw, sleeveOutlineCol);
+    drawBand(graphics, sleeveMid, u, (armLen - sl1) / 2, hw * 1.34, sleeveCol);
+
+    // Cuff band overlapping wrist skin and sleeve top edge
+    drawBand(graphics, cuffMid, u, (sl1 - sl0) / 2 + lw, hw * 1.28 + lw, cuffOutlineCol);
+    drawBand(graphics, cuffMid, u, (sl1 - sl0) / 2, hw * 1.28, 0xf2f2ee);
+
+    // Cuff button
+    const nx = -u.y;
+    const ny = u.x;
+    const bx = cuffMid.x + nx * hw * 0.8;
+    const by = cuffMid.y + ny * hw * 0.8;
+    graphics.circle(bx, by, Math.max(1.5, 0.05 * ppi)).fill(0x5a504c);
   }
 }
+

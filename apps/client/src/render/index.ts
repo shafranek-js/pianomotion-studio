@@ -74,3 +74,22 @@ export {
   type SkinSettings,
   type SkinStyle,
 } from "./skins";
+
+export {
+  PianoScene3D,
+  Hand3DMeshGroup,
+  Keyboard3DView,
+  FallingNotes3DView,
+  calculatePianoCameraFit,
+  buildActiveKeysForFrame,
+  sustainPedalDownAtTime,
+  createGrandPedalGeometry,
+  posePointToWorld,
+  reconstructHand3D,
+  KEYBOARD_WIDTH_IN,
+  WHITE_KEY_WIDTH_IN,
+  type Camera3DPreset,
+  type ReconstructedHand3D,
+  type Key3DMeshEntry,
+} from "../render3d";
+

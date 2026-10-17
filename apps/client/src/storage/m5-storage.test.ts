@@ -684,6 +684,7 @@ describe("Milestone M5 Storage & Persistence", () => {
         document: doc,
         activeProfileId: "prof_custom_alpha",
         viewMode: "performance",
+        sceneView: { dimension: "3d", cameraPreset: "side_arch" },
       };
 
       // Initially null
@@ -698,6 +699,7 @@ describe("Milestone M5 Storage & Persistence", () => {
       expect(loaded).not.toBeNull();
       expect(loaded?.projectId).toBe("proj_autosave_1");
       expect(loaded?.viewMode).toBe("performance");
+      expect(loaded?.sceneView).toEqual({ dimension: "3d", cameraPreset: "side_arch" });
       expect(loaded?.activeProfileId).toBe("prof_custom_alpha");
       expect(loaded?.document?.title).toBe("M5 Test Sonata");
       const assessment = await assessSessionSnapshot(loaded, "engine-current");

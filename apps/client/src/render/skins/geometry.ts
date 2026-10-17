@@ -550,3 +550,86 @@ export function buildHandGeometry(
     outlineWidth,
   };
 }
+
+/**
+ * Returns the distal radius r2 of segment `segIndex` in `segs` so that adjacent
+ * phalanges meet with exact C0 radius continuity at every joint (r2[i] === r1[i+1]).
+ */
+export function getSegmentDistalRadius(
+  segs: readonly FingerSegment[],
+  segIndex: number,
+  tipTaper = 0.88,
+): number {
+  const seg = segs[segIndex];
+  if (!seg) return 1;
+  if (segIndex + 1 < segs.length) {
+    return segs[segIndex + 1]!.radius;
+  }
+  return seg.radius * tipTaper;
+}
+
+/**
+ * Determines whether the thumb (finger 1) is actively tucked underneath the palm
+ * or index finger (thumb-under crossing / подкладывание первого пальца).
+ *
+ * When false (normal playing pose), the thumb merges seamlessly into the thenar
+ * web and radial border of the palm without an internal outline seam.
+ * When true, the thumb's distal phalanges (MCP -> IP -> Tip) pass underneath
+ * the palm and fingers 2..5.
+ */
+export function isThumbTucked(geom: HandGeometry): boolean {
+  const th = geom.chains[1];
+  const ix = geom.chains[2];
+  if (!th || th.length < 4 || !ix || ix.length < 2) return false;
+
+  const cmc = th[0]!;
+  const tIp = th[2]!;
+  const tTip = th[3]!;
+  const mcp2 = ix[1]!;
+  const rI = geom.radius[2]?.[0]?.radius ?? 8;
+
+  // Radial border vector from thumb CMC to index MCP
+  const borderU = unitVector(mcp2.x - cmc.x, mcp2.y - cmc.y);
+  // Normal pointing inward toward the ulnar wrist (inside the palm)
+  let inwardN = { x: -borderU.y, y: borderU.x };
+  const toUlnarX = geom.wristU.x - cmc.x;
+  const toUlnarY = geom.wristU.y - cmc.y;
+  if (toUlnarX * inwardN.x + toUlnarY * inwardN.y < 0) {
+    inwardN = { x: -inwardN.x, y: -inwardN.y };
+  }
+
+  const tipInward = (tTip.x - mcp2.x) * inwardN.x + (tTip.y - mcp2.y) * inwardN.y;
+  const ipInward = (tIp.x - mcp2.x) * inwardN.x + (tIp.y - mcp2.y) * inwardN.y;
+
+  // Thumb is tucked when its tip or IP joint crosses inward past the radial border
+  // toward the palm interior and is not elevated above the index knuckle.
+  const crossesInward = tipInward > -rI * 0.35 || ipInward > -rI * 0.25;
+  const isBelowDorsum = Math.min(tTip.zIn, tIp.zIn) <= Math.max(geom.palmZIn, mcp2.zIn) + 0.08;
+  return crossesInward && isBelowDorsum;
+}
+
+/**
+ * Returns finger IDs sorted by ascending 3D height (zIn), so lower fingers are
+ * rendered first and higher fingers naturally overlap them when crossing.
+ */
+export function getSortedFingersByDepth(
+  geom: HandGeometry,
+  fingers: readonly number[] = [1, 2, 3, 4, 5],
+): number[] {
+  const avgZ = (f: number): number => {
+    const segs = geom.radius[f];
+    if (!segs || segs.length === 0) return 0;
+    let sum = 0;
+    for (const s of segs) {
+      sum += (s.a.zIn + s.b.zIn) * 0.5;
+    }
+    return sum / segs.length;
+  };
+
+  return [...fingers].sort((a, b) => {
+    const dz = avgZ(a) - avgZ(b);
+    if (Math.abs(dz) > 1e-4) return dz;
+    return a - b;
+  });
+}
+

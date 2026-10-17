@@ -1,10 +1,11 @@
 import type { ReactNode } from "react";
-import type { StudioView } from "./types";
+import type { Camera3DPreset } from "../render";
+import { CAMERA_PRESETS, type StudioView } from "./types";
 import "./workspace.css";
 
 export interface StudioWorkspaceProps {
   viewMode: StudioView;
-  /** The single persistent Pixi scene containing notes, piano, and hands. */
+  /** The single persistent Pixi/Three scene containing notes, piano, and hands. */
   scene: ReactNode;
   /** Persistent editor state host, kept mounted without adding a visible row. */
   editorState?: ReactNode;
@@ -12,6 +13,11 @@ export interface StudioWorkspaceProps {
   transportTime?: number;
   onReturnToPlayhead?(): void;
   waveform?: ReactNode;
+  is3DView?: boolean;
+  onToggle3DView?: (enabled: boolean) => void;
+  camera3DPreset?: Camera3DPreset;
+  onCamera3DPresetChange?: (preset: Camera3DPreset) => void;
+  showCameraHud?: boolean;
 }
 
 function formatAnchorTime(seconds: number): string {
@@ -29,6 +35,11 @@ export function StudioWorkspace({
   transportTime = 0,
   onReturnToPlayhead,
   waveform,
+  is3DView = false,
+  onToggle3DView,
+  camera3DPreset = "concert",
+  onCamera3DPresetChange,
+  showCameraHud = true,
 }: StudioWorkspaceProps) {
   return (
     <section
@@ -62,9 +73,56 @@ export function StudioWorkspace({
             )}
           </div>
         )}
+        {showCameraHud && viewMode !== "editor" && onToggle3DView && (
+          <div
+            className="studio-workspace-layout__camera-hud"
+            data-testid="studio-camera-hud"
+            role="toolbar"
+            aria-label="Scene dimension and camera controls"
+          >
+            <div className="studio-camera-hud__mode-group" role="group" aria-label="Dimension mode">
+              <button
+                type="button"
+                className={`studio-camera-hud__btn ${!is3DView ? "is-active" : ""}`}
+                aria-pressed={!is3DView}
+                onClick={() => onToggle3DView(false)}
+                title="2D top-down view"
+              >
+                2D
+              </button>
+              <button
+                type="button"
+                className={`studio-camera-hud__btn ${is3DView ? "is-active" : ""}`}
+                aria-pressed={is3DView}
+                onClick={() => onToggle3DView(true)}
+                title="3D realistic view (Three.js)"
+              >
+                3D
+              </button>
+            </div>
+            {is3DView && onCamera3DPresetChange && (
+              <div className="studio-camera-hud__preset-group" role="group" aria-label="3D camera presets">
+                {CAMERA_PRESETS.map((preset) => (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    className={`studio-camera-hud__btn ${camera3DPreset === preset.id ? "is-active" : ""}`}
+                    aria-pressed={camera3DPreset === preset.id}
+                    onClick={() => onCamera3DPresetChange(preset.id)}
+                    title={preset.title}
+                  >
+                    <span className="studio-camera-hud__btn-full">{preset.label}</span>
+                    <span className="studio-camera-hud__btn-short">{preset.shortLabel}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
         {scene}
       </div>
       {waveform && <div className="studio-workspace-layout__waveform">{waveform}</div>}
     </section>
   );
 }
+

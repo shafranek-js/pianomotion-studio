@@ -1,5 +1,6 @@
 import type { FingeringPlan, M1KeyStyle, MotionPlan, Note, PerformancePlan, SongDocument } from "@handthesia/contracts";
 import { Application, Container, Graphics } from "pixi.js";
+import { PianoScene3D, type Camera3DPreset } from "../render3d";
 import { FallingNotesView } from "./fallingNotesView";
 import { HandsView } from "./handsView";
 import { KeyboardView, type KeyPressInfo } from "./keyboardView";
@@ -166,6 +167,9 @@ export class PianoScene {
     renderCapFps: 60,
   };
   private resizeObserver: ResizeObserver | null = null;
+  private scene3D: PianoScene3D | null = null;
+  private mode3D = false;
+  private camera3DPreset: Camera3DPreset = "concert";
   private isDestroyed = false;
 
   private constructor(app: Application, options: PianoSceneOptions) {
@@ -424,9 +428,80 @@ export class PianoScene {
       }
     }
 
-    this.keyboardView.setPressedKeys(pressedMap);
-    this.fallingNotesView.update(sceneTime);
-    this.handsView.update(sceneTime);
+    const show3D = this.mode3D && !this.fingeringEditor.active;
+    if (!show3D) {
+      this.keyboardView.setPressedKeys(pressedMap);
+      this.fallingNotesView.update(sceneTime);
+      this.handsView.update(sceneTime);
+    }
+
+    if (this.scene3D && show3D) {
+      this.scene3D.update(sceneTime, [...pressedMap.keys()]);
+    }
+  }
+
+  public set3DMode(enabled: boolean): void {
+    if (this.fixedViewport || this.isDestroyed) return;
+    if (enabled && !this.scene3D) {
+      let candidate: PianoScene3D | null = null;
+      try {
+        candidate = new PianoScene3D(this.target);
+        candidate.setNotes(this.notes);
+        candidate.setMotionPlan(this.motionPlan);
+        candidate.setMotionBuffer(this.handsView.getMotionBuffer());
+        candidate.setPerformancePlan(this.performancePlan);
+        candidate.setPixelsPerSecond(this.pixelsPerSecond);
+        candidate.setDisplaySettings(this.displaySettings);
+        candidate.setPlayAlongMode(this.playAlongMode);
+        candidate.setPlayAlongTargetPitches(this.keyboardView.getTargetKeys());
+        candidate.setLivePressedPitches(this.livePhysicalPitches);
+        candidate.setCameraPreset(this.camera3DPreset);
+        candidate.setKeyInputHandlers({
+        onKeyDown: (pitch) => this.onPianoKeyDown?.(pitch),
+        onKeyUp: (pitch) => this.onPianoKeyUp?.(pitch),
+        });
+        this.scene3D = candidate;
+      } catch (error) {
+        candidate?.destroy();
+        this.mode3D = false;
+        this.sync3DVisibility();
+        throw error;
+      }
+    }
+    this.mode3D = enabled;
+    this.sync3DVisibility();
+    this.update(this.currentTransportTime, this.lastActiveNotes);
+  }
+
+  public is3DMode(): boolean {
+    return this.mode3D;
+  }
+
+  public setCamera3DPreset(preset: Camera3DPreset): void {
+    this.camera3DPreset = preset;
+    this.scene3D?.setCameraPreset(preset);
+  }
+
+  public getCamera3DPreset(): Camera3DPreset {
+    return this.camera3DPreset;
+  }
+
+  private sync3DVisibility(): void {
+    const show3D = this.mode3D && !this.fingeringEditor.active;
+    this.app.canvas.style.visibility = show3D ? "hidden" : "visible";
+    this.scene3D?.setVisible(show3D);
+
+    if (!this.fixedViewport && this.app.ticker) {
+      if (show3D) {
+        if (this.app.ticker.started) {
+          this.app.ticker.stop();
+        }
+      } else {
+        if (!this.app.ticker.started) {
+          this.app.ticker.start();
+        }
+      }
+    }
   }
 
   public setLivePhysicalPitch(pitch: number, isDown: boolean): void {
@@ -435,12 +510,14 @@ export class PianoScene {
     } else {
       this.livePhysicalPitches.delete(pitch);
     }
+    this.scene3D?.setLivePressedPitches(this.livePhysicalPitches);
     this.update(this.currentTransportTime, this.lastActiveNotes);
   }
 
   public clearLivePhysicalPitches(): void {
     if (this.livePhysicalPitches.size === 0) return;
     this.livePhysicalPitches.clear();
+    this.scene3D?.setLivePressedPitches(this.livePhysicalPitches);
     this.update(this.currentTransportTime, this.lastActiveNotes);
   }
 
@@ -461,6 +538,7 @@ export class PianoScene {
   public setNotes(notes: Note[]): void {
     this.notes = notes;
     this.fallingNotesView.setNotes(notes);
+    this.scene3D?.setNotes(notes);
     if (this.fingeringEditor.active) {
       this.fallingNotesView.setFingeringPlan(this.fingeringEditor.plan);
     } else if (this.performancePlan) {
@@ -472,8 +550,10 @@ export class PianoScene {
     if (document) {
       this.notes = document.notes;
       this.fallingNotesView.setNotes(this.notes);
+      this.scene3D?.setNotes(this.notes);
     }
     this.performancePlan = plan;
+    this.scene3D?.setPerformancePlan(plan);
     if (this.fingeringEditor.active) {
       this.fallingNotesView.setFingeringPlan(this.fingeringEditor.plan);
     } else {
@@ -500,12 +580,17 @@ export class PianoScene {
       this.fallingNotesView.setSelectionMarquee(null);
       this.pointerSelection = null;
     }
+    this.sync3DVisibility();
     this.update(this.currentTransportTime, this.lastActiveNotes);
   }
 
   public setPianoKeyListeners(onDown?: (pitch: number) => void, onUp?: (pitch: number) => void): void {
     this.onPianoKeyDown = onDown;
     this.onPianoKeyUp = onUp;
+    this.scene3D?.setKeyInputHandlers({
+      onKeyDown: (pitch) => this.onPianoKeyDown?.(pitch),
+      onKeyUp: (pitch) => this.onPianoKeyUp?.(pitch),
+    });
   }
 
   public setPlayAlongState(
@@ -517,6 +602,8 @@ export class PianoScene {
       this.lastActiveNotes = undefined;
     }
     this.keyboardView.setPlayAlongState(targets, wrongPitches);
+    this.scene3D?.setPlayAlongMode(this.playAlongMode);
+    this.scene3D?.setPlayAlongTargetPitches(targets ?? null, wrongPitches ?? null);
     this.update(this.currentTransportTime, this.lastActiveNotes);
   }
 
@@ -700,6 +787,9 @@ export class PianoScene {
   public getGeometrySnapshot(): PianoSceneGeometrySnapshot {
     const editorPaused = this.fingeringEditor.active && !this.fingeringEditor.playing;
     const viewTime = editorPaused ? (this.editorViewTime ?? this.currentTransportTime) : this.currentTransportTime;
+    if (this.mode3D && !this.fingeringEditor.active) {
+      this.fallingNotesView.update(viewTime);
+    }
     const inventory = getKeyboardInventory(this.keyboardView.getLayout().keyRects);
     return {
       notes: this.fallingNotesView.getPaintedNoteGeometries(viewTime).map((note) => ({
@@ -717,10 +807,12 @@ export class PianoScene {
   public setMotionPlan(motionPlan: MotionPlan | null): void {
     this.motionPlan = motionPlan;
     this.handsView.setMotionPlan(motionPlan);
+    this.scene3D?.setMotionPlan(motionPlan);
   }
 
   public setMotionBuffer(buffer: MotionBuffer | null): void {
     this.handsView.setMotionBuffer(buffer);
+    this.scene3D?.setMotionBuffer(buffer);
   }
 
   public getMotionBuffer(): MotionBuffer | null {
@@ -750,6 +842,7 @@ export class PianoScene {
       style: this.displaySettings.skinStyle,
       shadow: this.displaySettings.showHandShadow,
     });
+    this.scene3D?.setDisplaySettings(this.displaySettings);
   }
 
   public setKeyStyle(style: M1KeyStyle): void {
@@ -762,6 +855,7 @@ export class PianoScene {
   public setPixelsPerSecond(pps: number): void {
     this.pixelsPerSecond = Math.max(40, Math.min(600, pps));
     this.fallingNotesView.setPixelsPerSecond(this.pixelsPerSecond);
+    this.scene3D?.setPixelsPerSecond(this.pixelsPerSecond);
     this.update(this.currentTransportTime, this.lastActiveNotes);
   }
 
@@ -788,6 +882,13 @@ export class PianoScene {
     if (this.resizeObserver) {
       this.resizeObserver.disconnect();
       this.resizeObserver = null;
+    }
+
+    this.scene3D?.destroy();
+    this.scene3D = null;
+
+    if (this.app.ticker?.started) {
+      this.app.ticker.stop();
     }
 
     this.app.canvas.removeEventListener("pointerdown", this.handleEditorPointerDown);

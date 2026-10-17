@@ -1,5 +1,12 @@
 import type { Graphics } from "pixi.js";
-import type { HandGeometry, ScreenPoint } from "./geometry";
+import {
+  getSegmentDistalRadius,
+  getSortedFingersByDepth,
+  inflate,
+  isThumbTucked,
+  type HandGeometry,
+  type ScreenPoint,
+} from "./geometry";
 import { rgbToHex, type SkinSettings } from "./types";
 
 /**
@@ -46,6 +53,17 @@ function calculatePbrColor(
   return rgbToHex([r, g, b]);
 }
 
+function drawHemisphereCap(
+  g: Graphics,
+  p: ScreenPoint,
+  radius: number,
+  baseCol: [number, number, number],
+): void {
+  g.circle(p.x, p.y, radius).fill(calculatePbrColor(baseCol, 0.35, 0.35, 0.35));
+  g.circle(p.x, p.y, radius * 0.78).fill(calculatePbrColor(baseCol, 0.15, -0.15, 0.85));
+  g.circle(p.x, p.y, radius * 0.48).fill(calculatePbrColor(baseCol, 0, 0, 1.0));
+}
+
 /**
  * Draws a 3D cylindrical phalanx bone with multi-faceted 3D volumetric shading.
  */
@@ -63,13 +81,16 @@ function draw3DPhalanx(
   const u = { x: dx / len, y: dy / len };
   const n = { x: -u.y, y: u.x };
 
-  // Subdivide cylinder into 5 volumetric facets across its cross-section
+  // 1. Hemispherical joint caps drawn BEFORE cylindrical facets so facets blend seamlessly
+  drawHemisphereCap(g, a, r1, baseCol);
+  drawHemisphereCap(g, b, r2, baseCol);
+
+  // 2. Subdivide cylinder into 6 volumetric facets across its cross-section
   const facets = 6;
   for (let i = 0; i < facets; i++) {
     const t0 = -1.0 + (2.0 * i) / facets;
     const t1 = -1.0 + (2.0 * (i + 1)) / facets;
 
-    // 3D normal for facet center
     const tMid = (t0 + t1) / 2.0;
     const nz = Math.sqrt(Math.max(0, 1.0 - tMid * tMid));
     const nx = n.x * tMid;
@@ -88,10 +109,6 @@ function draw3DPhalanx(
 
     g.poly([p0x, p0y, p1x, p1y, p2x, p2y, p3x, p3y]).fill(facetCol);
   }
-
-  // Draw 3D hemispherical joint caps
-  g.circle(a.x, a.y, r1 * 0.95).fill(calculatePbrColor(baseCol, 0, 0, 1.0));
-  g.circle(b.x, b.y, r2 * 0.95).fill(calculatePbrColor(baseCol, 0, 0, 1.0));
 }
 
 /**
@@ -104,36 +121,28 @@ export function renderPhoto3dSkin(
   skinSettings: SkinSettings,
   ppi: number,
 ): void {
-  // Keep the renderer signature consistent with the other skin renderers.
   void ppi;
   const baseCol: [number, number, number] = skinSettings.colors["photo-3d"]?.skin ?? [232, 190, 165];
   const nailCol: [number, number, number] = skinSettings.colors["photo-3d"]?.nail ?? [240, 196, 188];
   const lw = Math.max(1.0, geom.outlineWidth);
-
-  // 1. Forearm in 3D
   const hw = geom.wristWidth * 0.55;
+  const rimCol = calculatePbrColor(baseCol, 0.4, 0.4, 0.2);
+  const palmCol = calculatePbrColor(baseCol, 0, 0, 0.95);
 
-  draw3DPhalanx(
-    graphics,
-    geom.wristCenter,
-    geom.armEnd,
-    hw,
-    hw * 1.15,
-    baseCol,
-  );
+  const tucked = isThumbTucked(geom);
+  const sortedFingers = getSortedFingersByDepth(geom);
 
-  const render3DFinger = (f: number) => {
+  const render3DFingerSegments = (f: number, startIdx: number, endIdx: number, includeNail: boolean) => {
     const segs = geom.radius[f];
     if (!segs || segs.length === 0) return;
 
-    for (let i = 0; i < segs.length; i++) {
+    for (let i = startIdx; i < Math.min(endIdx, segs.length); i++) {
       const seg = segs[i]!;
-      const r2 = i === segs.length - 1 ? seg.radius * 0.88 : seg.radius * 0.94;
+      const r2 = getSegmentDistalRadius(segs, i, 0.88);
       draw3DPhalanx(graphics, seg.a, seg.b, seg.radius, r2, baseCol);
     }
 
-    // 3D Glossy Fingernail on distal phalanx
-    if (skinSettings.details) {
+    if (includeNail && skinSettings.details) {
       const distSeg = segs[segs.length - 1]!;
       const r = distSeg.radius;
       const nailCenter = {
@@ -144,7 +153,6 @@ export function renderPhoto3dSkin(
       const nail3DCol = calculatePbrColor(nailCol, 0, 0, 1.0);
       graphics.ellipse(nailCenter.x, nailCenter.y, r * 0.52, r * 0.42).fill(nail3DCol);
 
-      // 3D Specular highlight dot
       graphics
         .circle(
           nailCenter.x - distSeg.u.x * r * 0.1 + distSeg.n.x * r * 0.15,
@@ -155,26 +163,41 @@ export function renderPhoto3dSkin(
     }
   };
 
-  // 2. Anatomical Layer 1: Thumb (Finger 1)
-  // Drawn first so thumb-under movements pass naturally underneath the dorsum
-  render3DFinger(1);
+  // 0. Tucked thumb distal phalanges under palm (ONLY during thumb-under crossing)
+  if (tucked) {
+    render3DFingerSegments(1, 1, 3, true);
+  }
 
-  // 3. Anatomical Layer 2: 3D Volumetric Palm / Dorsum
+  // 1. Forearm in 3D
+  draw3DPhalanx(
+    graphics,
+    geom.wristCenter,
+    geom.armEnd,
+    hw,
+    hw * 1.15,
+    baseCol,
+  );
+
+  // 2. Palm & Web Rim + Base Fill
+  if (geom.web.length >= 3) {
+    graphics.poly(geom.web.flat()).fill(palmCol);
+  }
+
   if (geom.palm.length >= 3) {
-    // Base palm fill with 3D top-down lighting
-    const palmCol = calculatePbrColor(baseCol, 0, 0, 0.95);
-    graphics.poly(geom.palm.flat()).fill(palmCol);
-
-    // Lateral shading on ulnar and radial borders
     if (skinSettings.details) {
-      graphics
-        .poly(geom.palm.flat())
-        .stroke({ width: 1.5 * lw, color: calculatePbrColor(baseCol, 0.4, 0.4, 0.2), alpha: 0.6 });
+      const rimPalm = inflate(geom.palm, lw);
+      graphics.poly(rimPalm.flat()).fill({ color: rimCol, alpha: 0.65 });
+    }
+    graphics.poly(geom.palm.flat()).fill(palmCol);
+  }
+
+  // 3. Volumetric Fingers in 3D depth order
+  for (const f of sortedFingers) {
+    if (f === 1 && tucked) {
+      render3DFingerSegments(1, 0, 1, false);
+    } else {
+      render3DFingerSegments(f, 0, 3, true);
     }
   }
-
-  // 4. Anatomical Layer 3: Volumetric Fingers 2..5 (Index, Middle, Ring, Pinky)
-  for (let f = 2; f <= 5; f++) {
-    render3DFinger(f);
-  }
 }
+

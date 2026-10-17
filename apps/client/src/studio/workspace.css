@@ -28,7 +28,7 @@
   background: #101216;
 }
 
-.studio-workspace-layout__scene-content > :not(.studio-workspace-layout__time-anchor) {
+.studio-workspace-layout__scene-content > :not(.studio-workspace-layout__time-anchor):not(.studio-workspace-layout__camera-hud) {
   width: 100%;
   height: 100%;
   min-width: 0;
@@ -107,6 +107,113 @@
 
 .studio-workspace-layout__time-anchor button:disabled { color: #7d8792; cursor: default; }
 .studio-workspace-layout__playhead-time { color: var(--studio-muted); white-space: nowrap; }
+
+.studio-workspace-layout__camera-hud {
+  position: absolute;
+  z-index: 6;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  max-width: calc(100% - 24px);
+  padding: 4px;
+  border: 1px solid rgb(58 66 76 / 85%);
+  border-radius: 9px;
+  background: rgb(18 21 26 / 88%);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 6px 18px rgb(0 0 0 / 40%);
+}
+
+.studio-camera-hud__mode-group,
+.studio-camera-hud__preset-group {
+  display: inline-flex;
+  flex-wrap: wrap;
+  min-width: 0;
+  max-width: 100%;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 6px;
+  background: rgb(12 14 18 / 75%);
+}
+
+.studio-camera-hud__preset-group {
+  border-left: 1px solid #2e3540;
+  padding-left: 6px;
+}
+
+.studio-camera-hud__btn-short {
+  display: none;
+}
+
+.studio-camera-hud__btn {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: transparent;
+  color: #9ea8b5;
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.14s ease, color 0.14s ease, border-color 0.14s ease;
+}
+
+.studio-camera-hud__btn:hover {
+  background: #222831;
+  color: var(--studio-text);
+}
+
+.studio-camera-hud__btn:focus-visible {
+  outline: 2px solid var(--studio-accent);
+  outline-offset: 1px;
+}
+
+@media (max-width: 520px) {
+  .studio-workspace-layout__camera-hud {
+    top: 6px;
+    right: 6px;
+    max-width: calc(100% - 12px);
+    gap: 3px;
+    padding: 2px;
+  }
+  .studio-camera-hud__preset-group {
+    border-left: none;
+    padding-left: 2px;
+  }
+  .studio-camera-hud__btn-full {
+    display: none;
+  }
+  .studio-camera-hud__btn-short {
+    display: inline;
+  }
+  .studio-camera-hud__btn {
+    min-height: 32px;
+    padding: 0 6px;
+    font-size: 11px;
+  }
+}
+
+@media (pointer: coarse) {
+  .studio-camera-hud__btn {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+.studio-camera-hud__btn.is-active {
+  border-color: #3c4e4b;
+  background: #1c2e2b;
+  color: var(--studio-accent);
+}
 
 .studio-workspace-layout__waveform {
   flex: 0 0 auto;

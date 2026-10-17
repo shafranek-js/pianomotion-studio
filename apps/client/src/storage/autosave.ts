@@ -51,6 +51,7 @@ export interface SessionSnapshot {
   fingeringPlan?: FingeringPlan | null;
   activeProfileId?: string;
   viewMode?: StudioView | "split";
+  sceneView?: { dimension: "2d" | "3d"; cameraPreset: "concert" | "overhead" | "pov" | "side_arch" };
   recoveryCorruptReason?: string;
 }
 
@@ -77,6 +78,10 @@ const SessionSnapshotBaseSchema = z.object({
   fingeringPlan: FingeringPlanSchema.nullable().optional(),
   activeProfileId: z.string().optional(),
   viewMode: z.enum(["performance", "editor", "split", "play_along"]).optional(),
+  sceneView: z.object({
+    dimension: z.enum(["2d", "3d"]),
+    cameraPreset: z.enum(["concert", "overhead", "pov", "side_arch"]),
+  }).optional(),
 }).passthrough();
 
 /**

@@ -49,19 +49,13 @@ import type {
   StudioShellProps,
   StudioView,
 } from "./types.ts";
-import { normalizeStudioView } from "./types.ts";
+import { CAMERA_PRESETS, normalizeStudioView } from "./types.ts";
 
 const inspectorTabs: Array<{ id: InspectorTab; label: string }> = [
   { id: "scene", label: "Scene" },
   { id: "pianist", label: "Pianist" },
   { id: "audio", label: "Audio" },
   { id: "diagnostics", label: "Diagnostics" },
-];
-
-const viewOptions: Array<{ id: StudioView; label: string }> = [
-  { id: "performance", label: "Performance" },
-  { id: "play_along", label: "Play along" },
-  { id: "editor", label: "Fingering" },
 ];
 
 const editorShortcuts = [
@@ -89,6 +83,10 @@ export function StudioShell(props: StudioShellProps) {
     hasProject,
     viewMode,
     onViewModeChange,
+    is3DView = false,
+    onToggle3DView,
+    camera3DPreset = "concert",
+    onCamera3DPresetChange,
     status,
     busy = false,
     onOpenMidi,
@@ -482,21 +480,103 @@ export function StudioShell(props: StudioShellProps) {
         </div>
 
         <div className="studio-view-switch" role="group" aria-label="Workspace view">
-          {viewOptions.map((option) => (
+          <button
+            type="button"
+            aria-pressed={effectiveView === "performance" && !is3DView}
+            className={effectiveView === "performance" && !is3DView ? "is-active" : ""}
+            onClick={() => {
+              onToggle3DView?.(false);
+              onViewModeChange("performance");
+            }}
+            title="Performance view"
+          >Performance</button>
+          {onToggle3DView && (
             <button
-              key={option.id}
               type="button"
-              aria-pressed={effectiveView === option.id}
-              className={effectiveView === option.id ? "is-active" : ""}
-              onClick={() => onViewModeChange(option.id)}
-              title={`${option.label} view`}
-            >{option.label}</button>
-          ))}
+              aria-pressed={Boolean(is3DView && effectiveView !== "editor")}
+              className={is3DView && effectiveView !== "editor" ? "is-active" : ""}
+              onClick={() => {
+                if (effectiveView === "editor") {
+                  onViewModeChange("performance");
+                  onToggle3DView(true);
+                } else {
+                  onToggle3DView(!is3DView);
+                }
+              }}
+              title="3D View"
+              data-testid="studio-3d-view-toggle"
+            >3D View</button>
+          )}
+          <button
+            type="button"
+            aria-pressed={effectiveView === "play_along"}
+            className={effectiveView === "play_along" ? "is-active" : ""}
+            onClick={() => onViewModeChange("play_along")}
+            title="Play along view"
+          >Play along</button>
+          <button
+            type="button"
+            aria-pressed={effectiveView === "editor"}
+            className={effectiveView === "editor" ? "is-active" : ""}
+            onClick={() => {
+              onToggle3DView?.(false);
+              onViewModeChange("editor");
+            }}
+            title="Fingering view"
+          >Fingering</button>
         </div>
 
         {headerAddon && <div className="studio-header-addon" hidden={effectiveView !== "editor"}>{headerAddon}</div>}
 
         <div className="studio-header-spacer" />
+
+        {effectiveView !== "editor" && onToggle3DView && (
+          <div
+            className="studio-header-camera-hud"
+            data-testid="studio-header-camera-hud"
+            role="toolbar"
+            aria-label="Scene dimension and camera controls"
+          >
+            <div className="studio-camera-hud__mode-group" role="group" aria-label="Dimension mode">
+              <button
+                type="button"
+                className={`studio-camera-hud__btn ${!is3DView ? "is-active" : ""}`}
+                aria-pressed={!is3DView}
+                onClick={() => onToggle3DView(false)}
+                title="2D top-down view"
+              >
+                2D
+              </button>
+              <button
+                type="button"
+                className={`studio-camera-hud__btn ${is3DView ? "is-active" : ""}`}
+                aria-pressed={is3DView}
+                onClick={() => onToggle3DView(true)}
+                title="3D realistic view (Three.js)"
+              >
+                3D
+              </button>
+            </div>
+            {is3DView && onCamera3DPresetChange && (
+              <div className="studio-camera-hud__preset-group" role="group" aria-label="3D camera presets">
+                {CAMERA_PRESETS.map((preset) => (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    className={`studio-camera-hud__btn ${camera3DPreset === preset.id ? "is-active" : ""}`}
+                    aria-pressed={camera3DPreset === preset.id}
+                    onClick={() => onCamera3DPresetChange(preset.id)}
+                    title={preset.title}
+                  >
+                    <span className="studio-camera-hud__btn-full">{preset.label}</span>
+                    <span className="studio-camera-hud__btn-short">{preset.shortLabel}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="studio-save-state" data-kind={status.kind} aria-label={`Project status: ${status.message}`}>
           {status.kind === "saved" ? <CircleCheck size={15} />
             : status.kind === "error" ? <CircleAlert size={15} />

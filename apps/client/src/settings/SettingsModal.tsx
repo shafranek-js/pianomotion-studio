@@ -325,9 +325,12 @@ export function SettingsModal({ isOpen, onClose, onSettingsChanged, presentation
                     fontSize: "0.85rem",
                   }}
                 >
-                  <option value="realistic">Realistic Key Widths (standard piano geometry)</option>
-                  <option value="equal">Equal Key Widths (uniform lanes)</option>
+                  <option value="realistic">Realistic Key Widths (standard acoustic piano & 3D view)</option>
+                  <option value="equal">Equal Key Widths (uniform lanes, 2D view only)</option>
                 </select>
+                <div style={{ marginTop: "0.25rem", fontSize: "0.75rem", color: "var(--muted, #9fac9f)", lineHeight: 1.4 }}>
+                  Realistic geometry is required for accurate 3D finger placement on the piano keys.
+                </div>
               </div>
 
               <div>

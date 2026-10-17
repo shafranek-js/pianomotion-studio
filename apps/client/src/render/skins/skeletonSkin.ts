@@ -68,50 +68,65 @@ export function renderSkeletonSkin(
     }
   }
 
-  // 1. Wrist line between wrist joints
+  // 1. Prepare depth-sorted bones and joints (lowest zIn first so higher bones cross cleanly on top)
   const wristJoints = pose.joints.filter((j) => j.kind === "wrist");
+  const sortedBones = [...pose.bones].sort(
+    (a, b) => (a.a[2] + a.b[2]) * 0.5 - (b.a[2] + b.b[2]) * 0.5,
+  );
+  const sortedJoints = [...pose.joints].sort((a, b) => a.point[2] - b.point[2]);
+
+  // 2. Unified Halo Pass (so no bone's grey halo cuts across an adjacent bone's dark core at a joint)
   if (wristJoints.length >= 2) {
     const w0 = toScreen(wristJoints[0]!.point);
     const w1 = toScreen(wristJoints[1]!.point);
     graphics
       .moveTo(w0.x, w0.y)
       .lineTo(w1.x, w1.y)
-      .stroke({ width: 3, color: haloColor, cap: "round" });
+      .stroke({ width: 4, color: haloColor, cap: "round" });
+  }
+
+  for (const bone of sortedBones) {
+    const pa = toScreen(bone.a);
+    const pb = toScreen(bone.b);
+    const midZIn = (pa.zIn + pb.zIn) * 0.5;
+    const width = boneWidth(bone.kind, midZIn, ppi);
+    graphics
+      .moveTo(pa.x, pa.y)
+      .lineTo(pb.x, pb.y)
+      .stroke({ width: width + 2, color: haloColor, cap: "round" });
+  }
+
+  for (const joint of sortedJoints) {
+    const p = toScreen(joint.point);
+    const radius = jointRadius(joint.kind, p.zIn, ppi);
+    graphics.circle(p.x, p.y, radius + 1.5).fill(haloColor);
+  }
+
+  // 3. Bone Core & Joint Articulation Pass (sorted by 3D height zIn)
+  if (wristJoints.length >= 2) {
+    const w0 = toScreen(wristJoints[0]!.point);
+    const w1 = toScreen(wristJoints[1]!.point);
     graphics
       .moveTo(w0.x, w0.y)
       .lineTo(w1.x, w1.y)
       .stroke({ width: 2, color: boneColor, cap: "round" });
   }
 
-  // 2. Draw Bones
-  for (const bone of pose.bones) {
+  for (const bone of sortedBones) {
     const pa = toScreen(bone.a);
     const pb = toScreen(bone.b);
     const midZIn = (pa.zIn + pb.zIn) * 0.5;
     const width = boneWidth(bone.kind, midZIn, ppi);
-
-    // Halo outline
-    graphics
-      .moveTo(pa.x, pa.y)
-      .lineTo(pb.x, pb.y)
-      .stroke({ width: width + 2, color: haloColor, cap: "round" });
-
-    // Inner bone core
     graphics
       .moveTo(pa.x, pa.y)
       .lineTo(pb.x, pb.y)
       .stroke({ width, color: boneColor, cap: "round" });
   }
 
-  // 3. Draw Joints (knuckles, wrists, tips)
-  for (const joint of pose.joints) {
+  for (const joint of sortedJoints) {
     const p = toScreen(joint.point);
     const radius = jointRadius(joint.kind, p.zIn, ppi);
 
-    // Halo circle
-    graphics.circle(p.x, p.y, radius + 1).fill(haloColor);
-
-    // Inner circle
     if (joint.kind === "tip") {
       graphics.circle(p.x, p.y, radius + 1).fill(accentColor);
       graphics.circle(p.x, p.y, Math.max(2, radius - 1)).fill(0xffffff);
@@ -120,3 +135,4 @@ export function renderSkeletonSkin(
     }
   }
 }
+

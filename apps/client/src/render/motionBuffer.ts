@@ -301,6 +301,33 @@ export class MotionBuffer {
     return lerpPose(p0, p1, alpha);
   }
 
+  /**
+   * Samples hand pose with boundary clamping:
+   * - If time <= first pose time, returns the initial pose (poised/ready-to-play posture).
+   * - If time >= last pose time, returns the final pose (post-release posture).
+   * - Inside the window, returns the linearly interpolated pose.
+   * This ensures hands remain visible in ready posture before playback starts and during lead-in count-down.
+   */
+  public samplePoseClamped(time: number, hand: "left" | "right"): MotionPose | null {
+    const poses = hand === "left" ? this.leftPoses : this.rightPoses;
+    if (poses.length === 0) return null;
+    const first = poses[0]!;
+    if (time <= first.transportTimeSeconds) return first;
+    const last = poses[poses.length - 1]!;
+    if (time >= last.transportTimeSeconds) return last;
+    return this.samplePose(time, hand);
+  }
+
+  public getFirstPose(hand: "left" | "right"): MotionPose | null {
+    const poses = hand === "left" ? this.leftPoses : this.rightPoses;
+    return poses[0] ?? null;
+  }
+
+  public getLastPose(hand: "left" | "right"): MotionPose | null {
+    const poses = hand === "left" ? this.leftPoses : this.rightPoses;
+    return poses[poses.length - 1] ?? null;
+  }
+
   public getHandCoverageIntervals(hand: "left" | "right"): HandCoverageInterval[] {
     return this.verifiedCoverage[hand].map((interval) => ({ ...interval }));
   }

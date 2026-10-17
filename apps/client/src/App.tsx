@@ -269,7 +269,7 @@ export default function App() {
           result: rebuilt.result,
           rawMidiBytes: rebuilt.session.rawMidiBytes!,
           sourceContext: rebuilt.sourceContext,
-          session: { ...rebuilt.session, viewMode: normalizeStudioView(snapshot.viewMode) },
+          session: { ...rebuilt.session, viewMode: normalizeStudioView(snapshot.viewMode), sceneView: snapshot.sceneView },
           projectName: savedProject.name,
           savedProject: rebuilt.project,
           unsaved: false,
@@ -698,7 +698,7 @@ export default function App() {
           Update ready
         </button>
       )}
-      <StudioReleaseDetails description="0.1.0-dev.9 preview: Native/Python numerical parity verification and motion streaming corrections. Engine switching preserves the project; video export pins its calculation runtime. Included MuseScore General, SF2/SF3 and 163 built-in melodies." />
+      <StudioReleaseDetails description="0.1.0-dev.10 preview: 3D hand and wrist refinements, performed key/pedal timing, reliable view switching, responsive cameras and fixed-viewport 3D video export. Native/Python parity and existing musical data are preserved." />
     </div>
   );
 

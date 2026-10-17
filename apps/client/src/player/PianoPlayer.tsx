@@ -37,7 +37,7 @@ import {
 import { postM1ExportMidiRequest, postM1ReplanDocumentRequest, createM1AnalysisWorker, getM1AnalysisWorkerEngine } from "../m1WorkerClient";
 import { recordDiagnostic } from "../diagnostics/eventLog";
 import { getActiveProfile, subscribeProfiles } from "../profiles/profileStore";
-import { PianoScene, MotionBuffer } from "../render";
+import { PianoScene, MotionBuffer, type Camera3DPreset } from "../render";
 import {
   downloadProjectPackage,
   saveProject,
@@ -257,6 +257,12 @@ export function PianoPlayer({
   const [workerEpoch, setWorkerEpoch] = useState(0);
   const [rebuildMessage, setRebuildMessage] = useState("");
   const [isVideoExportOpen, setIsVideoExportOpen] = useState(false);
+  const [is3DView, setIs3DView] = useState(initialSession?.sceneView?.dimension !== "2d");
+  const [camera3DPreset, setCamera3DPreset] = useState<Camera3DPreset>(initialSession?.sceneView?.cameraPreset ?? "concert");
+  const is3DViewRef = useRef(is3DView);
+  useEffect(() => { is3DViewRef.current = is3DView; }, [is3DView]);
+  const camera3DPresetRef = useRef<Camera3DPreset>(camera3DPreset);
+  useEffect(() => { camera3DPresetRef.current = camera3DPreset; }, [camera3DPreset]);
 
   const document = useMemo(() => {
     if (!analysis.document) return null;
@@ -529,6 +535,14 @@ export function PianoPlayer({
           scene.update(playAlongTimeRef.current);
         } else {
           scene.update(transport.getCurrentTime());
+        }
+        scene.setCamera3DPreset(camera3DPresetRef.current);
+        try {
+          scene.set3DMode(is3DViewRef.current && viewModeRef.current !== "editor");
+        } catch (error) {
+          is3DViewRef.current = false;
+          setIs3DView(false);
+          onStatusChange({ kind: "error", message: `3D is unavailable; the 2D workspace remains active. ${errorMessage(error)}` });
         }
         setSceneRevision(value => value + 1);
       }).catch(error => {
@@ -845,8 +859,9 @@ export function PianoPlayer({
       sourceContext,
       sourceDescriptor: analysis.resource,
       viewMode,
+      sceneView: { dimension: is3DView ? "3d" : "2d", cameraPreset: camera3DPreset },
     });
-  }, [analysis, document, draftPlan, rawMidiBytes, activeProfile, keyStyle, sourceContext, viewMode, needsReplan, autosaveService, projectName]);
+  }, [analysis, document, draftPlan, rawMidiBytes, activeProfile, keyStyle, sourceContext, viewMode, is3DView, camera3DPreset, needsReplan, autosaveService, projectName]);
 
   useEffect(() => {
     if (!document) return;
@@ -1081,9 +1096,11 @@ export function PianoPlayer({
           roundTripMs: motionRoundTripMsRef.current,
           lastPause: motionLastPauseRef.current,
         };
-        snapshot.scene = sceneRef.current?.getGeometrySnapshot();
-        snapshot.editorSelectedNoteIds = [...(editorBridgeRef.current?.selectedNoteIds ?? [])];
-        snapshot.editorViewTime = sceneRef.current?.getEditorViewTime() ?? null;
+        if (!snapshot.scene || now - lastUiUpdate >= 70) {
+          snapshot.scene = sceneRef.current?.getGeometrySnapshot();
+          snapshot.editorSelectedNoteIds = [...(editorBridgeRef.current?.selectedNoteIds ?? [])];
+          snapshot.editorViewTime = sceneRef.current?.getEditorViewTime() ?? null;
+        }
       }
       if (now - lastUiUpdate >= 70) {
         lastUiUpdate = now;
@@ -1166,9 +1183,23 @@ export function PianoPlayer({
   const handleViewModeChange = useCallback((next: StudioView) => {
     const normalized = normalizeStudioView(next);
     recordDiagnostic("studio.mode", { projectId: analysis.projectId, view: normalized });
+    // Header actions can change the workspace and dimension in the same event.
+    // Keep the imperative scene in sync before React's effects run.
+    viewModeRef.current = normalized;
     setViewMode(normalized);
+    if (normalized === "editor") {
+      sceneRef.current?.set3DMode(false);
+    } else {
+      sceneRef.current?.setFingeringEditor({
+        active: false,
+        playing: isPlaying,
+        plan: editorBridge?.plan ?? draftPlan,
+        selectedNoteIds: new Set<string>(),
+      });
+      sceneRef.current?.set3DMode(is3DViewRef.current);
+    }
     onViewModeChange(normalized);
-  }, [onViewModeChange, analysis.projectId]);
+  }, [onViewModeChange, analysis.projectId, isPlaying, editorBridge, draftPlan]);
 
   const togglePlay = useCallback(async () => {
     try {
@@ -1499,6 +1530,35 @@ export function PianoPlayer({
     undo: editorBridge.undo,
     redo: editorBridge.redo,
   } : undefined;
+  const handleToggle3DView = useCallback((enabled: boolean) => {
+    try {
+      if (enabled && viewModeRef.current === "editor") {
+        viewModeRef.current = "performance";
+        setViewMode("performance");
+        onViewModeChange("performance");
+        sceneRef.current?.setFingeringEditor({
+          active: false,
+          playing: isPlaying,
+          plan: editorBridge?.plan ?? draftPlan,
+          selectedNoteIds: new Set<string>(),
+        });
+      }
+      is3DViewRef.current = enabled;
+      setIs3DView(enabled);
+      sceneRef.current?.set3DMode(enabled && viewModeRef.current !== "editor");
+    } catch (error) {
+      is3DViewRef.current = false;
+      setIs3DView(false);
+      onStatusChange({ kind: "error", message: `3D is unavailable; the 2D workspace remains active. ${errorMessage(error)}` });
+    }
+  }, [isPlaying, editorBridge, draftPlan, onViewModeChange, onStatusChange]);
+
+  const handleCamera3DPresetChange = useCallback((preset: Camera3DPreset) => {
+    camera3DPresetRef.current = preset;
+    setCamera3DPreset(preset);
+    sceneRef.current?.setCamera3DPreset(preset);
+  }, []);
+
   const scene = <div id="piano-canvas-container" ref={containerRef} className="piano-canvas-container" data-testid="piano-canvas" />;
   const workspace = ({ effectiveView }: { effectiveView: StudioView; focusMode: boolean }) => (
     <StudioWorkspace
@@ -1508,6 +1568,11 @@ export function PianoPlayer({
       editorViewTime={editorViewTime}
       transportTime={currentTime}
       onReturnToPlayhead={handleReturnToPlayhead}
+      is3DView={is3DView}
+      onToggle3DView={handleToggle3DView}
+      camera3DPreset={camera3DPreset}
+      onCamera3DPresetChange={handleCamera3DPresetChange}
+      showCameraHud={false}
       waveform={audioRecording ? <div id="audio-waveform-container">
         <WaveformCanvas
           recording={audioRecording}
@@ -1585,14 +1650,19 @@ export function PianoPlayer({
       settings: { ...settings, calculationEngine: activeCalculationEngine },
       audioRecording: audioRecording ?? null,
       audioOffset,
+      sceneView: { dimension: is3DView && viewMode !== "editor" ? "3d" : "2d", cameraPreset: camera3DPreset },
     };
-  }, [document, analysis, keyStyle, activeProfile, settings, activeCalculationEngine, audioRecording, audioOffset, rawMidiBytes, needsReplan, sourceContext, activeOutputId, activeSoundfontAssetId, activeSoundfontAssetBlob]);
+  }, [document, analysis, keyStyle, activeProfile, settings, activeCalculationEngine, audioRecording, audioOffset, rawMidiBytes, needsReplan, sourceContext, activeOutputId, activeSoundfontAssetId, activeSoundfontAssetBlob, is3DView, viewMode, camera3DPreset]);
 
   return <StudioShell
     projectName={projectName}
     hasProject
     viewMode={viewMode}
     onViewModeChange={handleViewModeChange}
+    is3DView={is3DView}
+    onToggle3DView={handleToggle3DView}
+    camera3DPreset={camera3DPreset}
+    onCamera3DPresetChange={handleCamera3DPresetChange}
     status={status.kind === "error" ? status : needsReplan && rebuildMessage ? { kind: "calculating", message: rebuildMessage } : status}
     busy={busy || needsReplan}
     onOpenMidi={onOpenMidi}
@@ -1612,7 +1682,7 @@ export function PianoPlayer({
     workspace={workspace}
     transport={transport}
     headerAddon={<div ref={setAssignmentControlsHost} className="studio-fingering-assignment-host" />}
-    footerAddon={footerAddon ?? <StudioReleaseDetails description="0.1.0-dev.9 preview: Native/Python numerical parity verification and motion streaming corrections. Engine switching preserves the project; video export pins its calculation runtime. Included MuseScore General, SF2/SF3 and 163 built-in melodies." />}
+    footerAddon={footerAddon ?? <StudioReleaseDetails description="0.1.0-dev.10 preview: 3D hand and wrist refinements, performed key/pedal timing, reliable view switching, responsive cameras and fixed-viewport 3D video export. Native/Python parity and existing musical data are preserved." />}
     dialogs={<>
       {dialogs}
       <VideoExportModal

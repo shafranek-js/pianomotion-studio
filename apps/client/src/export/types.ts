@@ -57,6 +57,8 @@ export interface VideoExportProgress {
 }
 
 export interface ExportSceneDataSource {
+  /** Frozen renderer and camera preset; independent of subsequent workspace changes. */
+  sceneView?: { dimension: "2d" | "3d"; cameraPreset: "concert" | "overhead" | "pov" | "side_arch" };
   /** Required by the production exporter; optional only for legacy view/test callers. */
   sourceIdentity?: ExportSourceIdentity;
   document: SongDocument;

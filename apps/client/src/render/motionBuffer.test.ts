@@ -149,10 +149,19 @@ describe("MotionBuffer", () => {
       expect(tipQuarter![1]).toBeCloseTo(2.5);
       expect(tipQuarter![2]).toBeCloseTo(0.4);
 
-      // Outside buffered window returns null
+      // Outside buffered window returns null for strict samplePose
       expect(buffer.samplePose(0.5, "right")).toBeNull();
       expect(buffer.samplePose(2.5, "right")).toBeNull();
       expect(buffer.samplePose(1.5, "left")).toBeNull();
+
+      // samplePoseClamped preserves ready pose before transport start (lead-in) and post-release pose
+      const atBefore = buffer.samplePoseClamped(-1.5, "right");
+      expect(atBefore).not.toBeNull();
+      expect(atBefore!.transportTimeSeconds).toBe(1.0);
+      const atAfter = buffer.samplePoseClamped(5.0, "right");
+      expect(atAfter).not.toBeNull();
+      expect(atAfter!.transportTimeSeconds).toBe(2.0);
+      expect(buffer.samplePoseClamped(1.5, "left")).toBeNull();
     });
 
     it("prunes past poses older than currentTime - windowBehindSeconds", () => {

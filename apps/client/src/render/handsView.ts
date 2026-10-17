@@ -276,10 +276,10 @@ export class HandsView extends Container {
     if (!this.keyboardLayout) return;
 
     const leftPose =
-      this.motionBuffer?.samplePose(transportTime, "left") ??
+      this.motionBuffer?.samplePoseClamped(transportTime, "left") ??
       this.samplePose(this.leftPoses, transportTime);
     const rightPose =
-      this.motionBuffer?.samplePose(transportTime, "right") ??
+      this.motionBuffer?.samplePoseClamped(transportTime, "right") ??
       this.samplePose(this.rightPoses, transportTime);
 
     // Layer ordering: during crossing episodes, hand with higher layer draws on top

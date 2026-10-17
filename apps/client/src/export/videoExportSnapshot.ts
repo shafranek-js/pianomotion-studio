@@ -2,6 +2,7 @@ import type { ExportSceneDataSource, ExportSourceIdentity, VideoExportOptions } 
 import type { DecodedAudioRecording } from "../audio";
 
 export interface FrozenVideoExportSnapshot {
+  sceneView: NonNullable<ExportSceneDataSource["sceneView"]>;
   sourceIdentity: ExportSourceIdentity;
   document: ExportSceneDataSource["document"];
   performancePlan: ExportSceneDataSource["performancePlan"];
@@ -111,6 +112,7 @@ export function freezeVideoExportSnapshot(
       : identity.soundFontAssetBytes?.slice(0) ?? null,
   };
   return {
+    sceneView: source.sceneView ? { ...source.sceneView } : { dimension: "2d", cameraPreset: "concert" },
     sourceIdentity: copiedIdentity,
     document: cloneDto(source.document),
     performancePlan: cloneDto(source.performancePlan),

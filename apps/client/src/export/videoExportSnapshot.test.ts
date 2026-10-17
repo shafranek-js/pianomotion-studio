@@ -47,6 +47,15 @@ function makeSource(soundFontAssetBlob?: Blob, soundFontAssetBytes?: ArrayBuffer
 }
 
 describe("freezeVideoExportSnapshot SoundFont retention", () => {
+  it("freezes the selected 3D camera independently of later live view changes", () => {
+    const source = makeSource();
+    source.sceneView = { dimension: "3d", cameraPreset: "side_arch" };
+    const snapshot = freezeVideoExportSnapshot(source, exportOptions);
+    source.sceneView.cameraPreset = "concert";
+    source.sceneView.dimension = "2d";
+    expect(snapshot.sceneView).toEqual({ dimension: "3d", cameraPreset: "side_arch" });
+    expect(freezeVideoExportSnapshot(makeSource(), exportOptions).sceneView.dimension).toBe("2d");
+  });
   it("retains the immutable large-bank Blob by reference without copying it into bytes", async () => {
     const bytes = new Uint8Array([8, 9, 10, 11]);
     const blob = new Blob([bytes.buffer as ArrayBuffer], { type: "audio/sf2" });

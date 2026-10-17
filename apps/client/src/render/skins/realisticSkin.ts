@@ -3,6 +3,10 @@ import {
   drawBand,
   drawCapsule,
   drawTaperedCapsule,
+  getSegmentDistalRadius,
+  getSortedFingersByDepth,
+  inflate,
+  isThumbTucked,
   unitVector,
   type HandGeometry,
   type ScreenPoint,
@@ -38,6 +42,12 @@ function drawRealisticKnuckleCreases(
   const hw = 0.60;
   const bow = 0.22;
 
+  // Soft dorsal knuckle bone highlight
+  g.circle(mcp.x - u.x * radius * 0.08, mcp.y - u.y * radius * 0.08, radius * 0.34).fill({
+    color: highlightColor,
+    alpha: 0.16,
+  });
+
   // Primary soft dorsal crease
   const pts1: number[] = [];
   for (let i = 0; i <= 8; i++) {
@@ -56,12 +66,6 @@ function drawRealisticKnuckleCreases(
       alpha: 0.32,
     });
   }
-
-  // Soft dorsal knuckle bone highlight
-  g.circle(mcp.x - u.x * radius * 0.08, mcp.y - u.y * radius * 0.08, radius * 0.34).fill({
-    color: highlightColor,
-    alpha: 0.16,
-  });
 }
 
 /**
@@ -178,8 +182,8 @@ function drawRealisticNail(
 }
 
 /**
- * Renders realistic human hands with lifelike skin tones, 3D volumetric phalanx shading,
- * soft ambient occlusion, anatomical knuckle creases, and realistic nails.
+ * Renders realistic human hands with lifelike skin tones, continuous 3D volumetric phalanx
+ * shading, soft ambient subsurface contour, anatomical knuckle creases, and realistic nails.
  */
 export function renderRealisticSkin(
   graphics: Graphics,
@@ -225,115 +229,107 @@ export function renderRealisticSkin(
     y: geom.wristCenter.y + u.y * d,
   });
 
-  // ---------------------------------------------------------------------------
-  // 1. Arm, Cuff, and Sleeve
-  // ---------------------------------------------------------------------------
-  if (skinSettings.sleeve) {
-    // Forearm skin transition
-    drawCapsule(graphics, along(0), along(cuff0 + 4), hw + 0.8, softRimCol, 0.5);
-    drawCapsule(graphics, along(0), along(cuff0 + 4), hw, skinCol);
+  const tucked = isThumbTucked(geom);
+  const sortedFingers = getSortedFingersByDepth(geom);
+  const forearmSkinEnd = skinSettings.sleeve ? along(cuff0 + 4) : geom.armEnd;
 
-    // Inner folded white shirt cuff
-    const sl0 = cuff0;
-    const sl1 = cuff0 + 0.35 * ppi;
-    const cuffMid = along((sl0 + sl1) / 2);
-    const cuffOutlineCol = 0xdcdcd8;
-    drawBand(graphics, cuffMid, u, (sl1 - sl0) / 2 + 0.8, hw * 1.22 + 0.8, cuffOutlineCol);
-    drawBand(graphics, cuffMid, u, (sl1 - sl0) / 2, hw * 1.22, 0xfcfcfa);
+  const renderFingerSubsurfaceRim = (f: number, startIdx: number, endIdx: number) => {
+    const segs = geom.radius[f];
+    if (!segs) return;
+    for (let i = startIdx; i < Math.min(endIdx, segs.length); i++) {
+      const seg = segs[i]!;
+      const r2 = getSegmentDistalRadius(segs, i, 0.90);
+      drawTaperedCapsule(graphics, seg.a, seg.b, seg.radius + 0.6, r2 + 0.6, softRimCol, 0.35);
+    }
+  };
 
-    // Dark metallic cufflink button
-    const nx = -u.y;
-    const ny = u.x;
-    const bx = cuffMid.x + nx * hw * 0.76;
-    const by = cuffMid.y + ny * hw * 0.76;
-    graphics.circle(bx, by, Math.max(1.8, 0.05 * ppi)).fill(0x282a30);
-    graphics.circle(bx, by, Math.max(1.0, 0.035 * ppi)).fill(0xb8b8c2);
-    graphics.circle(bx - 0.5, by - 0.5, Math.max(0.5, 0.015 * ppi)).fill(0xffffff);
+  const renderFingerFleshAndVolume = (
+    f: number,
+    startIdx: number,
+    endIdx: number,
+    includeDistalPad: boolean,
+  ) => {
+    const segs = geom.radius[f];
+    if (!segs || segs.length === 0) return;
+    const stop = Math.min(endIdx, segs.length);
 
-    // Tailored concert tuxedo sleeve
-    const sleeveMid = along((sl1 + armLen) / 2);
-    const sleeveOutlineCol = rgbToHex(mixRgb(cols.sleeve, [0, 0, 0], 0.35));
-    drawBand(graphics, sleeveMid, u, (armLen - sl1) / 2 + 0.8, hw * 1.30 + 0.8, sleeveOutlineCol);
-    drawBand(graphics, sleeveMid, u, (armLen - sl1) / 2, hw * 1.30, sleeveCol);
+    // Sub-pass A: Opaque continuous flesh base across all phalanges first
+    // so no subsequent segment's rim or shadow ever stamps a circle over a joint!
+    for (let i = startIdx; i < stop; i++) {
+      const seg = segs[i]!;
+      const r2 = getSegmentDistalRadius(segs, i, 0.90);
+      drawTaperedCapsule(graphics, seg.a, seg.b, seg.radius, r2, skinCol, 1.0);
+    }
 
-    // Subtle jacket cuff seam
-    const seamPt = along(sl1 + 0.12 * ppi);
-    graphics
-      .moveTo(seamPt.x - nx * hw * 1.25, seamPt.y - ny * hw * 1.25)
-      .lineTo(seamPt.x + nx * hw * 1.25, seamPt.y + ny * hw * 1.25)
-      .stroke({ width: 0.8, color: rgbToHex(mixRgb(cols.sleeve, [255, 255, 255], 0.12)), alpha: 0.5 });
-  } else {
-    // Bare forearm with smooth volumetric shading
-    drawCapsule(graphics, along(0), geom.armEnd, hw + 0.8, softRimCol, 0.5);
-    drawCapsule(graphics, along(0), geom.armEnd, hw, skinCol);
+    // Sub-pass B: Lateral flank ambient shadow (inset slightly from joints to avoid double-alpha caps)
+    for (let i = startIdx; i < stop; i++) {
+      const seg = segs[i]!;
+      const r1 = seg.radius;
+      const r2 = getSegmentDistalRadius(segs, i, 0.90);
+      const nx = -seg.u.y;
+      const ny = seg.u.x;
+      const t0 = i > startIdx ? 0.12 : 0.04;
+      const t1 = i + 1 < stop ? 0.88 : 0.94;
+      const aIn = {
+        x: seg.a.x + (seg.b.x - seg.a.x) * t0,
+        y: seg.a.y + (seg.b.y - seg.a.y) * t0,
+      };
+      const bIn = {
+        x: seg.a.x + (seg.b.x - seg.a.x) * t1,
+        y: seg.a.y + (seg.b.y - seg.a.y) * t1,
+      };
+      const rA = r1 + (r2 - r1) * t0;
+      const rB = r1 + (r2 - r1) * t1;
+      const p1a = { x: aIn.x + nx * rA * 0.42, y: aIn.y + ny * rA * 0.42 };
+      const p1b = { x: bIn.x + nx * rB * 0.42, y: bIn.y + ny * rB * 0.42 };
+      drawTaperedCapsule(graphics, p1a, p1b, rA * 0.46, rB * 0.46, shadowCol, 0.14);
+    }
 
-    // Forearm muscle / tendon subtle dorsal highlight
-    const faU = unitVector(geom.armEnd.x - geom.wristCenter.x, geom.armEnd.y - geom.wristCenter.y);
-    const faN = { x: -faU.y, y: faU.x };
-    const faMid = along(armLen * 0.4);
-    graphics
-      .moveTo(faMid.x - faN.x * hw * 0.15, faMid.y - faN.y * hw * 0.15)
-      .lineTo(geom.wristCenter.x, geom.wristCenter.y)
-      .stroke({ width: Math.max(1, hw * 0.22), color: highlightCol, alpha: 0.18, cap: "round" });
-  }
+    // Sub-pass C: Dorsal cylindrical highlight along each phalanx ridge
+    for (let i = startIdx; i < stop; i++) {
+      const seg = segs[i]!;
+      const r1 = seg.radius;
+      const r2 = getSegmentDistalRadius(segs, i, 0.90);
+      const nx = -seg.u.y;
+      const ny = seg.u.x;
+      const t0 = i > startIdx ? 0.14 : 0.06;
+      const t1 = i + 1 < stop ? 0.86 : 0.92;
+      const aIn = {
+        x: seg.a.x + (seg.b.x - seg.a.x) * t0,
+        y: seg.a.y + (seg.b.y - seg.a.y) * t0,
+      };
+      const bIn = {
+        x: seg.a.x + (seg.b.x - seg.a.x) * t1,
+        y: seg.a.y + (seg.b.y - seg.a.y) * t1,
+      };
+      const rA = r1 + (r2 - r1) * t0;
+      const rB = r1 + (r2 - r1) * t1;
+      const h1a = { x: aIn.x - nx * rA * 0.12, y: aIn.y - ny * rA * 0.12 };
+      const h1b = { x: bIn.x - nx * rB * 0.12, y: bIn.y - ny * rB * 0.12 };
+      drawTaperedCapsule(graphics, h1a, h1b, rA * 0.48, rB * 0.44, highlightCol, 0.22);
+      drawTaperedCapsule(graphics, h1a, h1b, rA * 0.20, rB * 0.18, 0xffffff, 0.10);
+    }
 
-  // Helper to draw realistic finger phalanxes, volumetric 3D shading, creases, and nail
-  const renderRealisticFinger = (f: number) => {
+    // Sub-pass D: Capillary subsurface warmth on distal pad
+    if (includeDistalPad) {
+      const distSeg = segs[segs.length - 1]!;
+      const padCenter = {
+        x: distSeg.b.x - distSeg.u.x * distSeg.radius * 0.22,
+        y: distSeg.b.y - distSeg.u.y * distSeg.radius * 0.22,
+      };
+      graphics.circle(padCenter.x, padCenter.y, distSeg.radius * 0.70).fill({
+        color: capillaryCol,
+        alpha: 0.30,
+      });
+    }
+  };
+
+  const renderFingerDetails = (f: number, includeBaseKnuckle: boolean, includeDistal: boolean) => {
+    if (!skinSettings.details) return;
     const segs = geom.radius[f];
     if (!segs || segs.length === 0) return;
 
-    // 1. Phalanx segments with volumetric cylindrical 3D shading
-    for (let i = 0; i < segs.length; i++) {
-      const seg = segs[i]!;
-      const r2 = i === segs.length - 1 ? seg.radius * 0.90 : seg.radius * 0.95;
-
-      // Outer soft subcutaneous warmth
-      drawTaperedCapsule(graphics, seg.a, seg.b, seg.radius + 0.6, r2 + 0.6, softRimCol, 0.35);
-
-      // Main flesh fill
-      drawTaperedCapsule(graphics, seg.a, seg.b, seg.radius, r2, skinCol, 1.0);
-
-      // Flank ambient shadow (gives round cross-section)
-      const nx = -seg.u.y;
-      const ny = seg.u.x;
-      const p1a = { x: seg.a.x + nx * seg.radius * 0.42, y: seg.a.y + ny * seg.radius * 0.42 };
-      const p1b = { x: seg.b.x + nx * r2 * 0.42, y: seg.b.y + ny * r2 * 0.42 };
-      drawTaperedCapsule(graphics, p1a, p1b, seg.radius * 0.48, r2 * 0.48, shadowCol, 0.16);
-
-      // Dorsal cylindrical highlight (light catching top ridge)
-      const h1a = { x: seg.a.x - nx * seg.radius * 0.12, y: seg.a.y - ny * seg.radius * 0.12 };
-      const h1b = { x: seg.b.x - nx * r2 * 0.12, y: seg.b.y - ny * r2 * 0.12 };
-      drawTaperedCapsule(graphics, h1a, h1b, seg.radius * 0.50, r2 * 0.46, highlightCol, 0.24);
-      drawTaperedCapsule(graphics, h1a, h1b, seg.radius * 0.22, r2 * 0.20, 0xffffff, 0.12);
-    }
-
-    // 2. Capillary subsurface warmth on distal pad
-    const distSeg = segs[segs.length - 1]!;
-    const padCenter = {
-      x: distSeg.b.x - distSeg.u.x * distSeg.radius * 0.22,
-      y: distSeg.b.y - distSeg.u.y * distSeg.radius * 0.22,
-    };
-    graphics.circle(padCenter.x, padCenter.y, distSeg.radius * 0.70).fill({
-      color: capillaryCol,
-      alpha: 0.30,
-    });
-
-    if (skinSettings.details) {
-      // 3. Joint creases at phalanx articulations (PIP, DIP)
-      for (let i = 0; i < segs.length - 1; i++) {
-        const seg = segs[i]!;
-        drawRealisticJointCreases(
-          graphics,
-          seg.b,
-          seg.u,
-          seg.n,
-          seg.radius,
-          creaseCol,
-          highlightCol,
-        );
-      }
-
-      // 4. Knuckle wrinkles at base / MCP joint
+    if (includeBaseKnuckle) {
       const baseSeg = segs[0]!;
       drawRealisticKnuckleCreases(
         graphics,
@@ -345,11 +341,38 @@ export function renderRealisticSkin(
         highlightCol,
         ppi,
       );
+      if (f === 1 && tucked && segs.length > 1) {
+        drawRealisticJointCreases(
+          graphics,
+          baseSeg.b,
+          baseSeg.u,
+          baseSeg.n,
+          getSegmentDistalRadius(segs, 0, 0.90),
+          creaseCol,
+          highlightCol,
+        );
+      }
+    }
 
-      // 5. Anatomical fingernail
+    if (includeDistal) {
+      const creaseStart = f === 1 && tucked ? 1 : 0;
+      for (let i = creaseStart; i < segs.length - 1; i++) {
+        const seg = segs[i]!;
+        const jointR = getSegmentDistalRadius(segs, i, 0.90);
+        drawRealisticJointCreases(
+          graphics,
+          seg.b,
+          seg.u,
+          seg.n,
+          jointR,
+          creaseCol,
+          highlightCol,
+        );
+      }
+
+      const distSeg = segs[segs.length - 1]!;
       let nailNormal = distSeg.n;
       if (f === 1) {
-        // Thumb nail points naturally away from index finger
         const ixMcp = geom.chains[2]?.[1] ?? geom.wristCenter;
         if ((distSeg.b.x - ixMcp.x) * nailNormal.x + (distSeg.b.y - ixMcp.y) * nailNormal.y < 0) {
           nailNormal = { x: -nailNormal.x, y: -nailNormal.y };
@@ -371,24 +394,71 @@ export function renderRealisticSkin(
   };
 
   // ---------------------------------------------------------------------------
-  // 2. Anatomical Layer 1: Thumb (Finger 1)
-  // Thumb articulates on the palmar side and passes UNDER the dorsum and other fingers.
+  // 0. Under-Palm Tucked Thumb Pass (ONLY when thumb is tucked under the palm)
   // ---------------------------------------------------------------------------
-  renderRealisticFinger(1);
+  if (tucked) {
+    renderFingerSubsurfaceRim(1, 1, 3);
+    renderFingerFleshAndVolume(1, 1, 3, true);
+    renderFingerDetails(1, false, true);
+  }
 
   // ---------------------------------------------------------------------------
-  // 3. Anatomical Layer 2: Dorsum (Palm & Webbing)
-  // Drawn ON TOP of the thumb so thumb-under movements pass naturally underneath.
+  // 1. Unified Soft Subsurface Rim / Silhouette Pass
   // ---------------------------------------------------------------------------
+  drawCapsule(graphics, along(0), forearmSkinEnd, hw + 0.8, softRimCol, 0.5);
+
   if (geom.web.length >= 3) {
     graphics.poly(geom.web.flat()).fill({ color: softRimCol, alpha: 0.25 });
-    graphics.poly(geom.web.flat()).fill({ color: skinCol, alpha: 0.95 });
+  }
+
+  if (geom.palm.length >= 3) {
+    const rimPalm = inflate(geom.palm, 0.8);
+    graphics.poly(rimPalm.flat()).fill({ color: softRimCol, alpha: 0.35 });
+  }
+
+  for (const f of sortedFingers) {
+    if (f === 1 && tucked) {
+      renderFingerSubsurfaceRim(1, 0, 1);
+    } else {
+      renderFingerSubsurfaceRim(f, 0, 3);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // 2. Unified Opaque Flesh & Volumetric Shading Pass
+  // ---------------------------------------------------------------------------
+  drawCapsule(graphics, along(0), forearmSkinEnd, hw, skinCol);
+
+  if (!skinSettings.sleeve) {
+    // Bare forearm muscle / tendon subtle dorsal highlight
+    const faU = unitVector(geom.armEnd.x - geom.wristCenter.x, geom.armEnd.y - geom.wristCenter.y);
+    const faN = { x: -faU.y, y: faU.x };
+    const faMid = along(armLen * 0.4);
+    graphics
+      .moveTo(faMid.x - faN.x * hw * 0.15, faMid.y - faN.y * hw * 0.15)
+      .lineTo(geom.wristCenter.x, geom.wristCenter.y)
+      .stroke({ width: Math.max(1, hw * 0.22), color: highlightCol, alpha: 0.18, cap: "round" });
+  }
+
+  if (geom.web.length >= 3) {
+    graphics.poly(geom.web.flat()).fill(skinCol);
   }
 
   if (geom.palm.length >= 3) {
     graphics.poly(geom.palm.flat()).fill(skinCol);
+  }
 
-    // Soft dorsal palm center highlight (dome of the hand)
+  // Render finger opaque flesh + cylindrical volume before dorsal tendons & creases
+  for (const f of sortedFingers) {
+    if (f === 1 && tucked) {
+      renderFingerFleshAndVolume(1, 0, 1, false);
+    } else {
+      renderFingerFleshAndVolume(f, 0, 3, true);
+    }
+  }
+
+  // Dorsal palm dome highlight and extensor digitorum tendons (sit seamlessly over palm-knuckle transition)
+  if (geom.palm.length >= 3) {
     const midMcp = geom.chains[3]?.[1] ?? geom.wristCenter;
     const palmMid = {
       x: (geom.wristCenter.x + midMcp.x) * 0.5,
@@ -400,7 +470,6 @@ export function renderRealisticSkin(
     });
 
     if (skinSettings.details) {
-      // Metacarpal extensor digitorum tendon ridges (soft, natural subcutaneous volume)
       for (const finger of [2, 3, 4, 5, 1]) {
         const chain = geom.chains[finger];
         if (!chain || chain.length < 2) continue;
@@ -414,13 +483,11 @@ export function renderRealisticSkin(
         const endD = Math.hypot(mcpPt.x - wristPt.x, mcpPt.y - wristPt.y) - 0.12 * ppi;
         if (endD <= startD) continue;
 
-        // Subtle shadow flank
         graphics
           .moveTo(wristPt.x + tu.x * startD + tn.x * 1.5, wristPt.y + tu.y * startD + tn.y * 1.5)
           .lineTo(wristPt.x + tu.x * endD + tn.x * 1.0, wristPt.y + tu.y * endD + tn.y * 1.0)
           .stroke({ width: 1.0, color: tendonShadowCol, alpha: 0.10, cap: "round" });
 
-        // Subtle highlight ridge
         graphics
           .moveTo(wristPt.x + tu.x * startD - tn.x * 0.8, wristPt.y + tu.y * startD - tn.y * 0.8)
           .lineTo(wristPt.x + tu.x * endD - tn.x * 0.5, wristPt.y + tu.y * endD - tn.y * 0.5)
@@ -430,10 +497,50 @@ export function renderRealisticSkin(
   }
 
   // ---------------------------------------------------------------------------
-  // 4. Anatomical Layer 3: Fingers 2..5 (Index, Middle, Ring, Pinky)
-  // Drawn ON TOP of the dorsum with smooth organic phalanxes and nails.
+  // 3. Anatomical Details Pass (MCP Knuckles, PIP/DIP Creases, Fingernails)
   // ---------------------------------------------------------------------------
-  for (let f = 2; f <= 5; f++) {
-    renderRealisticFinger(f);
+  for (const f of sortedFingers) {
+    if (f === 1 && tucked) {
+      renderFingerDetails(1, true, false);
+    } else {
+      renderFingerDetails(f, true, true);
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // 4. Apparel Pass (Shirt Cuff, Cufflink, Tuxedo Sleeve over Wrist Skin)
+  // ---------------------------------------------------------------------------
+  if (skinSettings.sleeve) {
+    const sl0 = cuff0;
+    const sl1 = cuff0 + 0.35 * ppi;
+    const cuffMid = along((sl0 + sl1) / 2);
+    const cuffOutlineCol = 0xdcdcd8;
+    const nx = -u.y;
+    const ny = u.x;
+
+    // Tailored concert tuxedo sleeve
+    const sleeveMid = along((sl1 + armLen) / 2);
+    const sleeveOutlineCol = rgbToHex(mixRgb(cols.sleeve, [0, 0, 0], 0.35));
+    drawBand(graphics, sleeveMid, u, (armLen - sl1) / 2 + 0.8, hw * 1.30 + 0.8, sleeveOutlineCol);
+    drawBand(graphics, sleeveMid, u, (armLen - sl1) / 2, hw * 1.30, sleeveCol);
+
+    // Subtle jacket cuff seam
+    const seamPt = along(sl1 + 0.12 * ppi);
+    graphics
+      .moveTo(seamPt.x - nx * hw * 1.25, seamPt.y - ny * hw * 1.25)
+      .lineTo(seamPt.x + nx * hw * 1.25, seamPt.y + ny * hw * 1.25)
+      .stroke({ width: 0.8, color: rgbToHex(mixRgb(cols.sleeve, [255, 255, 255], 0.12)), alpha: 0.5 });
+
+    // Inner folded white shirt cuff overlapping wrist skin
+    drawBand(graphics, cuffMid, u, (sl1 - sl0) / 2 + 0.8, hw * 1.22 + 0.8, cuffOutlineCol);
+    drawBand(graphics, cuffMid, u, (sl1 - sl0) / 2, hw * 1.22, 0xfcfcfa);
+
+    // Dark metallic cufflink button
+    const bx = cuffMid.x + nx * hw * 0.76;
+    const by = cuffMid.y + ny * hw * 0.76;
+    graphics.circle(bx, by, Math.max(1.8, 0.05 * ppi)).fill(0x282a30);
+    graphics.circle(bx, by, Math.max(1.0, 0.035 * ppi)).fill(0xb8b8c2);
+    graphics.circle(bx - 0.5, by - 0.5, Math.max(0.5, 0.015 * ppi)).fill(0xffffff);
   }
 }
+

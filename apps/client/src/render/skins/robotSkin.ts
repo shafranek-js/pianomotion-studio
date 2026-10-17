@@ -2,29 +2,40 @@ import type { Graphics } from "pixi.js";
 import {
   drawBand,
   drawCapsule,
+  getSortedFingersByDepth,
   inflate,
+  isThumbTucked,
   type HandGeometry,
   type ScreenPoint,
 } from "./geometry";
 import { mixRgb, rgbToHex, type SkinSettings } from "./types";
 
-function drawJointCylinder(
+function drawJointCylinderBase(
+  g: Graphics,
+  p: ScreenPoint,
+  radius: number,
+  jointCol: number,
+  darkJointCol: number,
+): void {
+  g.circle(p.x, p.y, radius * 0.78).fill(darkJointCol);
+  g.circle(p.x, p.y, radius * 0.62).fill(jointCol);
+}
+
+function drawJointCylinderPin(
   g: Graphics,
   p: ScreenPoint,
   radius: number,
   jointCol: number,
   chromeCol: number,
-  darkJointCol: number,
   pinCol: number,
 ): void {
-  g.circle(p.x, p.y, radius * 0.78).fill(darkJointCol);
-  g.circle(p.x, p.y, radius * 0.62).fill(jointCol);
-  g.circle(p.x - radius * 0.18, p.y - radius * 0.18, radius * 0.26).fill(chromeCol);
+  g.circle(p.x, p.y, radius * 0.44).fill(jointCol);
+  g.circle(p.x - radius * 0.14, p.y - radius * 0.14, radius * 0.22).fill(chromeCol);
   g.circle(p.x, p.y, Math.max(1, radius * 0.12)).fill(pinCol);
 }
 
 /**
- * Renders futuristic robot hand in PixiJS Graphics
+ * Renders futuristic robot hand in PixiJS Graphics with proper mechanical layering
  */
 export function renderRobotSkin(
   graphics: Graphics,
@@ -55,19 +66,104 @@ export function renderRobotSkin(
     y: geom.wristCenter.y + u.y * d,
   });
 
-  // 1. Forearm: Black inner cylinder, then white/light wrist shell
+  const tucked = isThumbTucked(geom);
+  const sortedFingers = getSortedFingersByDepth(geom);
+  const gap = 0.075 * ppi;
+
+  const renderThumbBaseHousing = () => {
+    const segs = geom.radius[1];
+    if (!segs || segs.length === 0) return;
+    const baseSeg = segs[0]!;
+    drawCapsule(graphics, baseSeg.a, baseSeg.b, baseSeg.radius * 0.9 + lw, edgeCol);
+    drawCapsule(graphics, baseSeg.a, baseSeg.b, baseSeg.radius * 0.9, darkJointCol);
+    graphics
+      .moveTo(baseSeg.a.x - baseSeg.radius * 0.3, baseSeg.a.y - baseSeg.radius * 0.3)
+      .lineTo(baseSeg.b.x - baseSeg.radius * 0.3, baseSeg.b.y - baseSeg.radius * 0.3)
+      .stroke({
+        width: Math.max(1, baseSeg.radius * 0.15),
+        color: chromeCol,
+        cap: "round",
+      });
+  };
+
+  const renderRobotFinger = (f: number, includeThumbBase: boolean) => {
+    const segs = geom.radius[f];
+    if (!segs || segs.length === 0) return;
+
+    if (f === 1 && includeThumbBase) {
+      renderThumbBaseHousing();
+    }
+
+    const activeSegs = f === 1 ? segs.slice(1) : segs;
+    if (activeSegs.length === 0) return;
+
+    // 1. Internal dark chassis core & joint cylinder sockets
+    for (const seg of activeSegs) {
+      drawCapsule(graphics, seg.a, seg.b, seg.radius * 0.48, darkJointCol);
+      drawJointCylinderBase(graphics, seg.a, seg.radius, jointCol, darkJointCol);
+    }
+
+    // 2. Armor shell plates with articulation clearance
+    for (let i = 0; i < activeSegs.length; i++) {
+      const seg = activeSegs[i]!;
+      const isLast = i === activeSegs.length - 1;
+      const g0 = Math.min(gap + seg.radius * 0.56, seg.length * 0.34);
+      const g1 = isLast ? 0.0 : Math.min(gap + seg.radius * 0.56, seg.length * 0.34);
+
+      const p0 = { x: seg.a.x + seg.u.x * g0, y: seg.a.y + seg.u.y * g0 };
+      const p1 = { x: seg.b.x - seg.u.x * g1, y: seg.b.y - seg.u.y * g1 };
+      const rr = seg.radius * (isLast ? 0.88 : 0.92);
+
+      drawCapsule(graphics, p0, p1, rr + lw, edgeCol);
+      drawCapsule(graphics, p0, p1, rr, shellCol);
+
+      // Gloss line highlight along one edge
+      const glossOffset = rr * 0.45;
+      const gEnd = isLast
+        ? { x: p0.x + (p1.x - p0.x) * 0.4, y: p0.y + (p1.y - p0.y) * 0.4 }
+        : p1;
+
+      graphics
+        .moveTo(p0.x - seg.n.x * glossOffset, p0.y - seg.n.y * glossOffset)
+        .lineTo(gEnd.x - seg.n.x * glossOffset, gEnd.y - seg.n.y * glossOffset)
+        .stroke({ width: Math.max(1, rr * 0.18), color: glossCol, cap: "round" });
+
+      // Fingertip actuator pad
+      if (isLast) {
+        const t0 = { x: p0.x + (p1.x - p0.x) * 0.45, y: p0.y + (p1.y - p0.y) * 0.45 };
+        drawCapsule(graphics, t0, p1, rr * 0.98, tipCol);
+
+        const spotX = p1.x - seg.n.x * rr * 0.35 - seg.u.x * rr * 0.3;
+        const spotY = p1.y - seg.n.y * rr * 0.35 - seg.u.y * rr * 0.3;
+        const tipHighlight = rgbToHex(mixRgb(cols.tip, [255, 255, 255], 0.3));
+        graphics.circle(spotX, spotY, Math.max(1, rr * 0.2)).fill(tipHighlight);
+      }
+    }
+
+    // 3. Exposed central hinge bearings & pins at joint articulations
+    for (const seg of activeSegs) {
+      drawJointCylinderPin(graphics, seg.a, seg.radius, jointCol, chromeCol, pinCol);
+    }
+  };
+
+  // 0. Tucked thumb phalanges under palm (ONLY during thumb-under crossing)
+  if (tucked) {
+    renderRobotFinger(1, false);
+  }
+
+  // 1. Forearm: Black inner cylinder, then wrist shell
   const cylMid = along((cyl0 + armLen) / 2);
   drawBand(graphics, cylMid, u, (armLen - cyl0) / 2, hw * 0.95, 0x161618);
 
   const nx = -u.y;
   const ny = u.x;
   const lineStart = {
-    x: cylMid.x - nx * hw * 0.5 - u.x * (armLen - cyl0) / 2,
-    y: cylMid.y - ny * hw * 0.5 - u.y * (armLen - cyl0) / 2,
+    x: cylMid.x - nx * hw * 0.5 - (u.x * (armLen - cyl0)) / 2,
+    y: cylMid.y - ny * hw * 0.5 - (u.y * (armLen - cyl0)) / 2,
   };
   const lineEnd = {
-    x: cylMid.x - nx * hw * 0.5 + u.x * (armLen - cyl0) / 2,
-    y: cylMid.y - ny * hw * 0.5 + u.y * (armLen - cyl0) / 2,
+    x: cylMid.x - nx * hw * 0.5 + (u.x * (armLen - cyl0)) / 2,
+    y: cylMid.y - ny * hw * 0.5 + (u.y * (armLen - cyl0)) / 2,
   };
   graphics
     .moveTo(lineStart.x, lineStart.y)
@@ -85,80 +181,13 @@ export function renderRobotSkin(
       .stroke({ width: 1, color: edgeCol });
   }
 
-  const gap = 0.075 * ppi;
-
-  const renderRobotFinger = (f: number) => {
-    const segs = geom.radius[f];
-    if (!segs || segs.length === 0) return;
-
-    // Thumb base housing
-    if (f === 1 && segs.length > 0) {
-      const baseSeg = segs[0]!;
-      drawCapsule(graphics, baseSeg.a, baseSeg.b, baseSeg.radius * 0.9 + lw, edgeCol);
-      drawCapsule(graphics, baseSeg.a, baseSeg.b, baseSeg.radius * 0.9, darkJointCol);
-      graphics
-        .moveTo(baseSeg.a.x - baseSeg.radius * 0.3, baseSeg.a.y - baseSeg.radius * 0.3)
-        .lineTo(baseSeg.b.x - baseSeg.radius * 0.3, baseSeg.b.y - baseSeg.radius * 0.3)
-        .stroke({
-          width: Math.max(1, baseSeg.radius * 0.15),
-          color: chromeCol,
-          cap: "round",
-        });
-    }
-
-    // Joint metal cylinders at joints
-    const activeSegs = f === 1 ? segs.slice(1) : segs;
-    for (const seg of activeSegs) {
-      drawJointCylinder(graphics, seg.a, seg.radius, jointCol, chromeCol, darkJointCol, pinCol);
-    }
-
-    // Shell plates with visible gaps
-    for (let i = 0; i < activeSegs.length; i++) {
-      const seg = activeSegs[i]!;
-      const isLast = i === activeSegs.length - 1;
-      const g0 = Math.min(gap + seg.radius * 0.5, seg.length * 0.35);
-      const g1 = isLast ? 0.0 : Math.min(gap + seg.radius * 0.5, seg.length * 0.35);
-
-      const p0 = { x: seg.a.x + seg.u.x * g0, y: seg.a.y + seg.u.y * g0 };
-      const p1 = { x: seg.b.x - seg.u.x * g1, y: seg.b.y - seg.u.y * g1 };
-      const rr = seg.radius * (isLast ? 0.9 : 0.95);
-
-      drawCapsule(graphics, p0, p1, rr + lw, edgeCol);
-      drawCapsule(graphics, p0, p1, rr, shellCol);
-
-      // Gloss line highlight along one edge
-      const glossOffset = rr * 0.45;
-      const gEnd = isLast
-        ? { x: p0.x + (p1.x - p0.x) * 0.4, y: p0.y + (p1.y - p0.y) * 0.4 }
-        : p1;
-
-      graphics
-        .moveTo(p0.x - seg.n.x * glossOffset, p0.y - seg.n.y * glossOffset)
-        .lineTo(gEnd.x - seg.n.x * glossOffset, gEnd.y - seg.n.y * glossOffset)
-        .stroke({ width: Math.max(1, rr * 0.18), color: glossCol, cap: "round" });
-
-      // Fingertip cap
-      if (isLast) {
-        const t0 = { x: p0.x + (p1.x - p0.x) * 0.45, y: p0.y + (p1.y - p0.y) * 0.45 };
-        drawCapsule(graphics, t0, p1, rr * 0.98, tipCol);
-
-        // Highlight spot on dark tip
-        const spotX = p1.x - seg.n.x * rr * 0.35 - seg.u.x * rr * 0.3;
-        const spotY = p1.y - seg.n.y * rr * 0.35 - seg.u.y * rr * 0.3;
-        const tipHighlight = rgbToHex(mixRgb(cols.tip, [255, 255, 255], 0.3));
-        graphics.circle(spotX, spotY, Math.max(1, rr * 0.2)).fill(tipHighlight);
-      }
-    }
-  };
-
-  // Layer 1: Thumb (Finger 1) underneath palm
-  renderRobotFinger(1);
-
-  // Layer 2: Palm Plate
+  // 2. Thenar Web Membrane & Thumb Base Housing
   if (geom.web.length >= 3) {
     graphics.poly(geom.web.flat()).fill(membraneCol);
   }
+  renderThumbBaseHousing();
 
+  // 3. Dorsal Palm Armor Plate
   if (geom.palm.length >= 3) {
     const inflatedPalm = inflate(geom.palm, lw);
     graphics.poly(inflatedPalm.flat()).fill(edgeCol);
@@ -192,7 +221,6 @@ export function renderRobotSkin(
       graphics.poly(seamPts, false).stroke({ width: Math.max(1, 0.03 * ppi), color: edgeCol });
     }
 
-    // Screw heads
     const screwR = Math.max(1.2, 0.045 * ppi);
     for (const t of [0.25, 0.5]) {
       const sBaseX = ptSide.x + (geom.wristU.x - ptSide.x) * t;
@@ -204,8 +232,15 @@ export function renderRobotSkin(
     }
   }
 
-  // Layer 3: Fingers 2..5 on top
-  for (let f = 2; f <= 5; f++) {
-    renderRobotFinger(f);
+  // 4. Fingers in 3D depth order
+  for (const f of sortedFingers) {
+    if (f === 1) {
+      if (!tucked) {
+        renderRobotFinger(1, false);
+      }
+    } else {
+      renderRobotFinger(f, false);
+    }
   }
 }
+

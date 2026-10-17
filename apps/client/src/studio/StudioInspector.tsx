@@ -48,8 +48,8 @@ export function StudioInspector(props: StudioInspectorProps) {
       <label className={styles.field} htmlFor="studio-key-style">
         <span>Keyboard geometry</span>
         <select id="studio-key-style" value={keyStyle} disabled={busy} onChange={(event) => props.onKeyStyleChange(event.currentTarget.value as M1KeyStyle)}>
-          <option value="realistic">Realistic key widths</option>
-          <option value="equal">Equal key widths</option>
+          <option value="realistic">Realistic key widths (3D standard)</option>
+          <option value="equal">Equal key widths (2D lanes only)</option>
         </select>
       </label>
       <label className={styles.field} htmlFor="studio-skin-style">
