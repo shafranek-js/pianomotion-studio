@@ -869,6 +869,7 @@ export class Hand3DMeshGroup {
     this.cuffGeometry = new THREE.CylinderGeometry(1.0, 1.04, 1.0, 24, 1, false);
     this.cuffGeometry.rotateX(Math.PI * 0.5);
     this.cuffMesh = new THREE.Mesh(this.cuffGeometry, this.cuffMaterial);
+    this.cuffMesh.name = "hand-cuff";
     this.cuffMesh.castShadow = true;
     this.cuffMesh.receiveShadow = true;
     this.group.add(this.cuffMesh);
@@ -876,6 +877,7 @@ export class Hand3DMeshGroup {
     this.sleeveGeometry = new THREE.CylinderGeometry(1.38, 1.0, 1.0, 24, 1, false);
     this.sleeveGeometry.rotateX(Math.PI * 0.5);
     this.sleeveMesh = new THREE.Mesh(this.sleeveGeometry, this.sleeveMaterial);
+    this.sleeveMesh.name = "hand-sleeve";
     this.sleeveMesh.castShadow = true;
     this.sleeveMesh.receiveShadow = true;
     this.group.add(this.sleeveMesh);
@@ -1115,13 +1117,14 @@ export class Hand3DMeshGroup {
         continue;
       }
 
-      // Lift fingertip slightly by +0.12 in so the fleshy palmar pad rests on the key surface at z=0
+      // Apply the same palmar-pad correction for every hover coefficient. The
+      // reconstructed chain already carries the continuous hover lift.
       const tipOriginal = chain[chain.length - 1]!;
       const dipPt = chain[chain.length - 2]!;
       const tipPadLift = Math.max(0, 0.13 - Math.max(0, tipOriginal.y) * 0.5);
       const tipPt = new THREE.Vector3(
         tipOriginal.x,
-        hoverLift > 0 ? Math.max(0.28, tipOriginal.y + tipPadLift) : tipOriginal.y + tipPadLift,
+        tipOriginal.y + tipPadLift,
         tipOriginal.z,
       );
 

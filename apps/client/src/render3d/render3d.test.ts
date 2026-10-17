@@ -73,6 +73,21 @@ function createMockPose(hand: "left" | "right" = "right", layerOrder = 0): Motio
   };
 }
 
+function createBentMockPose(hand: "left" | "right"): MotionPose {
+  const pose = createMockPose(hand);
+  const bendPoint = ([x, y, z]: readonly [number, number, number]): [number, number, number] => [
+    x,
+    y,
+    z - Math.max(0, y - 1.6) * 0.35,
+  ];
+
+  return {
+    ...pose,
+    bones: pose.bones.map((bone) => ({ ...bone, a: bendPoint(bone.a), b: bendPoint(bone.b) })),
+    joints: pose.joints.map((joint) => ({ ...joint, point: bendPoint(joint.point) })),
+  };
+}
+
 describe("render3d — 3D Hand Rig & Piano Scene", () => {
   it("converts MotionPose 3D inch coordinates into right-handed Three.js world space", () => {
     expect(PianoScene).toBeDefined();
@@ -461,6 +476,136 @@ describe("render3d — 3D Hand Rig & Piano Scene", () => {
     const indexTip = handGroup.getBone("index-finger-tip")!;
     expect(indexTip.position.y).toBeGreaterThanOrEqual(0.28);
     handGroup.dispose();
+  });
+
+  it("keeps every finger, wrist, and cuff continuous through hover lift, seek-back, and repeat for both hands", () => {
+    const liftSequence = [
+      0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5,
+      0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95, 1.0,
+    ];
+    const seekBackSequence = [0.65, 0.2, 0, 0.85, 0.37, 0.85, 0.5, 0.5];
+    const fingerPrefixes = [
+      "thumb",
+      "index-finger",
+      "middle-finger",
+      "ring-finger",
+      "pinky-finger",
+    ];
+
+    for (const hand of ["left", "right"] as const) {
+      const pose = createBentMockPose(hand);
+      const handGroup = new Hand3DMeshGroup(hand);
+      const snapshots = new Map<
+        number,
+        {
+          tips: number[];
+          distalScales: number[];
+          wristPosition: THREE.Vector3;
+          cuffPosition: THREE.Vector3;
+          cuffQuaternion: THREE.Quaternion;
+          sleevePosition: THREE.Vector3;
+          sleeveQuaternion: THREE.Quaternion;
+        }
+      >();
+
+      const sample = (hoverLift: number) => {
+        const reconstructed = reconstructHand3D(pose, hoverLift);
+        handGroup.updateFromPose(pose, DEFAULT_SKIN_SETTINGS, false, hoverLift);
+
+        const tips = [] as number[];
+        const distalScales = [] as number[];
+        for (let finger = 1; finger <= 5; finger++) {
+          const prefix = fingerPrefixes[finger - 1]!;
+          const tip = handGroup.getBone(`${prefix}-tip`)!;
+          const distal = handGroup.getBone(`${prefix}-phalanx-distal`)!;
+          const chain = reconstructed.chains[finger]!;
+          const originalTip = chain[chain.length - 1]!;
+          const expectedPadLift = Math.max(0, 0.13 - Math.max(0, originalTip.y) * 0.5);
+
+          expect(tip).toBeDefined();
+          expect(distal).toBeDefined();
+          expect(tip.position.y).toBeCloseTo(originalTip.y + expectedPadLift, 5);
+          tips.push(tip.position.y);
+          distalScales.push(distal.scale.z);
+        }
+
+        const cuff = handGroup.group.getObjectByName("hand-cuff")!;
+        const sleeve = handGroup.group.getObjectByName("hand-sleeve")!;
+        const wrist = handGroup.getBone("wrist")!;
+        expect(cuff).toBeInstanceOf(THREE.Mesh);
+        expect(sleeve).toBeInstanceOf(THREE.Mesh);
+        expect(wrist).toBeDefined();
+
+        return {
+          tips,
+          distalScales,
+          wristPosition: wrist.position.clone(),
+          cuffPosition: cuff.position.clone(),
+          cuffQuaternion: cuff.quaternion.clone(),
+          sleevePosition: sleeve.position.clone(),
+          sleeveQuaternion: sleeve.quaternion.clone(),
+        };
+      };
+
+      for (const hoverLift of liftSequence) {
+        snapshots.set(hoverLift, sample(hoverLift));
+      }
+
+      const atZero = snapshots.get(0)!;
+      const nearZero = sample(0.000001);
+      for (let finger = 0; finger < 5; finger++) {
+        expect(Math.abs(nearZero.tips[finger]! - atZero.tips[finger]!)).toBeLessThan(0.001);
+        expect(
+          Math.abs(nearZero.distalScales[finger]! - atZero.distalScales[finger]!),
+        ).toBeLessThan(0.001);
+      }
+      expect(nearZero.wristPosition.distanceTo(atZero.wristPosition)).toBeLessThan(0.001);
+      expect(nearZero.cuffPosition.distanceTo(atZero.cuffPosition)).toBeLessThan(0.001);
+      expect(nearZero.cuffQuaternion.angleTo(atZero.cuffQuaternion)).toBeLessThan(0.001);
+      expect(nearZero.sleevePosition.distanceTo(atZero.sleevePosition)).toBeLessThan(0.001);
+      expect(nearZero.sleeveQuaternion.angleTo(atZero.sleeveQuaternion)).toBeLessThan(0.001);
+
+      for (let sampleIndex = 1; sampleIndex < liftSequence.length; sampleIndex++) {
+        const previous = snapshots.get(liftSequence[sampleIndex - 1]!)!;
+        const current = snapshots.get(liftSequence[sampleIndex]!)!;
+        for (let finger = 0; finger < 5; finger++) {
+          expect(current.tips[finger]! + 0.0001).toBeGreaterThanOrEqual(previous.tips[finger]!);
+          expect(Math.abs(current.tips[finger]! - previous.tips[finger]!)).toBeLessThan(0.1);
+          expect(
+            Math.abs(current.distalScales[finger]! - previous.distalScales[finger]!),
+          ).toBeLessThan(0.1);
+        }
+        expect(current.wristPosition.distanceTo(previous.wristPosition)).toBeLessThan(0.1);
+        expect(current.cuffPosition.distanceTo(previous.cuffPosition)).toBeLessThan(0.1);
+        expect(current.cuffQuaternion.angleTo(previous.cuffQuaternion)).toBeLessThan(0.1);
+        expect(current.sleevePosition.distanceTo(previous.sleevePosition)).toBeLessThan(0.1);
+        expect(current.sleeveQuaternion.angleTo(previous.sleeveQuaternion)).toBeLessThan(0.1);
+      }
+
+      const fullyLifted = snapshots.get(1)!;
+      expect(fullyLifted.tips).toHaveLength(5);
+      for (const tipY of fullyLifted.tips) {
+        expect(tipY).toBeGreaterThanOrEqual(0.28);
+      }
+
+      for (const hoverLift of seekBackSequence) {
+        const repeated = sample(hoverLift);
+        const earlier = snapshots.get(hoverLift);
+        if (earlier) {
+          expect(repeated.tips).toEqual(earlier.tips);
+          expect(repeated.distalScales).toEqual(earlier.distalScales);
+          expect(repeated.wristPosition.toArray()).toEqual(earlier.wristPosition.toArray());
+          expect(repeated.cuffPosition.toArray()).toEqual(earlier.cuffPosition.toArray());
+          expect(repeated.cuffQuaternion.toArray()).toEqual(earlier.cuffQuaternion.toArray());
+          expect(repeated.sleevePosition.toArray()).toEqual(earlier.sleevePosition.toArray());
+          expect(repeated.sleeveQuaternion.toArray()).toEqual(earlier.sleeveQuaternion.toArray());
+        } else {
+          snapshots.set(hoverLift, repeated);
+        }
+      }
+
+      handGroup.dispose();
+    }
   });
 
   it("returns fingers to poised hover posture above the keyboard when the last note ends", () => {

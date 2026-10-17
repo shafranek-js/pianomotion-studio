@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>PianoMotion 3D acceptance</title>
+<style>body{background:#15191d;color:#e6ebef;font:14px system-ui;padding:24px}button,a{margin:8px;padding:10px;color:#8de0ca}button{background:#283f39;border:1px solid #617b72}canvas,video,img{max-width:48%;height:auto}pre{white-space:pre-wrap}section{border-top:1px solid #58616b;margin-top:16px}</style></head>
+<body><h1>PianoMotion 3D acceptance</h1><p>Real Native Worker → immutable snapshot → export Worker → WebCodecs → demux/decode.</p>
+<button id="run">Run MP4 + WebM checks</button><pre id="status">Ready</pre><div id="artifacts"></div><pre id="result"></pre>
+<script type="module">
+import RefreshRuntime from '/@react-refresh';
+RefreshRuntime.injectIntoGlobalHook(window);
+window.$RefreshReg$ = () => {};
+window.$RefreshSig$ = () => (type) => type;
+window.__vite_plugin_react_preamble_installed__ = true;
+</script>
+<script type="module" src="./acceptance.ts"></script></body></html>

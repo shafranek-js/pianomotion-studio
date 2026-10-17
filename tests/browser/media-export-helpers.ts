@@ -168,7 +168,8 @@ export async function inspectNativePlayback(
     mimeType: format === "mp4" ? "video/mp4" : "video/webm",
     buffer: bytes,
   });
-  return page.evaluate(async (noteStart) => {
+  const scene3d = await page.getByTestId("piano-canvas-3d").isVisible();
+  return page.evaluate(async ({ noteStart, scene3d }) => {
     const input = document.querySelector<HTMLInputElement>("#media-export-native-decode-file");
     const file = input?.files?.[0];
     if (!file) throw new Error("Native playback probe did not receive the saved video file.");
@@ -233,7 +234,7 @@ export async function inspectNativePlayback(
       Math.round(desiredHandHeight * verticalScale),
       Math.floor(budget) - keyboardHeight,
     ));
-    const handRegionStart = Math.max(0, canvas.height - handHeight);
+    const handRegionStart = scene3d ? 0 : Math.max(0, canvas.height - handHeight);
     let handRegionDifferenceCount = 0;
     for (let y = handRegionStart; y < canvas.height; y += 1) {
       for (let x = 0; x < canvas.width; x += 17) {
@@ -241,7 +242,11 @@ export async function inspectNativePlayback(
         const distance = Math.abs(before[index]! - during[index]!) +
           Math.abs(before[index + 1]! - during[index + 1]!) +
           Math.abs(before[index + 2]! - during[index + 2]!);
-        if (distance > 24) handRegionDifferenceCount += 1;
+        // 3D presets place hands at different heights. Count changed warm skin
+        // pixels rather than treating the 2D hand rectangle as universal.
+        const skinAt = (pixels: Uint8ClampedArray) => pixels[index]! > 65 &&
+          pixels[index]! > pixels[index + 1]! * 1.12 && pixels[index + 1]! > pixels[index + 2]! * 1.06;
+        if (distance > 24 && (!scene3d || skinAt(before) || skinAt(during))) handRegionDifferenceCount += 1;
       }
     }
     video.muted = false;
@@ -283,5 +288,5 @@ export async function inspectNativePlayback(
       beforePngDataUrl: beforeFrame.pngDataUrl,
       duringPngDataUrl: duringFrame.pngDataUrl,
     };
-  }, firstNoteStartSeconds);
+  }, { noteStart: firstNoteStartSeconds, scene3d });
 }

@@ -144,6 +144,8 @@
   padding-left: 6px;
 }
 
+.studio-camera-hud__mobile-preset { display: none; }
+
 .studio-camera-hud__btn-short {
   display: none;
 }
@@ -177,6 +179,11 @@
   outline-offset: 1px;
 }
 
+.studio-camera-hud__mobile-preset select:focus-visible {
+  outline: 2px solid var(--studio-accent);
+  outline-offset: 1px;
+}
+
 @media (max-width: 520px) {
   .studio-workspace-layout__camera-hud {
     top: 6px;
@@ -184,6 +191,23 @@
     max-width: calc(100% - 12px);
     gap: 3px;
     padding: 2px;
+  }
+  .studio-workspace-layout__camera-hud .studio-camera-hud__mode-group { flex: 1 1 0; min-width: 0; }
+  .studio-workspace-layout__camera-hud .studio-camera-hud__btn { flex: 1 1 0; min-width: 0; min-height: 44px; }
+  .studio-workspace-layout__camera-hud .studio-camera-hud__preset-group { display: none; }
+  .studio-workspace-layout__camera-hud .studio-camera-hud__mobile-preset { display: flex; flex: 1 1 0; min-width: 0; }
+  .studio-workspace-layout__camera-hud .studio-camera-hud__mobile-preset select {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    min-height: 44px;
+    padding: 0 8px;
+    border: 1px solid #303741;
+    border-radius: 5px;
+    background: #12151a;
+    color: var(--studio-text);
+    font: inherit;
+    font-size: 11px;
   }
   .studio-camera-hud__preset-group {
     border-left: none;
@@ -207,6 +231,7 @@
     min-height: 44px;
     min-width: 44px;
   }
+  .studio-camera-hud__mobile-preset select { min-height: 44px; }
 }
 
 .studio-camera-hud__btn.is-active {

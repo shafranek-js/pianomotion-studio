@@ -61,6 +61,8 @@ describe("StudioWorkspace", () => {
     expect(hud3d).toContain("Overhead");
     expect(hud3d).toContain("Pianist POV");
     expect(hud3d).toContain("Side Arch");
+    expect(hud3d).toContain('aria-label="3D camera preset"');
+    expect(hud3d).toContain('<option value="concert" selected="">Concert</option>');
 
     const editorHud = renderToStaticMarkup(
       <StudioWorkspace
@@ -117,6 +119,8 @@ describe("StudioWorkspace", () => {
     expect(shellMarkup).toContain("Side Arch");
     expect(shellMarkup).toContain("2D");
     expect(shellMarkup).toContain("3D");
+    expect(shellMarkup).toContain('aria-label="3D camera preset"');
+    expect(shellMarkup).toContain('<option value="side_arch" selected="">Side Arch</option>');
   });
 });
 

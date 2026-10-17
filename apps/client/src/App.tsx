@@ -698,7 +698,7 @@ export default function App() {
           Update ready
         </button>
       )}
-      <StudioReleaseDetails description="0.1.0-dev.10 preview: 3D hand and wrist refinements, performed key/pedal timing, reliable view switching, responsive cameras and fixed-viewport 3D video export. Native/Python parity and existing musical data are preserved." />
+      <StudioReleaseDetails description="0.1.0-dev.11 preview: corrected manual 3D export cameras, empty performance plans, continuous hand release and compact responsive camera controls. Local MIDI, SoundFont and project workflows are preserved." />
     </div>
   );
 

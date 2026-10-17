@@ -177,6 +177,8 @@ export class PianoScene3D {
   private notes: Note[] = [];
   private performancePlan: PerformancePlan | null = null;
   private sustainEvents: Extract<PerformanceEvent, { type: "pedal" }>[] = [];
+  private softPedalEvents: Extract<PerformanceEvent, { type: "pedal" }>[] = [];
+  private sostenutoEvents: Extract<PerformanceEvent, { type: "pedal" }>[] = [];
   private motionPlan: MotionPlan | null = null;
   private leftPoses: MotionPose[] = [];
   private rightPoses: MotionPose[] = [];
@@ -302,20 +304,30 @@ export class PianoScene3D {
       this.scene.add(this.rightHand3D.group);
 
       this.setCameraPreset("concert");
-      this.setupPointerEvents();
-      this.setupResizeObserver();
+      if (!this.fixedViewport) {
+        this.setupPointerEvents();
+        this.setupResizeObserver();
+      }
     } catch (error) {
-      this.resizeObserver?.disconnect();
-      this.pointerListenerCleanup?.();
-      this.controls?.dispose();
-      this.envMapTexture?.dispose();
-      this.stageFloorGeo?.dispose();
-      this.stageFloorMat?.dispose();
-      this.stageFloorTexture?.dispose();
-      this.renderer.dispose();
-      if (this.ownsCanvas) this.renderer.domElement.remove();
+      this.cleanupAllocatedResources();
       throw error;
     }
+  }
+
+  private cleanupAllocatedResources(): void {
+    this.resizeObserver?.disconnect();
+    this.pointerListenerCleanup?.();
+    this.controls?.dispose();
+    this.keyboard3D?.dispose();
+    this.fallingNotes3D?.dispose();
+    this.leftHand3D?.dispose();
+    this.rightHand3D?.dispose();
+    this.envMapTexture?.dispose();
+    this.stageFloorGeo?.dispose();
+    this.stageFloorMat?.dispose();
+    this.stageFloorTexture?.dispose();
+    this.renderer.dispose();
+    if (this.ownsCanvas) this.renderer.domElement.remove();
   }
 
   private setupLighting(): void {
@@ -478,6 +490,12 @@ export class PianoScene3D {
       } finally {
         this.isUpdatingControlsInternally = false;
       }
+    } else {
+      // Fixed export cameras have no OrbitControls to orient them toward the
+      // preset target. Keep the camera rotation and world matrix current after
+      // fitting its position to the fixed viewport.
+      this.camera.lookAt(target);
+      this.camera.updateMatrixWorld(true);
     }
     this.lastViewportFitDistance = fit.distance;
     this.renderFrame();
@@ -549,10 +567,15 @@ export class PianoScene3D {
 
   public setPerformancePlan(plan: PerformancePlan | null): void {
     this.performancePlan = plan;
-    this.sustainEvents = plan?.events.filter(
-      (event): event is Extract<PerformanceEvent, { type: "pedal" }> =>
-        event.type === "pedal" && event.controller === 64,
-    ) ?? [];
+    this.sustainEvents = [];
+    this.softPedalEvents = [];
+    this.sostenutoEvents = [];
+    for (const event of plan?.events ?? []) {
+      if (event.type !== "pedal") continue;
+      if (event.controller === 64) this.sustainEvents.push(event);
+      else if (event.controller === 67) this.softPedalEvents.push(event);
+      else this.sostenutoEvents.push(event);
+    }
     this.fallingNotes3D.setPerformancePlan(plan, this.notes);
     this.update(this.currentTransportTime, this.lastActiveNotes);
   }
@@ -623,33 +646,15 @@ export class PianoScene3D {
     // CC64: Sustain (right pedal)
     // CC67: Soft / Una Corda (left pedal)
     // CC66: Sostenuto (middle pedal)
-    const cc64Events = this.sustainEvents.length > 0
-      ? this.sustainEvents
-      : (this.performancePlan?.events.filter(
-          (ev): ev is Extract<PerformanceEvent, { type: "pedal" }> =>
-            ev.type === "pedal" && ev.controller === 64,
-        ) ?? []);
-    this.keyboard3D.setSustainPedal(sustainPedalDownAtTime(cc64Events, timeSeconds));
-
-    if (this.performancePlan?.events) {
-      const cc67Events = this.performancePlan.events.filter(
-        (ev): ev is Extract<PerformanceEvent, { type: "pedal" }> =>
-          ev.type === "pedal" && ev.controller === 67,
-      );
-      this.keyboard3D.setSoftPedal(sustainPedalDownAtTime(cc67Events, timeSeconds));
-
-      const cc66Events = this.performancePlan.events.filter(
-        (ev): ev is Extract<PerformanceEvent, { type: "pedal" }> =>
-          ev.type === "pedal" && ev.controller === 66,
-      );
-      this.keyboard3D.setSostenutoPedal(sustainPedalDownAtTime(cc66Events, timeSeconds));
-    }
+    this.keyboard3D.setSustainPedal(sustainPedalDownAtTime(this.sustainEvents, timeSeconds));
+    this.keyboard3D.setSoftPedal(sustainPedalDownAtTime(this.softPedalEvents, timeSeconds));
+    this.keyboard3D.setSostenutoPedal(sustainPedalDownAtTime(this.sostenutoEvents, timeSeconds));
 
     const activeMap = new Map<number, KeyPressInfo | null>();
     if (!this.playAlongMode) {
       const activeScoreNotes: Note[] = [];
-      const rendered = this.fallingNotes3D.getRenderedNoteTimings?.();
-      const noteSource = rendered && rendered.length > 0 ? rendered : this.notes;
+      const rendered = this.fallingNotes3D.getRenderedNoteTimings();
+      const noteSource = this.performancePlan ? rendered : this.notes;
       for (const note of noteSource) {
         if (
           note.startSeconds <= timeSeconds &&
@@ -695,8 +700,8 @@ export class PianoScene3D {
       rightPose = this.interpolatePoseFromArray(this.rightPoses, timeSeconds);
     }
 
-    const rendered = this.fallingNotes3D.getRenderedNoteTimings?.();
-    const noteSource = rendered && rendered.length > 0 ? rendered : this.notes;
+    const rendered = this.fallingNotes3D.getRenderedNoteTimings();
+    const noteSource = this.performancePlan ? rendered : this.notes;
 
     const leftHoverLift = calculateHandHoverLift("left", timeSeconds, noteSource);
     const rightHoverLift = calculateHandHoverLift("right", timeSeconds, noteSource);
@@ -748,7 +753,7 @@ export class PianoScene3D {
       return this.keyboard3D.getPitchFromRaycaster(this.raycaster);
     };
 
-    this.canvas.addEventListener("pointerdown", (e: PointerEvent) => {
+    const pointerDown = (e: PointerEvent) => {
       if (e.button !== 0) return;
       const pitch = getPitchAtEvent(e);
       if (pitch !== null) {
@@ -758,9 +763,9 @@ export class PianoScene3D {
         this.onPianoKeyDown?.(pitch);
         this.update(this.currentTransportTime, this.lastActiveNotes);
       }
-    });
+    };
 
-    this.canvas.addEventListener("pointermove", (e: PointerEvent) => {
+    const pointerMove = (e: PointerEvent) => {
       if (!this.isPlayingKeyWithPointer || !this.activePointerPitches.has(e.pointerId)) return;
       const prevPitch = this.activePointerPitches.get(e.pointerId)!;
       const nextPitch = getPitchAtEvent(e);
@@ -773,7 +778,7 @@ export class PianoScene3D {
         }
         this.update(this.currentTransportTime, this.lastActiveNotes);
       }
-    });
+    };
 
     const releasePointer = (e: PointerEvent) => {
       if (this.activePointerPitches.has(e.pointerId)) {
@@ -788,8 +793,17 @@ export class PianoScene3D {
       }
     };
 
-    this.canvas.addEventListener("pointerup", releasePointer);
-    this.canvas.addEventListener("pointercancel", releasePointer);
+    const listeners: Array<[string, EventListener]> = [
+      ["pointerdown", pointerDown as EventListener],
+      ["pointermove", pointerMove as EventListener],
+      ["pointerup", releasePointer as EventListener],
+      ["pointercancel", releasePointer as EventListener],
+    ];
+    this.pointerListenerCleanup = () => {
+      for (const [type, listener] of listeners) this.canvas.removeEventListener(type, listener);
+      this.pointerListenerCleanup = null;
+    };
+    for (const [type, listener] of listeners) this.canvas.addEventListener(type, listener);
   }
 
   private renderFrame(): void {
@@ -801,6 +815,7 @@ export class PianoScene3D {
     if (this.isDestroyed) return;
     this.isDestroyed = true;
     this.resizeObserver?.disconnect();
+    this.pointerListenerCleanup?.();
     this.controls?.dispose();
     this.keyboard3D.dispose();
     this.fallingNotes3D.dispose();
@@ -811,6 +826,6 @@ export class PianoScene3D {
     this.stageFloorMat?.dispose();
     this.stageFloorTexture?.dispose();
     this.renderer.dispose();
-    this.canvas.remove();
+    if (this.ownsCanvas) this.canvas.remove();
   }
 }

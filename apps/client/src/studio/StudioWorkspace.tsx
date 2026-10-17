@@ -117,6 +117,23 @@ export function StudioWorkspace({
                 ))}
               </div>
             )}
+            {is3DView && onCamera3DPresetChange && (
+              <label className="studio-camera-hud__mobile-preset">
+                <span className="studio-sr-only">3D camera preset</span>
+                <select
+                  aria-label="3D camera preset"
+                  value={camera3DPreset}
+                  onChange={(event) => {
+                    const preset = CAMERA_PRESETS.find(({ id }) => id === event.currentTarget.value)?.id;
+                    if (preset) onCamera3DPresetChange(preset);
+                  }}
+                >
+                  {CAMERA_PRESETS.map((preset) => (
+                    <option key={preset.id} value={preset.id}>{preset.label}</option>
+                  ))}
+                </select>
+              </label>
+            )}
           </div>
         )}
         {scene}

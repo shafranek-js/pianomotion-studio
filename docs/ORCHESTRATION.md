@@ -1,5 +1,9 @@
 # PianoMotion Studio: журнал оркестрации
 
+## R3D-01–04 — dev.11, 2026-10-17
+
+База d5caa72, пользовательские исправления dev.10 сохранены. Три GPT-6 Luna Extra High: r3d_scene — pianoScene3d и отдельные regression tests (камера/manual export, пустой PerformancePlan); r3d_hover — handRigBuilder/render3d.test (непрерывный release); r3d_ui — StudioShell/styles/types и UI tests (адаптивная камера). Root владеет версиями/lockfile, App/Player release text, документацией, интеграционной и media/browser проверкой. Общие файлы имеют одного владельца. Новые модели, зависимости, commit/push/deploy не входят. Результаты и ограничения будут записаны после проверки.
+
 ## Native full parity и локальный журнал — dev.9
 
 Пользователь поручил довести Native до полного паритета и добавил ошибку неполного motion-window и запрос локального логирования. Три GPT-6 Luna Extra High: `native_hands_repair` владеет hands/geometry/pianist и геометрическими тестами; `native_api_repair` — API, Python compatibility, MIDI/fingering и строгими API-тестами; `native_acceptance` — новый реальный Worker parity browser suite. Root владеет журналом и его UI, Worker/Transport/Player интеграцией, CI, версиями/lockfile, независимой приёмкой и документацией. Существующие dirty изменения dev.8 сохранены. Goldens и допуски неизменяемы; никакого fixture-specific вывода или Python fallback. Commit/push/deploy не запрошены. Текущий результат фиксируется после freeze исходников.

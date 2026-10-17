@@ -11,7 +11,7 @@ export async function loadStudioSong(page: Page) {
   await expect(page).toHaveTitle("PianoMotion Studio");
   await expect(page.getByRole("button", {name:"Play demo song", exact:true})).toBeEnabled({ timeout: 30_000 });
   await page.locator("#midi-file").setInputFiles(studioMidiPath);
-  await expect(page.locator("#piano-canvas-container canvas")).toBeVisible({ timeout: 90_000 });
+  await expect(page.locator("#piano-canvas-container canvas:visible")).toHaveCount(1, { timeout: 90_000 });
   return settledStudio(page, 0);
 }
 
@@ -61,7 +61,7 @@ export async function saveStudioProject(page: Page) {
 }
 
 export async function focusStudioScene(page: Page) {
-  const canvas = page.locator("#piano-canvas-container canvas");
+  const canvas = page.locator("#piano-canvas-container canvas:visible");
   await canvas.focus();
   return canvas;
 }
