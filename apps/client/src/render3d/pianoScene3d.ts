@@ -109,6 +109,30 @@ export function sustainPedalDownAtTime(
   return low > 0 && events[low - 1]!.value >= 64;
 }
 
+/** Calculates hover release lift (0 to 1) for a hand after its final note completes. */
+export function calculateHandHoverLift(
+  hand: "left" | "right",
+  timeSeconds: number,
+  noteSource: readonly Note[],
+): number {
+  let lastNoteEnd = -1;
+  let hasNotes = false;
+
+  for (const note of noteSource) {
+    const isThisHand = note.hand === hand || (note.hand as string) === (hand === "left" ? "L" : "R");
+    if (isThisHand) {
+      hasNotes = true;
+      if (note.endSeconds > lastNoteEnd) {
+        lastNoteEnd = note.endSeconds;
+      }
+    }
+  }
+
+  if (!hasNotes) return 1.0;
+  if (timeSeconds < lastNoteEnd) return 0;
+  return 1.0;
+}
+
 const CAMERA_PRESETS: Record<Camera3DPreset, CameraPose> = {
   concert: {
     position: [0, 25.5, 20.5],
@@ -671,14 +695,20 @@ export class PianoScene3D {
       rightPose = this.interpolatePoseFromArray(this.rightPoses, timeSeconds);
     }
 
+    const rendered = this.fallingNotes3D.getRenderedNoteTimings?.();
+    const noteSource = rendered && rendered.length > 0 ? rendered : this.notes;
+
+    const leftHoverLift = calculateHandHoverLift("left", timeSeconds, noteSource);
+    const rightHoverLift = calculateHandHoverLift("right", timeSeconds, noteSource);
+
     if (leftPose) {
-      this.leftHand3D.updateFromPose(leftPose, this.skinSettings, this.showFingerLabels);
+      this.leftHand3D.updateFromPose(leftPose, this.skinSettings, this.showFingerLabels, leftHoverLift);
     } else {
       this.leftHand3D.clear();
     }
 
     if (rightPose) {
-      this.rightHand3D.updateFromPose(rightPose, this.skinSettings, this.showFingerLabels);
+      this.rightHand3D.updateFromPose(rightPose, this.skinSettings, this.showFingerLabels, rightHoverLift);
     } else {
       this.rightHand3D.clear();
     }

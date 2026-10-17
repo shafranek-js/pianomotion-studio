@@ -88,6 +88,7 @@ export {
   reconstructHand3D,
   KEYBOARD_WIDTH_IN,
   WHITE_KEY_WIDTH_IN,
+  calculateHandHoverLift,
   type Camera3DPreset,
   type ReconstructedHand3D,
   type Key3DMeshEntry,

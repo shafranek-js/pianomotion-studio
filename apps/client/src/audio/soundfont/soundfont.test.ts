@@ -1237,5 +1237,51 @@ describe("SoundFont 2 Parser & Synthesizer (W042, W043)", () => {
     synth.dispose();
     resetSharedSoundFontSampleProviderForTests();
   });
+
+  it("clamps velocity below lowest zone range (e.g. velocity 1 with zone [3, 80]) and plays with audible acoustic floor", async () => {
+    resetSharedSoundFontSampleProviderForTests();
+    const { audioContext, gains } = createStereoLoopSynth(0, 0);
+    const sf: Sf2SoundFont = {
+      header: { name: "OffsetVelPiano", versionMajor: 2, versionMinor: 4 },
+      presets: [{
+        name: "Piano",
+        presetNumber: 0,
+        bankNumber: 0,
+        zones: [
+          // Velocity range starts at 3, exactly like MuseScore General SF3
+          { keyRange: [24, 24], velRange: [3, 80], sampleIndex: 0, rootKey: 24 },
+        ],
+      }],
+      samples: [
+        { name: "BassC1", start: 0, end: 10, loopStart: 0, loopEnd: 10, sampleRate: 22_050, originalPitch: 24, pitchCorrection: 0, sampleType: 1 },
+      ],
+      sampleSource: { blob: new Blob([new Uint8Array(40)]), sampleDataOffset: 0, sampleCount: 20 },
+    };
+
+    const synth = new SoundFontSynth({ audioContext: audioContext as unknown as AudioContext });
+    synth.loadSoundFont(sf);
+
+    // Preparing note at velocity 1 resolves the [3, 80] zone sample
+    await synth.prepareNotes([{ pitch: 24, velocity: 1 }]);
+    expect(synth.areNotesPrepared([{ pitch: 24, velocity: 1 }])).toBe(true);
+
+    // Direct noteOn at velocity 1 plays without throwing or returning early
+    synth.noteOn(24, 1, "pianissimo-bass");
+    expect(synth.getActiveVoiceCount()).toBe(1);
+
+    // The gain node ramp should receive peakGain with the acoustic floor (> 0.005)
+    const voiceGain = gains.at(-1);
+    expect(voiceGain).toBeDefined();
+    const peakCall = voiceGain?.gain.exponentialRampToValueAtTime.mock.calls[0];
+    expect(peakCall).toBeDefined();
+    const peakGain = peakCall?.[0] as number;
+    expect(peakGain).toBeGreaterThanOrEqual(0.09);
+
+    // Pitch with no zones throws a descriptive error for fallback handling
+    expect(() => synth.noteOn(100, 80, "unmapped-pitch")).toThrow(/no sample layers for pitch 100/);
+
+    synth.dispose();
+    resetSharedSoundFontSampleProviderForTests();
+  });
 });
 

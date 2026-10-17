@@ -187,10 +187,10 @@ export class PianoSampler {
 
     const frequency = PianoSampler.pitchToFrequency(pitch);
     const normPitch = Math.max(0, Math.min(1, (pitch - 21) / (108 - 21)));
-    const normalizedVel = effectiveVelocity / 127;
+    const normalizedVel = Math.max(0.20, effectiveVelocity / 127);
 
     // Perceived acoustic loudness follows exponential power curve
-    const peakGain = Math.max(0.001, Math.pow(normalizedVel, 1.8) * 0.28);
+    const peakGain = Math.max(0.015, Math.pow(normalizedVel, 1.8) * 0.28);
 
     // Natural decay time constant: bass notes (~8s) ring much longer than treble (~1.2s)
     const decayTime = Math.max(0.6, 8.0 * (1.0 - normPitch * 0.85));

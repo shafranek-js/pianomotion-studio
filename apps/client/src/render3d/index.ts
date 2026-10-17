@@ -23,5 +23,6 @@ export {
   calculatePianoCameraFit,
   buildActiveKeysForFrame,
   sustainPedalDownAtTime,
+  calculateHandHoverLift,
   type Camera3DPreset,
 } from "./pianoScene3d";

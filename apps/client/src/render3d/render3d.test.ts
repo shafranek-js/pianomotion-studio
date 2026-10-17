@@ -17,6 +17,7 @@ import {
   calculatePianoCameraFit,
   buildActiveKeysForFrame,
   sustainPedalDownAtTime,
+  calculateHandHoverLift,
   createGrandPedalGeometry,
 } from "../render";
 
@@ -420,4 +421,108 @@ describe("render3d — 3D Hand Rig & Piano Scene", () => {
 
     rightHand.dispose();
   });
+
+  it("smoothly lifts fingers and wrist above keyboard into resting hover posture when hoverLift is applied", () => {
+    // Depressed pose simulating a key press sunken into the key (tip z = -0.15)
+    const pressedPose: MotionPose = {
+      ...createMockPose("right"),
+      bones: createMockPose("right").bones.map((b) => {
+        if (b.kind === "distal") {
+          return { ...b, b: [b.b[0], b.b[1], -0.15] as const };
+        }
+        return b;
+      }),
+      joints: createMockPose("right").joints.map((j) => {
+        if (j.kind === "tip") {
+          return { ...j, point: [j.point[0], j.point[1], -0.15] as const };
+        }
+        return j;
+      }),
+    };
+
+    // When hoverLift = 0 (during active key press)
+    const normalHand = reconstructHand3D(pressedPose, 0);
+    // Tip y is sunken (-0.15 in)
+    expect(normalHand.chains[2]![4]!.y).toBeLessThan(0);
+
+    // When hoverLift = 1.0 (song finished, note released)
+    const liftedHand = reconstructHand3D(pressedPose, 1.0);
+    // All fingertips must be elevated above the keyboard (+Y in Three.js world space >= 0.28 in)
+    for (let f = 1; f <= 5; f++) {
+      const tipY = liftedHand.chains[f]![liftedHand.chains[f]!.length - 1]!.y;
+      expect(tipY).toBeGreaterThanOrEqual(0.319);
+    }
+    // Wrist is also elevated compared to pressed pose
+    expect(liftedHand.wristCenter.y).toBeGreaterThan(normalHand.wristCenter.y + 0.2);
+
+    // In Hand3DMeshGroup, the skinned mesh tip bones are positioned above the keys
+    const handGroup = new Hand3DMeshGroup("right");
+    handGroup.updateFromPose(pressedPose, DEFAULT_SKIN_SETTINGS, false, 1.0);
+    const indexTip = handGroup.getBone("index-finger-tip")!;
+    expect(indexTip.position.y).toBeGreaterThanOrEqual(0.28);
+    handGroup.dispose();
+  });
+
+  it("returns fingers to poised hover posture above the keyboard when the last note ends", () => {
+    const kb3d = new Keyboard3DView();
+    const rightHand = new Hand3DMeshGroup("right");
+
+    const finishNote: Note = {
+      noteId: "note-last",
+      pitch: 60,
+      startSeconds: 1.0,
+      endSeconds: 3.0,
+      velocity: 80,
+      hand: "right",
+      trackId: "track-0",
+      finger: 2,
+      glissando: false,
+    };
+
+    // Hover lift remains 0 while notes are active, transitions to 1.0 upon note completion
+    expect(calculateHandHoverLift("right", 2.0, [finishNote])).toBe(0);
+    expect(calculateHandHoverLift("right", 3.0, [finishNote])).toBe(1.0);
+    expect(calculateHandHoverLift("right", 3.16, [finishNote])).toBe(1.0);
+    expect(calculateHandHoverLift("right", 3.5, [finishNote])).toBe(1.0);
+    expect(calculateHandHoverLift("left", 2.0, [finishNote])).toBe(1.0);
+
+    // Simulate motion pose with pressed index finger
+    const finalPose: MotionPose = {
+      ...createMockPose("right"),
+      transportTimeSeconds: 3.0,
+      bones: createMockPose("right").bones.map((b) => {
+        if (b.kind === "distal") return { ...b, b: [b.b[0], b.b[1], -0.1] as const };
+        return b;
+      }),
+      joints: createMockPose("right").joints.map((j) => {
+        if (j.kind === "tip") return { ...j, point: [j.point[0], j.point[1], -0.1] as const };
+        return j;
+      }),
+    };
+
+    // At t = 2.0 (during the note): note is active, key 60 is depressed, hand plays with hoverLift = 0
+    kb3d.setActiveKeys(new Map([[60, { hand: "right" as const, finger: 2 as const }]]));
+    const key60 = kb3d.keysByPitch.get(60)!;
+    expect(key60.pivotGroup.rotation.x).toBeGreaterThan(0.04);
+
+    rightHand.updateFromPose(finalPose, DEFAULT_SKIN_SETTINGS, false, 0);
+    const tipDuringNote = rightHand.getBone("index-finger-tip")!;
+    // During press, finger is lowered down to press the key
+    expect(tipDuringNote.position.y).toBeLessThan(0.1);
+
+    // At t = 3.5 (after last note ended at 3.0): key is released (pivotGroup.rotation.x === 0)
+    kb3d.setActiveKeys(new Map());
+    expect(key60.pivotGroup.rotation.x).toBe(0);
+
+    // And hand is updated with hoverLift = 1.0: fingers are poised above the keys
+    rightHand.updateFromPose(finalPose, DEFAULT_SKIN_SETTINGS, false, 1.0);
+    const tipAfterRelease = rightHand.getBone("index-finger-tip")!;
+    expect(tipAfterRelease.position.y).toBeGreaterThanOrEqual(0.28);
+
+    kb3d.dispose();
+    rightHand.dispose();
+  });
 });
+
+
+

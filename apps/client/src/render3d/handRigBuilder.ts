@@ -92,7 +92,7 @@ function otherEnd(
  * Reconstructs the full 3D anatomical hand chains in Three.js world space (inches)
  * directly from a `MotionPose`.
  */
-export function reconstructHand3D(pose: MotionPose): ReconstructedHand3D {
+export function reconstructHand3D(pose: MotionPose, hoverLift = 0): ReconstructedHand3D {
   const isLeft = pose.hand === "left";
   const wristJoints = pose.joints.filter((j) => j.kind === "wrist");
 
@@ -203,6 +203,40 @@ export function reconstructHand3D(pose: MotionPose): ReconstructedHand3D {
         posePointToWorld(aDip),
         posePointToWorld(bTip),
       ];
+    }
+  }
+
+  const clampedHover = Math.min(1.0, Math.max(0.0, hoverLift));
+  if (clampedHover > 0) {
+    const wristLift = 0.22 * clampedHover;
+    wristR.y += wristLift;
+    wristU.y += wristLift;
+    wristCenter.y += wristLift;
+    armEnd.y += wristLift;
+
+    for (let f = 1; f <= 5; f++) {
+      const chain = chains[f];
+      if (!chain || chain.length < 4) continue;
+      const tip = chain[chain.length - 1]!;
+      const dip = chain[chain.length - 2]!;
+      const targetHoverY = f === 1 ? 0.38 : 0.32;
+      const tipDelta = targetHoverY - tip.y;
+      tip.y += tipDelta > 0 ? tipDelta * clampedHover : 0.08 * clampedHover;
+
+      const targetDipY = 0.44;
+      const dipDelta = targetDipY - dip.y;
+      dip.y += dipDelta > 0 ? dipDelta * 0.8 * clampedHover : 0.12 * clampedHover;
+
+      if (chain.length >= 5) {
+        const pip = chain[chain.length - 3]!;
+        const targetPipY = 0.58;
+        const pipDelta = targetPipY - pip.y;
+        pip.y += pipDelta > 0 ? pipDelta * 0.6 * clampedHover : 0.15 * clampedHover;
+      }
+      const mcp = chain[1]!;
+      mcp.y += 0.18 * clampedHover;
+      const base = chain[0]!;
+      base.y += 0.20 * clampedHover;
     }
   }
 
@@ -927,8 +961,9 @@ export class Hand3DMeshGroup {
     pose: MotionPose,
     skinSettings: SkinSettings,
     showFingerLabels: boolean,
+    hoverLift = 0,
   ): void {
-    const h3d = reconstructHand3D(pose);
+    const h3d = reconstructHand3D(pose, hoverLift);
     this.group.visible = true;
 
     // Use rich warm natural human skin tone in 3D view so hands stand out clearly against ivory keys
@@ -1086,7 +1121,7 @@ export class Hand3DMeshGroup {
       const tipPadLift = Math.max(0, 0.13 - Math.max(0, tipOriginal.y) * 0.5);
       const tipPt = new THREE.Vector3(
         tipOriginal.x,
-        tipOriginal.y + tipPadLift,
+        hoverLift > 0 ? Math.max(0.28, tipOriginal.y + tipPadLift) : tipOriginal.y + tipPadLift,
         tipOriginal.z,
       );
 

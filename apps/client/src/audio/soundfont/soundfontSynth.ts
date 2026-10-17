@@ -274,9 +274,34 @@ export class SoundFontSynth {
 
   private resolvePlaybackLayers(pitch: number, velocity: number): PlaybackLayer[] {
     if (!this.soundFont || !this.activePreset) return [];
-    const selected = this.activePreset.zones.map((zone, zoneIndex) => ({ zone, zoneIndex }))
+    let selected = this.activePreset.zones.map((zone, zoneIndex) => ({ zone, zoneIndex }))
       .filter(({ zone }) => pitch >= zone.keyRange[0] && pitch <= zone.keyRange[1] &&
         velocity >= zone.velRange[0] && velocity <= zone.velRange[1]);
+    if (selected.length === 0) {
+      const pitchZones = this.activePreset.zones.map((zone, zoneIndex) => ({ zone, zoneIndex }))
+        .filter(({ zone }) => pitch >= zone.keyRange[0] && pitch <= zone.keyRange[1]);
+      if (pitchZones.length > 0) {
+        let minDistance = Number.POSITIVE_INFINITY;
+        for (const pz of pitchZones) {
+          const dist = velocity < pz.zone.velRange[0]
+            ? pz.zone.velRange[0] - velocity
+            : velocity > pz.zone.velRange[1]
+              ? velocity - pz.zone.velRange[1]
+              : 0;
+          if (dist < minDistance) {
+            minDistance = dist;
+          }
+        }
+        selected = pitchZones.filter((pz) => {
+          const dist = velocity < pz.zone.velRange[0]
+            ? pz.zone.velRange[0] - velocity
+            : velocity > pz.zone.velRange[1]
+              ? velocity - pz.zone.velRange[1]
+              : 0;
+          return dist === minDistance;
+        });
+      }
+    }
     const layers: PlaybackLayer[] = [];
     const stereoGroups = new Map<string, {
       leftIndex: number;
@@ -507,7 +532,7 @@ export class SoundFontSynth {
   ): boolean {
     if (!this.soundFont || !this.activePreset) return false;
     const time = Math.max(this.audioContext.currentTime, scheduledTime);
-    const effectiveVelocity = softPedalAtPress ? Math.round(velocity * 0.7) : velocity;
+    const effectiveVelocity = softPedalAtPress ? Math.max(1, Math.round(velocity * 0.7)) : velocity;
     if (effectiveVelocity <= 0) return false;
     const layers = this.findNearestReadyLayers(pitch, effectiveVelocity);
     if (!layers.length) return false;
@@ -528,10 +553,12 @@ export class SoundFontSynth {
   ): void {
     if (!this.soundFont || !this.activePreset) return;
     const time = Math.max(this.audioContext.currentTime, scheduledTime);
-    const effectiveVelocity = softPedalAtPress ? Math.round(velocity * 0.7) : velocity;
+    const effectiveVelocity = softPedalAtPress ? Math.max(1, Math.round(velocity * 0.7)) : velocity;
     if (effectiveVelocity <= 0) return;
     const layers = this.resolvePlaybackLayers(pitch, effectiveVelocity);
-    if (!layers.length) return;
+    if (!layers.length) {
+      throw new Error(`SoundFont active preset '${this.activePreset.name}' has no sample layers for pitch ${pitch}.`);
+    }
     this.startLayers(layers, pitch, effectiveVelocity, noteId, time);
   }
 
@@ -608,7 +635,7 @@ export class SoundFontSynth {
         }
         const cents = (pitch - layer.rootKey) * 100 + layer.pitchCorrection;
         const playbackRate = Math.pow(2, cents / 1200);
-        const velScale = (effectiveVelocity / 127) ** 1.5;
+        const velScale = Math.max(0.20, (effectiveVelocity / 127) ** 1.5);
         const channelAttacks: number[] = [];
         const channelHolds: number[] = [];
         const channelDecays: number[] = [];
