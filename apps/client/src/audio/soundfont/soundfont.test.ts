@@ -1194,4 +1194,48 @@ describe("SoundFont 2 Parser & Synthesizer (W042, W043)", () => {
     expect(synth.getActiveVoiceCount()).toBe(0);
     synth.dispose();
   });
+
+  it("falls back to nearest ready SoundFont velocity/pitch zone via tryNoteOnNearestReady when pressed at an unprepared velocity", async () => {
+    resetSharedSoundFontSampleProviderForTests();
+    const { audioContext, sources } = createStereoLoopSynth(0, 0);
+    const multiVelSf: Sf2SoundFont = {
+      header: { name: "MultiVelPiano", versionMajor: 2, versionMinor: 4 },
+      presets: [{
+        name: "Piano",
+        presetNumber: 0,
+        bankNumber: 0,
+        zones: [
+          { keyRange: [58, 62], velRange: [1, 80], sampleIndex: 0, rootKey: 60 },
+          { keyRange: [58, 62], velRange: [81, 127], sampleIndex: 1, rootKey: 60 },
+        ],
+      }],
+      samples: [
+        { name: "SoftC4", start: 0, end: 10, loopStart: 0, loopEnd: 10, sampleRate: 22_050, originalPitch: 60, pitchCorrection: 0, sampleType: 1 },
+        { name: "LoudC4", start: 10, end: 20, loopStart: 10, loopEnd: 20, sampleRate: 22_050, originalPitch: 60, pitchCorrection: 0, sampleType: 1 },
+      ],
+      sampleSource: { blob: new Blob([new Uint8Array(40)]), sampleDataOffset: 0, sampleCount: 20 },
+    };
+
+    const synth = new SoundFontSynth({ audioContext: audioContext as unknown as AudioContext });
+    synth.loadSoundFont(multiVelSf);
+
+    // Prepare only soft velocity (vel=60 -> sampleIndex 0)
+    await synth.prepareNotes([{ pitch: 60, velocity: 60 }]);
+
+    // Direct noteOn at loud velocity (115 -> sampleIndex 1) throws because sampleIndex 1 is not prepared
+    expect(() => synth.noteOn(60, 115, "loud-strike")).toThrow(/not prepared/);
+
+    // tryNoteOnNearestReady succeeds using the ready SoftC4 sample at loud amplitude!
+    expect(synth.tryNoteOnNearestReady(60, 115, "loud-strike")).toBe(true);
+    expect(synth.getActiveVoiceCount()).toBe(1);
+    expect(sources).toHaveLength(1);
+
+    // Also works for neighboring key (e.g. D4 = 62 or E4 = 64) pitch-shifted from ready C4
+    expect(synth.tryNoteOnNearestReady(64, 115, "neighbor-strike")).toBe(true);
+    expect(synth.getActiveVoiceCount()).toBe(2);
+
+    synth.dispose();
+    resetSharedSoundFontSampleProviderForTests();
+  });
 });
+

@@ -53,6 +53,7 @@ class InvalidFixtureCandidateError extends Error {
 }
 
 const DEMO_FIXTURE_ID = "tracked-demo-song";
+export const DEFAULT_BUILTIN_MELODY_TITLE = "Гімн України";
 
 declare global {
   interface Window {
@@ -176,7 +177,7 @@ export default function App() {
     const bootstrap = async () => {
       try {
         const cacheBust = import.meta.env.DEV ? `?t=${Date.now()}` : "";
-        const [fixturesUnknown, coreUnknown] = await Promise.all([
+        const [fixturesUnknown, coreUnknown, melodiesUnknown] = await Promise.all([
           fetchJson(releaseAssetUrl(`m1-fixtures/manifest.json${cacheBust}`)),
           fetchJson(releaseAssetUrl(`python-core/source_manifest.json${cacheBust}`)),
           loadBuiltinMelodies().catch(() => [] as BuiltinMelodyEntry[]),
@@ -191,8 +192,58 @@ export default function App() {
         setFixtureManifest(fixtures);
         setEngineVersion(core.engineVersion);
 
+        const urlParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+        const forceEmpty = urlParams?.has("empty");
+
         const snapshot = await loadSessionSnapshot();
         if (!snapshot) {
+          if (!forceEmpty) {
+            const melodies = Array.isArray(melodiesUnknown) ? (melodiesUnknown as BuiltinMelodyEntry[]) : [];
+            const defaultEntry = melodies.find(
+              (m) => m.title === DEFAULT_BUILTIN_MELODY_TITLE ||
+                     m.title.toLowerCase().includes("гімн україни") ||
+                     m.fileName.toLowerCase().includes("гімн україни")
+            );
+            if (defaultEntry) {
+              if (!disposed) setStatus({ kind: "loading", message: `Loading ${defaultEntry.title}…` });
+              const midiBytes = await loadBuiltinMelodyBytes(defaultEntry);
+              if (disposed) return;
+              const sourceContext: ProjectSourceContext = {
+                fixtureId: `builtin-${defaultEntry.id}`,
+                keyStyle: getSettings().keyStyle,
+              };
+              const { result, analysisWorker } = await prepareSourceCandidate({
+                midiBytes,
+                projectId: crypto.randomUUID(),
+                revision: 0,
+                engineVersion: core.engineVersion,
+                sourceContext,
+                signal: new AbortController().signal,
+                onProgress: (msg) => {
+                  if (!disposed) setStatus({ kind: "calculating", message: msg });
+                },
+              });
+              if (disposed) {
+                analysisWorker.terminate();
+                return;
+              }
+              const initialSession: ActiveSession = {
+                result,
+                rawMidiBytes: midiBytes,
+                sourceContext,
+                session: null,
+                projectName: defaultEntry.title,
+                unsaved: false,
+                analysisWorker,
+              };
+              setActive(initialSession);
+              setSessionProfile(result.profile);
+              window.__m1LastResult = result;
+              window.__m1LastError = null;
+              if (!disposed) setStatus({ kind: "saved", message: `Loaded ${defaultEntry.title}.` });
+              return;
+            }
+          }
           if (!disposed) setStatus({ kind: "idle", message: "Open a MIDI file, a saved project, or the demo song to begin." });
           return;
         }
@@ -647,7 +698,7 @@ export default function App() {
           Update ready
         </button>
       )}
-      <StudioReleaseDetails description="0.1.0-dev.9 preview: Native/Python numerical parity verification and motion streaming corrections. Engine switching preserves the project; video export pins its calculation runtime. Included MuseScore General, SF2/SF3 and 162 built-in melodies." />
+      <StudioReleaseDetails description="0.1.0-dev.9 preview: Native/Python numerical parity verification and motion streaming corrections. Engine switching preserves the project; video export pins its calculation runtime. Included MuseScore General, SF2/SF3 and 163 built-in melodies." />
     </div>
   );
 

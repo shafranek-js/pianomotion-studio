@@ -15,6 +15,7 @@ import { getDefaultProfiles, getDefaultProfile } from "./defaultProfiles.ts";
 export const PROFILES_STORAGE_KEY = "handthesia:profiles";
 export const ACTIVE_PROFILE_STORAGE_KEY = "handthesia:active_profile_id";
 export const ACTIVE_PROFILE_DB_KEY = "profiles.activeProfileId";
+export const DEFAULT_ACTIVE_PROFILE_ID = "virtuoso";
 
 const canonicalProfileIds = new Set(getDefaultProfiles().map((profile) => profile.profileId));
 let customStorage: Storage | null = null;
@@ -22,7 +23,7 @@ let initialized = false;
 let initializationPromise: Promise<void> | null = null;
 let defaultsSeeded = false;
 const profilesMap = new Map<string, PianistProfile>();
-let activeProfileId = "default";
+let activeProfileId = DEFAULT_ACTIVE_PROFILE_ID;
 const listeners = new Set<() => void>();
 
 function getStorage(): Storage | null {
@@ -39,7 +40,7 @@ export function setProfileStorage(storage: Storage | null): void {
   initializationPromise = null;
   defaultsSeeded = false;
   profilesMap.clear();
-  activeProfileId = "default";
+  activeProfileId = DEFAULT_ACTIVE_PROFILE_ID;
 }
 
 function notifyListeners(): void {
@@ -56,7 +57,7 @@ function seedDefaults(): void {
   if (defaultsSeeded) return;
   profilesMap.clear();
   for (const profile of getDefaultProfiles()) profilesMap.set(profile.profileId, profile);
-  activeProfileId = "default";
+  activeProfileId = DEFAULT_ACTIVE_PROFILE_ID;
   defaultsSeeded = true;
 }
 
@@ -102,7 +103,7 @@ function initializeLegacyOverride(): void {
     activeProfileId = legacy.activeProfileId;
   }
   if (!profilesMap.has("default")) profilesMap.set("default", getDefaultProfile());
-  if (!profilesMap.has(activeProfileId)) activeProfileId = "default";
+  if (!profilesMap.has(activeProfileId)) activeProfileId = DEFAULT_ACTIVE_PROFILE_ID;
   initialized = true;
 }
 
@@ -142,7 +143,7 @@ export function initializeProfiles(): Promise<void> {
       ? storedActive
       : legacy.activeProfileId && profilesMap.has(legacy.activeProfileId)
         ? legacy.activeProfileId
-        : "default";
+        : DEFAULT_ACTIVE_PROFILE_ID;
     if (activeId !== storedActive) await saveDbSetting(ACTIVE_PROFILE_DB_KEY, activeId);
     activeProfileId = activeId;
     if (!profilesMap.has("default")) profilesMap.set("default", getDefaultProfile());
@@ -174,7 +175,7 @@ export function resetProfileStore(): void {
   defaultsSeeded = false;
   initialized = false;
   initializationPromise = null;
-  activeProfileId = "default";
+  activeProfileId = DEFAULT_ACTIVE_PROFILE_ID;
   ensureReadable();
   notifyListeners();
 }
@@ -186,7 +187,7 @@ export function isCanonicalProfile(profileId: string): boolean {
 /** Returns a cloned copy of the active profile. Call after initializeProfiles during app startup. */
 export function getActiveProfile(): PianistProfile {
   ensureReadable();
-  const profile = profilesMap.get(activeProfileId) ?? profilesMap.get("default") ?? getDefaultProfile();
+  const profile = profilesMap.get(activeProfileId) ?? profilesMap.get(DEFAULT_ACTIVE_PROFILE_ID) ?? profilesMap.get("default") ?? getDefaultProfile();
   return structuredClone(profile);
 }
 
@@ -244,7 +245,7 @@ export async function saveProfile(profile: PianistProfile): Promise<PianistProfi
 export async function deleteProfile(profileId: string): Promise<boolean> {
   await initializeProfiles();
   if (isCanonicalProfile(profileId) || !profilesMap.has(profileId)) return false;
-  const nextActiveId = activeProfileId === profileId ? "default" : activeProfileId;
+  const nextActiveId = activeProfileId === profileId ? DEFAULT_ACTIVE_PROFILE_ID : activeProfileId;
   if (customStorage !== null) {
     const nextProfiles = new Map(profilesMap);
     nextProfiles.delete(profileId);

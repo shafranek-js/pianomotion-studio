@@ -95,7 +95,7 @@ export class FallingNotesView extends Container {
   private readonly notesGraphics = new Graphics();
   private readonly labelsContainer = new Container();
   private labelTextPool: Text[] = [];
-  private showFingerLabels = true;
+  private showFingerLabels = false;
   private showNoteNames = false;
 
   public constructor(options?: FallingNotesViewOptions) {

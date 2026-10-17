@@ -2,8 +2,8 @@ import { expect, test } from "@playwright/test";
 import { saveStudioProject } from "./studio-helpers";
 
 test("an unvisited built-in melody opens offline from a coherent production release", async ({ page, context }) => {
-  test.setTimeout(180_000);
-  await page.goto(process.env.PIANOMOTION_PREVIEW_BASE ?? "/");
+  const previewBase = process.env.PIANOMOTION_PREVIEW_BASE ?? "/";
+  await page.goto(previewBase.includes("?") ? `${previewBase}&empty=true` : `${previewBase}?empty=true`);
   await expect(page.getByRole("button", { name: "Play demo song", exact: true })).toBeEnabled({ timeout: 30_000 });
   await expect.poll(() => page.evaluate(() => Boolean(navigator.serviceWorker.controller)), { timeout: 45_000 }).toBe(true);
   await page.getByRole("button", { name: "Browse built-in melodies", exact: true }).click();
@@ -22,7 +22,7 @@ test("an unvisited built-in melody opens offline from a coherent production rele
     await reopened.getByRole("button", { name: "File", exact: true }).click();
     await reopened.getByRole("menuitem", { name: "Built-in melodies…", exact: true }).click();
     const offlineDialog = reopened.getByRole("dialog", { name: "Built-in melodies", exact: true });
-    await expect(offlineDialog.getByRole("list").getByRole("button")).toHaveCount(162);
+    await expect(offlineDialog.getByRole("list").getByRole("listitem")).toHaveCount(163);
     await offlineDialog.getByRole("searchbox", { name: "Search melodies" }).fill("A Tisket");
     await offlineDialog.getByRole("button", { name: "Open A Tisket, A Tasket", exact: true }).click();
     await expect.poll(() => reopened.evaluate(oldId => {

@@ -601,6 +601,28 @@ export class Transport {
       this.output.isWindowPrepared(this.plan, start, Math.min(this.durationSeconds, end));
   }
 
+  /** Prefetches output samples (e.g. SoundFont) around a target time for interactive modes like Play Along. */
+  public prefetchWindowAt(timeSeconds: number, horizonSeconds = 6): void {
+    if (this.disposed || !this.plan || !this.output.prepareWindow) return;
+    if (this.audioContext.state === "suspended") {
+      void this.audioContext.resume().catch(() => {});
+    }
+    const plan = this.plan;
+    const output = this.output;
+    const start = Math.max(0, timeSeconds);
+    const end = Math.min(this.durationSeconds, Math.max(start + 0.5, start + horizonSeconds));
+    if (end <= start) return;
+    if (!this.outputWindowReady(start, end)) {
+      void this.prepareOutputWindow(start, end)
+        .then(() => {
+          output.warmInteractiveWindow?.(plan, start, end);
+        })
+        .catch(() => {});
+    } else {
+      output.warmInteractiveWindow?.(plan, start, end);
+    }
+  }
+
   private prepareOutputWindow(start: number, end: number): Promise<void> {
     const output = this.output;
     const plan = this.plan;

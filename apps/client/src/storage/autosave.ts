@@ -22,6 +22,7 @@ import {
   wrapQuotaError,
 } from "./projectDb.ts";
 import { computeSha256Hex } from "./packageExporter.ts";
+import type { StudioView } from "../studio/types.ts";
 
 export const AUTOSAVE_SESSION_ID = "current_session";
 
@@ -49,7 +50,7 @@ export interface SessionSnapshot {
   document?: SongDocument;
   fingeringPlan?: FingeringPlan | null;
   activeProfileId?: string;
-  viewMode?: "performance" | "editor" | "split";
+  viewMode?: StudioView | "split";
   recoveryCorruptReason?: string;
 }
 
@@ -75,7 +76,7 @@ const SessionSnapshotBaseSchema = z.object({
   document: SongDocumentSchema.optional(),
   fingeringPlan: FingeringPlanSchema.nullable().optional(),
   activeProfileId: z.string().optional(),
-  viewMode: z.enum(["performance", "editor", "split"]).optional(),
+  viewMode: z.enum(["performance", "editor", "split", "play_along"]).optional(),
 }).passthrough();
 
 /**

@@ -1080,7 +1080,7 @@ describe("Milestone M5 Storage & Persistence", () => {
       expect(s.masterVolume).toBe(0.8);
       expect(s.leadInSeconds).toBe(-2.0);
       expect(s.showFpsOverlay).toBe(false);
-      expect(s.showFingerLabels).toBe(true);
+      expect(s.showFingerLabels).toBe(false);
       expect(s.showNoteNames).toBe(false);
       expect(s.soundTimbre).toBe("acoustic");
       expect(s.renderCapFps).toBe(60);

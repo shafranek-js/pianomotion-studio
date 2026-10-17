@@ -62,6 +62,10 @@ import type { SaveResult, SaveSession } from "./saveResult";
 import { MotionStreamController, type MotionStreamFlight } from "./motionStreamController";
 import { motionPlaybackWindow, MOTION_REQUEST_SECONDS, MOTION_RETENTION_AHEAD_SECONDS } from "./motionPlaybackPolicy";
 import { VideoExportModal, type ExportSceneDataSource } from "../export";
+import { getSharedWebMidiInputManager, type WebMidiInputStatus } from "../midi";
+import { PlayAlongEngine, type PlayAlongHandMode, type PlayAlongState, type PlayAlongStep } from "./playAlongEngine";
+import { PlayAlongTransport } from "../studio/PlayAlongTransport";
+import type { KeyPressInfo } from "../render/keyboardView";
 
 export interface PianoPlayerProps {
   result: M1AnalyzeMidiResult;
@@ -135,7 +139,7 @@ function createPlaybackMotionBuffer(analysis: M1AnalyzeMidiResult): MotionBuffer
     return hand === "left" || hand === "right" ? [{ hand, timeSeconds: event.timeSeconds }] : [];
   });
   const buffer = new MotionBuffer({
-    windowAheadSeconds: MOTION_RETENTION_AHEAD_SECONDS, windowBehindSeconds: 1,
+    windowAheadSeconds: MOTION_RETENTION_AHEAD_SECONDS, windowBehindSeconds: 15,
     expectedHands: [...new Set(requiredAnchors.map(anchor => anchor.hand))], requiredAnchors,
   });
   if (analysis.motionPlan?.poses) buffer.addPoses(analysis.motionPlan.poses);
@@ -232,9 +236,24 @@ export function PianoPlayer({
   const [editorReport, setEditorReport] = useState<FingeringEditorDiagnosticsReport | null>(null);
   const [editorViewTime, setEditorViewTime] = useState<number | null>(null);
   const [assignmentControlsHost, setAssignmentControlsHost] = useState<HTMLDivElement | null>(null);
-  useEffect(() => { onProfileStateChange?.(activeProfile); }, [activeProfile, onProfileStateChange]);
   const [sceneRevision, setSceneRevision] = useState(0);
   const [forceReplan, setForceReplan] = useState(() => analysisWorker ? 0 : 1);
+
+  const playAlongEngineRef = useRef<PlayAlongEngine | null>(null);
+  const [playAlongStep, setPlayAlongStep] = useState<PlayAlongStep | null>(null);
+  const [playAlongTotalSteps, setPlayAlongTotalSteps] = useState(0);
+  const [playAlongState, setPlayAlongState] = useState<PlayAlongState>("idle");
+  const [playAlongHandMode, setPlayAlongHandMode] = useState<PlayAlongHandMode>("both");
+  const [playAlongHeldPitches, setPlayAlongHeldPitches] = useState<ReadonlySet<number>>(new Set());
+  const [playAlongCompletedPitches, setPlayAlongCompletedPitches] = useState<ReadonlySet<number>>(new Set());
+  const [autoPlayOtherHand, setAutoPlayOtherHand] = useState(true);
+  const wrongPitchesRef = useRef<Set<number>>(new Set());
+  const [midiInputStatus, setMidiInputStatus] = useState<WebMidiInputStatus | null>(null);
+  const viewModeRef = useRef<StudioView>(viewMode);
+  useEffect(() => { viewModeRef.current = viewMode; }, [viewMode]);
+  const currentTimeRef = useRef(currentTime);
+  useEffect(() => { currentTimeRef.current = currentTime; }, [currentTime]);
+  const playAlongTimeRef = useRef(0);
   const [workerEpoch, setWorkerEpoch] = useState(0);
   const [rebuildMessage, setRebuildMessage] = useState("");
   const [isVideoExportOpen, setIsVideoExportOpen] = useState(false);
@@ -308,6 +327,7 @@ export function PianoPlayer({
     const current = latestStateRef.current.profile;
     if (current.profileId === profile.profileId && current.revision === profile.revision) return;
     setActiveProfile(profile);
+    onProfileStateChange?.(profile);
     setDraftPlan(plan => ({
       ...plan,
       inputRevision: plan.inputRevision + 1,
@@ -317,7 +337,7 @@ export function PianoPlayer({
     }));
     setRebuildMessage("Scheduling updated performance…");
     markModified("Pianist profile changed. Recalculate and save the project.");
-  }, [engineVersion, markModified]);
+  }, [engineVersion, markModified, onProfileStateChange]);
 
   const onSceneBridgeChange = useCallback((bridge: FingeringEditorSceneBridge | null) => {
     editorBridgeRef.current = bridge;
@@ -341,12 +361,20 @@ export function PianoPlayer({
         const buffer = motionBufferRef.current;
         if (!buffer) return false;
         const transport = transportRef.current;
-        const curTime = Math.max(0, transport?.getCurrentTime() ?? 0);
+        const isPlayAlong = viewModeRef.current === "play_along";
+        const curTime = Math.max(0, isPlayAlong ? playAlongTimeRef.current : (transport?.getCurrentTime() ?? 0));
         const duration = latestStateRef.current.analysis.document?.durationSeconds ?? 0;
         buffer.addSampleMotionResult(message, curTime);
         motionRoundTripMsRef.current = Math.max(motionRoundTripMsRef.current * 0.85, Date.now() - flight.startedAt);
-        const playbackWindow = motionPlaybackWindow(curTime, duration, transport?.getSpeed() ?? 1, motionRoundTripMsRef.current);
-        if (bufferingPausedRef.current && playIntentRef.current &&
+        const playbackWindow = motionPlaybackWindow(
+          curTime,
+          duration,
+          isPlayAlong ? 1 : (transport?.getSpeed() ?? 1),
+          motionRoundTripMsRef.current,
+        );
+        if (isPlayAlong) {
+          sceneRef.current?.update(playAlongTimeRef.current);
+        } else if (bufferingPausedRef.current && playIntentRef.current &&
             buffer.hasCoverage(playbackWindow.start, playbackWindow.resumeEnd)) {
           recordDiagnostic("motion.ready", { projectId: message.projectId, revision: message.revision,
             timeSeconds: curTime, resumeEnd: playbackWindow.resumeEnd, roundTripMs: motionRoundTripMsRef.current });
@@ -459,7 +487,49 @@ export function PianoPlayer({
           showHandShadow: settings.showHandShadow,
           renderCapFps: settings.renderCapFps,
         });
-        scene.update(transport.getCurrentTime());
+        scene.setPianoKeyListeners(
+          (pitch) => {
+            sceneRef.current?.setLivePhysicalPitch(pitch, true);
+            if (viewModeRef.current === "play_along") {
+              playAlongEngineRef.current?.noteOn(pitch, 90);
+            } else {
+              try {
+                transportRef.current?.getOutput()?.noteOn(`mouse-${pitch}`, pitch, 90, 0);
+              } catch {
+                // ignore
+              }
+            }
+          },
+          (pitch) => {
+            sceneRef.current?.setLivePhysicalPitch(pitch, false);
+            if (viewModeRef.current === "play_along") {
+              playAlongEngineRef.current?.noteOff(pitch);
+            } else {
+              try {
+                transportRef.current?.getOutput()?.noteOff(`mouse-${pitch}`, pitch, 0);
+              } catch {
+                // ignore
+              }
+            }
+          }
+        );
+        if (viewModeRef.current === "play_along" && playAlongEngineRef.current) {
+          const step = playAlongEngineRef.current.getCurrentStep();
+          const completed = playAlongEngineRef.current.getCompletedPitchesInStep();
+          const held = playAlongEngineRef.current.getHeldUserPitches();
+          const targetMap = new Map<number, KeyPressInfo>();
+          if (step) {
+            for (const n of step.notes) {
+              if (step.activePitches.has(n.pitch) && (!completed.has(n.pitch) || held.has(n.pitch))) {
+                targetMap.set(n.pitch, { hand: n.hand, finger: n.finger });
+              }
+            }
+          }
+          scene.setPlayAlongState(targetMap, wrongPitchesRef.current.size > 0 ? new Set(wrongPitchesRef.current) : null);
+          scene.update(playAlongTimeRef.current);
+        } else {
+          scene.update(transport.getCurrentTime());
+        }
         setSceneRevision(value => value + 1);
       }).catch(error => {
         if (live) onStatusChange({ kind: "error", message: `Piano scene could not be initialized: ${errorMessage(error)}` });
@@ -779,12 +849,229 @@ export function PianoPlayer({
   }, [analysis, document, draftPlan, rawMidiBytes, activeProfile, keyStyle, sourceContext, viewMode, needsReplan, autosaveService, projectName]);
 
   useEffect(() => {
+    if (!document) return;
+
+    const buildStepTargetMap = (step: PlayAlongStep | null, eng: PlayAlongEngine): Map<number, KeyPressInfo> => {
+      const targetMap = new Map<number, KeyPressInfo>();
+      if (!step) return targetMap;
+      const completed = eng.getCompletedPitchesInStep();
+      const held = eng.getHeldUserPitches();
+      for (const n of step.notes) {
+        if (!step.activePitches.has(n.pitch)) continue;
+        // If user already struck and released a note in a multi-note chord while other chord notes remain,
+        // hide its target highlight so remaining unplayed chord notes stand out clearly.
+        if (completed.has(n.pitch) && !held.has(n.pitch) && eng.getState() === "waiting") {
+          continue;
+        }
+        targetMap.set(n.pitch, { hand: n.hand, finger: n.finger });
+      }
+      return targetMap;
+    };
+
+    const engine = new PlayAlongEngine({
+      notes: document.notes,
+      fingeringPlan: draftPlan,
+      performancePlan: analysis.performancePlan,
+      handMode: playAlongHandMode,
+      autoPlayOtherHand,
+      onStepChange: (step, state) => {
+        setPlayAlongStep(step);
+        setPlayAlongState(state);
+        setPlayAlongHeldPitches(new Set(engine.getHeldUserPitches()));
+        setPlayAlongCompletedPitches(new Set(engine.getCompletedPitchesInStep()));
+
+        if (step) {
+          transportRef.current?.prefetchWindowAt(step.timeSeconds, 8);
+        }
+
+        const targetMap = buildStepTargetMap(step, engine);
+        sceneRef.current?.setPlayAlongState(
+          targetMap,
+          wrongPitchesRef.current.size > 0 ? new Set(wrongPitchesRef.current) : null,
+        );
+        if (state !== "transitioning") {
+          const targetTime = step?.timeSeconds ?? playAlongTimeRef.current;
+          playAlongTimeRef.current = targetTime;
+          currentTimeRef.current = targetTime;
+          setCurrentTime(targetTime);
+          const buffer = motionBufferRef.current;
+          const songEnd = analysis.document?.durationSeconds ?? 0;
+          if (buffer && targetTime < songEnd && !buffer.hasCoverage(targetTime, Math.min(songEnd, targetTime + 0.5))) {
+            seekEpochRef.current += 1;
+            motionStreamRef.current?.reset(
+              { projectId: analysis.projectId, revision: analysis.revision, engineVersion: analysis.engineVersion },
+              seekEpochRef.current,
+            );
+          }
+          sceneRef.current?.update(targetTime);
+        }
+      },
+      onStateChange: (state) => {
+        setPlayAlongState(state);
+      },
+      onTimeChange: (time) => {
+        playAlongTimeRef.current = time;
+        currentTimeRef.current = time;
+        sceneRef.current?.update(time);
+        setCurrentTime(time);
+      },
+      onPlayNote: (pitch, velocity) => {
+        try {
+          const output = transportRef.current?.getOutput();
+          output?.noteOn(`playalong-${pitch}`, pitch, velocity, 0);
+        } catch {
+          // resilient audio playback
+        }
+      },
+      onStopNote: (pitch) => {
+        try {
+          const output = transportRef.current?.getOutput();
+          output?.noteOff(`playalong-${pitch}`, pitch, 0);
+        } catch {
+          // resilient audio playback
+        }
+      },
+      onWrongNote: (pitch) => {
+        wrongPitchesRef.current.add(pitch);
+        const step = engine.getCurrentStep();
+        const targetMap = buildStepTargetMap(step, engine);
+        sceneRef.current?.setPlayAlongState(targetMap, new Set(wrongPitchesRef.current));
+        setTimeout(() => {
+          wrongPitchesRef.current.delete(pitch);
+          const currentEngine = playAlongEngineRef.current;
+          const currentStep = currentEngine?.getCurrentStep() ?? null;
+          const currentTargetMap = currentEngine ? buildStepTargetMap(currentStep, currentEngine) : new Map<number, KeyPressInfo>();
+          sceneRef.current?.setPlayAlongState(
+            currentTargetMap,
+            wrongPitchesRef.current.size > 0 ? new Set(wrongPitchesRef.current) : null,
+          );
+        }, 400);
+      },
+    });
+
+    playAlongEngineRef.current = engine;
+    setPlayAlongTotalSteps(engine.getSteps().length);
+    if (viewModeRef.current === "play_along") {
+      engine.start();
+    }
+    return () => {
+      engine.dispose();
+      playAlongEngineRef.current = null;
+      setPlayAlongTotalSteps(0);
+    };
+  }, [document, draftPlan, analysis, playAlongHandMode, autoPlayOtherHand]);
+
+  useEffect(() => {
+    if (viewMode === "play_along") {
+      if (transportRef.current?.getState() === "playing") {
+        transportRef.current.pause();
+      }
+      playAlongEngineRef.current?.start();
+      void getSharedWebMidiInputManager().init();
+    } else {
+      playAlongEngineRef.current?.stop();
+      wrongPitchesRef.current.clear();
+      sceneRef.current?.clearLivePhysicalPitches();
+      sceneRef.current?.setPlayAlongState(null);
+    }
+  }, [viewMode]);
+
+  useEffect(() => {
+    const inputManager = getSharedWebMidiInputManager();
+    void inputManager.init();
+    const unsubStatus = inputManager.subscribeStatus(setMidiInputStatus);
+    const unsubInput = inputManager.subscribeInput((event) => {
+      const isDown = event.type === "noteOn";
+      sceneRef.current?.setLivePhysicalPitch(event.pitch, isDown);
+
+      if (viewModeRef.current === "play_along") {
+        if (isDown) {
+          playAlongEngineRef.current?.noteOn(event.pitch, event.velocity);
+        } else {
+          playAlongEngineRef.current?.noteOff(event.pitch);
+        }
+      } else {
+        const output = transportRef.current?.getOutput();
+        try {
+          if (isDown) {
+            output?.noteOn(`live-${event.pitch}`, event.pitch, event.velocity, 0);
+          } else {
+            output?.noteOff(`live-${event.pitch}`, event.pitch, 0);
+          }
+        } catch {
+          // ignore
+        }
+      }
+    });
+
+    return () => {
+      unsubStatus();
+      unsubInput();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (viewMode !== "play_along") return;
+
+    const keyToPitch: Record<string, number> = {
+      a: 60, w: 61, s: 62, e: 63, d: 64, f: 65, t: 66, g: 67, y: 68, h: 69, u: 70, j: 71, k: 72,
+      A: 60, W: 61, S: 62, E: 63, D: 64, F: 65, T: 66, G: 67, Y: 68, H: 69, U: 70, J: 71, K: 72,
+    };
+
+    const heldKeys = new Set<string>();
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (e.repeat) return;
+
+      if (e.key === " " || e.key === "ArrowRight") {
+        e.preventDefault();
+        playAlongEngineRef.current?.nextStep();
+        return;
+      }
+      if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        playAlongEngineRef.current?.previousStep();
+        return;
+      }
+
+      const pitch = keyToPitch[e.key];
+      if (pitch !== undefined) {
+        heldKeys.add(e.key);
+        sceneRef.current?.setLivePhysicalPitch(pitch, true);
+        playAlongEngineRef.current?.noteOn(pitch, 90);
+        e.preventDefault();
+      }
+    };
+
+    const onKeyUp = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      const pitch = keyToPitch[e.key];
+      if (pitch !== undefined && heldKeys.has(e.key)) {
+        heldKeys.delete(e.key);
+        sceneRef.current?.setLivePhysicalPitch(pitch, false);
+        playAlongEngineRef.current?.noteOff(pitch);
+        e.preventDefault();
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("keyup", onKeyUp);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keyup", onKeyUp);
+    };
+  }, [viewMode]);
+
+  useEffect(() => {
     let raf = 0;
     let lastUiUpdate = 0;
     const render = (now: number) => {
+      const isPlayAlong = viewModeRef.current === "play_along";
       const transport = transportRef.current;
-      const time = transport?.getCurrentTime() ?? settings.leadInSeconds;
+      const time = isPlayAlong ? playAlongTimeRef.current : (transport?.getCurrentTime() ?? settings.leadInSeconds);
       sceneRef.current?.update(time);
+
       const snapshot = window.__playerSnapshot;
       if (snapshot) {
         snapshot.motionStreaming = {
@@ -800,7 +1087,9 @@ export function PianoPlayer({
       }
       if (now - lastUiUpdate >= 70) {
         lastUiUpdate = now;
-        setCurrentTime(time);
+        if (!isPlayAlong) {
+          setCurrentTime(time);
+        }
       }
 
       const buffer = motionBufferRef.current;
@@ -808,37 +1097,41 @@ export function PianoPlayer({
       const identity = workerIdentityRef.current;
       const songEnd = analysis.document?.durationSeconds ?? 0;
       const playbackWindow = motionPlaybackWindow(time, songEnd, transport?.getSpeed() ?? 1, motionRoundTripMsRef.current);
-      if (bufferingPausedRef.current && playIntentRef.current && buffer &&
-          buffer.hasCoverage(playbackWindow.start, playbackWindow.resumeEnd)) {
-        recordDiagnostic("motion.ready", { projectId: analysis.projectId, revision: analysis.revision,
-          timeSeconds: time, resumeEnd: playbackWindow.resumeEnd });
-        bufferingPausedRef.current = false;
-        setIsBuffering(false);
-        void transport?.play().catch(error => {
-          playIntentRef.current = false;
-          onStatusChangeRef.current({ kind: "error", message: `Playback failed: ${errorMessage(error)}` });
-        });
-      }
 
-      // Check if playback needs to pause for buffering
-      if (transport?.getState() === "playing" && buffer && time >= 0 && time < (analysis.document?.durationSeconds ?? 0)) {
-        if (!buffer.hasCoverage(playbackWindow.start, playbackWindow.guardEnd)) {
-          transport.pause();
-          bufferingPausedRef.current = true;
-          motionPauseCountRef.current += 1;
-          motionLastPauseRef.current = { time, guardEnd: playbackWindow.guardEnd,
-            left: buffer.getHandCoverageIntervals("left"), right: buffer.getHandCoverageIntervals("right"),
-            inFlight: motionStreamRef.current?.inFlightRequest ?? null };
-          recordDiagnostic("motion.buffering", { projectId: analysis.projectId, revision: analysis.revision,
-            seekEpoch: seekEpochRef.current, ...motionLastPauseRef.current }, "warning");
-          setIsBuffering(true);
-          onStatusChangeRef.current({
-            kind: "calculating",
-            message: "Buffering animation poses...",
+      if (!isPlayAlong) {
+        if (bufferingPausedRef.current && playIntentRef.current && buffer &&
+            buffer.hasCoverage(playbackWindow.start, playbackWindow.resumeEnd)) {
+          recordDiagnostic("motion.ready", { projectId: analysis.projectId, revision: analysis.revision,
+            timeSeconds: time, resumeEnd: playbackWindow.resumeEnd });
+          bufferingPausedRef.current = false;
+          setIsBuffering(false);
+          void transport?.play().catch(error => {
+            playIntentRef.current = false;
+            onStatusChangeRef.current({ kind: "error", message: `Playback failed: ${errorMessage(error)}` });
           });
+        }
+
+        // Check if playback needs to pause for buffering
+        if (transport?.getState() === "playing" && buffer && time >= 0 && time < songEnd) {
+          if (!buffer.hasCoverage(playbackWindow.start, playbackWindow.guardEnd)) {
+            transport.pause();
+            bufferingPausedRef.current = true;
+            motionPauseCountRef.current += 1;
+            motionLastPauseRef.current = { time, guardEnd: playbackWindow.guardEnd,
+              left: buffer.getHandCoverageIntervals("left"), right: buffer.getHandCoverageIntervals("right"),
+              inFlight: motionStreamRef.current?.inFlightRequest ?? null };
+            recordDiagnostic("motion.buffering", { projectId: analysis.projectId, revision: analysis.revision,
+              seekEpoch: seekEpochRef.current, ...motionLastPauseRef.current }, "warning");
+            setIsBuffering(true);
+            onStatusChangeRef.current({
+              kind: "calculating",
+              message: "Buffering animation poses...",
+            });
+          }
         }
       }
 
+      // Continuously prefetch motion pose windows in both normal playback and Play Along mode
       if (worker && workerReadyRef.current && buffer && identity && !needsReplanRef.current &&
           !motionErrorRef.current && !motionStreamRef.current?.inFlightRequest && identity.projectId === analysis.projectId &&
           identity.revision === draftPlan.inputRevision && time < songEnd &&
@@ -848,6 +1141,7 @@ export function PianoPlayer({
         const end = Math.min(songEnd, missing.end, start + MOTION_REQUEST_SECONDS);
         if (end > start && motionStreamRef.current?.requestWindow(start, end, 200)) motionRequestCountRef.current += 1;
       }
+
       raf = requestAnimationFrame(render);
     };
     raf = requestAnimationFrame(render);
@@ -1229,21 +1523,43 @@ export function PianoPlayer({
     />
   );
 
-  const transport = <StudioTransport
-    playing={isPlaying || isBuffering}
-    currentTime={currentTime}
-    duration={document?.durationSeconds ?? 0}
-    leadInSeconds={settings.leadInSeconds}
-    speed={speed}
-    volume={volume}
-    onTogglePlay={() => { void togglePlay(); }}
-    onStop={handleStop}
-    onSeek={handleSeek}
-    onSpeedChange={handleSpeedChange}
-    onVolumeChange={handleVolumeChange}
-    disabled={busy || needsReplan}
-    playDisabled={preparingOutput && !isPlaying && !isBuffering}
-  />;
+  const transport = viewMode === "play_along" ? (
+    <PlayAlongTransport
+      currentStepIndex={playAlongStep?.index ?? 0}
+      totalSteps={playAlongTotalSteps}
+      step={playAlongStep}
+      state={playAlongState}
+      handMode={playAlongHandMode}
+      heldUserPitches={playAlongHeldPitches}
+      completedPitchesInStep={playAlongCompletedPitches}
+      onHandModeChange={(mode) => setPlayAlongHandMode(mode)}
+      onPreviousStep={() => playAlongEngineRef.current?.previousStep()}
+      onNextStep={() => playAlongEngineRef.current?.nextStep()}
+      onRestart={() => playAlongEngineRef.current?.seekToStep(0)}
+      midiConnected={midiInputStatus?.permission === "granted" && (midiInputStatus.devices.length > 0)}
+      midiDeviceName={midiInputStatus?.devices.find(d => d.state === "connected")?.name ?? midiInputStatus?.devices[0]?.name}
+      midiPermission={midiInputStatus?.permission}
+      onConnectMidi={() => { void getSharedWebMidiInputManager().requestPermissionFromUserGesture(); }}
+      autoPlayOtherHand={autoPlayOtherHand}
+      onAutoPlayOtherHandChange={setAutoPlayOtherHand}
+    />
+  ) : (
+    <StudioTransport
+      playing={isPlaying || isBuffering}
+      currentTime={currentTime}
+      duration={document?.durationSeconds ?? 0}
+      leadInSeconds={settings.leadInSeconds}
+      speed={speed}
+      volume={volume}
+      onTogglePlay={() => { void togglePlay(); }}
+      onStop={handleStop}
+      onSeek={handleSeek}
+      onSpeedChange={handleSpeedChange}
+      onVolumeChange={handleVolumeChange}
+      disabled={busy || needsReplan}
+      playDisabled={preparingOutput && !isPlaying && !isBuffering}
+    />
+  );
 
   const exportSceneDataSource = useMemo<ExportSceneDataSource | null>(() => {
     if (!document || !analysis.performancePlan || !analysis.fingeringPlan || !rawMidiBytes || needsReplan) return null;
@@ -1296,7 +1612,7 @@ export function PianoPlayer({
     workspace={workspace}
     transport={transport}
     headerAddon={<div ref={setAssignmentControlsHost} className="studio-fingering-assignment-host" />}
-    footerAddon={footerAddon ?? <StudioReleaseDetails description="0.1.0-dev.9 preview: Native/Python numerical parity verification and motion streaming corrections. Engine switching preserves the project; video export pins its calculation runtime. Included MuseScore General, SF2/SF3 and 162 built-in melodies." />}
+    footerAddon={footerAddon ?? <StudioReleaseDetails description="0.1.0-dev.9 preview: Native/Python numerical parity verification and motion streaming corrections. Engine switching preserves the project; video export pins its calculation runtime. Included MuseScore General, SF2/SF3 and 163 built-in melodies." />}
     dialogs={<>
       {dialogs}
       <VideoExportModal

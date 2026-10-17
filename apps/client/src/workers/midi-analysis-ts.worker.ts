@@ -283,7 +283,9 @@ async function handleMessage(message: unknown): Promise<void> {
       engineVersion: request.engineVersion,
       sampleDense:
         request.options.sampleDense ??
-        (request.options.fixtureId === "imported-midi" || request.options.fixtureId === undefined),
+        (request.options.fixtureId === "imported-midi" ||
+          request.options.fixtureId === undefined ||
+          request.options.fixtureId.startsWith("builtin-")),
       ...(request.profile ? { profile: request.profile } : {}),
     };
 

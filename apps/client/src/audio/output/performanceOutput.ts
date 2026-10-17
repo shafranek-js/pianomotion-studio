@@ -28,6 +28,7 @@ export interface PerformanceOutput {
   /** Optional file-backed output readiness; includes voices held at startSeconds. */
   prepareWindow?(plan: PerformancePlan, startSeconds: number, endSeconds: number, signal?: AbortSignal): Promise<void>;
   isWindowPrepared?(plan: PerformancePlan, startSeconds: number, endSeconds: number): boolean;
+  warmInteractiveWindow?(plan: PerformancePlan, startSeconds: number, endSeconds: number): void;
   setVolume?(volume: number): void;
   subscribeUnavailable?(listener: (error: Error) => void): () => void;
   dispose(): void;
@@ -97,6 +98,7 @@ export class SynthPerformanceOutput implements PerformanceOutput {
 export class SoundFontPerformanceOutput implements PerformanceOutput {
   readonly id = "soundfont" as const;
   private readonly synth: SoundFontSynth;
+  private readonly fallbackSampler = new PianoSampler();
   private readonly activeNotes = new Map<string, number>();
   private preparedWindow: {
     plan: PerformancePlan;
@@ -130,6 +132,11 @@ export class SoundFontPerformanceOutput implements PerformanceOutput {
     this.preparedWindow = { plan, startSeconds, endSeconds, notes };
   }
 
+  public warmInteractiveWindow(plan: PerformancePlan, startSeconds: number, endSeconds: number): void {
+    const notes = collectWindowNotes(plan, startSeconds, endSeconds);
+    this.synth.warmNotesInCache?.(notes);
+  }
+
   public isWindowPrepared(plan: PerformancePlan, startSeconds: number, endSeconds: number): boolean {
     const prepared = this.preparedWindow;
     return Boolean(prepared && prepared.plan === plan && startSeconds >= prepared.startSeconds &&
@@ -138,26 +145,41 @@ export class SoundFontPerformanceOutput implements PerformanceOutput {
 
   public noteOn(noteId: string, pitch: number, velocity: number, scheduledTime?: number): void {
     this.activeNotes.set(noteId, pitch);
-    this.synth.noteOn(pitch, velocity, noteId, scheduledTime);
+    try {
+      this.synth.noteOn(pitch, velocity, noteId, scheduledTime);
+    } catch {
+      this.synth.warmNotesInCache?.([{ pitch, velocity }]);
+      if (!this.synth.tryNoteOnNearestReady?.(pitch, velocity, noteId, scheduledTime)) {
+        this.fallbackSampler.noteOn(noteId, pitch, velocity, scheduledTime);
+      }
+    }
   }
 
   public noteOff(noteId: string, pitch?: number, scheduledTime?: number): void {
     const effectivePitch = pitch ?? this.activeNotes.get(noteId);
-    this.synth.noteOff(noteId, effectivePitch, scheduledTime);
+    try {
+      this.synth.noteOff(noteId, effectivePitch, scheduledTime);
+    } catch {
+      // Ignored
+    }
+    this.fallbackSampler.noteOff(noteId, scheduledTime);
     this.activeNotes.delete(noteId);
   }
 
   public pedal(controller: 64 | 66 | 67, value: number, scheduledTime?: number): void {
     this.synth.pedalChange(controller, value, scheduledTime);
+    this.fallbackSampler.pedal(controller, value, scheduledTime);
   }
 
   public panic(): void {
     this.synth.silenceAll();
+    this.fallbackSampler.silenceAll();
     this.activeNotes.clear();
   }
 
   public cancelScheduledFutureEvents(time: number): void {
     this.synth.cancelScheduledFutureEvents(time);
+    this.fallbackSampler.cancelScheduledFutureEvents(time);
     this.activeNotes.clear();
     for (const voice of this.synth.getKeyDownNotes()) {
       this.activeNotes.set(voice.noteId, voice.pitch);
@@ -177,6 +199,7 @@ export class SoundFontPerformanceOutput implements PerformanceOutput {
 
   public dispose(): void {
     this.panic();
+    this.fallbackSampler.dispose();
     this.preparedWindow = null;
     this.synth.dispose();
   }

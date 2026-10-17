@@ -60,6 +60,7 @@ const inspectorTabs: Array<{ id: InspectorTab; label: string }> = [
 
 const viewOptions: Array<{ id: StudioView; label: string }> = [
   { id: "performance", label: "Performance" },
+  { id: "play_along", label: "Play along" },
   { id: "editor", label: "Fingering" },
 ];
 

@@ -1,10 +1,11 @@
 import type { ReactNode } from "react";
 
-export type StudioView = "performance" | "editor";
+export type StudioView = "performance" | "play_along" | "editor";
 
-/** Maps previously saved three-view state onto the supported two-view workspace. */
 export function normalizeStudioView(value: unknown): StudioView {
-  return value === "editor" ? "editor" : "performance";
+  if (value === "editor") return "editor";
+  if (value === "play_along") return "play_along";
+  return "performance";
 }
 
 export type InspectorTab = "scene" | "pianist" | "audio" | "diagnostics";

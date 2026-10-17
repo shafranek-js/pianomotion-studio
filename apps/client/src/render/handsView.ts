@@ -56,7 +56,7 @@ export class SingleHandRenderer {
     pose: MotionPose,
     keyboardLayout: KeyboardLayout,
     skinSettings: SkinSettings,
-    showFingerLabels = true,
+    showFingerLabels = false,
   ): void {
     this.clear();
 
@@ -193,7 +193,7 @@ export class HandsView extends Container {
   private motionBuffer: MotionBuffer | null = null;
   private keyboardLayout: KeyboardLayout | null = null;
   private skinSettings: SkinSettings;
-  private showFingerLabels = true;
+  private showFingerLabels = false;
   private lastTransportTime = 0;
   private unsubscribePhotoAssets?: () => void;
 

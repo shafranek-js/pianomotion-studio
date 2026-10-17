@@ -353,7 +353,7 @@ export function analyze_midi(data: any = null, options: any = null): any {
   required = ['fixtureId', 'projectId', 'revision', 'requestId', 'engineVersion'];
   missing = Array.from(pyIter(required)).filter((key: any) => ((!pyIn(key, options)))).map((key: any) => key);
   if (bool(missing)) {
-    throw ValueError(('options is missing: ' + ', '.join(missing)));
+    throw ValueError(('options is missing: ' + missing.join(', ')));
   }
   fixture_id = String(options['fixtureId']).trim();
   project_id = String(options['projectId']).trim();

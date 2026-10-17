@@ -412,10 +412,10 @@ describe("Profile Store", () => {
     resetProfileStore();
   });
 
-  it("initializes with built-in default profiles and active profile 'default'", () => {
+  it("initializes with built-in default profiles and active profile 'virtuoso'", () => {
     const active = getActiveProfile();
-    expect(active.profileId).toBe("default");
-    expect(active.name).toBe("Default copy");
+    expect(active.profileId).toBe("virtuoso");
+    expect(active.name).toBe("Virtuoso / Large Reach");
 
     const all = listProfiles();
     expect(all).toHaveLength(4);
@@ -475,7 +475,7 @@ describe("Profile Store", () => {
     expect(await deleteProfile("small-hands")).toBe(false);
 
     const active = getActiveProfile();
-    expect(active.profileId).toBe("default");
+    expect(active.profileId).toBe("virtuoso");
     expect(listProfiles().some((p) => p.profileId === "default")).toBe(true);
   });
 
@@ -494,7 +494,7 @@ describe("Profile Store", () => {
     expect(listProfiles().some((p) => p.profileId === custom.profileId)).toBe(
       false
     );
-    expect(getActiveProfile().profileId).toBe("default");
+    expect(getActiveProfile().profileId).toBe("virtuoso");
 
     // Deleting non-existent profile returns false
     expect(await deleteProfile("non-existent")).toBe(false);

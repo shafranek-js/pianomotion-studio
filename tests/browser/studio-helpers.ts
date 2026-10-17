@@ -5,7 +5,9 @@ import { M1AnalyzeMidiResultSchema } from "@handthesia/contracts";
 export const studioMidiPath = fileURLToPath(new URL("../fixtures/midi/tracked-right-hand.mid", import.meta.url));
 
 export async function loadStudioSong(page: Page) {
-  await page.goto(process.env.PIANOMOTION_PREVIEW_BASE ?? "/");
+  const base = process.env.PIANOMOTION_PREVIEW_BASE ?? "/";
+  const url = base.includes("?") ? `${base}&empty=true` : `${base}?empty=true`;
+  await page.goto(url);
   await expect(page).toHaveTitle("PianoMotion Studio");
   await expect(page.getByRole("button", {name:"Play demo song", exact:true})).toBeEnabled({ timeout: 30_000 });
   await page.locator("#midi-file").setInputFiles(studioMidiPath);

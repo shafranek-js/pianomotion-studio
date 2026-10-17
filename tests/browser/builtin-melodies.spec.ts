@@ -20,13 +20,13 @@ test("built-in melody opens, plays, edits, saves and restores with exact source 
   test.setTimeout(180_000);
   const errors: string[] = [];
   page.on("pageerror", error => errors.push(error.message));
-  await page.goto("/");
+  await page.goto("/?empty=true");
   await expect(page.getByRole("button", { name: "Play demo song", exact: true })).toBeEnabled({ timeout: 30_000 });
   await page.getByRole("button", { name: "Browse built-in melodies", exact: true }).click();
   const dialog = page.getByRole("dialog", { name: "Built-in melodies", exact: true });
-  await expect(dialog.getByRole("list").getByRole("button")).toHaveCount(162);
+  await expect(dialog.getByRole("list").getByRole("listitem")).toHaveCount(163);
   await dialog.getByRole("searchbox", { name: "Search melodies" }).fill("BRAHMS");
-  await expect(dialog.getByRole("list").getByRole("button")).toHaveCount(1);
+  await expect(dialog.getByRole("list").getByRole("listitem")).toHaveCount(1);
   await page.screenshot({ path: testInfo.outputPath("catalog-desktop.png") });
   await dialog.getByRole("button", { name: "Open Brahms' Lullaby", exact: true }).click();
   await waitForOpenedMelody(page);
@@ -93,7 +93,7 @@ test("mobile catalog handles search, Escape, retry and damaged assets without re
   const dialog = page.getByRole("dialog", { name: "Built-in melodies", exact: true });
   await expect(dialog.getByRole("alert")).toContainText("Could not load built-in melodies");
   await dialog.getByRole("button", { name: "Retry", exact: true }).click();
-  await expect(dialog.getByRole("list").getByRole("button")).toHaveCount(162);
+  await expect(dialog.getByRole("list").getByRole("listitem")).toHaveCount(163);
   await dialog.getByRole("searchbox", { name: "Search melodies" }).fill("no-such-melody-xyz");
   await expect(dialog).toContainText("No melodies match");
   await dialog.getByRole("searchbox", { name: "Search melodies" }).fill("scales");
@@ -114,7 +114,7 @@ test("mobile catalog handles search, Escape, retry and damaged assets without re
 
 test("the largest built-in MIDI opens through the real analysis Worker", async ({ page }, testInfo) => {
   test.setTimeout(240_000);
-  await page.goto("/");
+  await page.goto("/?empty=true");
   await expect(page.getByRole("button", { name: "Play demo song", exact: true })).toBeEnabled({ timeout: 30_000 });
   const dialog = await openLibrary(page);
   await dialog.getByRole("searchbox", { name: "Search melodies" }).fill("Megalovania");

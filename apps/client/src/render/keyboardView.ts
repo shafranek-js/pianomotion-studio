@@ -198,6 +198,52 @@ export class KeyboardLayout {
     const key = this.keyRects.get(pitch);
     return key ? { x: key.x, width: key.width } : { x: 0, width: 20 };
   }
+
+  public getPitchAt(x: number, y: number): number | null {
+    if (
+      x < this.rect.x ||
+      x > this.rect.x + this.rect.width ||
+      y < this.rect.y ||
+      y > this.rect.y + this.rect.height
+    ) {
+      return null;
+    }
+
+    // 1. Check black keys first (sit above white keys)
+    for (let p = LOWEST_PIANO_KEY; p <= HIGHEST_PIANO_KEY; p += 1) {
+      if (!isBlackKey(p)) continue;
+      const r = this.keyRects.get(p);
+      if (r && x >= r.x && x <= r.x + r.width && y >= r.y && y <= r.y + r.height) {
+        return p;
+      }
+    }
+
+    // 2. Check white keys
+    for (let p = LOWEST_PIANO_KEY; p <= HIGHEST_PIANO_KEY; p += 1) {
+      if (isBlackKey(p)) continue;
+      if (this.style === "equal") {
+        const front = this.fronts.get(p);
+        const tail = this.tails.get(p);
+        if (tail && x >= tail.x && x <= tail.x + tail.width && y >= tail.y && y <= tail.y + tail.height) {
+          return p;
+        }
+        if (front) {
+          const top = this.rect.y + this.blackH;
+          const h = this.rect.height - this.blackH;
+          if (x >= front.left && x <= front.right && y >= top && y <= top + h) {
+            return p;
+          }
+        }
+      } else {
+        const r = this.keyRects.get(p);
+        if (r && x >= r.x && x <= r.x + r.width && y >= r.y && y <= r.y + r.height) {
+          return p;
+        }
+      }
+    }
+
+    return null;
+  }
 }
 
 export class KeyboardView extends Container {
@@ -209,8 +255,10 @@ export class KeyboardView extends Container {
   private readonly labelsContainer = new Container();
 
   private pressedKeys = new Map<number, KeyPressInfo>();
+  private targetKeys = new Map<number, KeyPressInfo>();
+  private wrongKeys = new Set<number>();
   private labelTextPool: Text[] = [];
-  private showFingerLabels = true;
+  private showFingerLabels = false;
 
   public constructor() {
     super();
@@ -236,6 +284,33 @@ export class KeyboardView extends Container {
 
   public getLane(pitch: number): LaneRect {
     return this.layout.getLane(pitch);
+  }
+
+  public getPitchAt(x: number, y: number): number | null {
+    return this.layout.getPitchAt(x, y);
+  }
+
+  public setPlayAlongState(
+    targets?: Map<number, KeyPressInfo> | null,
+    wrongPitches?: Set<number> | null,
+  ): void {
+    this.targetKeys.clear();
+    if (targets) {
+      for (const [pitch, info] of targets.entries()) {
+        this.targetKeys.set(pitch, info);
+      }
+    }
+    this.wrongKeys.clear();
+    if (wrongPitches) {
+      for (const pitch of wrongPitches) {
+        this.wrongKeys.add(pitch);
+      }
+    }
+    this.renderKeyboard();
+  }
+
+  public getTargetKeys(): ReadonlyMap<number, KeyPressInfo> {
+    return this.targetKeys;
   }
 
   public setPressedKeys(
@@ -295,12 +370,26 @@ export class KeyboardView extends Container {
       let fillColor = 0xf5f5f0;
       let strokeColor = 0xb0b0b8;
 
-      if (press) {
+      const target = this.targetKeys.get(p);
+      const isWrong = this.wrongKeys.has(p);
+
+      if (isWrong) {
+        fillColor = 0xf87171; // vivid red for wrong key
+        strokeColor = 0xdc2626;
+      } else if (press) {
         if (press.hand === "left") {
-          fillColor = 0x93c5fd; // soft blue
+          fillColor = 0x60a5fa; // saturated pressed blue
+          strokeColor = 0x2563eb;
+        } else {
+          fillColor = 0x34d399; // saturated pressed green
+          strokeColor = 0x059669;
+        }
+      } else if (target) {
+        if (target.hand === "left") {
+          fillColor = 0xbfdbfe; // clear target blue
           strokeColor = 0x3b82f6;
         } else {
-          fillColor = 0x86efac; // soft green
+          fillColor = 0xa7f3d0; // clear target green
           strokeColor = 0x10b981;
         }
       }
@@ -328,12 +417,27 @@ export class KeyboardView extends Container {
         this.whiteKeysGraphics
           .moveTo(r.x, r.y)
           .lineTo(r.x, r.y + r.height - 1)
-          .stroke({ width: 1, color: strokeColor });
+          .stroke({ width: 1, color: 0xb0b0b8 });
+        if (isWrong || press || target) {
+          this.whiteKeysGraphics
+            .roundRect(r.x + 1, r.y + 1, Math.max(2, r.width - 2), Math.max(2, r.height - 2), 2)
+            .stroke({ width: press || isWrong ? 2 : 1.5, color: strokeColor });
+        }
+        if (press || isWrong) {
+          // Visual key-down depression shadow at top of key
+          this.whiteKeysGraphics
+            .rect(r.x + 1, r.y, Math.max(2, r.width - 2), Math.min(6, r.height * 0.08))
+            .fill({ color: 0x000000, alpha: 0.22 });
+        }
       }
 
-      // Pressed badge with finger label
-      if (press) {
-        this.renderKeyBadge(r, press, false, labelIndex);
+      // Pressed or target badge with finger label
+      if (press && !isWrong) {
+        const badgeInfo = target ? { hand: target.hand, finger: target.finger ?? press.finger } : press;
+        this.renderKeyBadge(r, badgeInfo, false, labelIndex, Boolean(target));
+        labelIndex += 1;
+      } else if (target && !isWrong) {
+        this.renderKeyBadge(r, target, false, labelIndex, true);
         labelIndex += 1;
       }
     }
@@ -346,13 +450,34 @@ export class KeyboardView extends Container {
       if (!r) continue;
 
       const press = this.pressedKeys.get(p);
-      if (press) {
-        const blackPressColor = press.hand === "left" ? 0x2563eb : 0x059669;
+      const target = this.targetKeys.get(p);
+      const isWrong = this.wrongKeys.has(p);
+
+      if (isWrong) {
         this.blackKeysGraphics
           .roundRect(r.x, r.y, r.width, r.height, 2)
-          .fill(blackPressColor);
+          .fill(0xdc2626)
+          .stroke({ width: 1.5, color: 0xfca5a5 });
+      } else if (press) {
+        const blackPressColor = press.hand === "left" ? 0x3b82f6 : 0x10b981;
+        const blackPressStroke = press.hand === "left" ? 0x93c5fd : 0x6ee7b7;
+        this.blackKeysGraphics
+          .roundRect(r.x, r.y, r.width, r.height, 2)
+          .fill(blackPressColor)
+          .stroke({ width: 1.5, color: blackPressStroke });
 
-        this.renderKeyBadge(r, press, true, labelIndex);
+        const badgeInfo = target ? { hand: target.hand, finger: target.finger ?? press.finger } : press;
+        this.renderKeyBadge(r, badgeInfo, true, labelIndex, Boolean(target));
+        labelIndex += 1;
+      } else if (target) {
+        const targetColor = target.hand === "left" ? 0x1e3a8a : 0x064e3b;
+        const targetStroke = target.hand === "left" ? 0x60a5fa : 0x34d399;
+        this.blackKeysGraphics
+          .roundRect(r.x, r.y, r.width, r.height, 2)
+          .fill(targetColor)
+          .stroke({ width: 1.5, color: targetStroke });
+
+        this.renderKeyBadge(r, target, true, labelIndex, true);
         labelIndex += 1;
       } else {
         // Unpressed black key
@@ -378,6 +503,7 @@ export class KeyboardView extends Container {
     press: KeyPressInfo,
     isBlack: boolean,
     labelIdx: number,
+    forceShowFinger = false,
   ): void {
     const badgeRadius = Math.max(4, Math.min(Math.round(r.width * 0.38), 10));
     const centerX = r.x + r.width / 2;
@@ -395,7 +521,7 @@ export class KeyboardView extends Container {
       .circle(centerX, centerY, badgeRadius)
       .fill(badgeColor);
 
-    if (this.showFingerLabels && press.finger && press.finger >= 1 && press.finger <= 5 && badgeRadius >= 6) {
+    if ((this.showFingerLabels || forceShowFinger) && press.finger && press.finger >= 1 && press.finger <= 5 && badgeRadius >= 6) {
       let label = this.labelTextPool[labelIdx];
       if (!label) {
         label = new Text({

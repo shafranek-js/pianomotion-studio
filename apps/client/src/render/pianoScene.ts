@@ -153,8 +153,13 @@ export class PianoScene {
     additive: boolean;
     originalSelection: Set<string>;
   } | null = null;
+  private activePointerPitches = new Map<number, number>();
+  private livePhysicalPitches = new Set<number>();
+  private playAlongMode = false;
+  private onPianoKeyDown?: (pitch: number) => void;
+  private onPianoKeyUp?: (pitch: number) => void;
   private displaySettings: Required<PianoSceneDisplaySettings> = {
-    showFingerLabels: true,
+    showFingerLabels: false,
     showNoteNames: false,
     skinStyle: "cartoon",
     showHandShadow: true,
@@ -371,8 +376,23 @@ export class PianoScene {
 
     // Determine pressed keys map
     const pressedMap = new Map<number, KeyPressInfo>();
+    const targetKeys = this.keyboardView.getTargetKeys();
 
-    if (activeNotes !== undefined && !editorPaused) {
+    if (this.playAlongMode) {
+      // In Play Along mode, score notes at sceneTime are targets waiting to be pressed,
+      // NOT automatically pressed keys. Only explicit activeNotes or livePhysicalPitches are pressed.
+      if (activeNotes !== undefined) {
+        for (const pitch of activeNotes) {
+          const targetInfo = targetKeys.get(pitch);
+          const matched = targetInfo ?? this.findActiveNoteForPitch(pitch, sceneTime);
+          if (matched) {
+            pressedMap.set(pitch, { hand: matched.hand, finger: matched.finger });
+          } else {
+            pressedMap.set(pitch, { hand: pitch < 60 ? "left" : "right" });
+          }
+        }
+      }
+    } else if (activeNotes !== undefined && !editorPaused) {
       for (const pitch of activeNotes) {
         // Try to match hand and finger from current note in song
         const matched = this.findActiveNoteForPitch(pitch, sceneTime);
@@ -391,9 +411,41 @@ export class PianoScene {
       }
     }
 
+    // Direct physical MIDI / keyboard input: keys held by user are always shown as pressed!
+    for (const pitch of this.livePhysicalPitches) {
+      if (!pressedMap.has(pitch)) {
+        const targetInfo = targetKeys.get(pitch);
+        const matched = targetInfo ?? this.findActiveNoteForPitch(pitch, sceneTime);
+        if (matched) {
+          pressedMap.set(pitch, { hand: matched.hand, finger: matched.finger });
+        } else {
+          pressedMap.set(pitch, { hand: pitch < 60 ? "left" : "right" });
+        }
+      }
+    }
+
     this.keyboardView.setPressedKeys(pressedMap);
     this.fallingNotesView.update(sceneTime);
     this.handsView.update(sceneTime);
+  }
+
+  public setLivePhysicalPitch(pitch: number, isDown: boolean): void {
+    if (isDown) {
+      this.livePhysicalPitches.add(pitch);
+    } else {
+      this.livePhysicalPitches.delete(pitch);
+    }
+    this.update(this.currentTransportTime, this.lastActiveNotes);
+  }
+
+  public clearLivePhysicalPitches(): void {
+    if (this.livePhysicalPitches.size === 0) return;
+    this.livePhysicalPitches.clear();
+    this.update(this.currentTransportTime, this.lastActiveNotes);
+  }
+
+  public getLivePhysicalPitches(): ReadonlySet<number> {
+    return this.livePhysicalPitches;
   }
 
   private findActiveNoteForPitch(pitch: number, time: number) {
@@ -451,6 +503,23 @@ export class PianoScene {
     this.update(this.currentTransportTime, this.lastActiveNotes);
   }
 
+  public setPianoKeyListeners(onDown?: (pitch: number) => void, onUp?: (pitch: number) => void): void {
+    this.onPianoKeyDown = onDown;
+    this.onPianoKeyUp = onUp;
+  }
+
+  public setPlayAlongState(
+    targets?: Map<number, KeyPressInfo> | null,
+    wrongPitches?: Set<number> | null,
+  ): void {
+    this.playAlongMode = Boolean(targets);
+    if (!this.playAlongMode) {
+      this.lastActiveNotes = undefined;
+    }
+    this.keyboardView.setPlayAlongState(targets, wrongPitches);
+    this.update(this.currentTransportTime, this.lastActiveNotes);
+  }
+
   private getCanvasPoint(event: PointerEvent | WheelEvent): { x: number; y: number } {
     const bounds = this.app.canvas.getBoundingClientRect();
     return {
@@ -460,8 +529,26 @@ export class PianoScene {
   }
 
   private handleEditorPointerDown = (event: PointerEvent): void => {
-    if (!this.fingeringEditor.active || event.button !== 0) return;
+    if (event.button !== 0) return;
     const point = this.getCanvasPoint(event);
+
+    // 1. Check if clicking on the piano keyboard
+    if (this.currentBottomLayout && point.y >= this.currentBottomLayout.keyboardRect.y) {
+      const pitch = this.keyboardView.getPitchAt(point.x, point.y);
+      if (pitch !== null) {
+        this.activePointerPitches.set(event.pointerId, pitch);
+        this.onPianoKeyDown?.(pitch);
+        try {
+          this.app.canvas.setPointerCapture(event.pointerId);
+        } catch {
+          // Ignored
+        }
+        event.preventDefault();
+        return;
+      }
+    }
+
+    if (!this.fingeringEditor.active) return;
     const additive = event.shiftKey || event.ctrlKey || event.metaKey;
     const noteId = this.fallingNotesView.getNoteAtPoint(point.x, point.y, this.getCurrentSceneTime());
     if (noteId) {
@@ -487,13 +574,35 @@ export class PianoScene {
       additive,
       originalSelection: new Set(this.fingeringEditor.selectedNoteIds),
     };
-    this.app.canvas.setPointerCapture(event.pointerId);
+    try {
+      this.app.canvas.setPointerCapture(event.pointerId);
+    } catch {
+      // Ignored
+    }
     this.fallingNotesView.setSelectionMarquee({ x: point.x, y: point.y, width: 0, height: 0 });
     this.app.canvas.focus({ preventScroll: true });
     event.preventDefault();
   };
 
   private handleEditorPointerMove = (event: PointerEvent): void => {
+    // 1. Check if dragging across piano keys
+    const activePitch = this.activePointerPitches.get(event.pointerId);
+    if (activePitch !== undefined) {
+      const point = this.getCanvasPoint(event);
+      const nextPitch = this.keyboardView.getPitchAt(point.x, point.y);
+      if (nextPitch !== activePitch) {
+        this.onPianoKeyUp?.(activePitch);
+        if (nextPitch !== null) {
+          this.activePointerPitches.set(event.pointerId, nextPitch);
+          this.onPianoKeyDown?.(nextPitch);
+        } else {
+          this.activePointerPitches.delete(event.pointerId);
+        }
+      }
+      event.preventDefault();
+      return;
+    }
+
     const drag = this.pointerSelection;
     if (!this.fingeringEditor.active || !drag || drag.pointerId !== event.pointerId) return;
     const point = this.getCanvasPoint(event);
@@ -511,6 +620,22 @@ export class PianoScene {
   };
 
   private handleEditorPointerUp = (event: PointerEvent): void => {
+    // 1. Check if releasing piano key
+    const activePitch = this.activePointerPitches.get(event.pointerId);
+    if (activePitch !== undefined) {
+      this.activePointerPitches.delete(event.pointerId);
+      if (this.app.canvas.hasPointerCapture(event.pointerId)) {
+        try {
+          this.app.canvas.releasePointerCapture(event.pointerId);
+        } catch {
+          // Ignored
+        }
+      }
+      this.onPianoKeyUp?.(activePitch);
+      event.preventDefault();
+      return;
+    }
+
     const drag = this.pointerSelection;
     if (!drag || drag.pointerId !== event.pointerId) return;
     this.pointerSelection = null;

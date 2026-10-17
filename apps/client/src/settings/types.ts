@@ -72,7 +72,7 @@ export const SettingsSchema = z.object({
   masterVolume: z.number().min(0.0).max(1.0).default(0.8),
   leadInSeconds: z.number().min(-2.0).max(0.0).default(-2.0),
   showFpsOverlay: z.boolean().default(false),
-  showFingerLabels: z.boolean().default(true),
+  showFingerLabels: z.boolean().default(false),
   showNoteNames: z.boolean().default(false),
   soundTimbre: SoundTimbreSchema.default("acoustic"),
   renderCapFps: z
@@ -96,7 +96,7 @@ export const DEFAULT_SETTINGS: Settings = {
   masterVolume: 0.8,
   leadInSeconds: -2.0,
   showFpsOverlay: false,
-  showFingerLabels: true,
+  showFingerLabels: false,
   showNoteNames: false,
   soundTimbre: "acoustic",
   renderCapFps: 60,

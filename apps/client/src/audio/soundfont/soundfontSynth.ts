@@ -423,6 +423,102 @@ export class SoundFontSynth {
     this.preparedSampleIndices.clear();
   }
 
+  /**
+   * Warms all velocity zones for the given notes into the shared LRU sample cache
+   * without replacing the currently pinned window leases.
+   */
+  public warmNotesInCache(notes: readonly { pitch: number; velocity: number }[]): void {
+    if (this.disposed || !this.soundFont?.sampleSource || !this.activePreset) return;
+    const expanded: Array<{ pitch: number; velocity: number }> = [];
+    const seenPitches = new Set<number>();
+    for (const n of notes) {
+      expanded.push(n);
+      if (!seenPitches.has(n.pitch)) {
+        seenPitches.add(n.pitch);
+        for (const v of [32, 64, 92, 118]) {
+          expanded.push({ pitch: n.pitch, velocity: v });
+        }
+      }
+    }
+    const indices = [...this.resolvePreparedSampleIndices(expanded)].filter(
+      (idx) => !this.sampleProvider.getCachedBuffer(this.soundFont!, idx),
+    );
+    if (indices.length === 0) return;
+    const sf = this.soundFont;
+    void this.sampleProvider
+      .prepareSamples(sf, indices, this.audioContext)
+      .then((leases) => {
+        for (const lease of leases.values()) lease.release();
+      })
+      .catch(() => {
+        // Best-effort background cache warm-up
+      });
+  }
+
+  private isLayerReady(layer: PlaybackLayer): boolean {
+    if (!this.soundFont) return false;
+    for (const sampleIndex of layer.sampleIndices) {
+      if (this.soundFont.sampleSource) {
+        if (!this.sampleProvider.getCachedBuffer(this.soundFont, sampleIndex)) return false;
+      } else if (!this.getOrCreateRawAudioBuffer(sampleIndex)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private findNearestReadyLayers(pitch: number, effectiveVelocity: number): PlaybackLayer[] {
+    if (!this.soundFont || !this.activePreset) return [];
+    const candidateVelocities = [effectiveVelocity, 96, 80, 64, 48, 112, 32, 124, 16];
+    for (let delta = 0; delta <= 36; delta++) {
+      const pitches = delta === 0 ? [pitch] : [pitch - delta, pitch + delta];
+      for (const candidatePitch of pitches) {
+        if (candidatePitch < 0 || candidatePitch > 127) continue;
+        const zoneVels = new Set<number>(candidateVelocities);
+        for (const zone of this.activePreset.zones) {
+          if (candidatePitch >= zone.keyRange[0] && candidatePitch <= zone.keyRange[1]) {
+            zoneVels.add(Math.round((zone.velRange[0] + zone.velRange[1]) / 2));
+          }
+        }
+        const sortedVels = [...zoneVels].sort(
+          (a, b) => Math.abs(a - effectiveVelocity) - Math.abs(b - effectiveVelocity),
+        );
+        for (const v of sortedVels) {
+          const layers = this.resolvePlaybackLayers(candidatePitch, v);
+          if (layers.length > 0 && layers.every((layer) => this.isLayerReady(layer))) {
+            return layers;
+          }
+        }
+      }
+    }
+    return [];
+  }
+
+  /**
+   * Plays a note using the closest already-decoded SoundFont velocity/pitch zone
+   * when the exact (pitch, velocity) zone has not been decoded yet.
+   */
+  public tryNoteOnNearestReady(
+    pitch: number,
+    velocity: number,
+    noteId = `p${pitch}-t${Date.now()}`,
+    scheduledTime = this.audioContext.currentTime,
+    softPedalAtPress = this.pedalState.soft,
+  ): boolean {
+    if (!this.soundFont || !this.activePreset) return false;
+    const time = Math.max(this.audioContext.currentTime, scheduledTime);
+    const effectiveVelocity = softPedalAtPress ? Math.round(velocity * 0.7) : velocity;
+    if (effectiveVelocity <= 0) return false;
+    const layers = this.findNearestReadyLayers(pitch, effectiveVelocity);
+    if (!layers.length) return false;
+    try {
+      this.startLayers(layers, pitch, effectiveVelocity, noteId, time);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   public noteOn(
     pitch: number,
     velocity: number,
@@ -436,6 +532,20 @@ export class SoundFontSynth {
     if (effectiveVelocity <= 0) return;
     const layers = this.resolvePlaybackLayers(pitch, effectiveVelocity);
     if (!layers.length) return;
+    this.startLayers(layers, pitch, effectiveVelocity, noteId, time);
+  }
+
+  private startLayers(
+    layers: PlaybackLayer[],
+    pitch: number,
+    effectiveVelocity: number,
+    noteId: string,
+    time: number,
+  ): void {
+    if (!this.soundFont) return;
+    if ("state" in this.audioContext && this.audioContext.state === "suspended" && typeof this.audioContext.resume === "function") {
+      void this.audioContext.resume().catch(() => {});
+    }
 
     const leases: SoundFontSampleLease[] = [];
     const buffers = new Map<number, AudioBuffer>();

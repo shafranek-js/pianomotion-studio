@@ -403,7 +403,11 @@ json.dumps(__sm_result, separators=(",", ":"), allow_nan=False)
       revision: request.revision,
       requestId: request.requestId,
       engineVersion: runtime.engineVersion,
-      sampleDense: request.options.sampleDense ?? (request.options.fixtureId === "imported-midi" || request.options.fixtureId === undefined),
+      sampleDense:
+        request.options.sampleDense ??
+        (request.options.fixtureId === "imported-midi" ||
+          request.options.fixtureId === undefined ||
+          request.options.fixtureId.startsWith("builtin-")),
       ...(request.profile ? { profile: request.profile } : {}),
     };
     runtime.pyodide.FS.writeFile(inputPath, new Uint8Array(request.midiBytes));

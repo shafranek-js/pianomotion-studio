@@ -1,6 +1,15 @@
 import type { MidiOutputDevice, WebMidiListener, WebMidiStatus } from "./types";
 
 let sharedMidiAccess: MIDIAccess | null = null;
+
+export function getSharedMidiAccess(): MIDIAccess | null {
+  return sharedMidiAccess;
+}
+
+export function setSharedMidiAccess(access: MIDIAccess): void {
+  sharedMidiAccess = access;
+}
+
 let sharedAccessRequest: Promise<MIDIAccess> | null = null;
 const attachedManagers = new Set<WebMidiOutputManager>();
 let sharedManager: WebMidiOutputManager | null = null;

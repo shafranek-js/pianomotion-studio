@@ -164,6 +164,9 @@ export class PianoSampler {
    * @param scheduledTime Web Audio AudioContext time in seconds
    */
   public noteOn(noteId: string, pitch: number, velocity: number, scheduledTime?: number): void {
+    if (this.audioContext.state === "suspended") {
+      void this.audioContext.resume().catch(() => {});
+    }
     const now = this.audioContext.currentTime;
     const startTime = Math.max(now, scheduledTime ?? now);
 
