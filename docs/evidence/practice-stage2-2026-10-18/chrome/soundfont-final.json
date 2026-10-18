@@ -1,0 +1,203 @@
+{
+  "config": {
+    "argv": [
+      "C:\\nvm4w\\nodejs\\node.exe",
+      "C:\\Projects\\pianomotion-studio\\node_modules\\@playwright\\test\\cli.js",
+      "test",
+      "--config",
+      "scratch/practice-playwright.config.ts",
+      "tests/browser/practice-stage2.spec.ts",
+      "--grep",
+      "default MuseScore"
+    ],
+    "configFile": "C:\\Projects\\pianomotion-studio\\scratch\\practice-playwright.config.ts",
+    "rootDir": "C:/Projects/pianomotion-studio/tests/browser",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "C:/Projects/pianomotion-studio/test-results/practice-sf3-fixed-chrome",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "",
+        "name": "",
+        "testDir": "C:/Projects/pianomotion-studio/tests/browser",
+        "testIgnore": [
+          "**/offline-pwa.spec.ts",
+          "**/pwa-deployment-m8.spec.ts",
+          "**/media-export.spec.ts",
+          "**/video-export-m7.spec.ts",
+          "**/parity-m1.spec.ts",
+          "**/native-engine.spec.ts",
+          "**/native-parity.spec.ts",
+          "**/motion-streaming.spec.ts",
+          "**/motion-playback.spec.ts",
+          "**/audio-dsp.spec.ts",
+          "**/audio-output.spec.ts",
+          "**/soundfont-stereo.spec.ts",
+          "**/soundfont-sf3.spec.ts",
+          "**/builtin-soundfont-offline.spec.ts",
+          "**/soundfont-storage.spec.ts",
+          "**/soundfont-large.spec.ts",
+          "**/soundfont-user-banks.spec.ts",
+          "**/soundfont-offline.spec.ts",
+          "**/builtin-melodies-offline.spec.ts"
+        ],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 90000
+      }
+    ],
+    "filteredProjects": [
+      {
+        "grep": {},
+        "grepInvert": null,
+        "outputDir": "C:\\Projects\\pianomotion-studio\\test-results\\practice-sf3-fixed-chrome",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "name": "",
+        "testDir": "C:\\Projects\\pianomotion-studio\\tests\\browser",
+        "snapshotDir": "C:\\Projects\\pianomotion-studio\\tests\\browser",
+        "testIgnore": [
+          "**/offline-pwa.spec.ts",
+          "**/pwa-deployment-m8.spec.ts",
+          "**/media-export.spec.ts",
+          "**/video-export-m7.spec.ts",
+          "**/parity-m1.spec.ts",
+          "**/native-engine.spec.ts",
+          "**/native-parity.spec.ts",
+          "**/motion-streaming.spec.ts",
+          "**/motion-playback.spec.ts",
+          "**/audio-dsp.spec.ts",
+          "**/audio-output.spec.ts",
+          "**/soundfont-stereo.spec.ts",
+          "**/soundfont-sf3.spec.ts",
+          "**/builtin-soundfont-offline.spec.ts",
+          "**/soundfont-storage.spec.ts",
+          "**/soundfont-large.spec.ts",
+          "**/soundfont-user-banks.spec.ts",
+          "**/soundfont-offline.spec.ts",
+          "**/builtin-melodies-offline.spec.ts"
+        ],
+        "testMatch": "**/*.@(spec|test).?(c|m)[jt]s?(x)",
+        "timeout": 90000,
+        "use": {
+          "baseURL": "http://127.0.0.1:4201",
+          "browserName": "chromium",
+          "channel": "chrome",
+          "headless": true
+        },
+        "dependencies": [],
+        "ignoreSnapshots": false,
+        "__projectId": ""
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "list",
+        null
+      ],
+      [
+        "json",
+        {
+          "outputFile": "C:\\Projects\\pianomotion-studio\\test-results/reports/practice-sf3-fixed-chrome.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "default",
+    "updateSourceMethod": "patch",
+    "version": "1.64.0",
+    "workers": 1,
+    "webServer": {
+      "command": "node.exe node_modules/vite/bin/vite.js --config scratch/practice-vite.config.ts --host 127.0.0.1 --port 4201 --strictPort",
+      "cwd": "C:\\Projects\\pianomotion-studio\\",
+      "url": "http://127.0.0.1:4201",
+      "reuseExistingServer": false,
+      "timeout": 60000
+    }
+  },
+  "suites": [
+    {
+      "title": "practice-stage2.spec.ts",
+      "file": "practice-stage2.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "default MuseScore SoundFont playback repeats a note-backed A–B window without hanging at the output boundary",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 180000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 55860,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-18T19:31:55.534Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "practice-soundfont-loop-measurements.json",
+                      "contentType": "application/json",
+                      "body": "ewogICJyYW5nZSI6IHsKICAgICJzdGFydCI6IDAuMjUsCiAgICAiZW5kIjogNi4yNSwKICAgICJldmVudENvdW50IjogOQogIH0sCiAgInRhcmdldFdyYXBzIjogMiwKICAid3JhcHMiOiAyLAogICJkdXJhdGlvbk1zIjogNjMzNCwKICAid3JhcEVsYXBzZWRNcyI6IFsKICAgIDMyMzgsCiAgICA2MjcyCiAgXSwKICAic2FtcGxlcyI6IFsKICAgIHsKICAgICAgImVsYXBzZWRNcyI6IDE5MCwKICAgICAgImN1cnJlbnRUaW1lU2Vjb25kcyI6IC0yCiAgICB9LAogICAgewogICAgICAiZWxhcHNlZE1zIjogNDMxLAogICAgICAiY3VycmVudFRpbWVTZWNvbmRzIjogMC43OTQwMDAwMDAwMDAwMDA1CiAgICB9LAogICAgewogICAgICAiZWxhcHNlZE1zIjogNjQxLAogICAgICAiY3VycmVudFRpbWVTZWNvbmRzIjogMS4xMzAwMDAwMDAwMDAwMDI2CiAgICB9LAogICAgewogICAgICAiZWxhcHNlZE1zIjogODc4LAogICAgICAiY3VycmVudFRpbWVTZWNvbmRzIjogMS42MzEzMzMzMzMzMzMzMzQKICAgIH0sCiAgICB7CiAgICAgICJlbGFwc2VkTXMiOiAxMTE2LAogICAgICAiY3VycmVudFRpbWVTZWNvbmRzIjogMi4xMzI2NjY2NjY2NjY2NjkKICAgIH0sCiAgICB7CiAgICAgICJlbGFwc2VkTXMiOiAxMzU4LAogICAgICAiY3VycmVudFRpbWVTZWNvbmRzIjogMi42NTAwMDAwMDAwMDAwMDIKICAgIH0sCiAgICB7CiAgICAgICJlbGFwc2VkTXMiOiAxNjAxLAogICAgICAiY3VycmVudFRpbWVTZWNvbmRzIjogMy4xNTEzMzMzMzMzMzMzMzM1CiAgICB9LAogICAgewogICAgICAiZWxhcHNlZE1zIjogMTg1NCwKICAgICAgImN1cnJlbnRUaW1lU2Vjb25kcyI6IDMuNDkyNjY2NjY2NjY2NjY4NAogICAgfSwKICAgIHsKICAgICAgImVsYXBzZWRNcyI6IDIwODAsCiAgICAgICJjdXJyZW50VGltZVNlY29uZHMiOiAzLjk5Mzk5OTk5OTk5OTk5OTgKICAgIH0sCiAgICB7CiAgICAgICJlbGFwc2VkTXMiOiAyMzA5LAogICAgICAiY3VycmVudFRpbWVTZWNvbmRzIjogNC40OTAwMDAwMDAwMDAwMDIKICAgIH0sCiAgICB7CiAgICAgICJlbGFwc2VkTXMiOiAyNTMwLAogICAgICAiY3VycmVudFRpbWVTZWNvbmRzIjogNC45OTEzMzMzMzMzMzMzMzMKICAgIH0sCiAgICB7CiAgICAgICJlbGFwc2VkTXMiOiAyNzc2LAogICAgICAiY3VycmVudFRpbWVTZWNvbmRzIjogNS4zMzI2NjY2NjY2NjY2NjgKICAgIH0sCiAgICB7CiAgICAgICJlbGFwc2VkTXMiOiAzMDIzLAogICAgICAiY3VycmVudFRpbWVTZWNvbmRzIjogNS44MzQwMDAwMDAwMDAwMDMKICAgIH0sCiAgICB7CiAgICAgICJlbGFwc2VkTXMiOiAzMjM4LAogICAgICAiY3VycmVudFRpbWVTZWNvbmRzIjogMC4zMzAwMDAwMDAwMDAwMDE4NQogICAgfSwKICAgIHsKICAgICAgImVsYXBzZWRNcyI6IDM0NDQsCiAgICAgICJjdXJyZW50VGltZVNlY29uZHMiOiAwLjgzMTMzMzMzMzMzMzMzMzMKICAgIH0sCiAgICB7CiAgICAgICJlbGFwc2VkTXMiOiAzNzAxLAogICAgICAiY3VycmVudFRpbWVTZWNvbmRzIjogMS4zMzI2NjY2NjY2NjY2NjgyCiAgICB9LAogICAgewogICAgICAiZWxhcHNlZE1zIjogMzk0OSwKICAgICAgImN1cnJlbnRUaW1lU2Vjb25kcyI6IDEuNjUyNjY2NjY2NjY2NjY4NQogICAgfSwKICAgIHsKICAgICAgImVsYXBzZWRNcyI6IDQxOTcsCiAgICAgICJjdXJyZW50VGltZVNlY29uZHMiOiAyLjMzMDAwMDAwMDAwMDAwMgogICAgfSwKICAgIHsKICAgICAgImVsYXBzZWRNcyI6IDQ0MjcsCiAgICAgICJjdXJyZW50VGltZVNlY29uZHMiOiAyLjY1MDAwMDAwMDAwMDAwMgogICAgfSwKICAgIHsKICAgICAgImVsYXBzZWRNcyI6IDQ2NDksCiAgICAgICJjdXJyZW50VGltZVNlY29uZHMiOiAzLjE1MTMzMzMzMzMzMzMzMzUKICAgIH0sCiAgICB7CiAgICAgICJlbGFwc2VkTXMiOiA0ODYzLAogICAgICAiY3VycmVudFRpbWVTZWNvbmRzIjogMy42NTI2NjY2NjY2NjY2Njg1CiAgICB9LAogICAgewogICAgICAiZWxhcHNlZE1zIjogNTA3MCwKICAgICAgImN1cnJlbnRUaW1lU2Vjb25kcyI6IDQuMDMxMzMzMzMzMzMzMzM2CiAgICB9LAogICAgewogICAgICAiZWxhcHNlZE1zIjogNTI5MywKICAgICAgImN1cnJlbnRUaW1lU2Vjb25kcyI6IDQuNTMyNjY2NjY2NjY2NjY3NQogICAgfSwKICAgIHsKICAgICAgImVsYXBzZWRNcyI6IDU1MzAsCiAgICAgICJjdXJyZW50VGltZVNlY29uZHMiOiA1LjAzNDAwMDAwMDAwMDAwMjUKICAgIH0sCiAgICB7CiAgICAgICJlbGFwc2VkTXMiOiA1Nzc0LAogICAgICAiY3VycmVudFRpbWVTZWNvbmRzIjogNS4zNTQwMDAwMDAwMDAwMDMKICAgIH0sCiAgICB7CiAgICAgICJlbGFwc2VkTXMiOiA2MDE0LAogICAgICAiY3VycmVudFRpbWVTZWNvbmRzIjogNS44NTAwMDAwMDAwMDAwMDEKICAgIH0sCiAgICB7CiAgICAgICJlbGFwc2VkTXMiOiA2MjcyLAogICAgICAiY3VycmVudFRpbWVTZWNvbmRzIjogMC4zNTEzMzMzMzMzMzMzMzY0CiAgICB9CiAgXQp9"
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "733b02a1764f9387ce90-af079699df99086d0b73",
+          "file": "practice-stage2.spec.ts",
+          "line": 500,
+          "column": 1
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-10-18T19:31:16.454Z",
+    "duration": 178872.426,
+    "expected": 1,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}

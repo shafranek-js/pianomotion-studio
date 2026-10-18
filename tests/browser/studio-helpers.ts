@@ -20,14 +20,46 @@ export async function expectStudioCanvas(page: Page, timeout = 90_000) {
   return canvas;
 }
 
-export async function loadStudioSong(page: Page) {
+/** UI scenarios can choose the real lightweight synth; audio acceptance keeps the product default. */
+export async function configureStudioTestOutput(page: Page) {
+  await page.getByRole("button", { name: "Open preferences", exact: true }).click();
+  const preferences = page.getByRole("dialog", { name: "Preferences", exact: true });
+  await preferences.locator("#settings-sound-output").selectOption("synth");
+  await expect.poll(async () => (await committedStudioSettings(page)).soundOutput).toBe("synth");
+  await preferences.getByRole("button", { name: "Done", exact: true }).click();
+}
+
+/** Read the committed record without dev-only module URLs, including production PWA tests. */
+export async function committedStudioSettings(page: Page) {
+  return page.evaluate(async () => {
+    const db = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open("handthesia_db");
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    try {
+      return await new Promise<Record<string, unknown>>((resolve, reject) => {
+        const request = db.transaction("settings", "readonly").objectStore("settings").get("app.settings");
+        request.onsuccess = () => resolve(request.result?.value ?? {});
+        request.onerror = () => reject(request.error);
+      });
+    } finally { db.close(); }
+  });
+}
+
+export async function loadStudioSong(page: Page, options: { output?: "synth"; dimension?: "2d" } = {}) {
   const base = process.env.PIANOMOTION_PREVIEW_BASE ?? "/";
   const url = base.includes("?") ? `${base}&empty=true` : `${base}?empty=true`;
   await page.goto(url);
   await expect(page).toHaveTitle("PianoMotion Studio");
   await expect(page.getByRole("button", {name:"Play demo song", exact:true})).toBeEnabled({ timeout: 30_000 });
+  if (options.output === "synth") await configureStudioTestOutput(page);
   await page.locator("#midi-file").setInputFiles(studioMidiPath);
   await expectStudioCanvas(page);
+  if (options.dimension === "2d") {
+    await page.getByRole("button", { name: "Performance", exact: true }).click();
+    await expect(studioCanvas(page, "2d")).toBeVisible();
+  }
   return settledStudio(page, 0);
 }
 

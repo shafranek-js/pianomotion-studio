@@ -87,7 +87,7 @@ for (const mib of [128, 512, 1024]) {
     const path = resolve(`test-results/soundfont-inputs/stereo-${mib}.sf2`);
     const byteLength = mib * 1024 * 1024;
     const expectedHash = await createLargeBank(path, byteLength);
-    await page.goto("/");
+    await page.goto("/?empty=true");
     await page.evaluate(() => {
       const input = document.createElement("input");
       input.type = "file"; input.id = "large-sf2-test-input";
@@ -159,7 +159,7 @@ test("rejects more than 1 GiB before reading the source", async ({ page }) => {
   const path = resolve("test-results/soundfont-inputs/oversized.sf2");
   const file = await open(path, "w");
   try { await file.truncate(1024 * 1024 * 1024 + 1); } finally { await file.close(); }
-  await page.goto("/");
+  await page.goto("/?empty=true");
   await page.evaluate(() => {
     const input = document.createElement("input"); input.type = "file"; input.id = "oversized-sf2-test-input";
     document.body.append(input);

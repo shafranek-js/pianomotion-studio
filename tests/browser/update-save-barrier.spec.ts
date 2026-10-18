@@ -3,7 +3,7 @@ import { expectStudioCanvas, loadStudioSong, saveStudioProject, settledStudio, s
 
 test("update never activates after real project transaction abort; edited session survives", async ({ page }) => {
   test.setTimeout(180_000);
-  const original = await loadStudioSong(page);
+  const original = await loadStudioSong(page, { output: "synth", dimension: "2d" });
   await saveStudioProject(page);
   await page.getByRole("button", { name: "Fingering", exact: true }).click();
   const canvas = studioCanvas(page, "2d");
@@ -40,7 +40,7 @@ test("update never activates after real project transaction abort; edited sessio
 
 test("edits made during worker activation prevent the final reload", async ({ page }) => {
   test.setTimeout(180_000);
-  const original = await loadStudioSong(page);
+  const original = await loadStudioSong(page, { output: "synth", dimension: "2d" });
   await page.getByRole("button", { name: "Fingering", exact: true }).click();
   const canvas = studioCanvas(page, "2d");
   await expect(canvas).toBeVisible();

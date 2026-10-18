@@ -5,7 +5,7 @@ test("unified fingering scene retains history, contextual tools and live playbac
   test.setTimeout(180_000);
   const errors: string[] = [];
   page.on("pageerror", error => errors.push(error.message));
-  const initial = await loadStudioSong(page);
+  const initial = await loadStudioSong(page, { output: "synth", dimension: "2d" });
   await page.getByRole("button", {name: "Performance", exact: true}).click();
   const canvas = studioCanvas(page, "2d");
   await canvas.evaluate(element => element.setAttribute("data-identity-probe", "original-scene"));

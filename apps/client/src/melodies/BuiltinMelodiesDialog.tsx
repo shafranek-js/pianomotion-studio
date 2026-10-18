@@ -3,6 +3,12 @@ import { ArrowUpDown, Music2, RotateCw, Search, Star, X } from "lucide-react";
 import { StudioDialog } from "../studio/StudioDialog";
 import { loadBuiltinMelodies, type BuiltinMelodyEntry, type BuiltinMelodyTier } from "./catalog";
 import { getFavouriteMelodyIds, subscribeFavourites, toggleFavouriteMelody } from "./favourites";
+import {
+  loadBuiltinMelodiesPreferences,
+  saveBuiltinMelodiesPreferences,
+  type BuiltinMelodiesPreferences,
+  type SortOption,
+} from "./libraryPreferences";
 import { useI18n } from "../i18n";
 import styles from "./BuiltinMelodiesDialog.module.css";
 
@@ -12,8 +18,7 @@ type CatalogResult =
 
 const EMPTY_ENTRIES: BuiltinMelodyEntry[] = [];
 
-export type MelodyFilter = "all" | "favourites" | "Beginner" | "Intermediate" | "Advanced";
-export type SortOption = "title" | "difficulty-asc" | "difficulty-desc";
+export type { MelodyFilter, SortOption } from "./libraryPreferences";
 
 export interface BuiltinMelodiesDialogProps {
   open: boolean;
@@ -39,12 +44,17 @@ export function BuiltinMelodiesDialog({ open, onClose, onChoose, busy = false }:
   const { dict } = useI18n();
   const searchId = useId();
   const sortId = useId();
-  const [query, setQuery] = useState("");
-  const [activeFilter, setActiveFilter] = useState<MelodyFilter>("all");
-  const [sortBy, setSortBy] = useState<SortOption>("title");
+  const [preferences, setPreferences] = useState<BuiltinMelodiesPreferences>(() => loadBuiltinMelodiesPreferences());
+  const { query, activeFilter, sortBy } = preferences;
   const [favouriteIds, setFavouriteIds] = useState<ReadonlySet<string>>(() => getFavouriteMelodyIds());
   const [loadAttempt, setLoadAttempt] = useState(0);
   const [catalogResult, setCatalogResult] = useState<CatalogResult | null>(null);
+
+  function updatePreferences(patch: Partial<BuiltinMelodiesPreferences>): void {
+    const next = { ...preferences, ...patch };
+    setPreferences(next);
+    saveBuiltinMelodiesPreferences(next);
+  }
 
   useEffect(() => {
     return subscribeFavourites((next) => {
@@ -152,7 +162,7 @@ export function BuiltinMelodiesDialog({ open, onClose, onChoose, busy = false }:
                 className={styles.search}
                 type="search"
                 value={query}
-                onChange={(event) => setQuery(event.currentTarget.value)}
+                onChange={(event) => updatePreferences({ query: event.currentTarget.value })}
                 placeholder={dict.melodies.searchPlaceholder}
                 autoComplete="off"
               />
@@ -164,7 +174,7 @@ export function BuiltinMelodiesDialog({ open, onClose, onChoose, busy = false }:
                 id={sortId}
                 className={styles.sortSelect}
                 value={sortBy}
-                onChange={(event) => setSortBy(event.currentTarget.value as SortOption)}
+                onChange={(event) => updatePreferences({ sortBy: event.currentTarget.value as SortOption })}
                 aria-label="Sort melodies"
               >
                 <option value="title">Title (A–Z)</option>
@@ -180,7 +190,7 @@ export function BuiltinMelodiesDialog({ open, onClose, onChoose, busy = false }:
               type="button"
               role="tab"
               aria-selected={activeFilter === "all"}
-              onClick={() => setActiveFilter("all")}
+              onClick={() => updatePreferences({ activeFilter: "all" })}
             >
               {dict.melodies.allTags} <span className={styles.chipCount}>({filterCounts.all})</span>
             </button>
@@ -189,7 +199,7 @@ export function BuiltinMelodiesDialog({ open, onClose, onChoose, busy = false }:
               type="button"
               role="tab"
               aria-selected={activeFilter === "favourites"}
-              onClick={() => setActiveFilter("favourites")}
+              onClick={() => updatePreferences({ activeFilter: "favourites" })}
             >
               <Star className={styles.chipFavouritesIcon} size={13} fill="currentColor" aria-hidden="true" />
               {dict.melodies.favourites} <span className={styles.chipCount}>({filterCounts.favourites})</span>
@@ -199,7 +209,7 @@ export function BuiltinMelodiesDialog({ open, onClose, onChoose, busy = false }:
               type="button"
               role="tab"
               aria-selected={activeFilter === "Beginner"}
-              onClick={() => setActiveFilter("Beginner")}
+              onClick={() => updatePreferences({ activeFilter: "Beginner" })}
             >
               Beginner <span className={styles.chipCount}>({filterCounts.Beginner})</span>
             </button>
@@ -208,7 +218,7 @@ export function BuiltinMelodiesDialog({ open, onClose, onChoose, busy = false }:
               type="button"
               role="tab"
               aria-selected={activeFilter === "Intermediate"}
-              onClick={() => setActiveFilter("Intermediate")}
+              onClick={() => updatePreferences({ activeFilter: "Intermediate" })}
             >
               Intermediate <span className={styles.chipCount}>({filterCounts.Intermediate})</span>
             </button>
@@ -217,7 +227,7 @@ export function BuiltinMelodiesDialog({ open, onClose, onChoose, busy = false }:
               type="button"
               role="tab"
               aria-selected={activeFilter === "Advanced"}
-              onClick={() => setActiveFilter("Advanced")}
+              onClick={() => updatePreferences({ activeFilter: "Advanced" })}
             >
               Advanced <span className={styles.chipCount}>({filterCounts.Advanced})</span>
             </button>

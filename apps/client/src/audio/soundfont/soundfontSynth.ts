@@ -570,7 +570,9 @@ export class SoundFontSynth {
     time: number,
   ): void {
     if (!this.soundFont) return;
-    if ("state" in this.audioContext && this.audioContext.state === "suspended" && typeof this.audioContext.resume === "function") {
+    // Offline suspensions belong to the export scheduler: waking one here can
+    // advance past sample preparation and render unscheduled notes as silence.
+    if (!("startRendering" in this.audioContext) && this.audioContext.state === "suspended" && typeof this.audioContext.resume === "function") {
       void this.audioContext.resume().catch(() => {});
     }
 

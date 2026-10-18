@@ -1,8 +1,11 @@
 import * as Dialog from "@radix-ui/react-dialog";
+import { createPortal } from "react-dom";
 import clientPackage from "../../package.json";
 import "./studio.css";
 import {
   Activity,
+  BookOpen,
+  Bookmark,
   Check,
   ChevronDown,
   CircleAlert,
@@ -10,6 +13,7 @@ import {
   CircleDot,
   CircleHelp,
   Download,
+  FileAudio,
   FileUp,
   FolderOpen,
   Keyboard,
@@ -29,6 +33,7 @@ import {
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -78,7 +83,7 @@ function getEditorShortcuts(dict: TranslationDictionary) {
 
 const studioPackageVersion = clientPackage.version;
 
-type PanelKind = "projects" | "inspector";
+type PanelKind = "projects" | "inspector" | "practice";
 type ResizeSide = "left" | "right";
 
 export function StudioShell(props: StudioShellProps) {
@@ -107,6 +112,7 @@ export function StudioShell(props: StudioShellProps) {
     onOpenPianist,
     projectsPanel,
     inspector,
+    practicePanel,
     workspace,
     transport,
     footerAddon,
@@ -129,6 +135,8 @@ export function StudioShell(props: StudioShellProps) {
   const [preferenceSaveError, setPreferenceSaveError] = useState(false);
   const resizeRef = useRef<{ side: ResizeSide; startX: number; startWidth: number } | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
+  const menuPopoverRef = useRef<HTMLDivElement | null>(null);
+  const [menuPosition, setMenuPosition] = useState({ left: 8, top: 8, maxHeight: 200, ready: false });
   const fileMenuTriggerRef = useRef<HTMLButtonElement | null>(null);
   const editMenuTriggerRef = useRef<HTMLButtonElement | null>(null);
   const exportMenuTriggerRef = useRef<HTMLButtonElement | null>(null);
@@ -136,7 +144,7 @@ export function StudioShell(props: StudioShellProps) {
   const panelReturnFocusRef = useRef<HTMLElement | null>(null);
   const responsiveSheetTransitionRef = useRef(false);
   const mobileStateRef = useRef(viewportWidth < 900);
-  const panelTriggersRef = useRef<Record<PanelKind, HTMLButtonElement | null>>({ projects: null, inspector: null });
+  const panelTriggersRef = useRef<Record<PanelKind, HTMLButtonElement | null>>({ projects: null, inspector: null, practice: null });
 
   const menuTriggerRef = useCallback((target: NonNullable<typeof menu>) => {
     if (target === "file") return fileMenuTriggerRef;
@@ -147,16 +155,21 @@ export function StudioShell(props: StudioShellProps) {
 
   const isMobileSheet = viewportWidth < 900;
   const effectiveView: StudioView = normalizeStudioView(viewMode);
-  const activePanelSide: ResizeSide = preferences.activePanel === "projects" ? "left" : "right";
+  // Keep a saved Practice selection across the welcome/bootstrap states, but do
+  // not render an empty panel until the player supplies its content.
+  const effectiveActivePanel: PanelKind | null = preferences.activePanel === "practice" && (!hasProject || !practicePanel)
+    ? null
+    : preferences.activePanel;
+  const activePanelSide: ResizeSide = effectiveActivePanel === "projects" ? "left" : "right";
   const panelWidth = activePanelSide === "left" ? preferences.leftWidth : preferences.rightWidth;
-  const availableCenterWidth = viewportWidth - panelWidth - (viewportWidth >= 900 ? 72 : 24);
+  const availableCenterWidth = viewportWidth - panelWidth - (viewportWidth >= 900 ? 88 : 24);
   const canDock = Boolean(
-    preferences.activePanel && preferences.pinnedSide && viewportWidth >= 1440 &&
+    effectiveActivePanel && preferences.pinnedSide && viewportWidth >= 1440 &&
     availableCenterWidth >= 960 && !preferences.focusMode,
   );
-  const shownDock = canDock ? preferences.activePanel : null;
-  const overlayPanel = !isMobileSheet && !canDock && !preferences.focusMode ? preferences.activePanel : null;
-  const mobilePanel = isMobileSheet && !preferences.focusMode ? preferences.activePanel : null;
+  const shownDock = canDock ? effectiveActivePanel : null;
+  const overlayPanel = !isMobileSheet && !canDock && !preferences.focusMode ? effectiveActivePanel : null;
+  const mobilePanel = isMobileSheet && !preferences.focusMode ? effectiveActivePanel : null;
   const overlaySide = activePanelSide;
   const activeWidth = overlaySide === "left" ? preferences.leftWidth : preferences.rightWidth;
   const desktopPanel = overlayPanel ?? shownDock;
@@ -197,7 +210,7 @@ export function StudioShell(props: StudioShellProps) {
       const nextMobile = window.innerWidth < 900;
       if (nextMobile !== mobileStateRef.current) {
         responsiveSheetTransitionRef.current = Boolean(document.querySelector(
-          '.studio-shell [data-testid="projects-panel"], .studio-shell [data-testid="inspector-panel"]',
+          '.studio-shell [data-testid="projects-panel"], .studio-shell [data-testid="inspector-panel"], .studio-shell [data-testid="practice-panel"]',
         ));
         mobileStateRef.current = nextMobile;
       }
@@ -247,7 +260,7 @@ export function StudioShell(props: StudioShellProps) {
   useEffect(() => {
     if (!menu) return;
     const focusFrame = window.requestAnimationFrame(() => {
-      menuRef.current?.querySelector<HTMLButtonElement>("[role=menuitem]:not(:disabled)")?.focus();
+      menuPopoverRef.current?.querySelector<HTMLButtonElement>("[role=menuitem]:not(:disabled)")?.focus({ preventScroll: true });
     });
     const onKeyDown = (event: globalThis.KeyboardEvent) => {
       if (event.key === "Escape") {
@@ -257,7 +270,8 @@ export function StudioShell(props: StudioShellProps) {
       }
     };
     const onPointerDown = (event: globalThis.PointerEvent) => {
-      if (!menuRef.current?.contains(event.target as Node)) setMenu(null);
+      const target = event.target as Node;
+      if (!menuRef.current?.contains(target) && !menuPopoverRef.current?.contains(target)) setMenu(null);
     };
     window.addEventListener("keydown", onKeyDown);
     window.addEventListener("pointerdown", onPointerDown);
@@ -265,6 +279,57 @@ export function StudioShell(props: StudioShellProps) {
       window.cancelAnimationFrame(focusFrame);
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("pointerdown", onPointerDown);
+    };
+  }, [menu, menuTriggerRef]);
+
+  useLayoutEffect(() => {
+    if (!menu) return;
+
+    const trigger = menuTriggerRef(menu).current;
+    const popover = menuPopoverRef.current;
+    if (!trigger || !popover) return;
+    const header = trigger.closest<HTMLElement>(".studio-header");
+    if (header) header.scrollTop = 0;
+
+    const updatePosition = () => {
+      const anchor = trigger.getBoundingClientRect();
+      const width = popover.getBoundingClientRect().width;
+      const naturalHeight = popover.scrollHeight;
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+      const margin = 8;
+      const gap = 7;
+      const availableBelow = Math.max(0, viewportHeight - margin - (anchor.bottom + gap));
+      const availableAbove = Math.max(0, anchor.top - gap - margin);
+      const placeBelow = naturalHeight <= availableBelow || availableBelow >= availableAbove;
+      const maxHeight = placeBelow ? availableBelow : availableAbove;
+      const height = Math.min(naturalHeight, maxHeight);
+      const rawTop = placeBelow ? anchor.bottom + gap : anchor.top - gap - height;
+      const top = Math.min(Math.max(margin, rawTop), Math.max(margin, viewportHeight - margin - height));
+      const rawLeft = popover.classList.contains("studio-menu-right") ? anchor.right - width : anchor.left;
+      const left = Math.min(Math.max(margin, rawLeft), Math.max(margin, viewportWidth - margin - width));
+
+      setMenuPosition((current) => current.left === left && current.top === top && current.maxHeight === maxHeight && current.ready
+        ? current
+        : { left, top, maxHeight, ready: true });
+    };
+
+    updatePosition();
+    window.addEventListener("resize", updatePosition, { passive: true });
+    window.addEventListener("scroll", updatePosition, { passive: true, capture: true });
+    const visualViewport = window.visualViewport;
+    visualViewport?.addEventListener("resize", updatePosition, { passive: true });
+    visualViewport?.addEventListener("scroll", updatePosition, { passive: true });
+    const resizeObserver = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(updatePosition);
+    resizeObserver?.observe(trigger);
+    resizeObserver?.observe(popover);
+
+    return () => {
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
+      visualViewport?.removeEventListener("resize", updatePosition);
+      visualViewport?.removeEventListener("scroll", updatePosition);
+      resizeObserver?.disconnect();
     };
   }, [menu, menuTriggerRef]);
 
@@ -276,6 +341,17 @@ export function StudioShell(props: StudioShellProps) {
       pinnedSide: current.activePanel !== panel && current.pinnedSide
         ? panel === "projects" ? "left" : "right"
         : current.pinnedSide,
+    }));
+  };
+  const openAudioRecording = (opener: HTMLButtonElement) => {
+    panelReturnFocusRef.current = opener;
+    setMenu(null);
+    updatePreferences((current) => ({
+      ...current,
+      activePanel: "inspector",
+      pinnedSide: current.pinnedSide ? "right" : null,
+      inspectorTab: "audio",
+      focusMode: false,
     }));
   };
   const closePanel = () => {
@@ -344,7 +420,14 @@ export function StudioShell(props: StudioShellProps) {
     ? inspector(preferences.inspectorTab)
     : inspector, [inspector, preferences.inspectorTab]);
 
-  const getPanelContent = (panel: PanelKind): ReactNode => panel === "projects" ? projectsPanel : (
+  const getPanelTitle = (panel: PanelKind) => panel === "projects"
+    ? dict.header.projects
+    : panel === "inspector" ? dict.header.inspector : dict.practice.title;
+
+  const getPanelContent = (panel: PanelKind): ReactNode => {
+    if (panel === "projects") return projectsPanel;
+    if (panel === "practice") return practicePanel;
+    return (
     <div className="studio-inspector-content">
       <div className="studio-inspector-tabs" role="tablist" aria-label="Inspector sections">
         {inspectorTabs.map((tab) => (
@@ -379,7 +462,8 @@ export function StudioShell(props: StudioShellProps) {
         {inspectorContent}
       </div>
     </div>
-  );
+    );
+  };
 
   const workspaceLayout = { effectiveView, focusMode: preferences.focusMode };
   // StudioShell intentionally calls this public render prop to supply current shell state.
@@ -410,6 +494,22 @@ export function StudioShell(props: StudioShellProps) {
     items[nextIndex]?.focus();
   };
   const activeMenuRef = (node: HTMLDivElement | null) => { menuRef.current = node; };
+  const renderMenuPopover = (className: string, label: string, children: ReactNode) => createPortal(
+    <div
+      ref={menuPopoverRef}
+      className={`studio-menu-popover ${className}`.trim()}
+      role="menu"
+      aria-label={label}
+      onKeyDown={handleMenuKeyDown}
+      style={{
+        left: `${menuPosition.left}px`,
+        top: `${menuPosition.top}px`,
+        maxHeight: `${menuPosition.maxHeight}px`,
+        visibility: menuPosition.ready ? "visible" : "hidden",
+      }}
+    >{children}</div>,
+    document.body,
+  );
 
   const pinnedSide = preferences.pinnedSide;
   const pinnedPanelWidth = pinnedSide === "left" ? preferences.leftWidth : preferences.rightWidth;
@@ -445,7 +545,7 @@ export function StudioShell(props: StudioShellProps) {
           ><span className="studio-file-label">{dict.header.file}</span><ChevronDown size={14} />
           </button>
           {menu === "file" && (
-            <div className="studio-menu-popover" role="menu" aria-label={dict.header.file} onKeyDown={handleMenuKeyDown}>
+            renderMenuPopover("", dict.header.file, <>
               <span className="studio-menu-label">{isEn ? "Project" : "Projekt"}</span>
               <MenuItem icon={<FileUp />} onClick={() => chooseFromMenu(onOpenMidi)}>{dict.header.openMidi}</MenuItem>
               {onOpenBuiltinMelodies && <MenuItem icon={<FolderOpen />} onClick={() => chooseFromMenu(onOpenBuiltinMelodies)}>{dict.header.builtinMelodies.endsWith("...") ? dict.header.builtinMelodies.slice(0, -3) + "…" : dict.header.builtinMelodies}</MenuItem>}
@@ -453,7 +553,7 @@ export function StudioShell(props: StudioShellProps) {
               <MenuItem icon={<FolderOpen />} onClick={() => chooseFromMenu(() => openPanel("projects", fileMenuTriggerRef.current ?? undefined))}>{isEn ? "Open saved project…" : "Otevřít uložený projekt…"}</MenuItem>
               <span className="studio-menu-divider" />
               <MenuItem icon={<Save />} disabled={!canSaveProject} onClick={() => onSave && chooseFromMenu(onSave)}>{dict.header.saveProject}</MenuItem>
-            </div>
+            </>)
           )}
         </div>
 
@@ -469,7 +569,7 @@ export function StudioShell(props: StudioShellProps) {
           ><span>{dict.header.edit}</span><ChevronDown size={14} />
           </button>
           {menu === "edit" && (
-            <div className="studio-menu-popover studio-menu-edit" role="menu" aria-label={dict.header.edit} onKeyDown={handleMenuKeyDown}>
+            renderMenuPopover("", dict.header.edit, <>
               <span className="studio-menu-label">{isEn ? "History" : "Historie"}</span>
               <MenuItem icon={<Undo2 />} disabled={!canUndo} onClick={() => chooseFromMenu(() => editActions?.undo())}>
                 {dict.header.undo} <kbd className="studio-menu-shortcut">Ctrl+Z</kbd>
@@ -477,7 +577,7 @@ export function StudioShell(props: StudioShellProps) {
               <MenuItem icon={<Redo2 />} disabled={!canRedo} onClick={() => chooseFromMenu(() => editActions?.redo())}>
                 {dict.header.redo} <kbd className="studio-menu-shortcut">Ctrl+Y</kbd>
               </MenuItem>
-            </div>
+            </>)
           )}
         </div>
 
@@ -621,7 +721,7 @@ export function StudioShell(props: StudioShellProps) {
           ><Download size={15} /><span>{isEn ? "Export" : "Exportovat"}</span><ChevronDown size={14} />
           </button>
           {menu === "export" && (
-            <div className="studio-menu-popover studio-menu-right" role="menu" aria-label={isEn ? "Export" : "Exportovat"} onKeyDown={handleMenuKeyDown}>
+            renderMenuPopover("studio-menu-right", isEn ? "Export" : "Exportovat", <>
               <span className="studio-menu-label">{isEn ? "Export project" : "Exportovat projekt"}</span>
               <MenuItem icon={<Activity />} disabled={!canExportProject || !onExportMidi} onClick={() => onExportMidi && chooseFromMenu(onExportMidi)}>{isEn ? "Fingered MIDI (.mid)" : "MIDI s prstokladem (.mid)"}</MenuItem>
               <MenuItem icon={<Download />} disabled={!canExportProject || !onExportPackage} onClick={() => onExportPackage && chooseFromMenu(onExportPackage)}>{isEn ? "Project package (.json)" : "Balíček projektu (.json)"}</MenuItem>
@@ -634,7 +734,7 @@ export function StudioShell(props: StudioShellProps) {
                 {isEn ? "Performance video (.mp4 / .webm)" : "Video vystoupení (.mp4 / .webm)"}
               </MenuItem>
               {videoExportUnavailableReason && <span id="studio-video-export-reason" className="studio-menu-label">{videoExportUnavailableReason}</span>}
-            </div>
+            </>)
           )}
         </div>
 
@@ -651,7 +751,7 @@ export function StudioShell(props: StudioShellProps) {
             title={dict.header.help}
           ><CircleHelp size={18} aria-hidden="true" /></button>
           {menu === "help" && (
-            <div className="studio-menu-popover studio-menu-right" role="menu" aria-label={dict.header.help} onKeyDown={handleMenuKeyDown}>
+            renderMenuPopover("studio-menu-right", dict.header.help, <>
               <span className="studio-menu-label">{dict.header.help}</span>
               <MenuItem icon={<Keyboard />} onClick={() => chooseFromMenu(() => setShortcutsOpen(true), false)}>
                 {dict.header.keyboardShortcuts}
@@ -659,21 +759,30 @@ export function StudioShell(props: StudioShellProps) {
               <MenuItem icon={<Piano />} onClick={() => chooseFromMenu(() => setAboutOpen(true), false)}>
                 {dict.header.about}
               </MenuItem>
-            </div>
+            </>)
           )}
         </div>
         {onOpenPreferences && <button className="studio-icon-button studio-preferences-button" type="button" onClick={onOpenPreferences} aria-label="Open preferences" title={dict.header.preferences}><Settings2 size={17} /></button>}
       </header>
 
-      <div className="studio-tool-rail" aria-label="Workspace panels">
-        <button ref={(node) => { panelTriggersRef.current.projects = node; }} type="button" className={preferences.activePanel === "projects" ? "is-active" : ""} aria-pressed={preferences.activePanel === "projects"} onClick={(event) => openPanel("projects", event.currentTarget)} title={dict.header.projects} aria-label={dict.header.projects}><PanelLeft size={17} /><span>{dict.header.projects}</span></button>
-        <button ref={(node) => { panelTriggersRef.current.inspector = node; }} type="button" className={preferences.activePanel === "inspector" ? "is-active" : ""} aria-pressed={preferences.activePanel === "inspector"} onClick={(event) => openPanel("inspector", event.currentTarget)} title={dict.header.inspector} aria-label={dict.header.inspector}><PanelRight size={17} /><span>{dict.header.inspector}</span></button>
-        <button type="button" className={`studio-focus-toggle ${preferences.focusMode ? "is-active" : ""}`} aria-pressed={preferences.focusMode} onClick={toggleFocusMode} title={preferences.focusMode ? (isEn ? "Exit focus mode" : "Ukončit režim soustředění") : dict.header.focusMode} aria-label={dict.header.focusMode}><Activity size={17} /><span>{isEn ? "Focus" : "Soustředění"}</span></button>
+      <div className="studio-tool-rail" role="group" aria-label={dict.rail.label} data-testid="studio-tool-rail">
+        <div className="studio-tool-rail-group">
+          {onOpenBuiltinMelodies && <button type="button" disabled={busy} onClick={() => { setMenu(null); onOpenBuiltinMelodies(); }} title={dict.welcome.browseMelodies} aria-label={dict.welcome.browseMelodies}><BookOpen size={17} /><span>{dict.rail.library}</span></button>}
+          <button ref={(node) => { panelTriggersRef.current.projects = node; }} type="button" className={effectiveActivePanel === "projects" ? "is-active" : ""} aria-pressed={effectiveActivePanel === "projects"} onClick={(event) => { setMenu(null); openPanel("projects", event.currentTarget); }} title={dict.header.projects} aria-label={dict.header.projects}><PanelLeft size={17} /><span>{dict.header.projects}</span></button>
+          <button type="button" disabled={busy} onClick={() => { setMenu(null); onOpenMidi(); }} title={dict.header.openMidi} aria-label={dict.header.openMidi}><FileUp size={17} /><span>{dict.rail.importMidi}</span></button>
+        </div>
+        <div className="studio-tool-rail-divider" aria-hidden="true" />
+        <div className="studio-tool-rail-group">
+          <button ref={(node) => { panelTriggersRef.current.inspector = node; }} type="button" className={effectiveActivePanel === "inspector" ? "is-active" : ""} aria-pressed={effectiveActivePanel === "inspector"} onClick={(event) => { setMenu(null); openPanel("inspector", event.currentTarget); }} title={dict.header.inspector} aria-label={dict.header.inspector}><PanelRight size={17} /><span>{dict.header.inspector}</span></button>
+          <button type="button" disabled={!hasProject || busy} className={effectiveActivePanel === "inspector" && preferences.inspectorTab === "audio" && !preferences.focusMode ? "is-active" : ""} aria-pressed={effectiveActivePanel === "inspector" && preferences.inspectorTab === "audio" && !preferences.focusMode} onClick={(event) => openAudioRecording(event.currentTarget)} title={!hasProject ? dict.rail.audioUnavailable : busy ? dict.common.loading : dict.rail.openAudioRecording} aria-label={dict.rail.openAudioRecording}><FileAudio size={17} /><span>{dict.rail.audioRecording}</span></button>
+          <button ref={(node) => { panelTriggersRef.current.practice = node; }} type="button" disabled={!hasProject || !practicePanel || busy} className={effectiveActivePanel === "practice" ? "is-active" : ""} aria-pressed={effectiveActivePanel === "practice"} onClick={(event) => { setMenu(null); openPanel("practice", event.currentTarget); }} title={!hasProject ? dict.rail.practiceUnavailable : busy ? dict.common.loading : dict.rail.openPractice} aria-label={dict.rail.practice}><Bookmark size={17} /><span>{dict.rail.practice}</span></button>
+        </div>
+        <button type="button" className={`studio-focus-toggle ${preferences.focusMode ? "is-active" : ""}`} aria-pressed={preferences.focusMode} onClick={() => { setMenu(null); toggleFocusMode(); }} title={dict.header.focusMode} aria-label={dict.header.focusMode}><Activity size={17} /><span>{dict.rail.focus}</span></button>
       </div>
 
       <main className="studio-main" data-testid="studio-main" style={mainStyle}>
         {shownDock && pinnedSide === "left" && (
-          <StudioPanel side="left" title={shownDock === "projects" ? "Projects" : "Inspector"} pinned panel={shownDock} onClose={closePanel} onPin={setPanelPinned} resizeHandle={resizeHandle("left")}>
+          <StudioPanel side="left" title={getPanelTitle(shownDock)} pinned panel={shownDock} onClose={closePanel} onPin={setPanelPinned} resizeHandle={resizeHandle("left")}>
             {getPanelContent(shownDock)}
           </StudioPanel>
         )}
@@ -683,14 +792,14 @@ export function StudioShell(props: StudioShellProps) {
           </div>
         </section>
         {shownDock && pinnedSide === "right" && (
-          <StudioPanel side="right" title={shownDock === "projects" ? "Projects" : "Inspector"} pinned panel={shownDock} onClose={closePanel} onPin={setPanelPinned} resizeHandle={resizeHandle("right")}>
+          <StudioPanel side="right" title={getPanelTitle(shownDock)} pinned panel={shownDock} onClose={closePanel} onPin={setPanelPinned} resizeHandle={resizeHandle("right")}>
             {getPanelContent(shownDock)}
           </StudioPanel>
         )}
         {overlayPanel && (
           <StudioPanel
             side={overlaySide}
-            title={overlayPanel === "projects" ? "Projects" : "Inspector"}
+            title={getPanelTitle(overlayPanel)}
             pinned={preferences.pinnedSide === overlaySide}
             panel={overlayPanel}
             onClose={closePanel}
@@ -728,9 +837,14 @@ export function StudioShell(props: StudioShellProps) {
               }}
             >
               <div className="studio-panel-heading">
-                <div><Dialog.Title>{mobilePanel === "projects" ? "Projects" : "Inspector"}</Dialog.Title><Dialog.Description id="studio-sheet-description">Workspace panel</Dialog.Description></div>
-                <button type="button" className="studio-panel-control" aria-label={`${preferences.pinnedSide === (mobilePanel === "projects" ? "left" : "right") ? "Unpin" : "Pin"} ${mobilePanel === "projects" ? "Projects" : "Inspector"} panel`} onClick={() => setPanelPinned(mobilePanel, mobilePanel === "projects" ? "left" : "right")}>{preferences.pinnedSide === (mobilePanel === "projects" ? "left" : "right") ? <PinOff size={15} /> : <Pin size={15} />}</button>
-                <Dialog.Close className="studio-panel-control" aria-label="Close panel"><X size={17} /></Dialog.Close>
+                <div className="studio-panel-heading-copy">
+                  <Dialog.Title className="studio-panel-heading-title">{getPanelTitle(mobilePanel)}</Dialog.Title>
+                  <Dialog.Description className="studio-panel-heading-description" id="studio-sheet-description">
+                    {mobilePanel === "practice" ? dict.practice.panelDescription : dict.common.workspacePanel}
+                  </Dialog.Description>
+                </div>
+                <button type="button" className="studio-panel-control" aria-label={(preferences.pinnedSide === (mobilePanel === "projects" ? "left" : "right") ? dict.header.unpinNamedPanel : dict.header.pinNamedPanel).replace("{panel}", getPanelTitle(mobilePanel))} title={(preferences.pinnedSide === (mobilePanel === "projects" ? "left" : "right") ? dict.header.unpinPanel : dict.header.pinPanel)} onClick={() => setPanelPinned(mobilePanel, mobilePanel === "projects" ? "left" : "right")}>{preferences.pinnedSide === (mobilePanel === "projects" ? "left" : "right") ? <PinOff size={15} /> : <Pin size={15} />}</button>
+                <Dialog.Close className="studio-panel-control" aria-label={dict.common.closePanel} title={dict.common.closePanel}><X size={17} /></Dialog.Close>
               </div>
               <div className="studio-panel-body">{getPanelContent(mobilePanel)}</div>
             </Dialog.Content>
@@ -904,15 +1018,17 @@ function StudioPanel({
   width?: number;
   children: ReactNode;
 }) {
+  const { dict } = useI18n();
   const style = width ? { width: `${width}px` } : undefined;
+  const pinAccessibleLabel = (pinned ? dict.header.unpinNamedPanel : dict.header.pinNamedPanel).replace("{panel}", title);
   return (
     <aside className={`studio-panel ${side === "left" ? "side-left" : "side-right"} ${className}`} style={style} aria-label={title} data-testid={`${panel}-panel`}>
       {side === "right" && resizeHandle}
       <div className="studio-panel-heading">
         <h2>{title}</h2>
         <div className="studio-panel-actions">
-          <button type="button" className="studio-panel-control" aria-label={`${pinned ? "Unpin" : "Pin"} ${title} panel`} title={pinned ? "Unpin panel" : "Pin panel"} onClick={() => onPin(panel, side)}>{pinned ? <PinOff size={15} /> : <Pin size={15} />}</button>
-          <button type="button" className="studio-panel-control" aria-label="Close panel" title="Close panel" onClick={onClose}><X size={16} /></button>
+          <button type="button" className="studio-panel-control" aria-label={pinAccessibleLabel} title={pinAccessibleLabel} onClick={() => onPin(panel, side)}>{pinned ? <PinOff size={15} /> : <Pin size={15} />}</button>
+          <button type="button" className="studio-panel-control" aria-label={dict.common.closePanel} title={dict.common.closePanel} onClick={onClose}><X size={16} /></button>
         </div>
       </div>
       <div className="studio-panel-body">{children}</div>

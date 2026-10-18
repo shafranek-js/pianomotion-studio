@@ -1,0 +1,83 @@
+{
+  "appVersion": "0.1.0-dev.14",
+  "stats": {
+    "startTime": "2026-10-18T12:12:36.583Z",
+    "duration": 33814.433999999994,
+    "expected": 5,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  },
+  "results": [
+    {
+      "title": "real AudioWorklet tone/marker accuracy and offline SF2 mode/polyphony",
+      "tests": [
+        {
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "durationMs": 1440
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "real AudioWorklet tone/marker accuracy and offline SF2 mode/polyphony",
+      "tests": [
+        {
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "durationMs": 1959
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "real AudioWorklet tone/marker accuracy and offline SF2 mode/polyphony",
+      "tests": [
+        {
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "durationMs": 1482
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "real AudioWorklet tone/marker accuracy and offline SF2 mode/polyphony",
+      "tests": [
+        {
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "durationMs": 1405
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "real AudioWorklet tone/marker accuracy and offline SF2 mode/polyphony",
+      "tests": [
+        {
+          "status": "expected",
+          "results": [
+            {
+              "status": "passed",
+              "durationMs": 1479
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

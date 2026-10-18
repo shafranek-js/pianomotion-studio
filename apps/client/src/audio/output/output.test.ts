@@ -6,6 +6,8 @@ import {
 } from "./performanceOutput";
 import { Transport } from "../transport";
 import { SoundFontSynth } from "../soundfont/soundfontSynth";
+import { PianoSampler } from "../sampler";
+import type { PerformancePlan } from "@handthesia/contracts";
 import { WebMidiOutputManager } from "../../midi/webMidiOutput";
 import { setAudioContextForTesting } from "../audioContext";
 import {
@@ -282,6 +284,67 @@ describe("PerformanceOutput Architecture & Outputs (A06, SF2, Web MIDI)", () => 
   });
 
   describe("SoundFontPerformanceOutput", () => {
+    it("normalizes negative lead-in only for single-window preparation and readiness", async () => {
+      const mockSynth = {
+        prepareNotes: vi.fn().mockResolvedValue(undefined),
+        areNotesPrepared: vi.fn().mockReturnValue(true),
+        restoreState: vi.fn(),
+        silenceAll: vi.fn(),
+        dispose: vi.fn(),
+      } as unknown as SoundFontSynth;
+      const output = new SoundFontPerformanceOutput(mockSynth);
+      const plan = {
+        events: [{ type: "press", timeSeconds: 0, noteId: "at-song-start", pitch: 60, velocity: 90 }],
+      } as unknown as PerformancePlan;
+
+      await output.prepareWindow(plan, -2, 2);
+
+      expect(mockSynth.prepareNotes).toHaveBeenCalledWith([{ pitch: 60, velocity: 90 }], undefined);
+      expect(output.isWindowPrepared(plan, -2, 2)).toBe(true);
+      expect(output.isWindowPrepared(plan, -6, -2)).toBe(true);
+      await expect(output.prepareWindows(plan, [{ startSeconds: -1, endSeconds: 2 }])).rejects.toThrow(RangeError);
+      output.dispose();
+    });
+
+    it("clears stale fallback voices and restores only the pedal baseline", () => {
+      const mockSynth = {
+        noteOn: vi.fn(() => { throw new Error("sample is not ready"); }),
+        noteOff: vi.fn(),
+        pedalChange: vi.fn(),
+        silenceAll: vi.fn(),
+        restoreState: vi.fn(),
+        getKeyDownNotes: vi.fn().mockReturnValue([]),
+        dispose: vi.fn(),
+      } as unknown as SoundFontSynth;
+      const output = new SoundFontPerformanceOutput(mockSynth);
+      const fallback = (output as unknown as { fallbackSampler: PianoSampler }).fallbackSampler;
+
+      output.pedal(64, 127);
+      output.pedal(67, 127);
+      output.noteOn("stale-fallback", 60, 100);
+      output.noteOff("stale-fallback");
+      expect(fallback.getActiveVoiceCount()).toBe(1);
+
+      const restoredState = {
+        voices: [{
+          noteId: "synth-restored",
+          pitch: 62,
+          velocity: 90,
+          keyState: "down" as const,
+          heldBySostenuto: false,
+          sustainedBySustain: false,
+          softPedalAtPress: false,
+        }],
+        pedals: { sustain: false, sostenuto: false, soft: false },
+      };
+      output.restoreState(restoredState);
+
+      expect(mockSynth.restoreState).toHaveBeenCalledWith(restoredState);
+      expect(fallback.getActiveVoiceCount()).toBe(0);
+      expect(fallback.getPedalState()).toEqual(restoredState.pedals);
+      output.dispose();
+    });
+
     it("maps noteId to pitch on noteOff and handles pedals and panic", () => {
       const mockSynth = {
         noteOn: vi.fn(),

@@ -1,0 +1,97 @@
+{
+  "appVersion": "0.1.0-dev.14",
+  "stats": {
+    "startTime": "2026-10-18T12:10:38.658Z",
+    "duration": 75518.573,
+    "expected": 7,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  },
+  "tests": [
+    {
+      "file": "audio-dsp.spec.ts",
+      "title": "real AudioWorklet tone/marker accuracy and offline SF2 mode/polyphony",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 1433,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "file": "audio-output.spec.ts",
+      "title": "uploads, parses, activates and reloads a real synthetic mono SF2 output",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 9386,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "file": "soundfont-sf3.spec.ts",
+      "title": "included SF3 piano plays without upload and exports audible WAV, MP4 and WebM",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 31843,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "file": "soundfont-stereo.spec.ts",
+      "title": "file-backed linked stereo SF2 stays stereo through WAV, MP4, and WebM export",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 17038,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "file": "soundfont-storage.spec.ts",
+      "title": "native IndexedDB v1 SoundFont records migrate atomically to Blob storage without changing selection",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 2244,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "file": "soundfont-storage.spec.ts",
+      "title": "native IndexedDB aborts after request success reject save/delete and preserve the prior bank",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 2452,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "file": "soundfont-storage.spec.ts",
+      "title": "aborting parse and hash workers leaves no partial asset and keeps the selected bank",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 2427,
+          "errors": []
+        }
+      ]
+    }
+  ]
+}

@@ -1,9 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import type { DecodedAudioRecording } from "../../audio/recording/audioDecoder.ts";
-import {
-  calculateDragOffset,
-  PEAK_SLICE_SECONDS,
-} from "../../audio/recording/waveformGenerator.ts";
+import { calculateDragOffset } from "../../audio/recording/waveformGenerator.ts";
+import { drawWaveformColumns } from "./waveformCanvasRenderer.ts";
 
 export interface WaveformCanvasProps {
   recording: DecodedAudioRecording | null;
@@ -13,15 +11,14 @@ export interface WaveformCanvasProps {
   scrollX: number;
   onOffsetChange: (newOffset: number) => void;
   height?: number; // default 56px matching desktop WAVE_H
-  speed?: number; // default 1.0
+  /** @deprecated Kept for callers; waveform alignment follows song time. */
+  speed?: number;
   currentTime?: number;
   className?: string;
   style?: React.CSSProperties;
 }
 
 // Visual constants matching desktop audio_sync.py and main.py
-const WAVE_COLOR = "#6096d2"; // rgb(96, 150, 210)
-const WAVE_DIM = "#3e526c"; // rgb(62, 82, 108)
 const BAR_BG = "#2c2c36"; // rgb(44, 44, 54)
 const BAR_FILL = "#74c440"; // rgb(116, 196, 64)
 const PANEL_EDGE = "#4e4e60"; // rgb(78, 78, 96)
@@ -103,44 +100,22 @@ export function WaveformCanvas({
     ctx.fillStyle = BAR_BG;
     ctx.fillRect(0, 0, w, h);
 
-    const mid = h / 2;
-    const currentSpeed = Math.max(1e-6, speed);
     const pps = Math.max(1e-6, pixelsPerSecond);
 
     // 2. Draw waveform if recording is loaded
     if (recording && recording.peaks.length > 0 && recording.durationSeconds > 0) {
-      const peaks = recording.peaks;
-      const peaksLen = peaks.length;
-      const totalAudioDur = recording.durationSeconds;
-
-      // Group consecutive pixels with same color to optimize fillRect calls
-      let activeColor = "";
       ctx.beginPath();
-
-      for (let x = 0; x < w; x++) {
-        // Song time corresponding to this pixel column
-        const songT = (scrollX + x) / pps;
-        // Audio time corresponding to this pixel column
-        const audioT = offsetSeconds + songT / currentSpeed;
-
-        if (audioT < 0 || audioT > totalAudioDur) {
-          continue;
-        }
-
-        const sliceIdx = Math.floor(audioT / PEAK_SLICE_SECONDS);
-        const peakAmp = sliceIdx >= 0 && sliceIdx < peaksLen ? peaks[sliceIdx]! : 0;
-        const half = Math.max(1, Math.round(peakAmp * (mid - 3)));
-
-        const isInsideSong = songT >= 0 && songT <= songDuration;
-        const colColor = isInsideSong ? WAVE_COLOR : WAVE_DIM;
-
-        if (colColor !== activeColor) {
-          ctx.fillStyle = colColor;
-          activeColor = colColor;
-        }
-
-        ctx.fillRect(x, mid - half, 1, half * 2);
-      }
+      drawWaveformColumns({
+        context: ctx,
+        recording,
+        width: w,
+        height: h,
+        offsetSeconds,
+        songDuration,
+        pixelsPerSecond,
+        scrollX,
+        speed,
+      });
     }
 
     // 3. Draw playhead / current time indicator if specified

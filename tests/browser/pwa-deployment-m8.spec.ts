@@ -8,7 +8,7 @@ test.describe("Production PWA deployment", () => {
     const pageErrors: string[] = [];
     page.on("pageerror", (err) => pageErrors.push(err.message));
 
-    await page.goto("/");
+    await page.goto("/?empty=true");
 
     // 1. Verify link element in DOM head
     const manifestLink = page.locator('link[rel="manifest"]');
@@ -47,7 +47,7 @@ test.describe("Production PWA deployment", () => {
     request,
     page,
   }) => {
-    await page.goto("/");
+    await page.goto("/?empty=true");
     const manifestHref = await page.locator('link[rel="manifest"]').getAttribute("href");
     if (!manifestHref) throw new Error("The application manifest link has no URL.");
     const manifestResponse = await request.get(new URL(manifestHref, page.url()).href);
@@ -91,7 +91,7 @@ test.describe("Production PWA deployment", () => {
     const pageErrors: string[] = [];
     page.on("pageerror", (err) => pageErrors.push(err.message));
 
-    await page.goto("/");
+    await page.goto("/?empty=true");
 
     // Wait for window load and service worker registration
     await page.waitForLoadState("networkidle");

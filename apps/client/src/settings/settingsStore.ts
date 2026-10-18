@@ -6,6 +6,7 @@ import {
   type SettingsListener,
 } from "./types.ts";
 import { getDbSetting, saveDbSetting } from "../storage/projectDb.ts";
+import { normalizeStageAppearance } from "./stageAppearance";
 
 export const SETTINGS_DB_KEY = "app.settings";
 
@@ -142,7 +143,7 @@ export class SettingsStore {
    * Retrieves the current settings snapshot.
    */
   getSettings(): Settings {
-    return { ...this.current };
+    return { ...this.current, stageAppearance: normalizeStageAppearance(this.current.stageAppearance) };
   }
 
   /**

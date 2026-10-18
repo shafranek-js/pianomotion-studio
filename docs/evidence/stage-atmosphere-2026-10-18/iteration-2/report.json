@@ -1,0 +1,208 @@
+{
+  "config": {
+    "argv": [
+      "C:\\nvm4w\\nodejs\\node.exe",
+      "C:\\Projects\\pianomotion-studio\\node_modules\\@playwright\\test\\cli.js",
+      "test",
+      "--config",
+      "test-results/stage-atmosphere.config.mts",
+      "tests/browser/stage-environment.spec.ts",
+      "--grep",
+      "atmosphere"
+    ],
+    "configFile": "C:\\Projects\\pianomotion-studio\\test-results\\stage-atmosphere.config.mts",
+    "rootDir": "C:/Projects/pianomotion-studio/tests/browser",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "C:/Projects/pianomotion-studio/test-results/atmosphere-chrome",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "",
+        "name": "",
+        "testDir": "C:/Projects/pianomotion-studio/tests/browser",
+        "testIgnore": [
+          "**/offline-pwa.spec.ts",
+          "**/pwa-deployment-m8.spec.ts",
+          "**/media-export.spec.ts",
+          "**/video-export-m7.spec.ts",
+          "**/parity-m1.spec.ts",
+          "**/native-engine.spec.ts",
+          "**/native-parity.spec.ts",
+          "**/motion-streaming.spec.ts",
+          "**/motion-playback.spec.ts",
+          "**/audio-dsp.spec.ts",
+          "**/audio-output.spec.ts",
+          "**/soundfont-stereo.spec.ts",
+          "**/soundfont-sf3.spec.ts",
+          "**/builtin-soundfont-offline.spec.ts",
+          "**/soundfont-storage.spec.ts",
+          "**/soundfont-large.spec.ts",
+          "**/soundfont-user-banks.spec.ts",
+          "**/soundfont-offline.spec.ts",
+          "**/builtin-melodies-offline.spec.ts"
+        ],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 90000
+      }
+    ],
+    "filteredProjects": [
+      {
+        "grep": {},
+        "grepInvert": null,
+        "outputDir": "C:\\Projects\\pianomotion-studio\\test-results\\atmosphere-chrome",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "name": "",
+        "testDir": "C:\\Projects\\pianomotion-studio\\tests\\browser",
+        "snapshotDir": "C:\\Projects\\pianomotion-studio\\tests\\browser",
+        "testIgnore": [
+          "**/offline-pwa.spec.ts",
+          "**/pwa-deployment-m8.spec.ts",
+          "**/media-export.spec.ts",
+          "**/video-export-m7.spec.ts",
+          "**/parity-m1.spec.ts",
+          "**/native-engine.spec.ts",
+          "**/native-parity.spec.ts",
+          "**/motion-streaming.spec.ts",
+          "**/motion-playback.spec.ts",
+          "**/audio-dsp.spec.ts",
+          "**/audio-output.spec.ts",
+          "**/soundfont-stereo.spec.ts",
+          "**/soundfont-sf3.spec.ts",
+          "**/builtin-soundfont-offline.spec.ts",
+          "**/soundfont-storage.spec.ts",
+          "**/soundfont-large.spec.ts",
+          "**/soundfont-user-banks.spec.ts",
+          "**/soundfont-offline.spec.ts",
+          "**/builtin-melodies-offline.spec.ts"
+        ],
+        "testMatch": "**/*.@(spec|test).?(c|m)[jt]s?(x)",
+        "timeout": 90000,
+        "use": {
+          "baseURL": "http://127.0.0.1:4183",
+          "browserName": "chromium",
+          "channel": "chrome",
+          "headless": true
+        },
+        "dependencies": [],
+        "ignoreSnapshots": false,
+        "__projectId": ""
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "list",
+        null
+      ],
+      [
+        "json",
+        {
+          "outputFile": "C:\\Projects\\pianomotion-studio\\test-results\\reports\\atmosphere-chrome.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "default",
+    "updateSourceMethod": "patch",
+    "version": "1.64.0",
+    "workers": 1,
+    "webServer": {
+      "command": "node node_modules/vite/bin/vite.js --config apps/client/vite.config.ts --host 127.0.0.1 --port 4183 --strictPort",
+      "cwd": "C:\\Projects\\pianomotion-studio",
+      "url": "http://127.0.0.1:4183",
+      "reuseExistingServer": false,
+      "timeout": 60000
+    }
+  },
+  "suites": [
+    {
+      "title": "stage-environment.spec.ts",
+      "file": "stage-environment.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "concert atmosphere renders a scattered shaft and soft perimeter without changing the fixed scene",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 13328,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-18T18:02:17.884Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "atmosphere-pixels",
+                      "contentType": "application/json",
+                      "body": "ewogICJza3kiOiB7CiAgICAic2FtcGxlcyI6IDI0MzIwLAogICAgImNoYW5nZWRTYW1wbGVzIjogMzk2MywKICAgICJ0b3RhbENoYW5uZWxEZWx0YSI6IDI0MTc4MSwKICAgICJtYXhDaGFubmVsRGVsdGEiOiAyODEKICB9LAogICJmbG9vciI6IHsKICAgICJzYW1wbGVzIjogMjY4ODAsCiAgICAiY2hhbmdlZFNhbXBsZXMiOiAxNjg4NywKICAgICJ0b3RhbENoYW5uZWxEZWx0YSI6IDk1ODgxNiwKICAgICJtYXhDaGFubmVsRGVsdGEiOiA5NgogIH0KfQ=="
+                    },
+                    {
+                      "name": "atmosphere-evidence",
+                      "contentType": "application/json",
+                      "body": "ewogICJza3kiOiB7CiAgICAic2FtcGxlcyI6IDI0MzIwLAogICAgImNoYW5nZWRTYW1wbGVzIjogMzk2MywKICAgICJ0b3RhbENoYW5uZWxEZWx0YSI6IDI0MTc4MSwKICAgICJtYXhDaGFubmVsRGVsdGEiOiAyODEKICB9LAogICJmbG9vciI6IHsKICAgICJzYW1wbGVzIjogMjY4ODAsCiAgICAiY2hhbmdlZFNhbXBsZXMiOiAxNjg4NywKICAgICJ0b3RhbENoYW5uZWxEZWx0YSI6IDk1ODgxNiwKICAgICJtYXhDaGFubmVsRGVsdGEiOiA5NgogIH0sCiAgInN0YXRpb25hcnkiOiB7CiAgICAic2FtcGxlcyI6IDI0MzIwLAogICAgImNoYW5nZWRTYW1wbGVzIjogMCwKICAgICJ0b3RhbENoYW5uZWxEZWx0YSI6IDAsCiAgICAibWF4Q2hhbm5lbERlbHRhIjogMAogIH0sCiAgImZhZGUiOiB7CiAgICAidmFsaWRQYWlycyI6IDgzLAogICAgImF2ZXJhZ2VDaGFubmVsRGVsdGEiOiAwLjczNjM4NTU0MjE2ODY3NCwKICAgICJtYXhDaGFubmVsRGVsdGEiOiAyLjQwMDAwMDAwMDAwMDAwMgogIH0KfQ=="
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "cb968f614591f9e74d02-80c802024766fb2864a1",
+          "file": "stage-environment.spec.ts",
+          "line": 60,
+          "column": 1
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-10-18T18:02:13.381Z",
+    "duration": 22067.26,
+    "expected": 1,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}

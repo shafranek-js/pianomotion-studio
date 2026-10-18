@@ -1,0 +1,192 @@
+{
+  "stats": {
+    "startTime": "2026-10-18T11:56:10.052Z",
+    "duration": 91622.382,
+    "expected": 15,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  },
+  "tests": [
+    {
+      "file": "parity-m1.spec.ts",
+      "title": "fixture parity (1/13): synthetic-crossing-wide-chord",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 5478,
+          "errorSummary": []
+        }
+      ]
+    },
+    {
+      "file": "parity-m1.spec.ts",
+      "title": "fixture parity (2/13): synthetic-duplicate-identities",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 6244,
+          "errorSummary": []
+        }
+      ]
+    },
+    {
+      "file": "parity-m1.spec.ts",
+      "title": "fixture parity (3/13): synthetic-invalid-empty",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 3086,
+          "errorSummary": []
+        }
+      ]
+    },
+    {
+      "file": "parity-m1.spec.ts",
+      "title": "fixture parity (4/13): synthetic-invalid-non-midi",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 3234,
+          "errorSummary": []
+        }
+      ]
+    },
+    {
+      "file": "parity-m1.spec.ts",
+      "title": "fixture parity (5/13): synthetic-invalid-truncated",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 3856,
+          "errorSummary": []
+        }
+      ]
+    },
+    {
+      "file": "parity-m1.spec.ts",
+      "title": "fixture parity (6/13): synthetic-manual-fingering-gliss",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 3837,
+          "errorSummary": []
+        }
+      ]
+    },
+    {
+      "file": "parity-m1.spec.ts",
+      "title": "fixture parity (7/13): synthetic-mismatched-track-labels",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 4689,
+          "errorSummary": []
+        }
+      ]
+    },
+    {
+      "file": "parity-m1.spec.ts",
+      "title": "fixture parity (8/13): synthetic-scale-chords",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 4633,
+          "errorSummary": []
+        }
+      ]
+    },
+    {
+      "file": "parity-m1.spec.ts",
+      "title": "fixture parity (9/13): synthetic-stress-512",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 7144,
+          "errorSummary": []
+        }
+      ]
+    },
+    {
+      "file": "parity-m1.spec.ts",
+      "title": "fixture parity (10/13): synthetic-tempo-pedals-overlap",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 5088,
+          "errorSummary": []
+        }
+      ]
+    },
+    {
+      "file": "parity-m1.spec.ts",
+      "title": "fixture parity (11/13): tracked-demo-song",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 6456,
+          "errorSummary": []
+        }
+      ]
+    },
+    {
+      "file": "parity-m1.spec.ts",
+      "title": "fixture parity (12/13): tracked-right-hand",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 4707,
+          "errorSummary": []
+        }
+      ]
+    },
+    {
+      "file": "parity-m1.spec.ts",
+      "title": "fixture parity (13/13): tracked-right-hand-octaves",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 5047,
+          "errorSummary": []
+        }
+      ]
+    },
+    {
+      "file": "parity-m1.spec.ts",
+      "title": "cancellation terminates worker and disposes job",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 5121,
+          "errorSummary": []
+        }
+      ]
+    },
+    {
+      "file": "parity-m1.spec.ts",
+      "title": "rejects invalid/corrupt MIDI input without crashing the worker",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 11089,
+          "errorSummary": []
+        }
+      ]
+    }
+  ]
+}

@@ -10,8 +10,12 @@ import {
   type PianistProfile,
   type ProjectSourceContext,
   type SongDocument,
+  PracticeLoopSchema,
+  validatePracticeStateForProject,
+  type PracticeLoop,
+  type PracticeState,
 } from "@handthesia/contracts";
-import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from "react";
 import {
   Transport,
   decodeAudioRecording,
@@ -46,6 +50,7 @@ import {
   type SessionSnapshot,
 } from "../storage";
 import type { AppSettings, CalculationEngine, SkinStyleSetting } from "../settings";
+import { normalizeStageAppearance, type StageAppearance } from "../settings/stageAppearance";
 import {
   getSettings,
   subscribeSettings,
@@ -66,7 +71,9 @@ import { VideoExportModal, type ExportSceneDataSource } from "../export";
 import { getSharedWebMidiInputManager, type WebMidiInputStatus } from "../midi";
 import { PlayAlongEngine, type PlayAlongHandMode, type PlayAlongState, type PlayAlongStep } from "./playAlongEngine";
 import { PlayAlongTransport } from "../studio/PlayAlongTransport";
+import { PracticePanel } from "../studio/PracticePanel";
 import type { KeyPressInfo } from "../render/keyboardView";
+import { buildRecoverySnapshot } from "./recoverySnapshot";
 
 export interface PianoPlayerProps {
   result: M1AnalyzeMidiResult;
@@ -118,6 +125,8 @@ declare global {
       scene?: ReturnType<PianoScene["getGeometrySnapshot"]>;
       editorSelectedNoteIds?: string[];
       editorViewTime?: number | null;
+      practiceState?: PracticeState;
+      currentTimeSeconds?: number;
       motionStreaming?: { buffering: boolean; pauseCount: number; requestCount: number; roundTripMs: number; lastPause: MotionBufferPauseSnapshot | null };
     };
   }
@@ -146,6 +155,35 @@ function createPlaybackMotionBuffer(analysis: M1AnalyzeMidiResult): MotionBuffer
   if (analysis.motionPlan?.poses) buffer.addPoses(analysis.motionPlan.poses);
   if (analysis.initialMotionWindow) buffer.addInitialMotionWindow(analysis.initialMotionWindow);
   return buffer;
+}
+
+function createFreshPracticeState(sourceMidiSha256: string): PracticeState {
+  return { schemaVersion: 1, sourceMidiSha256, loop: null, bookmarks: [] };
+}
+
+function restorePracticeState(
+  initialSession: SessionSnapshot | null | undefined,
+  result: M1AnalyzeMidiResult,
+): { practiceState: PracticeState; discarded: boolean } {
+  const fresh = createFreshPracticeState(result.resource.sha256);
+  if (!initialSession || initialSession.practiceState === undefined) {
+    return { practiceState: fresh, discarded: false };
+  }
+  try {
+    if (!result.document) throw new Error("Current project document is unavailable.");
+    return {
+      practiceState: validatePracticeStateForProject(initialSession.practiceState, result.document, result.resource),
+      discarded: false,
+    };
+  } catch {
+    return { practiceState: fresh, discarded: true };
+  }
+}
+
+function createBookmarkId(existing: readonly PracticeState["bookmarks"][number][]): string {
+  let id = crypto.randomUUID();
+  while (existing.some((bookmark) => bookmark.id === id)) id = crypto.randomUUID();
+  return id;
 }
 
 export function PianoPlayer({
@@ -179,6 +217,8 @@ export function PianoPlayer({
 }: PianoPlayerProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const sceneRef = useRef<PianoScene | null>(null);
+  const stageDraftRef = useRef<StageAppearance | null>(null);
+  const stageSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const transportRef = useRef<Transport | null>(null);
   const webMidiManagerRef = useRef<WebMidiOutputManager | null>(null);
   const motionBufferRef = useRef<MotionBuffer | null>(null);
@@ -199,14 +239,33 @@ export function PianoPlayer({
   const motionLastPauseRef = useRef<MotionBufferPauseSnapshot | null>(null);
   const motionRequestCountRef = useRef(0);
   const playIntentRef = useRef(false);
-  const latestStateRef = useRef({ analysis: result, draftPlan: initialSession?.draftFingeringPlan ?? result.fingeringPlan!, profile: initialSession?.profile ?? result.profile });
+  const [initialPractice] = useState(() => restorePracticeState(initialSession, result));
+  const [practiceState, setPracticeState] = useState<PracticeState>(initialPractice.practiceState);
+  const practiceStateRef = useRef(practiceState);
+  const lastPracticeAutosaveRef = useRef(practiceState);
+  const latestStateRef = useRef({
+    analysis: result,
+    draftPlan: initialSession?.draftFingeringPlan ?? result.fingeringPlan!,
+    profile: initialSession?.profile ?? result.profile,
+    document: initialSession?.document ?? result.document ?? null,
+    projectName,
+    rawMidiBytes,
+    keyStyle: initialSession?.keyStyle ?? initialSourceContext.keyStyle,
+    sourceContext: initialSourceContext,
+    viewMode: normalizeStudioView(initialViewMode ?? initialSession?.viewMode),
+    sceneView: {
+      dimension: initialSession?.sceneView?.dimension ?? "3d",
+      cameraPreset: initialSession?.sceneView?.cameraPreset ?? "concert",
+    } as { dimension: "2d" | "3d"; cameraPreset: Camera3DPreset },
+    practiceState: initialPractice.practiceState,
+  });
   const dirtyRef = useRef(isDirty);
   const editVersionRef = useRef(0);
   const sourceContextRef = useRef(initialSourceContext);
   const onStatusChangeRef = useRef(onStatusChange);
   useEffect(() => { onStatusChangeRef.current = onStatusChange; }, [onStatusChange]);
 
-  const { dict } = useI18n();
+  const { dict, t } = useI18n();
   const settingsAtStart = getSettings();
   const calculationEngineRef = useRef<CalculationEngine>(settingsAtStart.calculationEngine);
   const [activeCalculationEngine, setActiveCalculationEngine] = useState<CalculationEngine>(
@@ -244,7 +303,9 @@ export function PianoPlayer({
   const playAlongEngineRef = useRef<PlayAlongEngine | null>(null);
   const [playAlongStep, setPlayAlongStep] = useState<PlayAlongStep | null>(null);
   const [playAlongTotalSteps, setPlayAlongTotalSteps] = useState(0);
+  const [playAlongStepTimes, setPlayAlongStepTimes] = useState<number[]>([]);
   const [playAlongState, setPlayAlongState] = useState<PlayAlongState>("idle");
+  const [playAlongLoopAvailable, setPlayAlongLoopAvailable] = useState(true);
   const [playAlongHandMode, setPlayAlongHandMode] = useState<PlayAlongHandMode>("both");
   const [playAlongHeldPitches, setPlayAlongHeldPitches] = useState<ReadonlySet<number>>(new Set());
   const [playAlongCompletedPitches, setPlayAlongCompletedPitches] = useState<ReadonlySet<number>>(new Set());
@@ -276,6 +337,9 @@ export function PianoPlayer({
     if (!base) return null;
     return materializeEditedDocument({ ...base, revision: draftPlan.inputRevision }, draftPlan);
   }, [baseDocument, analysis.document, draftPlan]);
+  const activePlayAlongLoop = useMemo(() => practiceState.loop?.enabled
+    ? { startSeconds: practiceState.loop.startSeconds, endSeconds: practiceState.loop.endSeconds }
+    : null, [practiceState.loop]);
   const needsReplan = Boolean(
     forceReplan > 0 || !document || draftPlan.inputRevision !== analysis.document?.revision ||
     activeProfile.profileId !== analysis.profile.profileId || activeProfile.revision !== analysis.profile.revision ||
@@ -285,9 +349,25 @@ export function PianoPlayer({
   useEffect(() => { needsReplanRef.current = needsReplan; }, [needsReplan]);
   useEffect(() => { dirtyRef.current = isDirty; }, [isDirty]);
   useEffect(() => { sourceContextRef.current = sourceContext; }, [sourceContext]);
-  useEffect(() => {
-    latestStateRef.current = { analysis, draftPlan, profile: activeProfile };
-  }, [analysis, draftPlan, activeProfile]);
+  const currentSceneView = useMemo(() => ({
+    dimension: is3DView ? "3d" : "2d",
+    cameraPreset: camera3DPreset,
+  } as const), [is3DView, camera3DPreset]);
+  useLayoutEffect(() => {
+    latestStateRef.current = {
+      analysis,
+      draftPlan,
+      profile: activeProfile,
+      document,
+      projectName,
+      rawMidiBytes,
+      keyStyle,
+      sourceContext,
+      viewMode,
+      sceneView: { dimension: is3DView ? "3d" : "2d", cameraPreset: camera3DPreset },
+      practiceState,
+    };
+  }, [analysis, draftPlan, activeProfile, document, projectName, rawMidiBytes, keyStyle, sourceContext, viewMode, is3DView, camera3DPreset, practiceState]);
 
   const markModified = useCallback((message = "Unsaved project changes.") => {
     editVersionRef.current += 1;
@@ -295,6 +375,143 @@ export function PianoPlayer({
     onDirtyChange(true);
     onStatusChange({ kind: "modified", message });
   }, [onDirtyChange, onStatusChange]);
+
+  const updatePracticeState = useCallback((next: PracticeState) => {
+    if (next === practiceStateRef.current) return;
+    practiceStateRef.current = next;
+    latestStateRef.current = { ...latestStateRef.current, practiceState: next };
+    setPracticeState(next);
+    markModified(dict.practice.unsavedChanges);
+  }, [dict.practice.unsavedChanges, markModified]);
+
+  useEffect(() => {
+    if (initialPractice.discarded) {
+      onStatusChange({ kind: "error", message: dict.practice.invalidSavedState });
+    }
+  }, [dict.practice.invalidSavedState, initialPractice.discarded, onStatusChange]);
+
+  useEffect(() => {
+    if (!document) return;
+    const duration = Math.max(0, document.durationSeconds);
+    const current = practiceStateRef.current;
+    let loop = current.loop;
+    let changed = false;
+    if (loop && (loop.startSeconds > duration || loop.endSeconds > duration)) {
+      const candidate = {
+        ...loop,
+        startSeconds: Math.min(duration, loop.startSeconds),
+        endSeconds: Math.min(duration, loop.endSeconds),
+      };
+      const parsed = PracticeLoopSchema.safeParse(candidate);
+      loop = parsed.success ? parsed.data : null;
+      changed = true;
+    }
+    const bookmarks = current.bookmarks.map((bookmark) => {
+      if (bookmark.timeSeconds <= duration) return bookmark;
+      changed = true;
+      return { ...bookmark, timeSeconds: duration };
+    });
+    if (changed) updatePracticeState({ ...current, loop, bookmarks });
+  }, [document, updatePracticeState]);
+
+  const practiceDuration = document?.durationSeconds ?? analysis.document?.durationSeconds ?? 0;
+  const commitPracticeLoop = useCallback((loop: PracticeLoop | null) => {
+    updatePracticeState({ ...practiceStateRef.current, loop });
+  }, [updatePracticeState]);
+  const setPracticeLoopPoint = useCallback((point: "startSeconds" | "endSeconds", requestedTime: number) => {
+    if (!Number.isFinite(requestedTime)) {
+      onStatusChange({ kind: "error", message: dict.practice.invalidLoopTime });
+      return;
+    }
+    const time = Math.min(practiceDuration, Math.max(0, requestedTime));
+    const current = practiceStateRef.current.loop ?? {
+      startSeconds: 0,
+      endSeconds: practiceDuration,
+      enabled: false,
+    };
+    const candidate = { ...current, [point]: time };
+    if (candidate.startSeconds > practiceDuration || candidate.endSeconds > practiceDuration) {
+      onStatusChange({ kind: "error", message: dict.practice.loopPointOutsideDuration });
+      return;
+    }
+    const parsed = PracticeLoopSchema.safeParse(candidate);
+    if (!parsed.success) {
+      const outsideDuration = candidate.startSeconds > practiceDuration || candidate.endSeconds > practiceDuration;
+      onStatusChange({
+        kind: "error",
+        message: outsideDuration ? dict.practice.loopPointOutsideDuration : dict.practice.invalidLoopRange,
+      });
+      return;
+    }
+    commitPracticeLoop(parsed.data);
+  }, [commitPracticeLoop, dict.practice.invalidLoopRange, dict.practice.invalidLoopTime,
+    dict.practice.loopPointOutsideDuration, onStatusChange, practiceDuration]);
+  const handleLoopEnabledChange = useCallback((enabled: boolean) => {
+    const current = practiceStateRef.current.loop ?? {
+      startSeconds: 0,
+      endSeconds: practiceDuration,
+      enabled: false,
+    };
+    if (current.startSeconds > practiceDuration || current.endSeconds > practiceDuration) {
+      onStatusChange({ kind: "error", message: dict.practice.loopPointOutsideDuration });
+      return;
+    }
+    const parsed = PracticeLoopSchema.safeParse({ ...current, enabled });
+    if (!parsed.success) {
+      onStatusChange({ kind: "error", message: dict.practice.invalidLoopRange });
+      return;
+    }
+    commitPracticeLoop(parsed.data);
+  }, [commitPracticeLoop, dict.practice.invalidLoopRange, dict.practice.loopPointOutsideDuration, onStatusChange, practiceDuration]);
+  const handleAddBookmark = useCallback((requestedName: string, requestedTime: number) => {
+    const current = practiceStateRef.current;
+    const name = requestedName.trim().slice(0, 120) || t("practice.defaultBookmarkName", { number: current.bookmarks.length + 1 });
+    const timeSeconds = Number.isFinite(requestedTime)
+      ? Math.min(practiceDuration, Math.max(0, requestedTime))
+      : 0;
+    const bookmark = { id: createBookmarkId(current.bookmarks), name, timeSeconds };
+    updatePracticeState({ ...current, bookmarks: [...current.bookmarks, bookmark] });
+  }, [practiceDuration, t, updatePracticeState]);
+  const handleRenameBookmark = useCallback((id: string, requestedName: string) => {
+    const name = requestedName.trim().slice(0, 120);
+    if (!name) {
+      onStatusChange({ kind: "error", message: dict.practice.bookmarkNameRequired });
+      return;
+    }
+    const current = practiceStateRef.current;
+    if (!current.bookmarks.some((bookmark) => bookmark.id === id)) return;
+    updatePracticeState({
+      ...current,
+      bookmarks: current.bookmarks.map((bookmark) => bookmark.id === id ? { ...bookmark, name } : bookmark),
+    });
+  }, [dict.practice.bookmarkNameRequired, onStatusChange, updatePracticeState]);
+  const handleDeleteBookmark = useCallback((id: string) => {
+    const current = practiceStateRef.current;
+    const bookmarks = current.bookmarks.filter((bookmark) => bookmark.id !== id);
+    if (bookmarks.length === current.bookmarks.length) return;
+    updatePracticeState({ ...current, bookmarks });
+  }, [updatePracticeState]);
+
+  const persistPracticeRecovery = useCallback(async (nextPracticeState: PracticeState) => {
+    const current = latestStateRef.current;
+    if (!current.document || !current.rawMidiBytes) return;
+    autosaveService.schedule(buildRecoverySnapshot({
+      projectName: current.projectName,
+      updatedAt: Date.now(),
+      document: current.document,
+      draftFingeringPlan: current.draftPlan,
+      result: current.analysis,
+      rawMidiBytes: current.rawMidiBytes,
+      profile: current.profile,
+      plansState: needsReplanRef.current ? "recompute-required" : "valid",
+      keyStyle: current.keyStyle,
+      sourceContext: current.sourceContext,
+      viewMode: current.viewMode,
+      sceneView: current.sceneView,
+      practiceState: nextPracticeState,
+    }));
+    await autosaveService.flush({ throwOnError: true });
+  }, [autosaveService]);
 
   const handlePlanChange = useCallback((plan: FingeringPlan) => {
     setDraftPlan(plan);
@@ -315,6 +532,8 @@ export function PianoPlayer({
   }, [keyStyle, markModified, onStatusChange]);
 
   const handleSettingsChanged = useCallback((next: AppSettings) => {
+    // A committed older slider value must not overwrite a newer local preview.
+    if (stageDraftRef.current) next = { ...next, stageAppearance: stageDraftRef.current };
     setSettings(next);
     setSpeed(next.playbackSpeed);
     setVolume(next.masterVolume);
@@ -326,6 +545,7 @@ export function PianoPlayer({
       skinStyle: next.skinStyle,
       showHandShadow: next.showHandShadow,
       renderCapFps: next.renderCapFps,
+      stageAppearance: next.stageAppearance,
     });
     transportRef.current?.setLeadInSeconds(Math.abs(next.leadInSeconds));
     if (next.keyStyle !== sourceContextRef.current.keyStyle) handleKeyStyleChange(next.keyStyle);
@@ -336,6 +556,32 @@ export function PianoPlayer({
       setForceReplan(value => value + 1);
     }
   }, [handleKeyStyleChange]);
+
+  const handleStageAppearanceChange = useCallback((value: StageAppearance) => {
+    const next = normalizeStageAppearance(value);
+    stageDraftRef.current = next;
+    setSettings(previous => ({ ...previous, stageAppearance: next }));
+    if (stageSaveTimerRef.current) clearTimeout(stageSaveTimerRef.current);
+    stageSaveTimerRef.current = setTimeout(() => {
+      stageSaveTimerRef.current = null;
+      void updateSettingsPersisted({ stageAppearance: next }).then(() => {
+        if (stageDraftRef.current === next) stageDraftRef.current = null;
+      }).catch(error => {
+        if (stageDraftRef.current === next) stageDraftRef.current = null;
+        onStatusChange({ kind: "error", message: `Stage preference was not saved: ${errorMessage(error)}` });
+      });
+    }, 160);
+  }, [onStatusChange]);
+
+  useEffect(() => () => {
+    if (stageSaveTimerRef.current) clearTimeout(stageSaveTimerRef.current);
+    const pending = stageDraftRef.current;
+    if (pending && stageSaveTimerRef.current) {
+      void updateSettingsPersisted({ stageAppearance: pending }).catch(error => {
+        console.warn("Stage preference could not be saved while closing the player", error);
+      });
+    }
+  }, []);
 
   const handleProfileChanged = useCallback((profile: PianistProfile) => {
     const current = latestStateRef.current.profile;
@@ -485,6 +731,7 @@ export function PianoPlayer({
           skinStyle: settings.skinStyle,
           showHandShadow: settings.showHandShadow,
           renderCapFps: settings.renderCapFps,
+          stageAppearance: settings.stageAppearance,
         },
       }).then(scene => {
         if (!live) { scene.destroy(); return; }
@@ -591,12 +838,42 @@ export function PianoPlayer({
   }, [analysis, document, keyStyle]);
 
   useEffect(() => {
+    const transport = transportRef.current;
+    if (!transport) return;
+    try {
+      transport.setLoop(activePlayAlongLoop);
+    } catch (error) {
+      onStatusChange({ kind: "error", message: `${dict.practice.title}: ${errorMessage(error)}` });
+    }
+  }, [activePlayAlongLoop, dict.practice.title, onStatusChange]);
+
+  useEffect(() => {
+    const transport = transportRef.current;
+    if (!transport) return;
+    return transport.subscribeLoop((timeSeconds) => {
+      seekEpochRef.current += 1;
+      const current = latestStateRef.current.analysis;
+      const buffer = createPlaybackMotionBuffer(current);
+      motionBufferRef.current = buffer;
+      sceneRef.current?.setMotionBuffer(buffer);
+      motionStreamRef.current?.reset(
+        { projectId: current.projectId, revision: current.revision, engineVersion: current.engineVersion },
+        seekEpochRef.current,
+      );
+      currentTimeRef.current = timeSeconds;
+      setCurrentTime(timeSeconds);
+      sceneRef.current?.update(timeSeconds);
+    });
+  }, []);
+
+  useEffect(() => {
     sceneRef.current?.setDisplaySettings({
       showFingerLabels: settings.showFingerLabels,
       showNoteNames: settings.showNoteNames,
       skinStyle: settings.skinStyle,
       showHandShadow: settings.showHandShadow,
       renderCapFps: settings.renderCapFps,
+      stageAppearance: settings.stageAppearance,
     });
     transportRef.current?.setLeadInSeconds(Math.abs(settings.leadInSeconds));
   }, [settings]);
@@ -851,25 +1128,30 @@ export function PianoPlayer({
 
   useEffect(() => {
     if (!rawMidiBytes || !document) return;
-    autosaveService.schedule({
-      projectId: analysis.projectId,
+    autosaveService.schedule(buildRecoverySnapshot({
       projectName,
       updatedAt: Date.now(),
       document,
-      fingeringPlan: draftPlan,
+      draftFingeringPlan: draftPlan,
       result: analysis,
       rawMidiBytes,
-      activeProfileId: activeProfile.profileId,
       profile: activeProfile,
-      draftFingeringPlan: draftPlan,
       plansState: needsReplan ? "recompute-required" : "valid",
       keyStyle,
       sourceContext,
-      sourceDescriptor: analysis.resource,
       viewMode,
-      sceneView: { dimension: is3DView ? "3d" : "2d", cameraPreset: camera3DPreset },
+      sceneView: currentSceneView,
+      practiceState,
+    }));
+  }, [analysis, document, draftPlan, rawMidiBytes, activeProfile, keyStyle, sourceContext, viewMode, currentSceneView, is3DView, camera3DPreset, needsReplan, autosaveService, projectName, practiceState]);
+
+  useEffect(() => {
+    if (lastPracticeAutosaveRef.current === practiceState) return;
+    lastPracticeAutosaveRef.current = practiceState;
+    void persistPracticeRecovery(practiceState).catch((error) => {
+      onStatusChange({ kind: "error", message: `${dict.practice.title}: ${errorMessage(error)}` });
     });
-  }, [analysis, document, draftPlan, rawMidiBytes, activeProfile, keyStyle, sourceContext, viewMode, is3DView, camera3DPreset, needsReplan, autosaveService, projectName]);
+  }, [dict.practice.title, onStatusChange, persistPracticeRecovery, practiceState]);
 
   useEffect(() => {
     if (!document) return;
@@ -938,18 +1220,18 @@ export function PianoPlayer({
         sceneRef.current?.update(time);
         setCurrentTime(time);
       },
-      onPlayNote: (pitch, velocity) => {
+      onPlayNote: (pitch, velocity, voiceId) => {
         try {
           const output = transportRef.current?.getOutput();
-          output?.noteOn(`playalong-${pitch}`, pitch, velocity, 0);
+          output?.noteOn(voiceId ?? `playalong-${pitch}`, pitch, velocity, 0);
         } catch {
           // resilient audio playback
         }
       },
-      onStopNote: (pitch) => {
+      onStopNote: (pitch, voiceId) => {
         try {
           const output = transportRef.current?.getOutput();
-          output?.noteOff(`playalong-${pitch}`, pitch, 0);
+          output?.noteOff(voiceId ?? `playalong-${pitch}`, pitch, 0);
         } catch {
           // resilient audio playback
         }
@@ -972,8 +1254,14 @@ export function PianoPlayer({
       },
     });
 
+    const savedLoop = practiceStateRef.current.loop;
+    engine.setLoopRange(savedLoop?.enabled
+      ? { startSeconds: savedLoop.startSeconds, endSeconds: savedLoop.endSeconds }
+      : null);
     playAlongEngineRef.current = engine;
     setPlayAlongTotalSteps(engine.getSteps().length);
+    setPlayAlongStepTimes(engine.getSteps().map((step) => step.timeSeconds));
+    setPlayAlongLoopAvailable(engine.hasEligibleLoopSteps());
     if (viewModeRef.current === "play_along") {
       engine.start();
     }
@@ -981,8 +1269,16 @@ export function PianoPlayer({
       engine.dispose();
       playAlongEngineRef.current = null;
       setPlayAlongTotalSteps(0);
+      setPlayAlongStepTimes([]);
     };
   }, [document, draftPlan, analysis, playAlongHandMode, autoPlayOtherHand]);
+
+  useEffect(() => {
+    const engine = playAlongEngineRef.current;
+    if (!engine) return;
+    engine.setLoopRange(activePlayAlongLoop);
+    setPlayAlongLoopAvailable(engine.hasEligibleLoopSteps());
+  }, [activePlayAlongLoop]);
 
   useEffect(() => {
     if (viewMode === "play_along") {
@@ -1042,9 +1338,12 @@ export function PianoPlayer({
     };
 
     const heldKeys = new Set<string>();
+    const isUiControl = (target: EventTarget | null) => target instanceof Element && Boolean(target.closest(
+      'input, textarea, select, button, [contenteditable="true"], [role="button"], [role="dialog"], [role="menu"], [data-testid="practice-panel"]',
+    ));
 
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (e.defaultPrevented || isUiControl(e.target)) return;
       if (e.repeat) return;
 
       if (e.key === " " || e.key === "ArrowRight") {
@@ -1068,14 +1367,15 @@ export function PianoPlayer({
     };
 
     const onKeyUp = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
       const pitch = keyToPitch[e.key];
       if (pitch !== undefined && heldKeys.has(e.key)) {
         heldKeys.delete(e.key);
         sceneRef.current?.setLivePhysicalPitch(pitch, false);
         playAlongEngineRef.current?.noteOff(pitch);
         e.preventDefault();
+        return;
       }
+      if (e.defaultPrevented || isUiControl(e.target)) return;
     };
 
     window.addEventListener("keydown", onKeyDown);
@@ -1184,9 +1484,11 @@ export function PianoPlayer({
       scene: sceneRef.current?.getGeometrySnapshot(),
       editorSelectedNoteIds: [...(editorBridge?.selectedNoteIds ?? [])],
       editorViewTime: sceneRef.current?.getEditorViewTime() ?? null,
+      practiceState,
+      currentTimeSeconds: currentTime,
     };
     return () => { delete window.__playerSnapshot; };
-  }, [analysis, draftPlan, keyStyle, needsReplan, activeProfile, viewMode, editorBridge, sceneRevision]);
+  }, [analysis, draftPlan, keyStyle, needsReplan, activeProfile, viewMode, editorBridge, sceneRevision, practiceState, currentTime]);
 
   const handleViewModeChange = useCallback((next: StudioView) => {
     const normalized = normalizeStudioView(next);
@@ -1252,7 +1554,7 @@ export function PianoPlayer({
     motionBufferRef.current = buffer;
     sceneRef.current?.setMotionBuffer(buffer);
     motionStreamRef.current?.reset({ projectId: analysis.projectId, revision: analysis.revision, engineVersion: analysis.engineVersion }, seekEpochRef.current);
-    setCurrentTime(settings.leadInSeconds);
+    setCurrentTime(transportRef.current?.getCurrentTime() ?? -Math.abs(settings.leadInSeconds));
   }, [analysis, settings.leadInSeconds]);
 
   const handleSeek = useCallback((time: number) => {
@@ -1268,6 +1570,50 @@ export function PianoPlayer({
     setCurrentTime(transportRef.current?.getCurrentTime() ?? time);
     sceneRef.current?.update(time);
   }, [analysis]);
+
+  const handleJumpToBookmark = useCallback((id: string) => {
+    const bookmark = practiceStateRef.current.bookmarks.find((candidate) => candidate.id === id);
+    if (!bookmark) return;
+    const currentLoop = practiceStateRef.current.loop;
+    const outsideLoop = currentLoop?.enabled &&
+      (bookmark.timeSeconds < currentLoop.startSeconds || bookmark.timeSeconds >= currentLoop.endSeconds);
+    const jump = () => {
+      if (viewModeRef.current === "play_along") {
+        const engine = playAlongEngineRef.current;
+        const eligible = engine?.getSteps()
+          .map((step, index) => ({ step, index }))
+          .filter(({ step }) => {
+            const loop = practiceStateRef.current.loop;
+            return !loop?.enabled || (step.timeSeconds >= loop.startSeconds && step.timeSeconds < loop.endSeconds);
+          }) ?? [];
+        if (eligible.length > 0) {
+          const nearest = eligible.reduce((best, candidate) =>
+            Math.abs(candidate.step.timeSeconds - bookmark.timeSeconds) < Math.abs(best.step.timeSeconds - bookmark.timeSeconds)
+              ? candidate
+              : best,
+          eligible[0]!);
+          engine?.seekToStep(nearest.index);
+        } else {
+          engine?.seekToStep(0);
+        }
+      } else {
+        handleSeek(bookmark.timeSeconds);
+      }
+    };
+    if (!outsideLoop) {
+      jump();
+      return;
+    }
+
+    const next = { ...practiceStateRef.current, loop: { ...currentLoop, enabled: false } };
+    updatePracticeState(next);
+    transportRef.current?.setLoop(null);
+    playAlongEngineRef.current?.setLoopRange(null);
+    setPlayAlongLoopAvailable(true);
+    void persistPracticeRecovery(next).catch((error) => {
+      onStatusChange({ kind: "error", message: `${dict.practice.title}: ${errorMessage(error)}` });
+    }).finally(jump);
+  }, [dict.practice.title, handleSeek, onStatusChange, persistPracticeRecovery, updatePracticeState]);
 
   const handleSpeedChange = useCallback((value: number) => {
     setSpeed(value);
@@ -1341,8 +1687,9 @@ export function PianoPlayer({
       profile: activeProfile,
       resources: [analysis.resource],
       sourceContext,
+      practiceState,
     };
-  }, [document, analysis, rawMidiBytes, projectName, draftPlan, activeProfile, sourceContext]);
+  }, [document, analysis, rawMidiBytes, projectName, draftPlan, activeProfile, sourceContext, practiceState]);
 
   const saveToDatabase = useCallback(async (): Promise<SaveResult> => {
     const identity = { projectId: analysis.projectId, revision: draftPlan.inputRevision, changeToken: editVersionRef.current };
@@ -1362,12 +1709,25 @@ export function PianoPlayer({
         return { status: "blocked", reason, identity };
       }
       // A restart after an update restores this exact committed session, never an older autosave.
-      autosaveService.schedule({
-        projectId: project.projectId, updatedAt: Date.now(), document: project.document,
-        fingeringPlan: draftPlan, draftFingeringPlan: draftPlan, result: analysis, rawMidiBytes,
-        activeProfileId: activeProfile.profileId, profile: activeProfile, plansState: "valid",
-        keyStyle, sourceContext, sourceDescriptor: analysis.resource, viewMode,
-      });
+      const current = latestStateRef.current;
+      if (!current.document || !current.rawMidiBytes) {
+        throw new Error("Current recovery data is not ready to save.");
+      }
+      autosaveService.schedule(buildRecoverySnapshot({
+        projectName: current.projectName,
+        updatedAt: Date.now(),
+        document: current.document,
+        draftFingeringPlan: current.draftPlan,
+        result: current.analysis,
+        rawMidiBytes: current.rawMidiBytes,
+        profile: current.profile,
+        plansState: "valid",
+        keyStyle: current.keyStyle,
+        sourceContext: current.sourceContext,
+        viewMode: current.viewMode,
+        sceneView: current.sceneView,
+        practiceState: current.practiceState,
+      }));
       await autosaveService.flush({ throwOnError: true });
       if (editVersionRef.current !== identity.changeToken || needsReplanRef.current) {
         const reason = "New changes were made while saving. Save the latest revision before continuing.";
@@ -1385,7 +1745,7 @@ export function PianoPlayer({
       return { status: "failed", reason, identity };
     }
   }, [rawMidiBytes, savedProject, onDirtyChange, onProjectSaved, onStatusChange, analysis, draftPlan,
-    autosaveService, activeProfile, keyStyle, sourceContext, viewMode, dict]);
+    autosaveService, dict]);
 
   const saveToDatabaseRef = useRef(saveToDatabase);
   useEffect(() => { saveToDatabaseRef.current = saveToDatabase; }, [saveToDatabase]);
@@ -1505,6 +1865,7 @@ export function PianoPlayer({
           onStatusChange({ kind: "error", message: `Hand style preference was not saved: ${errorMessage(error)}` });
         });
       }}
+      onStageAppearanceChange={handleStageAppearanceChange}
       onCalculationEngineChange={(engine: CalculationEngine) => {
         void updateSettingsPersisted({ calculationEngine: engine }).catch(error => {
           onStatusChange({ kind: "error", message: `Calculation engine preference was not saved: ${errorMessage(error)}` });
@@ -1518,7 +1879,7 @@ export function PianoPlayer({
     />
   ), [analysis, activeProfile, settings, keyStyle, audioRecording, audioOffset, projectName, needsReplan, developerTools,
     editorReport, handleDiagnosticNote, handleKeyStyleChange, onOpenPianist, handleAudioFileChange, handleClearAudio,
-    handleAudioOffsetChange, handleRetryCalculation, onStatusChange, status, preparingOutput, preparingSamples, activeOutputId, activeSoundfontAssetId, activeCalculationEngine, playbackError]);
+    handleAudioOffsetChange, handleRetryCalculation, handleStageAppearanceChange, onStatusChange, status, preparingOutput, preparingSamples, activeOutputId, activeSoundfontAssetId, activeCalculationEngine, playbackError]);
 
   const editorState = <FingeringEditor
     document={document ?? result.document!}
@@ -1634,6 +1995,28 @@ export function PianoPlayer({
     />
   );
 
+  const practiceLoop = practiceState.loop;
+  const loopHasPlayAlongStep = practiceLoop
+    ? playAlongStepTimes.some((time) => time >= practiceLoop.startSeconds && time < practiceLoop.endSeconds)
+    : playAlongLoopAvailable;
+  const practicePanel = <PracticePanel
+    currentTimeSeconds={currentTime}
+    durationSeconds={document?.durationSeconds ?? 0}
+    loop={practiceState.loop}
+    bookmarks={practiceState.bookmarks}
+    disabled={busy || needsReplan}
+    loopAvailable={viewMode !== "play_along" || loopHasPlayAlongStep}
+    onSetLoopStart={(seconds) => setPracticeLoopPoint("startSeconds", seconds)}
+    onSetLoopEnd={(seconds) => setPracticeLoopPoint("endSeconds", seconds)}
+    onLoopEnabledChange={handleLoopEnabledChange}
+    onResetLoop={() => commitPracticeLoop(null)}
+    onAddBookmark={handleAddBookmark}
+    onJumpToBookmark={handleJumpToBookmark}
+    onRenameBookmark={handleRenameBookmark}
+    onDeleteBookmark={handleDeleteBookmark}
+    onOpenPlayAlong={() => handleViewModeChange("play_along")}
+  />;
+
   const exportSceneDataSource = useMemo<ExportSceneDataSource | null>(() => {
     if (!document || !analysis.performancePlan || !analysis.fingeringPlan || !rawMidiBytes || needsReplan) return null;
     return {
@@ -1687,10 +2070,11 @@ export function PianoPlayer({
     editActions={editActions}
     projectsPanel={<ProjectsPanel onOpenProject={onOpenProject} activeProjectId={analysis.projectId} onOpenBuiltinMelodies={onOpenBuiltinMelodies} />}
     inspector={inspector}
+    practicePanel={practicePanel}
     workspace={workspace}
     transport={transport}
     headerAddon={<div ref={setAssignmentControlsHost} className="studio-fingering-assignment-host" />}
-    footerAddon={footerAddon ?? <StudioReleaseDetails description="0.1.0-dev.13 preview: multi-language UI localization (EN/CS/UK/DE/ES/IT), unified 12px header layout, icon-based fingering actions, and editor undo replan stabilization." />}
+    footerAddon={footerAddon ?? <StudioReleaseDetails description="0.1.0-dev.22 preview: Practice panel with A/B repeat across playback and PlayAlong, plus named time bookmarks saved, recoverable, and JSON-bound to the source SHA; menu/library fixes and the 3D stage are retained." />}
     dialogs={<>
       {dialogs}
       <VideoExportModal

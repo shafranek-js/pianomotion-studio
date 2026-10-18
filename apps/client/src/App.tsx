@@ -32,9 +32,11 @@ import { applyGuardedStudioUpdate } from "./studio/updateGuard";
 import { recordDiagnostic } from "./diagnostics/eventLog";
 import { DiagnosticLogControls } from "./diagnostics/DiagnosticLogControls";
 import { useI18n } from "./i18n";
+import { SessionOperationLifecycle, type SessionOperation } from "./sessionOperation";
 
 type FixtureEntry = { fixturePath: string; fixtureSha256: string; scenarios?: string[] };
 type FixtureManifest = { fixtureSources: Record<string, FixtureEntry> };
+type StartupRuntime = { fixtureManifest: FixtureManifest; engineVersion: string; melodies: BuiltinMelodyEntry[] };
 type ActiveSession = {
   result: M1AnalyzeMidiResult;
   rawMidiBytes: ArrayBuffer;
@@ -93,8 +95,9 @@ export default function App() {
   const dirtyRef = useRef(false);
   const activeRef = useRef<ActiveSession | null>(null);
   const preparedRef = useRef<ActiveSession | null>(null);
-  const candidateGenerationRef = useRef(0);
-  const candidateAbortRef = useRef<AbortController | null>(null);
+  const preparedGenerationRef = useRef<number | null>(null);
+  const operationLifecycleRef = useRef(new SessionOperationLifecycle());
+  const startupRuntimePromiseRef = useRef<Promise<StartupRuntime> | null>(null);
   const autosaveService = useMemo(() => createAutosaveService({
     delayMs: 400,
     onError: (error) => setStatus({ kind: "error", message: `Session recovery could not be saved: ${error.message}` }),
@@ -130,24 +133,24 @@ export default function App() {
     if (!swUpdateRegistration?.waiting || updateApplyingRef.current) return;
     updateApplyingRef.current = true;
     try {
-      if (candidateAbortRef.current || preparedRef.current) throw new Error("Finish opening the project before applying the update.");
+      if (operationLifecycleRef.current.isPending() || preparedRef.current) throw new Error("Finish opening the project before applying the update.");
       setStatus({ kind: "saving", message: "Saving project before applying studio update…" });
       await applyGuardedStudioUpdate({
         getSession: () => saveHandlerRef.current,
         hasProject: () => activeRef.current !== null,
         flushRecovery: () => autosaveService.flush({ throwOnError: true }),
         activate: () => {
-          if (candidateAbortRef.current || preparedRef.current) throw new Error("A project is being opened. Finish or cancel it before updating.");
+          if (operationLifecycleRef.current.isPending() || preparedRef.current) throw new Error("A project is being opened. Finish or cancel it before updating.");
           if (!swUpdateRegistration.waiting) throw new Error("The prepared update is no longer available.");
           const savedSession = saveHandlerRef.current;
           const savedIdentity = savedSession?.getState();
-          const projectGeneration = candidateGenerationRef.current;
+          const projectGeneration = operationLifecycleRef.current.getGeneration();
           setStatus({ kind: "loading", message: "Activating updated studio…" });
           navigator.serviceWorker.addEventListener("controllerchange", () => {
             void (async () => {
               try {
                 await autosaveService.flush({ throwOnError: true });
-                if (candidateGenerationRef.current !== projectGeneration || candidateAbortRef.current || preparedRef.current ||
+                if (operationLifecycleRef.current.getGeneration() !== projectGeneration || operationLifecycleRef.current.isPending() || preparedRef.current ||
                     saveHandlerRef.current !== savedSession ||
                     (savedSession && savedIdentity && !isCommittedSaveCurrent(savedSession, { status: "committed", identity: savedIdentity }))) {
                   throw new Error("The project changed during update activation. The studio was kept open; save the latest changes before reloading.");
@@ -175,41 +178,55 @@ export default function App() {
   useEffect(() => { dirtyRef.current = dirty; }, [dirty]);
 
   useEffect(() => {
+    const lifecycle = operationLifecycleRef.current;
+    const operation = lifecycle.begin("bootstrap");
+    const isCurrent = () => lifecycle.isCurrent(operation);
     let disposed = false;
+    const cacheBust = import.meta.env.DEV ? `?t=${Date.now()}` : "";
+    const runtimePromise = Promise.all([
+      fetchJson(releaseAssetUrl(`m1-fixtures/manifest.json${cacheBust}`)),
+      fetchJson(releaseAssetUrl(`python-core/source_manifest.json${cacheBust}`)),
+      loadBuiltinMelodies().catch(() => [] as BuiltinMelodyEntry[]),
+    ]).then(async ([fixturesUnknown, coreUnknown, melodiesUnknown]) => {
+      const fixtures = fixturesUnknown as FixtureManifest;
+      const core = coreUnknown as { engineVersion?: unknown };
+      if (!fixtures.fixtureSources || typeof core.engineVersion !== "string" || !/^[a-f0-9]{64}$/.test(core.engineVersion)) {
+        throw new Error("The packaged fixture or Python core manifest is invalid.");
+      }
+      await initializeAppPersistence();
+      const runtime = {
+        fixtureManifest: fixtures,
+        engineVersion: core.engineVersion,
+        melodies: Array.isArray(melodiesUnknown) ? melodiesUnknown as BuiltinMelodyEntry[] : [],
+      };
+      if (!disposed) {
+        setFixtureManifest(runtime.fixtureManifest);
+        setEngineVersion(runtime.engineVersion);
+      }
+      return runtime;
+    });
+    startupRuntimePromiseRef.current = runtimePromise;
     const bootstrap = async () => {
       try {
-        const cacheBust = import.meta.env.DEV ? `?t=${Date.now()}` : "";
-        const [fixturesUnknown, coreUnknown, melodiesUnknown] = await Promise.all([
-          fetchJson(releaseAssetUrl(`m1-fixtures/manifest.json${cacheBust}`)),
-          fetchJson(releaseAssetUrl(`python-core/source_manifest.json${cacheBust}`)),
-          loadBuiltinMelodies().catch(() => [] as BuiltinMelodyEntry[]),
-        ]);
-        const fixtures = fixturesUnknown as FixtureManifest;
-        const core = coreUnknown as { engineVersion?: unknown };
-        if (!fixtures.fixtureSources || typeof core.engineVersion !== "string" || !/^[a-f0-9]{64}$/.test(core.engineVersion)) {
-          throw new Error("The packaged fixture or Python core manifest is invalid.");
-        }
-        await initializeAppPersistence();
-        if (disposed) return;
-        setFixtureManifest(fixtures);
-        setEngineVersion(core.engineVersion);
+        const { engineVersion: coreEngineVersion, melodies } = await runtimePromise;
+        if (!isCurrent()) return;
 
         const urlParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
         const forceEmpty = urlParams?.has("empty");
 
         const snapshot = await loadSessionSnapshot();
+        if (!isCurrent()) return;
         if (!snapshot) {
           if (!forceEmpty) {
-            const melodies = Array.isArray(melodiesUnknown) ? (melodiesUnknown as BuiltinMelodyEntry[]) : [];
             const defaultEntry = melodies.find(
               (m) => m.title === DEFAULT_BUILTIN_MELODY_TITLE ||
                      m.title.toLowerCase().includes("гімн україни") ||
                      m.fileName.toLowerCase().includes("гімн україни")
             );
             if (defaultEntry) {
-              if (!disposed) setStatus({ kind: "loading", message: `Loading ${defaultEntry.title}…` });
-              const midiBytes = await loadBuiltinMelodyBytes(defaultEntry);
-              if (disposed) return;
+              setStatus({ kind: "loading", message: `Loading ${defaultEntry.title}…` });
+              const midiBytes = await loadBuiltinMelodyBytes(defaultEntry, operation.signal);
+              if (!isCurrent()) return;
               const sourceContext: ProjectSourceContext = {
                 fixtureId: `builtin-${defaultEntry.id}`,
                 keyStyle: getSettings().keyStyle,
@@ -218,14 +235,12 @@ export default function App() {
                 midiBytes,
                 projectId: crypto.randomUUID(),
                 revision: 0,
-                engineVersion: core.engineVersion,
+                engineVersion: coreEngineVersion,
                 sourceContext,
-                signal: new AbortController().signal,
-                onProgress: (msg) => {
-                  if (!disposed) setStatus({ kind: "calculating", message: msg });
-                },
+                signal: operation.signal,
+                onProgress: (msg) => { if (isCurrent()) setStatus({ kind: "calculating", message: msg }); },
               });
-              if (disposed) {
+              if (!isCurrent()) {
                 analysisWorker.terminate();
                 return;
               }
@@ -238,20 +253,25 @@ export default function App() {
                 unsaved: false,
                 analysisWorker,
               };
+              activeRef.current = initialSession;
               setActive(initialSession);
               setSessionProfile(result.profile);
+              setViewMode("performance");
+              dirtyRef.current = false;
+              setDirty(false);
               window.__m1LastResult = result;
               window.__m1LastError = null;
-              if (!disposed) setStatus({ kind: "saved", message: `Loaded ${defaultEntry.title}.` });
+              setStatus({ kind: "saved", message: `Loaded ${defaultEntry.title}.` });
               return;
             }
           }
-          if (!disposed) setStatus({ kind: "idle", message: "Open a MIDI file, a saved project, or the demo song to begin." });
+          if (isCurrent()) setStatus({ kind: "idle", message: "Open a MIDI file, a saved project, or the demo song to begin." });
           return;
         }
-        const assessed = await assessSessionSnapshot(snapshot, core.engineVersion);
+        const assessed = await assessSessionSnapshot(snapshot, coreEngineVersion);
+        if (!isCurrent()) return;
         if (!snapshot.result || !snapshot.rawMidiBytes || (assessed.status !== "compatible" && assessed.status !== "recompute-required")) {
-          if (!disposed) setStatus({ kind: "error", message: `Saved session could not be restored: ${assessed.reasons.join("; ") || assessed.status}. The saved data was retained.` });
+          setStatus({ kind: "error", message: `Saved session could not be restored: ${assessed.reasons.join("; ") || assessed.status}. The saved data was retained.` });
           return;
         }
         const snapshotDocument = snapshot.document ?? snapshot.result.document!;
@@ -261,12 +281,12 @@ export default function App() {
             : null
         );
         if (!restoredSourceContext) {
-          if (!disposed) setStatus({ kind: "error", message: "The saved session has no verified source namespace and keyboard geometry. It was retained; open the source again or choose geometry in the Projects panel." });
+          setStatus({ kind: "error", message: "The saved session has no verified source namespace and keyboard geometry. It was retained; open the source again or choose geometry in the Projects panel." });
           return;
         }
         const savedProject = snapshotToSavedProject(snapshot, restoredSourceContext);
-        const rebuilt = await analyzeSavedProjectCandidate(savedProject, core.engineVersion, new AbortController().signal, undefined, restoredSourceContext);
-        if (disposed) { rebuilt.analysisWorker.terminate(); return; }
+        const rebuilt = await analyzeSavedProjectCandidate(savedProject, coreEngineVersion, operation.signal, undefined, restoredSourceContext);
+        if (!isCurrent()) { rebuilt.analysisWorker.terminate(); return; }
         const restored: ActiveSession = {
           result: rebuilt.result,
           rawMidiBytes: rebuilt.session.rawMidiBytes!,
@@ -277,26 +297,32 @@ export default function App() {
           unsaved: false,
           analysisWorker: rebuilt.analysisWorker,
         };
+        activeRef.current = restored;
         setActive(restored);
         setViewMode(normalizeStudioView(snapshot.viewMode));
+        setSessionProfile(rebuilt.result.profile);
+        dirtyRef.current = false;
         setDirty(false);
         window.__m1LastResult = rebuilt.result;
         window.__m1LastError = null;
         setStatus({ kind: "saved", message: assessed.status === "compatible" ? "Previous project restored and checked against its original MIDI." : "Previous edits restored; rebuilding plans with the current engine." });
       } catch (error) {
-        if (!disposed) {
+        if (isCurrent()) {
           const message = errorMessage(error);
           setManifestError(message);
           setStatus({ kind: "error", message: `Studio startup failed: ${message}` });
         }
+      } finally {
+        lifecycle.finish(operation);
       }
     };
     void bootstrap();
     return () => {
       disposed = true;
-      candidateAbortRef.current?.abort();
+      lifecycle.cancel();
       preparedRef.current?.analysisWorker.terminate();
-      candidateGenerationRef.current += 1;
+      preparedRef.current = null;
+      preparedGenerationRef.current = null;
     };
   }, []);
 
@@ -313,6 +339,7 @@ export default function App() {
 
   const commitCandidate = useCallback((candidate: ActiveSession) => {
     preparedRef.current = null;
+    preparedGenerationRef.current = null;
     activeRef.current = candidate;
     setActive(candidate);
     setSessionProfile(candidate.result.profile);
@@ -332,32 +359,38 @@ export default function App() {
 
   const runCandidate = useCallback(async (
     description: string,
-    prepare: (signal: AbortSignal, progress: (message: string) => void) => Promise<ActiveSession>,
+    prepare: (signal: AbortSignal, progress: (message: string) => void, engineVersion: string) => Promise<ActiveSession>,
+    operation: SessionOperation = operationLifecycleRef.current.begin("open"),
   ) => {
-    candidateAbortRef.current?.abort();
+    const lifecycle = operationLifecycleRef.current;
+    if (!lifecycle.isCurrent(operation)) return;
     preparedRef.current?.analysisWorker.terminate();
     preparedRef.current = null;
-    const generation = ++candidateGenerationRef.current;
-    const abort = new AbortController();
-    candidateAbortRef.current = abort;
+    preparedGenerationRef.current = null;
+    const { signal } = operation;
     setBusy(true);
     setPendingCandidate(null);
     setConfirmReplace(false);
     setStatus({ kind: "calculating", message: `Validating ${description}…` });
     window.__m1LastError = null;
     try {
-      const candidate = await prepare(abort.signal, (message) => {
-        if (generation === candidateGenerationRef.current) setStatus({ kind: "calculating", message });
-      });
-      if (abort.signal.aborted || generation !== candidateGenerationRef.current) {candidate.analysisWorker.terminate(); return;}
+      const runtimePromise = startupRuntimePromiseRef.current;
+      if (!runtimePromise) throw new Error("The studio startup manifest is not ready.");
+      const runtime = await runtimePromise;
+      if (!lifecycle.isCurrent(operation)) return;
+      const candidate = await prepare(signal, (message) => {
+        if (lifecycle.isCurrent(operation)) setStatus({ kind: "calculating", message });
+      }, runtime.engineVersion);
+      if (!lifecycle.isCurrent(operation)) {candidate.analysisWorker.terminate(); return;}
       if (dirtyRef.current && activeRef.current) {
         preparedRef.current = candidate;
+        preparedGenerationRef.current = operation.generation;
         setPendingCandidate(candidate);
         setConfirmReplace(true);
         setStatus({ kind: "modified", message: "The new project is ready. Save or discard your unsaved changes before switching." });
       } else commitCandidate(candidate);
     } catch (error) {
-      if (abort.signal.aborted || generation !== candidateGenerationRef.current) return;
+      if (!lifecycle.isCurrent(operation)) return;
       if (error instanceof InvalidFixtureCandidateError) {
         window.__m1LastResult = error.result;
         window.__m1LastError = null;
@@ -372,20 +405,17 @@ export default function App() {
       setConfirmReplace(false);
       setStatus({ kind: "error", message: `${description} was not opened: ${message}` });
     } finally {
-      if (generation === candidateGenerationRef.current) {
-        candidateAbortRef.current = null;
+      if (lifecycle.isCurrent(operation)) {
+        lifecycle.finish(operation);
         setBusy(false);
       }
     }
   }, [commitCandidate]);
 
   const openMidiFile = useCallback(async (file: File) => {
-    const validated = validateMidiFile(file);
-    if (!validated.valid) {
-      setStatus({ kind: "error", message: validated.error });
-      return;
-    }
-    await runCandidate(file.name, async (signal, progress) => {
+    await runCandidate(file.name, async (signal, progress, runtimeEngineVersion) => {
+      const validated = validateMidiFile(file);
+      if (!validated.valid) throw new Error(validated.error);
       progress(`Reading ${file.name}…`);
       const midiBytes = await file.arrayBuffer();
       if (signal.aborted) throw new DOMException("Open canceled", "AbortError");
@@ -394,7 +424,7 @@ export default function App() {
         midiBytes,
         projectId: crypto.randomUUID(),
         revision: 0,
-        engineVersion,
+        engineVersion: runtimeEngineVersion,
         sourceContext,
         signal,
         onProgress: progress,
@@ -409,33 +439,34 @@ export default function App() {
         analysisWorker,
       };
     });
-  }, [engineVersion, runCandidate]);
+  }, [runCandidate]);
 
   const openBuiltinMelody = useCallback(async (entry: BuiltinMelodyEntry) => {
-    if (!engineVersion) return;
     setBuiltinMelodiesOpen(false);
-    await runCandidate(entry.title, async (signal, progress) => {
+    await runCandidate(entry.title, async (signal, progress, runtimeEngineVersion) => {
       progress(`Loading ${entry.title}…`);
       const midiBytes = await loadBuiltinMelodyBytes(entry, signal);
       const sourceContext: ProjectSourceContext = {
         fixtureId: `builtin-${entry.id}`, keyStyle: getSettings().keyStyle,
       };
       const { result, analysisWorker } = await prepareSourceCandidate({
-        midiBytes, projectId: crypto.randomUUID(), revision: 0, engineVersion,
+        midiBytes, projectId: crypto.randomUUID(), revision: 0, engineVersion: runtimeEngineVersion,
         sourceContext, signal, onProgress: progress,
       });
       return { result, rawMidiBytes: midiBytes, sourceContext, session: null,
         projectName: entry.title, unsaved: true, analysisWorker };
     });
-  }, [engineVersion, runCandidate]);
+  }, [runCandidate]);
 
   const openFixture = useCallback(async (fixtureId: string) => {
+    const operation = operationLifecycleRef.current.begin("open");
     const fixture = fixtureManifest?.fixtureSources[fixtureId];
     if (!fixture || !engineVersion) {
       setStatus({ kind: "error", message: "The selected demo fixture is not available." });
+      operationLifecycleRef.current.finish(operation);
       return;
     }
-    await runCandidate(fixtureId, async (signal, progress) => {
+    await runCandidate(fixtureId, async (signal, progress, runtimeEngineVersion) => {
       progress(`Loading ${fixtureId}…`);
       const response = await fetch(releaseAssetUrl(`m1-fixtures/${fixture.fixturePath}`), { signal });
       if (!response.ok) throw new Error(`Could not load demo MIDI (HTTP ${response.status}).`);
@@ -446,22 +477,22 @@ export default function App() {
         midiBytes,
         projectId: crypto.randomUUID(),
         revision: 0,
-        engineVersion,
+        engineVersion: runtimeEngineVersion,
         sourceContext,
         signal,
         onProgress: progress,
         allowInvalidResult: true,
-        onAnalysisResult: (candidateResult) => { window.__m1LastResult = candidateResult; },
       });
       if (result.status === "invalid") {analysisWorker.terminate(); throw new InvalidFixtureCandidateError(result);}
       return { result, rawMidiBytes: midiBytes, sourceContext, session: null, projectName: fixtureId, unsaved: true, analysisWorker };
-    });
+    }, operation);
   }, [engineVersion, fixtureManifest, runCandidate]);
 
   const cancelCandidate = useCallback(() => {
-    candidateAbortRef.current?.abort();
-    candidateAbortRef.current = null;
-    candidateGenerationRef.current += 1;
+    operationLifecycleRef.current.cancel();
+    preparedRef.current?.analysisWorker.terminate();
+    preparedRef.current = null;
+    preparedGenerationRef.current = null;
     setBusy(false);
     setPendingCandidate(null);
     setConfirmReplace(false);
@@ -469,11 +500,14 @@ export default function App() {
     setStatus({ kind: dirtyRef.current ? "modified" : activeRef.current ? "saved" : "idle", message: activeRef.current ? "Open operation canceled. The current project remains available." : "Open operation canceled." });
   }, []);
 
-  const runSavedProject = useCallback(async (project: SavedProject, sourceContextOverride?: ProjectSourceContext) => {
-    if (!engineVersion) return;
-    await runCandidate("saved project", async (signal, progress) => {
+  const runSavedProject = useCallback(async (
+    project: SavedProject,
+    sourceContextOverride?: ProjectSourceContext,
+    operation?: SessionOperation,
+  ) => {
+    await runCandidate("saved project", async (signal, progress, runtimeEngineVersion) => {
       progress("Loading saved project…");
-      const rebuilt = await analyzeSavedProjectCandidate(project, engineVersion, signal, progress, sourceContextOverride);
+      const rebuilt = await analyzeSavedProjectCandidate(project, runtimeEngineVersion, signal, progress, sourceContextOverride);
       return {
         result: rebuilt.result,
         rawMidiBytes: rebuilt.session.rawMidiBytes!,
@@ -484,12 +518,14 @@ export default function App() {
         unsaved: false,
         analysisWorker: rebuilt.analysisWorker,
       };
-    });
-  }, [engineVersion, runCandidate]);
+    }, operation);
+  }, [runCandidate]);
 
   const openSavedProject = useCallback(async (projectId: string) => {
+    const operation = operationLifecycleRef.current.begin("open");
     try {
       const project = await getProject(projectId);
+      if (!operationLifecycleRef.current.isCurrent(operation)) return;
       if (!project) throw new Error("That saved project no longer exists in this browser.");
       if (!project.sourceContext) {
         const fixtureId = inferProjectFixtureId(project.document);
@@ -497,18 +533,27 @@ export default function App() {
         setLegacyResolution({ kind: "saved", project, fixtureId });
         setLegacyKeyStyle(null);
         setStatus({ kind: "modified", message: "This older project does not record keyboard geometry. Choose its original geometry to continue." });
+        operationLifecycleRef.current.finish(operation);
         return;
       }
-      await runSavedProject(project);
+      await runSavedProject(project, undefined, operation);
     } catch (error) {
-      setStatus({ kind: "error", message: "Saved project was not opened: " + errorMessage(error) });
+      if (operationLifecycleRef.current.isCurrent(operation)) {
+        setStatus({ kind: "error", message: "Saved project was not opened: " + errorMessage(error) });
+        operationLifecycleRef.current.finish(operation);
+      }
     }
   }, [runSavedProject]);
 
-  const runOpenPackageFile = useCallback(async (file: File, legacySourceContext?: ProjectSourceContext) => {
-    await runCandidate(file.name, async (signal, progress) => {
+  const runOpenPackageFile = useCallback(async (
+    file: File,
+    legacySourceContext?: ProjectSourceContext,
+    operation?: SessionOperation,
+  ) => {
+    await runCandidate(file.name, async (signal, progress, runtimeEngineVersion) => {
       progress(`Validating project package ${file.name}…`);
       const pkg = await importProjectPackageFile(file, legacySourceContext);
+      if (signal.aborted) throw new DOMException("Project open canceled", "AbortError");
       const project = projectPackageToSavedProject(pkg);
       const existing = await getProject(project.projectId);
       if (existing) {
@@ -521,7 +566,7 @@ export default function App() {
         project.performancePlan = project.performancePlan ? { ...project.performancePlan, projectId: newProjectId } : project.performancePlan;
         project.motionPlan = project.motionPlan ? { ...project.motionPlan, projectId: newProjectId } : project.motionPlan;
       }
-      const rebuilt = await analyzeSavedProjectCandidate(project, engineVersion, signal, progress, legacySourceContext);
+      const rebuilt = await analyzeSavedProjectCandidate(project, runtimeEngineVersion, signal, progress, legacySourceContext);
       return {
         result: rebuilt.result,
         rawMidiBytes: rebuilt.session.rawMidiBytes!,
@@ -532,22 +577,28 @@ export default function App() {
         unsaved: true,
         analysisWorker: rebuilt.analysisWorker,
       };
-    });
-  }, [engineVersion, runCandidate]);
+    }, operation);
+  }, [runCandidate]);
 
   const openPackageFile = useCallback(async (file: File) => {
+    const operation = operationLifecycleRef.current.begin("open");
     try {
       const fixtureId = await inspectLegacyProjectPackageFile(file);
+      if (!operationLifecycleRef.current.isCurrent(operation)) return;
       if (fixtureId !== undefined) {
         if (!fixtureId) throw new Error("Legacy project source IDs are ambiguous; source context cannot be recovered safely.");
         setLegacyResolution({ kind: "package", file, fixtureId });
         setLegacyKeyStyle(null);
         setStatus({ kind: "modified", message: "This older package does not record keyboard geometry. Choose its original geometry before opening it." });
+        operationLifecycleRef.current.finish(operation);
         return;
       }
-      await runOpenPackageFile(file);
+      await runOpenPackageFile(file, undefined, operation);
     } catch (error) {
-      setStatus({ kind: "error", message: "Project package was not opened: " + errorMessage(error) });
+      if (operationLifecycleRef.current.isCurrent(operation)) {
+        setStatus({ kind: "error", message: "Project package was not opened: " + errorMessage(error) });
+        operationLifecycleRef.current.finish(operation);
+      }
     }
   }, [runOpenPackageFile]);
 
@@ -563,10 +614,13 @@ export default function App() {
 
   const chooseReplace = useCallback(async (choice: "save" | "discard" | "cancel") => {
     const candidate = pendingCandidate;
-    if (!candidate) return;
+    const candidateGeneration = preparedGenerationRef.current;
+    const lifecycle = operationLifecycleRef.current;
+    if (!candidate || candidateGeneration === null || candidateGeneration !== lifecycle.getGeneration() || preparedRef.current !== candidate) return;
     if (choice === "cancel") {
       candidate.analysisWorker.terminate();
       preparedRef.current = null;
+      preparedGenerationRef.current = null;
       setPendingCandidate(null);
       setConfirmReplace(false);
       setStatus({ kind: "modified", message: "The current project remains open with its unsaved changes." });
@@ -581,6 +635,7 @@ export default function App() {
       setStatus({ kind: "saving", message: "Saving the current project before switching…" });
       try {
         const saved = await save.save();
+        if (candidateGeneration !== lifecycle.getGeneration() || preparedRef.current !== candidate) return;
         if (saveHandlerRef.current !== save || !isCommittedSaveCurrent(save, saved)) {
           setStatus({ kind: "error", message: saved.status === "committed"
             ? "New changes were made while saving. The current project remains open."
@@ -588,6 +643,7 @@ export default function App() {
           return;
         }
       } catch (error) {
+        if (candidateGeneration !== lifecycle.getGeneration() || preparedRef.current !== candidate) return;
         setStatus({ kind: "error", message: `Save failed: ${errorMessage(error)}` });
         return;
       }
@@ -700,7 +756,7 @@ export default function App() {
           {dict.dialogs.updateReady}
         </button>
       )}
-      <StudioReleaseDetails description="0.1.0-dev.13 preview: multi-language UI localization (EN/CS/UK/DE/ES/IT), unified 12px header layout, icon-based fingering actions, and editor undo replan stabilization." />
+      <StudioReleaseDetails description="0.1.0-dev.22 preview: Practice panel with A/B repeat across playback and PlayAlong, plus named time bookmarks saved, recoverable, and JSON-bound to the source SHA; menu/library fixes and the 3D stage are retained." />
     </div>
   );
 
@@ -803,6 +859,7 @@ function snapshotToSavedProject(snapshot: SessionSnapshot, sourceContext: Projec
     profile,
     resources: [snapshot.sourceDescriptor ?? result.resource],
     sourceContext,
+    ...(snapshot.practiceState ? { practiceState: snapshot.practiceState } : {}),
   };
 }
 

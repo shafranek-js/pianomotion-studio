@@ -8,7 +8,7 @@ test("selection does not calculate; edits preserve IDs/history and exported MIDI
   test.setTimeout(240_000);
   const errors:string[]=[];page.on("pageerror",e=>errors.push(e.message));
   let workers=0;page.on("worker",worker=>{if(worker.url().includes("midi-analysis-ts.worker") || worker.url().includes("midi-analysis.worker")) workers++;});
-  const initial=await loadStudioSong(page);
+  const initial=await loadStudioSong(page, { output: "synth", dimension: "2d" });
   await page.getByRole("button",{name:"Fingering",exact:true}).click();
   const canvas=studioCanvas(page,"2d");
   await expect(canvas).toBeVisible();
@@ -50,7 +50,7 @@ test("selection does not calculate; edits preserve IDs/history and exported MIDI
 
 test("latest profile/equal geometry survive package bytes and session recovery",async({page})=>{
   test.setTimeout(240_000);
-  const initial=await loadStudioSong(page);
+  const initial=await loadStudioSong(page, { output: "synth", dimension: "2d" });
   await page.getByRole("button",{name:"Open pianist settings",exact:true}).click();
   await page.locator("#active-profile-select").selectOption("virtuoso");
   await page.locator("#active-profile-select").selectOption("small-hands");
@@ -88,7 +88,7 @@ test("latest profile/equal geometry survive package bytes and session recovery",
 
 test("autosaved pending intent is recovered and replanned after reload",async({page})=>{
   test.setTimeout(240_000);
-  const initial=await loadStudioSong(page);
+  const initial=await loadStudioSong(page, { output: "synth", dimension: "2d" });
   // Delay sending a real replan, rather than relying on a second manifest fetch
   // which the persistent, already initialized Worker correctly no longer needs.
   await page.evaluate(()=>{

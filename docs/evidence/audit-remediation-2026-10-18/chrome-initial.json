@@ -1,0 +1,564 @@
+{
+  "config": {
+    "argv": [
+      "C:\\nvm4w\\nodejs\\node.exe",
+      "C:\\Projects\\pianomotion-studio\\node_modules\\@playwright\\test\\cli.js",
+      "test",
+      "--config",
+      "playwright.audit.config.ts",
+      "tests/browser/audit-session-recovery.spec.ts",
+      "tests/browser/audit-playalong-audio.spec.ts",
+      "tests/browser/audit-waveform.spec.ts",
+      "tests/browser/update-save-barrier.spec.ts",
+      "tests/browser/play-along.spec.ts",
+      "tests/browser/stabilization.spec.ts",
+      "--grep-invert",
+      "companion notes keep|a delayed default melody"
+    ],
+    "configFile": "C:\\Projects\\pianomotion-studio\\scratch\\audit-verification-20261018-1918\\playwright.audit.config.ts",
+    "rootDir": "C:/Projects/pianomotion-studio/scratch/audit-verification-20261018-1918/tests/browser",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "C:/Projects/pianomotion-studio/test-results/audit-snapshot-chrome",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "",
+        "name": "",
+        "testDir": "C:/Projects/pianomotion-studio/scratch/audit-verification-20261018-1918/tests/browser",
+        "testIgnore": [
+          "**/offline-pwa.spec.ts",
+          "**/pwa-deployment-m8.spec.ts",
+          "**/media-export.spec.ts",
+          "**/video-export-m7.spec.ts",
+          "**/parity-m1.spec.ts",
+          "**/native-engine.spec.ts",
+          "**/native-parity.spec.ts",
+          "**/motion-streaming.spec.ts",
+          "**/motion-playback.spec.ts",
+          "**/audio-dsp.spec.ts",
+          "**/audio-output.spec.ts",
+          "**/soundfont-stereo.spec.ts",
+          "**/soundfont-sf3.spec.ts",
+          "**/builtin-soundfont-offline.spec.ts",
+          "**/soundfont-storage.spec.ts",
+          "**/soundfont-large.spec.ts",
+          "**/soundfont-user-banks.spec.ts",
+          "**/soundfont-offline.spec.ts",
+          "**/builtin-melodies-offline.spec.ts"
+        ],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 90000
+      }
+    ],
+    "filteredProjects": [
+      {
+        "grep": {},
+        "grepInvert": null,
+        "outputDir": "C:\\Projects\\pianomotion-studio\\test-results\\audit-snapshot-chrome",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "name": "",
+        "testDir": "C:\\Projects\\pianomotion-studio\\scratch\\audit-verification-20261018-1918\\tests\\browser",
+        "snapshotDir": "C:\\Projects\\pianomotion-studio\\scratch\\audit-verification-20261018-1918\\tests\\browser",
+        "testIgnore": [
+          "**/offline-pwa.spec.ts",
+          "**/pwa-deployment-m8.spec.ts",
+          "**/media-export.spec.ts",
+          "**/video-export-m7.spec.ts",
+          "**/parity-m1.spec.ts",
+          "**/native-engine.spec.ts",
+          "**/native-parity.spec.ts",
+          "**/motion-streaming.spec.ts",
+          "**/motion-playback.spec.ts",
+          "**/audio-dsp.spec.ts",
+          "**/audio-output.spec.ts",
+          "**/soundfont-stereo.spec.ts",
+          "**/soundfont-sf3.spec.ts",
+          "**/builtin-soundfont-offline.spec.ts",
+          "**/soundfont-storage.spec.ts",
+          "**/soundfont-large.spec.ts",
+          "**/soundfont-user-banks.spec.ts",
+          "**/soundfont-offline.spec.ts",
+          "**/builtin-melodies-offline.spec.ts"
+        ],
+        "testMatch": "**/*.@(spec|test).?(c|m)[jt]s?(x)",
+        "timeout": 90000,
+        "use": {
+          "baseURL": "http://127.0.0.1:4197",
+          "browserName": "chromium",
+          "channel": "chrome",
+          "headless": true
+        },
+        "dependencies": [],
+        "ignoreSnapshots": false,
+        "__projectId": ""
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "list",
+        null
+      ],
+      [
+        "json",
+        {
+          "outputFile": "C:/Projects/pianomotion-studio/test-results/reports/audit-snapshot-chrome.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "default",
+    "updateSourceMethod": "patch",
+    "version": "1.64.0",
+    "workers": 1,
+    "webServer": {
+      "command": "node.exe C:/Projects/pianomotion-studio/node_modules/vite/bin/vite.js --config apps/client/vite.audit.config.ts --host 127.0.0.1 --port 4197 --strictPort",
+      "url": "http://127.0.0.1:4197",
+      "reuseExistingServer": false,
+      "timeout": 60000
+    }
+  },
+  "suites": [
+    {
+      "title": "audit-session-recovery.spec.ts",
+      "file": "audit-session-recovery.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "an explicit open supersedes a saved-session restore even after its real Worker finishes",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 240000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 11785,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-18T17:25:49.588Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "083566c2530bf8d46f40-71f0fec28a31e7199874",
+          "file": "audit-session-recovery.spec.ts",
+          "line": 121,
+          "column": 1
+        },
+        {
+          "title": "explicit Save restores a named MIDI, camera, view mode, and manual fingering intent",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 240000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 5403,
+                  "error": {
+                    "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoMatchObject\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m\n\n\u001b[32m- Expected  - 1\u001b[39m\n\u001b[31m+ Received  + 1\u001b[39m\n\n\u001b[2m  Object {\u001b[22m\n\u001b[2m    \"projectName\": \"Named Etude.mid\",\u001b[22m\n\u001b[2m    \"sceneView\": Object {\u001b[22m\n\u001b[2m      \"cameraPreset\": \"overhead\",\u001b[22m\n\u001b[32m-     \"dimension\": \"3d\",\u001b[39m\n\u001b[31m+     \"dimension\": \"2d\",\u001b[39m\n\u001b[2m    },\u001b[22m\n\u001b[2m    \"viewMode\": \"editor\",\u001b[22m\n\u001b[2m  }\u001b[22m",
+                    "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoMatchObject\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m\n\n\u001b[32m- Expected  - 1\u001b[39m\n\u001b[31m+ Received  + 1\u001b[39m\n\n\u001b[2m  Object {\u001b[22m\n\u001b[2m    \"projectName\": \"Named Etude.mid\",\u001b[22m\n\u001b[2m    \"sceneView\": Object {\u001b[22m\n\u001b[2m      \"cameraPreset\": \"overhead\",\u001b[22m\n\u001b[32m-     \"dimension\": \"3d\",\u001b[39m\n\u001b[31m+     \"dimension\": \"2d\",\u001b[39m\n\u001b[2m    },\u001b[22m\n\u001b[2m    \"viewMode\": \"editor\",\u001b[22m\n\u001b[2m  }\u001b[22m\n    at C:\\Projects\\pianomotion-studio\\scratch\\audit-verification-20261018-1918\\tests\\browser\\audit-session-recovery.spec.ts:215:25",
+                    "location": {
+                      "file": "C:\\Projects\\pianomotion-studio\\scratch\\audit-verification-20261018-1918\\tests\\browser\\audit-session-recovery.spec.ts",
+                      "column": 25,
+                      "line": 215
+                    },
+                    "snippet": "  213 |     } finally { db.close(); }\n  214 |   });\n> 215 |   expect(savedRecovery).toMatchObject({\n      |                         ^\n  216 |     projectName: \"Named Etude.mid\",\n  217 |     viewMode: \"editor\",\n  218 |     sceneView: { dimension: \"3d\", cameraPreset: \"overhead\" },"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "C:\\Projects\\pianomotion-studio\\scratch\\audit-verification-20261018-1918\\tests\\browser\\audit-session-recovery.spec.ts",
+                        "column": 25,
+                        "line": 215
+                      },
+                      "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoMatchObject\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m\n\n\u001b[32m- Expected  - 1\u001b[39m\n\u001b[31m+ Received  + 1\u001b[39m\n\n\u001b[2m  Object {\u001b[22m\n\u001b[2m    \"projectName\": \"Named Etude.mid\",\u001b[22m\n\u001b[2m    \"sceneView\": Object {\u001b[22m\n\u001b[2m      \"cameraPreset\": \"overhead\",\u001b[22m\n\u001b[32m-     \"dimension\": \"3d\",\u001b[39m\n\u001b[31m+     \"dimension\": \"2d\",\u001b[39m\n\u001b[2m    },\u001b[22m\n\u001b[2m    \"viewMode\": \"editor\",\u001b[22m\n\u001b[2m  }\u001b[22m\n\n  213 |     } finally { db.close(); }\n  214 |   });\n> 215 |   expect(savedRecovery).toMatchObject({\n      |                         ^\n  216 |     projectName: \"Named Etude.mid\",\n  217 |     viewMode: \"editor\",\n  218 |     sceneView: { dimension: \"3d\", cameraPreset: \"overhead\" },\n    at C:\\Projects\\pianomotion-studio\\scratch\\audit-verification-20261018-1918\\tests\\browser\\audit-session-recovery.spec.ts:215:25"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-18T17:26:05.349Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "C:\\Projects\\pianomotion-studio\\test-results\\audit-snapshot-chrome\\audit-session-recovery-exp-87bfe-and-manual-fingering-intent\\error-context.md"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "C:\\Projects\\pianomotion-studio\\scratch\\audit-verification-20261018-1918\\tests\\browser\\audit-session-recovery.spec.ts",
+                    "column": 25,
+                    "line": 215
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "083566c2530bf8d46f40-3fe011bf725642696b27",
+          "file": "audit-session-recovery.spec.ts",
+          "line": 182,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "audit-waveform.spec.ts",
+      "file": "audit-waveform.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "WaveformCanvas keeps the selected recording peak aligned at seek across playback speeds",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 3268,
+                  "error": {
+                    "message": "Error: page.evaluate: TypeError: createRoot is not a function\n    at eval (eval at evaluate (:370:30), <anonymous>:31:18)\n    at async <anonymous>:396:30",
+                    "stack": "Error: page.evaluate: TypeError: createRoot is not a function\n    at eval (eval at evaluate (:370:30), <anonymous>:31:18)\n    at async <anonymous>:396:30\n    at eval (eval at evaluate (:370:30), <anonymous>:31:18)\n    at async <anonymous>:396:30\n    at C:\\Projects\\pianomotion-studio\\scratch\\audit-verification-20261018-1918\\tests\\browser\\audit-waveform.spec.ts:20:30",
+                    "location": {
+                      "file": "eval at evaluate (:370:30), <anonymous>",
+                      "column": 18,
+                      "line": 31
+                    }
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "eval at evaluate (:370:30), <anonymous>",
+                        "column": 18,
+                        "line": 31
+                      },
+                      "message": "Error: page.evaluate: TypeError: createRoot is not a function\n    at eval (eval at evaluate (:370:30), <anonymous>:31:18)\n    at async <anonymous>:396:30\n    at eval (eval at evaluate (:370:30), <anonymous>:31:18)\n    at async <anonymous>:396:30\n    at C:\\Projects\\pianomotion-studio\\scratch\\audit-verification-20261018-1918\\tests\\browser\\audit-waveform.spec.ts:20:30"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-18T17:26:17.879Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "C:\\Projects\\pianomotion-studio\\test-results\\audit-snapshot-chrome\\audit-waveform-WaveformCan-ae334-seek-across-playback-speeds\\error-context.md"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "eval at evaluate (:370:30), <anonymous>",
+                    "column": 18,
+                    "line": 31
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "3cf8da949f29332d9f79-340cf254a00942ea8258",
+          "file": "audit-waveform.spec.ts",
+          "line": 14,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "play-along.spec.ts",
+      "file": "play-along.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "Play along mode activates, provides step-by-step chord practice, and handles hand filtering and navigation",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 2,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 10829,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-18T17:26:35.793Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "f29295e7781c45573626-ead979e21db5f6a322f2",
+          "file": "play-along.spec.ts",
+          "line": 4,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "stabilization.spec.ts",
+      "file": "stabilization.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "selection does not calculate; edits preserve IDs/history and exported MIDI markers",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 240000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 2,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 15644,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-18T17:26:48.449Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a2318d7f8ee162e34ba8-2e463ed0841c5c722f11",
+          "file": "stabilization.spec.ts",
+          "line": 7,
+          "column": 1
+        },
+        {
+          "title": "latest profile/equal geometry survive package bytes and session recovery",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 240000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 2,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 9193,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-18T17:27:04.115Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a2318d7f8ee162e34ba8-8dcca296c46982126551",
+          "file": "stabilization.spec.ts",
+          "line": 51,
+          "column": 1
+        },
+        {
+          "title": "autosaved pending intent is recovered and replanned after reload",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 240000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 2,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 7679,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-18T17:27:13.328Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a2318d7f8ee162e34ba8-ecf84aa04e110e3f83a0",
+          "file": "stabilization.spec.ts",
+          "line": 89,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "update-save-barrier.spec.ts",
+      "file": "update-save-barrier.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "update never activates after real project transaction abort; edited session survives",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 180000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 2,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 5539,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-18T17:27:21.056Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "7f1d303b71d40ed094d5-9c11cb837b503fc8a137",
+          "file": "update-save-barrier.spec.ts",
+          "line": 4,
+          "column": 1
+        },
+        {
+          "title": "edits made during worker activation prevent the final reload",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 180000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 2,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3850,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-18T17:27:26.610Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "7f1d303b71d40ed094d5-e0c5b36f5e51b67ca4b7",
+          "file": "update-save-barrier.spec.ts",
+          "line": 41,
+          "column": 1
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-10-18T17:25:44.251Z",
+    "duration": 138605.537,
+    "expected": 7,
+    "skipped": 0,
+    "unexpected": 2,
+    "flaky": 0
+  }
+}

@@ -1,0 +1,326 @@
+{
+  "baseCommit": "4e51283f3611cce66f58342a62099b50011fc2cf",
+  "browser": "Edge 155.0.4283.45 on Windows",
+  "stats": {
+    "startTime": "2026-10-18T11:45:58.607Z",
+    "duration": 194353.251,
+    "expected": 26,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  },
+  "tests": [
+    {
+      "file": "bootstrap.spec.ts",
+      "title": "shows the honest browser bootstrap state with default anthem melody",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 11811,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "file": "bootstrap.spec.ts",
+      "title": "shows empty workspace when requested via ?empty",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 3017,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "file": "builtin-melodies.spec.ts",
+      "title": "built-in melody opens, plays, edits, saves and restores with exact source identities",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 19150,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "file": "builtin-melodies.spec.ts",
+      "title": "mobile catalog handles search, Escape, retry and damaged assets without replacing the open project",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 3070,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "file": "builtin-melodies.spec.ts",
+      "title": "the largest built-in MIDI opens through the real analysis Worker",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 13664,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "file": "diagnostic-log.spec.ts",
+      "title": "local diagnostic history survives reload and downloads from an empty studio",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 1556,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "file": "editor-commands.spec.ts",
+      "title": "Help works before opening a project and restores focus after shortcuts",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 1095,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "file": "editor-commands.spec.ts",
+      "title": "Auto-advance confirms fingers without fictitious edits and menus share the editor history",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 11459,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "file": "editor-m4.spec.ts",
+      "title": "unified fingering scene retains history, contextual tools and live playback",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 7059,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "file": "play-along.spec.ts",
+      "title": "Play along mode activates, provides step-by-step chord practice, and handles hand filtering and navigation",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 3906,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "file": "player-m2.spec.ts",
+      "title": "studio playback, geometry replan and committed project persistence",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 4723,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "file": "profiles-m5.spec.ts",
+      "title": "complete profiles & settings journey: profile switching, anatomy editing, settings modal, and autosave recovery",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 6140,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "file": "skins-audio-m6.spec.ts",
+      "title": "customizes skin styles, toggles shadow, uploads audio track, and renders waveform",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 6225,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "file": "stabilization.spec.ts",
+      "title": "selection does not calculate; edits preserve IDs/history and exported MIDI markers",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 7824,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "file": "stabilization.spec.ts",
+      "title": "latest profile/equal geometry survive package bytes and session recovery",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 7009,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "file": "stabilization.spec.ts",
+      "title": "autosaved pending intent is recovered and replanned after reload",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 4682,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "file": "storage-security.spec.ts",
+      "title": "Security limits and sanitization reject invalid and oversized payloads safely",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 877,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "file": "studio-profile-import.spec.ts",
+      "title": "a package-only profile can be edited, duplicated, and reopened from saved projects",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 10090,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "file": "studio-workspace.spec.ts",
+      "title": "six responsive sizes preserve one scene, all keys, contextual tools and panel focus",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 18057,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "file": "studio-workspace.spec.ts",
+      "title": "2D and 3D canvases survive the dimension, Fingering, and Performance transitions",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 7128,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "file": "studio-workspace.spec.ts",
+      "title": "painted note editing survives commit, portable package and fresh browser context",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 8920,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "file": "studio-workspace.spec.ts",
+      "title": "invalid packages retain the active scene and committed project",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 3153,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "file": "studio-workspace.spec.ts",
+      "title": "an IndexedDB abort after request success never announces a committed save",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 2685,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "file": "studio-workspace.spec.ts",
+      "title": "legacy geometry is explicit, engine changes replan, and failed candidate replan retains the scene",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 7601,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "file": "update-save-barrier.spec.ts",
+      "title": "update never activates after real project transaction abort; edited session survives",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 3648,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "file": "update-save-barrier.spec.ts",
+      "title": "edits made during worker activation prevent the final reload",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 2711,
+          "errors": []
+        }
+      ]
+    }
+  ]
+}

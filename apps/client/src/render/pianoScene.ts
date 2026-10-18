@@ -6,8 +6,10 @@ import { HandsView } from "./handsView";
 import { KeyboardView, type KeyPressInfo } from "./keyboardView";
 import type { MotionBuffer } from "./motionBuffer";
 import { preloadAllPhotoAssets, type SkinStyle } from "./skins";
+import { normalizeStageAppearance, type StageAppearance } from "../settings/stageAppearance";
 
 export interface PianoSceneDisplaySettings {
+  stageAppearance?: StageAppearance;
   showFingerLabels?: boolean;
   showNoteNames?: boolean;
   skinStyle?: SkinStyle;
@@ -160,6 +162,7 @@ export class PianoScene {
   private onPianoKeyDown?: (pitch: number) => void;
   private onPianoKeyUp?: (pitch: number) => void;
   private displaySettings: Required<PianoSceneDisplaySettings> = {
+    stageAppearance: normalizeStageAppearance(undefined),
     showFingerLabels: false,
     showNoteNames: false,
     skinStyle: "cartoon",
@@ -824,6 +827,7 @@ export class PianoScene {
     this.displaySettings = {
       ...this.displaySettings,
       ...settings,
+      stageAppearance: normalizeStageAppearance(settings.stageAppearance ?? this.displaySettings.stageAppearance),
       renderCapFps:
         requestedCap === 0 || requestedCap === 30 || requestedCap === 60 || requestedCap === 120
           ? requestedCap

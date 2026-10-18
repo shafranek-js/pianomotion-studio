@@ -92,6 +92,17 @@ function createStereoLoopSynth(leftMode: number, rightMode: number) {
 }
 
 describe("SoundFont 2 Parser & Synthesizer (W042, W043)", () => {
+  it.each([false, true])("resumes suspended live contexts but leaves offline clock ownership to the renderer (offline=%s)", (offline) => {
+    const { synth, audioContext } = createStereoLoopSynth(1, 1);
+    const resume = vi.fn().mockResolvedValue(undefined);
+    Object.assign(audioContext, { state: "suspended", resume });
+    if (offline) Object.assign(audioContext, { startRendering: vi.fn() });
+    try {
+      synth.noteOn(60, 90, "suspended-voice", 0.2);
+      expect(resume).toHaveBeenCalledTimes(offline ? 0 : 1);
+    } finally { synth.dispose(); }
+  });
+
   it("distinguishes an explicit compressed pair linked to index zero from MuseScore zero links", () => {
     const { synth, sources, soundFont } = createStereoLoopSynth(3, 3);
     soundFont.header.versionMajor = 3;

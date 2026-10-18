@@ -26,15 +26,15 @@ function boundedNumber(value: unknown, fallback: number, min: number, max: numbe
 
 export function sanitizeStudioLayoutPreferences(value: unknown): StudioLayoutPreferences {
   if (!isRecord(value)) return { ...DEFAULT_STUDIO_LAYOUT_PREFERENCES };
-  const activePanel = value.activePanel === "projects" || value.activePanel === "inspector"
+  const activePanel = value.activePanel === "projects" || value.activePanel === "inspector" || value.activePanel === "practice"
     ? value.activePanel
     : null;
-  // A persisted dock belongs to the active panel. Projects stay on the left and
-  // Inspector stays on the right, even when loading an older mismatched record.
+  // A persisted dock belongs to the active panel. Projects stay on the left;
+  // Inspector and Practice stay on the right, including older mismatched records.
   const hasPinnedPanel = value.pinnedSide === "left" || value.pinnedSide === "right";
   const pinnedSide = !hasPinnedPanel ? null
     : activePanel === "projects" ? "left"
-      : activePanel === "inspector" ? "right"
+      : activePanel === "inspector" || activePanel === "practice" ? "right"
         : value.pinnedSide as "left" | "right";
   const inspectorTab = inspectorTabs.includes(value.inspectorTab as InspectorTab)
     ? value.inspectorTab as InspectorTab

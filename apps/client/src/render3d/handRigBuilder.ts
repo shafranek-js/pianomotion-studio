@@ -531,17 +531,6 @@ function parseHandGlbRig(
   const colors = new Float32Array(vCount * 3);
   colors.fill(0.45);
 
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-  geometry.setAttribute("normal", new THREE.BufferAttribute(normals, 3));
-  geometry.setAttribute("uv", new THREE.BufferAttribute(uvs, 2));
-  geometry.setAttribute("skinIndex", new THREE.BufferAttribute(skinIndices, 4));
-  geometry.setAttribute("skinWeight", new THREE.BufferAttribute(skinWeights, 4));
-  geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
-  geometry.setIndex(new THREE.BufferAttribute(indices, 1));
-  geometry.computeBoundingSphere();
-  geometry.computeBoundingBox();
-
   const skinDef = json.skins[0]!;
   const ibmRaw = getTypedArray(skinDef.inverseBindMatrices) as Float32Array;
 
@@ -605,7 +594,7 @@ function parseHandGlbRig(
     boneMetaBySkinIdx.push(meta);
   });
 
-  // Precompute per-vertex anatomical classification for Subsurface Scattering (SSS) vertex colors
+  // Precompute per-vertex anatomical classification for Subsurface Scattering (SSS) vertex colors & sculpting
   const vertexAnatomy: VertexAnatomyInfo[] = new Array(vCount);
   const nTmp = new THREE.Vector3();
 
@@ -652,6 +641,18 @@ function parseHandGlbRig(
     };
   }
 
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+  geometry.setAttribute("normal", new THREE.BufferAttribute(normals, 3));
+  geometry.setAttribute("uv", new THREE.BufferAttribute(uvs, 2));
+  geometry.setAttribute("skinIndex", new THREE.BufferAttribute(skinIndices, 4));
+  geometry.setAttribute("skinWeight", new THREE.BufferAttribute(skinWeights, 4));
+  geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+  geometry.setIndex(new THREE.BufferAttribute(indices, 1));
+  geometry.computeVertexNormals();
+  geometry.computeBoundingSphere();
+  geometry.computeBoundingBox();
+
   const skinnedMesh = new THREE.SkinnedMesh(geometry, skinMaterial);
   skinnedMesh.castShadow = true;
   skinnedMesh.receiveShadow = true;
@@ -674,36 +675,279 @@ function parseHandGlbRig(
   };
 }
 
-let sharedSkinBumpTexture: THREE.CanvasTexture | null = null;
+function createProceduralTexture(
+  width: number,
+  height: number,
+  painter: (data: Uint8ClampedArray, width: number, height: number) => void,
+): THREE.CanvasTexture {
+  if (typeof document !== "undefined") {
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext("2d");
+    if (ctx) {
+      const imgData = ctx.createImageData(width, height);
+      painter(imgData.data, width, height);
+      ctx.putImageData(imgData, 0, 0);
+    }
+    const tex = new THREE.CanvasTexture(canvas);
+    return tex;
+  }
+  // Headless / Node.js test environment mock canvas
+  const mockData = new Uint8ClampedArray(width * height * 4);
+  painter(mockData, width, height);
+  const mockCanvas = {
+    width,
+    height,
+    getContext: () => null,
+  } as unknown as HTMLCanvasElement;
+  const tex = new THREE.CanvasTexture(mockCanvas);
+  return tex;
+}
 
-function getSkinMicroBumpTexture(): THREE.CanvasTexture | null {
-  if (typeof document === "undefined") return null;
-  if (sharedSkinBumpTexture) return sharedSkinBumpTexture;
+let sharedSkinNormalMap: THREE.CanvasTexture | null = null;
 
-  const canvas = document.createElement("canvas");
-  canvas.width = 128;
-  canvas.height = 128;
-  const ctx = canvas.getContext("2d");
-  if (ctx) {
-    ctx.fillStyle = "#808080";
-    ctx.fillRect(0, 0, 128, 128);
-    // Deterministic fine skin pore & micro-crease grain
-    for (let y = 0; y < 128; y += 2) {
-      for (let x = 0; x < 128; x += 2) {
-        const hash = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453;
-        const frac = hash - Math.floor(hash);
-        const v = Math.round(112 + frac * 32);
-        ctx.fillStyle = `rgb(${v},${v},${v})`;
-        ctx.fillRect(x, y, 2, 1);
+export function getSkinNormalMap(): THREE.CanvasTexture {
+  if (sharedSkinNormalMap) return sharedSkinNormalMap;
+
+  const tex = createProceduralTexture(512, 512, (data, width, height) => {
+    // Generate subtle, uniform cellular micro-grain & pores
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        // High-frequency pseudo-random dermal micro-relief
+        const h0 = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453;
+        const frac0 = h0 - Math.floor(h0);
+        const h1 = Math.sin(x * 93.9898 + y * 67.345) * 24634.6345;
+        const frac1 = h1 - Math.floor(h1);
+        const grain = (frac0 - 0.5) * 0.035 + (frac1 - 0.5) * 0.018;
+
+        // Tangent space normal vector: soft natural micro-pore perturbation
+        let nx = -grain * 1.2;
+        let ny = -((frac1 - 0.5) * 0.035) * 1.2;
+        let nz = 1.0;
+        const len = Math.hypot(nx, ny, nz);
+        nx /= len;
+        ny /= len;
+        nz /= len;
+
+        // Encode to RGB centered at (128, 128, 255)
+        const idx = (y * width + x) * 4;
+        data[idx] = Math.round(128 + 127 * nx);
+        data[idx + 1] = Math.round(128 + 127 * ny);
+        data[idx + 2] = Math.round(128 + 127 * nz);
+        data[idx + 3] = 255;
       }
     }
-  }
-  const tex = new THREE.CanvasTexture(canvas);
+  });
+
   tex.wrapS = THREE.RepeatWrapping;
   tex.wrapT = THREE.RepeatWrapping;
-  tex.repeat.set(6, 6);
-  sharedSkinBumpTexture = tex;
+  tex.repeat.set(4, 4);
+  sharedSkinNormalMap = tex;
   return tex;
+}
+
+let sharedSkinRoughnessMap: THREE.CanvasTexture | null = null;
+
+export function getSkinRoughnessMap(): THREE.CanvasTexture {
+  if (sharedSkinRoughnessMap) return sharedSkinRoughnessMap;
+
+  const tex = createProceduralTexture(512, 512, (data, width, height) => {
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        // Smooth velvety skin base roughness (~0.58) with fine cellular variation
+        const h = Math.sin(x * 23.17 + y * 89.41) * 37482.19;
+        const noise = (h - Math.floor(h) - 0.5) * 0.03;
+        const roughness = Math.max(0.48, Math.min(0.68, 0.58 + noise));
+
+        const byteVal = Math.round(roughness * 255);
+        const idx = (y * width + x) * 4;
+        data[idx] = byteVal;
+        data[idx + 1] = byteVal;
+        data[idx + 2] = byteVal;
+        data[idx + 3] = 255;
+      }
+    }
+  });
+
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(4, 4);
+  sharedSkinRoughnessMap = tex;
+  return tex;
+}
+
+let cachedFingernailTexture: THREE.CanvasTexture | null = null;
+
+export function getFingernailTexture(): THREE.CanvasTexture {
+  if (cachedFingernailTexture) return cachedFingernailTexture;
+
+  const tex = createProceduralTexture(256, 256, (data, width, height) => {
+    for (let y = 0; y < height; y++) {
+      const v = y / (height - 1); // 0 at proximal cuticle, 1 at distal free edge
+      for (let x = 0; x < width; x++) {
+        const u = x / (width - 1); // 0 at left fold, 1 at right fold
+        const nx = (u - 0.5) * 2; // -1 to +1
+
+        // 1. Rosy, translucent vascular nail bed base color in the middle
+        const midFlush = Math.sin(v * Math.PI);
+        let r = 224 + midFlush * 14;
+        let g = 138 + midFlush * 8;
+        let b = 130 + midFlush * 6;
+
+        // 2. Fine micro-longitudinal striations (keratin ridges running vertically)
+        const striation = Math.sin(x * 2.1) * 0.6 + Math.sin(x * 4.8) * 0.4;
+        r += striation * 3.5;
+        g += striation * 2.5;
+        b += striation * 2.0;
+
+        // 3. Pale translucent white/ivory crescent lunula at the base (proximal end)
+        const lunulaDist = Math.hypot(nx * 0.95, v / 0.22);
+        if (lunulaDist < 1.0) {
+          const lunulaAlpha = Math.max(0, Math.min(1.0, (1.0 - lunulaDist) * 3.8)) * 0.72;
+          r = r * (1 - lunulaAlpha) + 242 * lunulaAlpha;
+          g = g * (1 - lunulaAlpha) + 238 * lunulaAlpha;
+          b = b * (1 - lunulaAlpha) + 230 * lunulaAlpha;
+        }
+
+        // 4. Opaque/semi-translucent ivory-white free edge at the tip
+        const smileLineStart = 0.76 - 0.03 * (1.0 - nx * nx);
+        if (v > smileLineStart) {
+          const freeEdgeT = Math.max(0, Math.min(1.0, (v - smileLineStart) / 0.10));
+          const edgeR = 236 + (v - smileLineStart) * 50;
+          const edgeG = 232 + (v - smileLineStart) * 52;
+          const edgeB = 222 + (v - smileLineStart) * 55;
+          r = r * (1 - freeEdgeT) + edgeR * freeEdgeT;
+          g = g * (1 - freeEdgeT) + edgeG * freeEdgeT;
+          b = b * (1 - freeEdgeT) + edgeB * freeEdgeT;
+        }
+
+        // 5. Subtle dark cuticle border shadow along the proximal edge
+        if (v < 0.08) {
+          const shadowT = (0.08 - v) / 0.08;
+          const shadowAlpha = shadowT * shadowT * 0.45;
+          r = r * (1 - shadowAlpha) + 120 * shadowAlpha;
+          g = g * (1 - shadowAlpha) + 65 * shadowAlpha;
+          b = b * (1 - shadowAlpha) + 50 * shadowAlpha;
+        }
+
+        // 6. Subtle lateral nail groove depth shading
+        const lateralDist = Math.abs(nx);
+        if (lateralDist > 0.82) {
+          const latT = (lateralDist - 0.82) / 0.18;
+          const latAlpha = latT * 0.30;
+          r = r * (1 - latAlpha) + 155 * latAlpha;
+          g = g * (1 - latAlpha) + 85 * latAlpha;
+          b = b * (1 - latAlpha) + 75 * latAlpha;
+        }
+
+        const idx = (y * width + x) * 4;
+        data[idx] = Math.round(Math.max(0, Math.min(255, r)));
+        data[idx + 1] = Math.round(Math.max(0, Math.min(255, g)));
+        data[idx + 2] = Math.round(Math.max(0, Math.min(255, b)));
+        data[idx + 3] = 255;
+      }
+    }
+  });
+
+  tex.flipY = false;
+  cachedFingernailTexture = tex;
+  return tex;
+}
+
+export function createFingernailGeometry(): THREE.BufferGeometry {
+  const cols = 10;
+  const rows = 12;
+  const numPlateVertices = (cols + 1) * (rows + 1);
+  const numRimVertices = cols + 1;
+  const totalVertices = numPlateVertices + numRimVertices;
+
+  const positions = new Float32Array(totalVertices * 3);
+  const uvs = new Float32Array(totalVertices * 2);
+  const indices: number[] = [];
+
+  // 1. Top nail plate curved grid
+  for (let r = 0; r <= rows; r++) {
+    const v = r / rows; // 0 (proximal cuticle) to 1 (distal free edge)
+    for (let c = 0; c <= cols; c++) {
+      const u = c / cols; // 0 to 1 across transverse width
+      const nx = (u - 0.5) * 2; // -1 to +1
+
+      // Tapered proximal margin (cuticle contour)
+      const widthFactor = 0.88 + 0.12 * Math.sin(v * Math.PI * 0.5);
+      const x = (u - 0.5) * widthFactor;
+
+      // Transverse convex curvature (C-curve)
+      const cCurve = (1.0 - nx * nx) * 0.22;
+
+      // Longitudinal convex curvature from proximal cuticle to distal free edge
+      const longitudinalCurve = Math.sin(v * Math.PI * 0.85 + 0.15) * 0.06;
+      const y = cCurve * (0.85 + 0.15 * Math.sin(v * Math.PI)) + longitudinalCurve;
+
+      // Cuticle contour arch & rounded distal free edge
+      const cuticleTaper = (1.0 - v) * (nx * nx) * 0.14;
+      const freeEdgeTaper = v * (1.0 - nx * nx) * 0.04;
+      const z = (0.5 - v) - cuticleTaper + freeEdgeTaper;
+
+      const idx = r * (cols + 1) + c;
+      positions[idx * 3] = x;
+      positions[idx * 3 + 1] = y;
+      positions[idx * 3 + 2] = z;
+
+      uvs[idx * 2] = u;
+      uvs[idx * 2 + 1] = v;
+    }
+  }
+
+  // Plate surface quad indices
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const a = r * (cols + 1) + c;
+      const b = r * (cols + 1) + (c + 1);
+      const d = (r + 1) * (cols + 1) + c;
+      const e = (r + 1) * (cols + 1) + (c + 1);
+      indices.push(a, b, d);
+      indices.push(b, e, d);
+    }
+  }
+
+  // 2. Distal free edge rim with physical thickness/rim
+  const lastRowStart = rows * (cols + 1);
+  const rimRowStart = numPlateVertices;
+
+  for (let c = 0; c <= cols; c++) {
+    const topIdx = lastRowStart + c;
+    const rimIdx = rimRowStart + c;
+
+    const topX = positions[topIdx * 3]!;
+    const topY = positions[topIdx * 3 + 1]!;
+    const topZ = positions[topIdx * 3 + 2]!;
+
+    positions[rimIdx * 3] = topX;
+    positions[rimIdx * 3 + 1] = topY - 0.045; // Subtle downward rim thickness
+    positions[rimIdx * 3 + 2] = topZ + 0.015; // Tuck slightly under
+
+    uvs[rimIdx * 2] = uvs[topIdx * 2]!;
+    uvs[rimIdx * 2 + 1] = 1.0;
+  }
+
+  for (let c = 0; c < cols; c++) {
+    const topA = lastRowStart + c;
+    const topB = lastRowStart + (c + 1);
+    const rimA = rimRowStart + c;
+    const rimB = rimRowStart + (c + 1);
+    indices.push(topA, topB, rimA);
+    indices.push(topB, rimB, rimA);
+  }
+
+  const geometry = new THREE.BufferGeometry();
+  geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+  geometry.setAttribute("uv", new THREE.BufferAttribute(uvs, 2));
+  geometry.setIndex(indices);
+  geometry.computeVertexNormals();
+  geometry.computeBoundingBox();
+  geometry.computeBoundingSphere();
+  return geometry;
 }
 
 let sharedSoftShadowTexture: THREE.CanvasTexture | null = null;
@@ -773,10 +1017,13 @@ const FINGER_PREFIX_BY_DIGIT: Record<number, string> = {
  */
 export class Hand3DMeshGroup {
   public readonly group = new THREE.Group();
+  public readonly fingernails: THREE.Mesh[] = [];
   private readonly hand: "left" | "right";
   private readonly rig: ParsedHandGlbRig;
 
-  private readonly skinMaterial: THREE.MeshPhysicalMaterial;
+  public readonly skinMaterial: THREE.MeshPhysicalMaterial;
+  public readonly nailMaterial: THREE.MeshPhysicalMaterial;
+  private readonly nailGeometry: THREE.BufferGeometry;
   private readonly cuffMaterial: THREE.MeshStandardMaterial;
   private readonly sleeveMaterial: THREE.MeshPhysicalMaterial;
 
@@ -796,19 +1043,36 @@ export class Hand3DMeshGroup {
     this.hand = hand;
     this.group.visible = false;
 
-    const bumpMap = getSkinMicroBumpTexture();
     this.skinMaterial = new THREE.MeshPhysicalMaterial({
       color: 0xffffff,
       vertexColors: true,
-      roughness: 0.62,
-      metalness: 0.01,
-      clearcoat: 0.07,
-      clearcoatRoughness: 0.68,
-      sheen: 0.24,
-      sheenRoughness: 0.72,
-      sheenColor: new THREE.Color(0xd9826c),
-      envMapIntensity: 0.22,
-      ...(bumpMap ? { bumpMap, bumpScale: 0.026 } : {}),
+      roughness: 0.58,
+      metalness: 0.0,
+      normalMap: getSkinNormalMap(),
+      normalScale: new THREE.Vector2(0.12, 0.12),
+      roughnessMap: getSkinRoughnessMap(),
+      sheen: 0.18,
+      sheenRoughness: 0.60,
+      sheenColor: new THREE.Color(0xf0c8b8),
+      clearcoat: 0.08,
+      clearcoatRoughness: 0.40,
+      envMapIntensity: 0.20,
+    });
+
+    this.nailGeometry = createFingernailGeometry();
+    const nailTexture = getFingernailTexture();
+    this.nailMaterial = new THREE.MeshPhysicalMaterial({
+      color: 0xffffff,
+      map: nailTexture,
+      roughness: 0.24,
+      metalness: 0.0,
+      clearcoat: 0.40,
+      clearcoatRoughness: 0.15,
+      transmission: 0.0,
+      transparent: false,
+      depthWrite: true,
+      depthTest: true,
+      side: THREE.DoubleSide,
     });
 
     this.cuffMaterial = new THREE.MeshStandardMaterial({
@@ -830,8 +1094,38 @@ export class Hand3DMeshGroup {
       side: THREE.DoubleSide,
     });
 
-    // Build rigged 25-bone SkinnedMesh from GLB
+    // Build rigged 25-bone SkinnedMesh from GLB first so bones are available for nail attachment
     this.rig = parseHandGlbRig(hand, this.skinMaterial, this.group);
+
+    const NAIL_SPECS: Record<
+      number,
+      { bone: string; x: number; y: number; z: number; width: number; thickness: number; length: number }
+    > = {
+      1: { bone: "thumb-phalanx-distal", x: 0, y: 0.17, z: -0.40, width: 0.46, thickness: 0.35, length: 0.32 },
+      2: { bone: "index-finger-phalanx-distal", x: 0, y: 0.17, z: -0.32, width: 0.34, thickness: 0.30, length: 0.25 },
+      3: { bone: "middle-finger-phalanx-distal", x: 0, y: 0.18, z: -0.34, width: 0.36, thickness: 0.30, length: 0.26 },
+      4: { bone: "ring-finger-phalanx-distal", x: 0, y: 0.17, z: -0.33, width: 0.34, thickness: 0.30, length: 0.25 },
+      5: { bone: "pinky-finger-phalanx-distal", x: 0, y: 0.15, z: -0.33, width: 0.28, thickness: 0.26, length: 0.23 },
+    };
+
+    for (let f = 1; f <= 5; f++) {
+      const spec = NAIL_SPECS[f]!;
+      const nailMesh = new THREE.Mesh(this.nailGeometry, this.nailMaterial);
+      nailMesh.name = `hand-fingernail-${f}`;
+      nailMesh.castShadow = true;
+      nailMesh.receiveShadow = true;
+      nailMesh.visible = false;
+      nailMesh.position.set(spec.x, spec.y, spec.z);
+      nailMesh.scale.set(spec.width, spec.thickness, spec.length);
+      this.fingernails.push(nailMesh);
+
+      const boneMeta = this.rig.bonesByName.get(spec.bone);
+      if (boneMeta) {
+        boneMeta.bone.add(nailMesh);
+      } else {
+        this.group.add(nailMesh);
+      }
+    }
 
     // Soft 3D contact shadow discs projected onto the keytops under palm & fingers
     this.contactShadowGeometry = new THREE.PlaneGeometry(1, 1);
@@ -885,14 +1179,17 @@ export class Hand3DMeshGroup {
 
   public clear(): void {
     this.group.visible = false;
+    for (const nail of this.fingernails) {
+      nail.visible = false;
+    }
   }
 
   public setSkinColor(rgb: [number, number, number]): void {
     this.updateVertexColors(
       rgb,
-      mixRgb(rgb, [132, 74, 54], 0.45),
-      mixRgb(rgb, [198, 96, 82], 0.38),
-      mixRgb(rgb, [235, 195, 170], 0.18),
+      mixRgb(rgb, [205, 165, 145], 0.20),
+      mixRgb(rgb, [232, 180, 168], 0.15),
+      mixRgb(rgb, [238, 206, 188], 0.10),
     );
   }
 
@@ -900,6 +1197,8 @@ export class Hand3DMeshGroup {
     const isTransparent = opacity < 0.999;
     this.skinMaterial.transparent = isTransparent;
     this.skinMaterial.opacity = opacity;
+    this.nailMaterial.transparent = isTransparent;
+    this.nailMaterial.opacity = opacity;
   }
 
   private updateVertexColors(
@@ -908,44 +1207,36 @@ export class Hand3DMeshGroup {
     tipWarmRgb: [number, number, number],
     knuckleHighlightRgb: [number, number, number],
   ): void {
-    const sig = `${baseSkinRgb.join(",")}|${creaseRgb.join(",")}|${tipWarmRgb.join(",")}`;
+    const sig = `${baseSkinRgb.join(",")}|${creaseRgb.join(",")}|${tipWarmRgb.join(",")}|${knuckleHighlightRgb.join(",")}`;
     if (sig === this.lastColorSignature) return;
     this.lastColorSignature = sig;
 
     const colAttr = this.rig.skinnedMesh.geometry.getAttribute("color") as THREE.BufferAttribute;
     const anatomy = this.rig.vertexAnatomy;
-    const lateralShadeRgb = mixRgb(baseSkinRgb, [112, 62, 44], 0.52);
-    const palmarShadeRgb = mixRgb(baseSkinRgb, [136, 76, 56], 0.44);
+    const palmarShadeRgb = mixRgb(baseSkinRgb, [210, 170, 150], 0.20);
 
     for (let i = 0; i < anatomy.length; i++) {
       const info = anatomy[i]!;
       let rgb = baseSkinRgb;
 
-      // 1. Cylindrical lateral shading along the left/right edges of fingers & hand
-      // so adjacent fingers and white keys below have crisp dark 3D separation
-      if (info.lateralFactor > 0.15) {
-        const latMix = Math.min(0.68, Math.pow(info.lateralFactor, 1.2) * 0.62);
-        rgb = mixRgb(rgb, lateralShadeRgb, latMix);
-      }
-
-      // 2. Palmar underside ambient occlusion shading
+      // 1. Subtle palmar underside ambient occlusion
       if (info.dorsalFactor < 0) {
-        rgb = mixRgb(rgb, palmarShadeRgb, Math.min(0.65, -info.dorsalFactor * 0.58));
+        rgb = mixRgb(rgb, palmarShadeRgb, Math.min(0.22, -info.dorsalFactor * 0.20));
       }
 
-      // 3. Dorsal knuckle highlight over MCP
+      // 2. Subtle dorsal knuckle highlight over MCP
       if (info.dorsalFactor > 0.4 && info.mcpWeight > 0.25) {
-        rgb = mixRgb(rgb, knuckleHighlightRgb, Math.min(0.32, info.dorsalFactor * info.mcpWeight * 0.35));
+        rgb = mixRgb(rgb, knuckleHighlightRgb, Math.min(0.12, info.dorsalFactor * info.mcpWeight * 0.15));
       }
 
-      // 4. Dorsal joint crease shading over PIP/DIP
+      // 3. Subtle dorsal joint crease shading over PIP/DIP
       if (info.dorsalFactor > 0.15 && info.pipDipWeight > 0.25) {
-        rgb = mixRgb(rgb, creaseRgb, Math.min(0.45, info.dorsalFactor * info.pipDipWeight * 0.38));
+        rgb = mixRgb(rgb, creaseRgb, Math.min(0.14, info.dorsalFactor * info.pipDipWeight * 0.16));
       }
 
-      // 5. Rosy capillary warmth on fingertips and fleshy palmar pads
+      // 4. Subtle healthy capillary warmth on fingertips and fleshy palmar pads
       if (info.tipWeight > 0.25) {
-        rgb = mixRgb(rgb, tipWarmRgb, Math.min(0.55, info.tipWeight * 0.48));
+        rgb = mixRgb(rgb, tipWarmRgb, Math.min(0.10, info.tipWeight * 0.12));
       }
 
       // Convert sRGB [0..255] to Linear-sRGB for Three.js vertex colors!
@@ -968,32 +1259,39 @@ export class Hand3DMeshGroup {
     const h3d = reconstructHand3D(pose, hoverLift);
     this.group.visible = true;
 
-    // Use rich warm natural human skin tone in 3D view so hands stand out clearly against ivory keys
-    const warm3DSkinRgb: [number, number, number] = [206, 146, 114];
-    const warm3DCreaseRgb: [number, number, number] = [138, 78, 58];
+    // Natural, harmonious concert pianist skin tone
+    const naturalSkinRgb: [number, number, number] = [228, 192, 172];
+    const naturalCreaseRgb: [number, number, number] = [205, 165, 145];
+    const naturalTipWarmRgb: [number, number, number] = [232, 180, 168];
+    const naturalKnuckleRgb: [number, number, number] = [238, 206, 188];
 
     const baseSkinRgb: [number, number, number] =
       skinSettings.style === "gloves"
         ? [218, 222, 230]
         : skinSettings.style === "robot"
           ? skinSettings.colors.robot.shell
-          : warm3DSkinRgb;
+          : naturalSkinRgb;
 
     const creaseRgb: [number, number, number] =
       skinSettings.style === "gloves"
         ? [135, 142, 156]
         : skinSettings.style === "robot"
           ? skinSettings.colors.robot.joint
-          : warm3DCreaseRgb;
+          : naturalCreaseRgb;
 
     const tipWarmRgb: [number, number, number] =
       skinSettings.style === "gloves"
         ? [195, 200, 210]
         : skinSettings.style === "robot"
           ? skinSettings.colors.robot.tip
-          : mixRgb(baseSkinRgb, [196, 88, 74], 0.42);
+          : naturalTipWarmRgb;
 
-    const knuckleHighlightRgb = mixRgb(baseSkinRgb, [238, 192, 162], 0.22);
+    const knuckleHighlightRgb: [number, number, number] =
+      skinSettings.style === "gloves"
+        ? [235, 238, 245]
+        : skinSettings.style === "robot"
+          ? skinSettings.colors.robot.shell
+          : naturalKnuckleRgb;
 
     this.updateVertexColors(baseSkinRgb, creaseRgb, tipWarmRgb, knuckleHighlightRgb);
 
@@ -1201,6 +1499,12 @@ export class Hand3DMeshGroup {
       }
     }
 
+    // Update visibility of 3D anatomical fingernails (parented to distal bones)
+    const showNails = skinSettings.style !== "gloves";
+    for (const nailMesh of this.fingernails) {
+      nailMesh.visible = showNails;
+    }
+
     // Update the pose matrices before deriving the forearm seam from deformed wrist vertices.
     this.group.updateMatrixWorld(true);
     this.rig.skinnedMesh.skeleton.update();
@@ -1390,10 +1694,10 @@ export class Hand3DMeshGroup {
       this.cuffMesh.visible = true;
       this.sleeveMesh.visible = true;
 
-      // The shirt cuff wraps over the boundary vertices of the GLB wrist mesh (-0.35 in),
+      // The shirt cuff wraps over the boundary vertices of the GLB wrist mesh (-0.45 in),
       // completely enclosing the opening loop so the hand emerges cleanly with zero visible cut.
-      const cuffStart = -0.35;
-      const cuffLen = 0.95;
+      const cuffStart = -0.45;
+      const cuffLen = 1.05;
       const cuffMid = new THREE.Vector3()
         .copy(openingCenter)
         .addScaledVector(armDir, cuffStart + cuffLen * 0.5);
@@ -1405,9 +1709,9 @@ export class Hand3DMeshGroup {
       this.cuffMesh.quaternion.copy(quat);
       this.cuffMesh.scale.set(baseRx * 1.15, baseRy * 1.20, cuffLen);
 
-      // The suit jacket sleeve starts behind the cuff (+0.30 in) so 0.65 in of white cuff peeks out,
+      // The suit jacket sleeve starts behind the cuff (+0.20 in) so 0.65 in of white cuff peeks out,
       // and extends 22 inches along armDir so the arm exits past the viewport bottom in all presets.
-      const sleeveStart = 0.30;
+      const sleeveStart = 0.20;
       const sleeveLen = 22.0;
       const sleeveMid = new THREE.Vector3()
         .copy(openingCenter)
@@ -1461,7 +1765,12 @@ export class Hand3DMeshGroup {
     this.contactShadowGeometry.dispose();
     this.cuffGeometry.dispose();
     this.sleeveGeometry.dispose();
+    this.nailGeometry.dispose();
     this.skinMaterial.dispose();
+    if (this.skinMaterial.normalMap) this.skinMaterial.normalMap.dispose();
+    if (this.skinMaterial.roughnessMap) this.skinMaterial.roughnessMap.dispose();
+    this.nailMaterial.dispose();
+    if (this.nailMaterial.map) this.nailMaterial.map.dispose();
     this.cuffMaterial.dispose();
     this.sleeveMaterial.dispose();
     for (const material of this.contactShadowMaterials) material.dispose();

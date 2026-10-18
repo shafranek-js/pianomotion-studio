@@ -5,7 +5,7 @@ import { expectStudioCanvas, exportStudioPackage, loadStudioSong, saveStudioProj
 
 test("a package-only profile can be edited, duplicated, and reopened from saved projects", async ({page,browser},info) => {
   test.setTimeout(240_000);
-  await loadStudioSong(page);
+  await loadStudioSong(page, { output: "synth", dimension: "2d" });
   const pkg = ProjectPackageSchema.parse(JSON.parse(await readFile(await exportStudioPackage(page),"utf8")));
   const profile = {...pkg.profiles[0]!,profileId:"package-only-profile",name:"Imported anatomy",revision:8};
   pkg.profiles = [profile];

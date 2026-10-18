@@ -1,0 +1,254 @@
+{
+  "stats": {
+    "startTime": "2026-10-18T11:49:25.801Z",
+    "duration": 336644.949,
+    "expected": 5,
+    "skipped": 14,
+    "unexpected": 1,
+    "flaky": 0
+  },
+  "tests": [
+    {
+      "file": "motion-playback.spec.ts",
+      "title": "playback keeps a reserve with delayed real Worker motion and honors Pause after an uncovered seek",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 40769,
+          "errorSummary": []
+        }
+      ]
+    },
+    {
+      "file": "motion-playback.spec.ts",
+      "title": "real Worker keeps the animation reserve during double-speed playback",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 20288,
+          "errorSummary": []
+        }
+      ]
+    },
+    {
+      "file": "motion-streaming.spec.ts",
+      "title": "real Worker analyzes, replans, streams, restores, and filters stale motion requests",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 4248,
+          "errorSummary": []
+        }
+      ]
+    },
+    {
+      "file": "native-engine.spec.ts",
+      "title": "native TypeScript Worker loads, replans, streams real hand poses, and retains Chopsticks and imported MIDI",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 61013,
+          "errorSummary": []
+        }
+      ]
+    },
+    {
+      "file": "native-parity.spec.ts",
+      "title": "real Workers match all desktop golden fixtures and bounded motion coverage",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 192746,
+          "errorSummary": []
+        }
+      ]
+    },
+    {
+      "file": "parity-m1.spec.ts",
+      "title": "fixture parity (1/13): synthetic-crossing-wide-chord",
+      "status": "unexpected",
+      "results": [
+        {
+          "status": "failed",
+          "durationMs": 6488,
+          "errorSummary": [
+            "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoEqual\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // deep equality\u001b[22m\n\n\u001b[32m- Expected  -     1\u001b[39m\n\u001b[31m+ Received  + 40727\u001b[39m\n\n\u001b[32m- Array []\u001b[39m\n\u001b[31m+ Array [\u001b[39m\n\u001b[31m+   Object {\u001b[39m\n\u001b[31m+     \"actual\": 0.45,\u001b[39m\n\u001b[31m+     \"category\": \"performance\",\u001b[39m\n\u001b[31m+     \"delta\": 0.07,\u001b[39m\n\u001b[31m+     \"expected\": 0.38,\u001b[39m\n\u001b[31m+     \"fixture"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "parity-m1.spec.ts",
+      "title": "fixture parity (2/13): synthetic-duplicate-identities",
+      "status": "skipped",
+      "results": [
+        {
+          "status": "skipped",
+          "durationMs": 0,
+          "errorSummary": []
+        }
+      ]
+    },
+    {
+      "file": "parity-m1.spec.ts",
+      "title": "fixture parity (3/13): synthetic-invalid-empty",
+      "status": "skipped",
+      "results": [
+        {
+          "status": "skipped",
+          "durationMs": 0,
+          "errorSummary": []
+        }
+      ]
+    },
+    {
+      "file": "parity-m1.spec.ts",
+      "title": "fixture parity (4/13): synthetic-invalid-non-midi",
+      "status": "skipped",
+      "results": [
+        {
+          "status": "skipped",
+          "durationMs": 0,
+          "errorSummary": []
+        }
+      ]
+    },
+    {
+      "file": "parity-m1.spec.ts",
+      "title": "fixture parity (5/13): synthetic-invalid-truncated",
+      "status": "skipped",
+      "results": [
+        {
+          "status": "skipped",
+          "durationMs": 0,
+          "errorSummary": []
+        }
+      ]
+    },
+    {
+      "file": "parity-m1.spec.ts",
+      "title": "fixture parity (6/13): synthetic-manual-fingering-gliss",
+      "status": "skipped",
+      "results": [
+        {
+          "status": "skipped",
+          "durationMs": 0,
+          "errorSummary": []
+        }
+      ]
+    },
+    {
+      "file": "parity-m1.spec.ts",
+      "title": "fixture parity (7/13): synthetic-mismatched-track-labels",
+      "status": "skipped",
+      "results": [
+        {
+          "status": "skipped",
+          "durationMs": 0,
+          "errorSummary": []
+        }
+      ]
+    },
+    {
+      "file": "parity-m1.spec.ts",
+      "title": "fixture parity (8/13): synthetic-scale-chords",
+      "status": "skipped",
+      "results": [
+        {
+          "status": "skipped",
+          "durationMs": 0,
+          "errorSummary": []
+        }
+      ]
+    },
+    {
+      "file": "parity-m1.spec.ts",
+      "title": "fixture parity (9/13): synthetic-stress-512",
+      "status": "skipped",
+      "results": [
+        {
+          "status": "skipped",
+          "durationMs": 0,
+          "errorSummary": []
+        }
+      ]
+    },
+    {
+      "file": "parity-m1.spec.ts",
+      "title": "fixture parity (10/13): synthetic-tempo-pedals-overlap",
+      "status": "skipped",
+      "results": [
+        {
+          "status": "skipped",
+          "durationMs": 0,
+          "errorSummary": []
+        }
+      ]
+    },
+    {
+      "file": "parity-m1.spec.ts",
+      "title": "fixture parity (11/13): tracked-demo-song",
+      "status": "skipped",
+      "results": [
+        {
+          "status": "skipped",
+          "durationMs": 0,
+          "errorSummary": []
+        }
+      ]
+    },
+    {
+      "file": "parity-m1.spec.ts",
+      "title": "fixture parity (12/13): tracked-right-hand",
+      "status": "skipped",
+      "results": [
+        {
+          "status": "skipped",
+          "durationMs": 0,
+          "errorSummary": []
+        }
+      ]
+    },
+    {
+      "file": "parity-m1.spec.ts",
+      "title": "fixture parity (13/13): tracked-right-hand-octaves",
+      "status": "skipped",
+      "results": [
+        {
+          "status": "skipped",
+          "durationMs": 0,
+          "errorSummary": []
+        }
+      ]
+    },
+    {
+      "file": "parity-m1.spec.ts",
+      "title": "cancellation terminates worker and disposes job",
+      "status": "skipped",
+      "results": [
+        {
+          "status": "skipped",
+          "durationMs": 0,
+          "errorSummary": []
+        }
+      ]
+    },
+    {
+      "file": "parity-m1.spec.ts",
+      "title": "rejects invalid/corrupt MIDI input without crashing the worker",
+      "status": "skipped",
+      "results": [
+        {
+          "status": "skipped",
+          "durationMs": 0,
+          "errorSummary": []
+        }
+      ]
+    }
+  ]
+}

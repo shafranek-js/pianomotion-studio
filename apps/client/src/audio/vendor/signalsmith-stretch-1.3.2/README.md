@@ -2,6 +2,8 @@
 
 This is an official release of the Signalsmith Stretch library for Web Audio, using WASM/AudioWorklet.  It includes both plain `.js` (UMD), and ES6 `.mjs` versions.
 
+Local patch: `SignalsmithStretch.mjs` retains scheduled future time-map segments until the audio clock reaches them. The bundled WASM and upstream license are unchanged.
+
 ## How to use it
 
 Call `SignalsmithStretch(audioContext, ?channelOptions)` from the main thread.  This returns a Promise which resolves to an `AudioNode`, with extra methods attached to it.  The optional [`channelOptions` object](https://developer.mozilla.org/en-US/docs/Web/API/AudioWorkletNode/AudioWorkletNode#options) can specify the number of inputs/outputs and channels.

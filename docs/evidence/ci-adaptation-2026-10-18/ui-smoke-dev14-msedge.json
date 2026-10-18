@@ -1,0 +1,68 @@
+{
+  "appVersion": "0.1.0-dev.14",
+  "stats": {
+    "startTime": "2026-10-18T12:20:37.864Z",
+    "duration": 35101.456000000006,
+    "expected": 5,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  },
+  "tests": [
+    {
+      "file": "bootstrap.spec.ts",
+      "title": "shows the honest browser bootstrap state with default anthem melody",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 6651
+        }
+      ]
+    },
+    {
+      "file": "bootstrap.spec.ts",
+      "title": "shows empty workspace when requested via ?empty",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 969
+        }
+      ]
+    },
+    {
+      "file": "diagnostic-log.spec.ts",
+      "title": "local diagnostic history survives reload and downloads from an empty studio",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 2701
+        }
+      ]
+    },
+    {
+      "file": "editor-m4.spec.ts",
+      "title": "unified fingering scene retains history, contextual tools and live playback",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 7420
+        }
+      ]
+    },
+    {
+      "file": "studio-workspace.spec.ts",
+      "title": "2D and 3D canvases survive the dimension, Fingering, and Performance transitions",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 7031
+        }
+      ]
+    }
+  ]
+}

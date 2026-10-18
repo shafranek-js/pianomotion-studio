@@ -73,11 +73,23 @@ test.describe.serial("M1 Pyodide browser verification suite", () => {
     await expect(preferences).toBeVisible();
     const engineSelector = preferences.locator("#settings-calculation-engine");
     await engineSelector.selectOption("python");
+    await preferences.locator("#settings-key-style").selectOption("realistic");
+    await preferences.locator("#settings-sound-output").selectOption("synth");
     await expect(engineSelector).toHaveValue("python");
     await expect.poll(() => page.evaluate(async () =>
       (await import("/src/settings/settingsStore.ts")).getSettings().calculationEngine,
     )).toBe("python");
     await preferences.getByRole("button", { name: "Done", exact: true }).click();
+
+    // Goldens explicitly activate pianist.default_pianist(). The product now
+    // starts with Virtuoso, whose different anatomy must not enter this matrix.
+    await page.getByRole("button", { name: "Open pianist settings", exact: true }).click();
+    const pianist = page.getByRole("dialog", { name: "Pianist settings", exact: true });
+    await pianist.locator("#active-profile-select").selectOption("default");
+    await expect.poll(() => page.evaluate(async () =>
+      (await import("/src/profiles/profileStore.ts")).getActiveProfile().profileId,
+    )).toBe("default");
+    await pianist.getByRole("button", { name: "Close", exact: true }).click();
 
     await openDeveloperTools();
     await expect(page.locator("#fixture-select")).toBeEnabled({ timeout: 30_000 });
@@ -206,7 +218,12 @@ test.describe.serial("M1 Pyodide browser verification suite", () => {
       }
 
       // Assert zero parity differences
-      expect(parity.differences).toEqual([]);
+      if (parity.differences.length > 0) {
+        await test.info().attach(`${fixtureId}-parity-differences`, {
+          contentType: "application/json", body: JSON.stringify(parity.differences, null, 2),
+        });
+      }
+      expect(parity.differences.length, JSON.stringify(parity.differences.slice(0, 12))).toBe(0);
       expect(pageErrors).toEqual([]);
     });
   }

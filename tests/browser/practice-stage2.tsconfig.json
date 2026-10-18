@@ -1,0 +1,9 @@
+{
+  "extends": "./audit.tsconfig.json",
+  "include": [
+    "../../apps/client/src",
+    "./practice-stage2.spec.ts",
+    "./practice-recording-dsp.spec.ts",
+    "./studio-helpers.ts"
+  ]
+}

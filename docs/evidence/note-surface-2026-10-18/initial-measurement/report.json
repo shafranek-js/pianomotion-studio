@@ -1,0 +1,232 @@
+{
+  "config": {
+    "argv": [
+      "C:\\nvm4w\\nodejs\\node.exe",
+      "C:\\Projects\\pianomotion-studio\\node_modules\\@playwright\\test\\cli.js",
+      "test",
+      "--config",
+      "test-results/deck.config.mts",
+      "tests/browser/stage-environment.spec.ts",
+      "--grep",
+      "note surface"
+    ],
+    "configFile": "C:\\Projects\\pianomotion-studio\\test-results\\deck.config.mts",
+    "rootDir": "C:/Projects/pianomotion-studio/tests/browser",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "C:/Projects/pianomotion-studio/test-results/deck-chrome",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "",
+        "name": "",
+        "testDir": "C:/Projects/pianomotion-studio/tests/browser",
+        "testIgnore": [
+          "**/offline-pwa.spec.ts",
+          "**/pwa-deployment-m8.spec.ts",
+          "**/media-export.spec.ts",
+          "**/video-export-m7.spec.ts",
+          "**/parity-m1.spec.ts",
+          "**/native-engine.spec.ts",
+          "**/native-parity.spec.ts",
+          "**/motion-streaming.spec.ts",
+          "**/motion-playback.spec.ts",
+          "**/audio-dsp.spec.ts",
+          "**/audio-output.spec.ts",
+          "**/soundfont-stereo.spec.ts",
+          "**/soundfont-sf3.spec.ts",
+          "**/builtin-soundfont-offline.spec.ts",
+          "**/soundfont-storage.spec.ts",
+          "**/soundfont-large.spec.ts",
+          "**/soundfont-user-banks.spec.ts",
+          "**/soundfont-offline.spec.ts",
+          "**/builtin-melodies-offline.spec.ts"
+        ],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 90000
+      }
+    ],
+    "filteredProjects": [
+      {
+        "grep": {},
+        "grepInvert": null,
+        "outputDir": "C:\\Projects\\pianomotion-studio\\test-results\\deck-chrome",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "name": "",
+        "testDir": "C:\\Projects\\pianomotion-studio\\tests\\browser",
+        "snapshotDir": "C:\\Projects\\pianomotion-studio\\tests\\browser",
+        "testIgnore": [
+          "**/offline-pwa.spec.ts",
+          "**/pwa-deployment-m8.spec.ts",
+          "**/media-export.spec.ts",
+          "**/video-export-m7.spec.ts",
+          "**/parity-m1.spec.ts",
+          "**/native-engine.spec.ts",
+          "**/native-parity.spec.ts",
+          "**/motion-streaming.spec.ts",
+          "**/motion-playback.spec.ts",
+          "**/audio-dsp.spec.ts",
+          "**/audio-output.spec.ts",
+          "**/soundfont-stereo.spec.ts",
+          "**/soundfont-sf3.spec.ts",
+          "**/builtin-soundfont-offline.spec.ts",
+          "**/soundfont-storage.spec.ts",
+          "**/soundfont-large.spec.ts",
+          "**/soundfont-user-banks.spec.ts",
+          "**/soundfont-offline.spec.ts",
+          "**/builtin-melodies-offline.spec.ts"
+        ],
+        "testMatch": "**/*.@(spec|test).?(c|m)[jt]s?(x)",
+        "timeout": 90000,
+        "use": {
+          "baseURL": "http://127.0.0.1:4184",
+          "browserName": "chromium",
+          "channel": "chrome",
+          "headless": true
+        },
+        "dependencies": [],
+        "ignoreSnapshots": false,
+        "__projectId": ""
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "list",
+        null
+      ],
+      [
+        "json",
+        {
+          "outputFile": "C:\\Projects\\pianomotion-studio\\test-results\\reports\\deck-chrome.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "default",
+    "updateSourceMethod": "patch",
+    "version": "1.64.0",
+    "workers": 1,
+    "webServer": {
+      "command": "node node_modules/vite/bin/vite.js --config apps/client/vite.config.ts --host 127.0.0.1 --port 4184 --strictPort",
+      "cwd": "C:\\Projects\\pianomotion-studio",
+      "url": "http://127.0.0.1:4184",
+      "reuseExistingServer": false,
+      "timeout": 60000
+    }
+  },
+  "suites": [
+    {
+      "title": "stage-environment.spec.ts",
+      "file": "stage-environment.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "note surface has restrained highlights in the pianist and concert cameras",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 10307,
+                  "error": {
+                    "message": "Error: bright surface reflections should be substantially reduced\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeLessThan\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m\n\nExpected: < \u001b[32m138.19526\u001b[39m\nReceived:   \u001b[31m184.37199999999999\u001b[39m",
+                    "stack": "Error: bright surface reflections should be substantially reduced\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeLessThan\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m\n\nExpected: < \u001b[32m138.19526\u001b[39m\nReceived:   \u001b[31m184.37199999999999\u001b[39m\n    at C:\\Projects\\pianomotion-studio\\tests\\browser\\stage-environment.spec.ts:85:91",
+                    "location": {
+                      "file": "C:\\Projects\\pianomotion-studio\\tests\\browser\\stage-environment.spec.ts",
+                      "column": 91,
+                      "line": 85
+                    },
+                    "snippet": "  83 |     expect(stats.samples).toBeGreaterThan(200);\n  84 |     expect(stats.before.p99, \"the original bright reflection must be reproduced\").toBeGreaterThan(80);\n> 85 |     expect(stats.after.p99, \"bright surface reflections should be substantially reduced\").toBeLessThan(stats.before.p99 * 0.7);\n     |                                                                                           ^\n  86 |   }\n  87 |   expect(await page.evaluate(() => window.__stageEnvironment!.keyCount())).toBe(88);\n  88 |   await page.evaluate(() => window.__stageEnvironment!.dispose());"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "C:\\Projects\\pianomotion-studio\\tests\\browser\\stage-environment.spec.ts",
+                        "column": 91,
+                        "line": 85
+                      },
+                      "message": "Error: bright surface reflections should be substantially reduced\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeLessThan\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m\n\nExpected: < \u001b[32m138.19526\u001b[39m\nReceived:   \u001b[31m184.37199999999999\u001b[39m\n\n  83 |     expect(stats.samples).toBeGreaterThan(200);\n  84 |     expect(stats.before.p99, \"the original bright reflection must be reproduced\").toBeGreaterThan(80);\n> 85 |     expect(stats.after.p99, \"bright surface reflections should be substantially reduced\").toBeLessThan(stats.before.p99 * 0.7);\n     |                                                                                           ^\n  86 |   }\n  87 |   expect(await page.evaluate(() => window.__stageEnvironment!.keyCount())).toBe(88);\n  88 |   await page.evaluate(() => window.__stageEnvironment!.dispose());\n    at C:\\Projects\\pianomotion-studio\\tests\\browser\\stage-environment.spec.ts:85:91"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-18T18:26:38.090Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "deck-pov-luminance",
+                      "contentType": "application/json",
+                      "body": "ewogICJzYW1wbGVzIjogMzMyMSwKICAiYmVmb3JlIjogewogICAgInBlYWsiOiAyMzIuODc2OCwKICAgICJwOTkiOiAxOTcuNDIxODAwMDAwMDAwMDIsCiAgICAiYnJpZ2h0IjogMjYyCiAgfSwKICAiYWZ0ZXIiOiB7CiAgICAicGVhayI6IDIyNy43NDk2LAogICAgInA5OSI6IDE4NC4zNzE5OTk5OTk5OTk5OSwKICAgICJicmlnaHQiOiA4MwogIH0KfQ=="
+                    },
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "C:\\Projects\\pianomotion-studio\\test-results\\deck-chrome\\stage-environment-note-sur-630e1-pianist-and-concert-cameras\\error-context.md"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "C:\\Projects\\pianomotion-studio\\tests\\browser\\stage-environment.spec.ts",
+                    "column": 91,
+                    "line": 85
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "cb968f614591f9e74d02-5fb38fe423e442e4ab53",
+          "file": "stage-environment.spec.ts",
+          "line": 63,
+          "column": 1
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-10-18T18:26:34.622Z",
+    "duration": 25848.841,
+    "expected": 0,
+    "skipped": 0,
+    "unexpected": 1,
+    "flaky": 0
+  }
+}

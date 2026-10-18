@@ -6,6 +6,7 @@ export interface CommonTranslations {
   save: string;
   cancel: string;
   close: string;
+  closePanel: string;
   delete: string;
   open: string;
   edit: string;
@@ -28,6 +29,7 @@ export interface CommonTranslations {
   version: string;
   none: string;
   all: string;
+  workspacePanel: string;
 }
 
 export interface WelcomeTranslations {
@@ -72,6 +74,8 @@ export interface HeaderTranslations {
   toggleInspector: string;
   pinPanel: string;
   unpinPanel: string;
+  pinNamedPanel: string;
+  unpinNamedPanel: string;
 }
 
 export interface ViewsTranslations {
@@ -283,6 +287,67 @@ export interface DialogsTranslations {
   dismiss: string;
 }
 
+export interface StageAppearanceTranslations {
+  title: string;
+  preset: string;
+  concert: string;
+  studio: string;
+  brightness: string;
+  reflectionStrength: string;
+  quality: string;
+  qualityAuto: string;
+  qualityLow: string;
+  qualityHigh: string;
+  storageHint: string;
+}
+
+export interface RailTranslations {
+  label: string;
+  library: string;
+  importMidi: string;
+  audioRecording: string;
+  openAudioRecording: string;
+  audioUnavailable: string;
+  practice: string;
+  openPractice: string;
+  practiceUnavailable: string;
+  focus: string;
+}
+
+export interface PracticeTranslations {
+  title: string;
+  panelDescription: string;
+  loopSection: string;
+  loopStart: string;
+  loopEnd: string;
+  setStartAtPlayhead: string;
+  setEndAtPlayhead: string;
+  repeatEnabled: string;
+  resetRepeat: string;
+  invalidLoopRange: string;
+  loopPointOutsideDuration: string;
+  invalidLoopTime: string;
+  loopUnavailable: string;
+  secondsUnit: string;
+  bookmarkSection: string;
+  bookmarkRepeatHint: string;
+  bookmarkName: string;
+  bookmarkNamePlaceholder: string;
+  defaultBookmarkName: string;
+  addBookmark: string;
+  addBookmarkAtCurrentTime: string;
+  noBookmarks: string;
+  jumpToBookmark: string;
+  renameBookmark: string;
+  saveBookmarkName: string;
+  cancelRename: string;
+  deleteBookmark: string;
+  clearBookmarks: string;
+  bookmarkNameRequired: string;
+  invalidSavedState: string;
+  unsavedChanges: string;
+}
+
 export interface TranslationDictionary {
   common: CommonTranslations;
   welcome: WelcomeTranslations;
@@ -297,6 +362,9 @@ export interface TranslationDictionary {
   projects: ProjectsTranslations;
   diagnostics: DiagnosticsTranslations;
   dialogs: DialogsTranslations;
+  stageAppearance: StageAppearanceTranslations;
+  rail: RailTranslations;
+  practice: PracticeTranslations;
 }
 
 export type TranslationKey = {

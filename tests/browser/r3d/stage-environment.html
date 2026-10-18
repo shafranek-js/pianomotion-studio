@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Stage environment browser acceptance</title>
+    <link rel="icon" href="data:," />
+    <style>
+      html, body { margin: 0; min-height: 100%; background: #090b10; color: #e6ebef; font: 14px system-ui, sans-serif; }
+      body { padding: 16px; box-sizing: border-box; }
+      #stage-scene-host { position: relative; width: 1280px; height: 800px; max-width: calc(100vw - 32px); margin: 0 auto; overflow: hidden; }
+      #stage-scene-host canvas { display: block; width: 100%; height: 100%; }
+      #status { width: 1280px; max-width: calc(100vw - 32px); margin: 12px auto; white-space: pre-wrap; }
+    </style>
+  </head>
+  <body>
+    <div id="stage-scene-host" data-testid="stage-scene"></div>
+    <pre id="status">Starting real Three.js stage environment acceptance…</pre>
+    <script type="module" src="./stage-environment.ts"></script>
+  </body>
+</html>

@@ -16,6 +16,9 @@ import {
   type ResourceDescriptor,
   ProjectSourceContextSchema,
   type ProjectSourceContext,
+  PracticeStateSchema,
+  validatePracticeStateForProject,
+  type PracticeState,
 } from "@handthesia/contracts";
 
 export const DB_NAME = "handthesia_db";
@@ -96,6 +99,7 @@ export interface SavedProject {
   resources?: ResourceDescriptor[];
   resourcePayloads?: Record<string, ArrayBuffer>;
   sourceContext?: ProjectSourceContext;
+  practiceState?: PracticeState;
 }
 
 /**
@@ -129,6 +133,7 @@ export const SavedProjectSchema = z.object({
     z.custom<ArrayBuffer>((value) => value instanceof ArrayBuffer, "Expected resource ArrayBuffer"),
   ).optional(),
   sourceContext: ProjectSourceContextSchema.optional(),
+  practiceState: PracticeStateSchema.optional(),
 });
 
 /**
@@ -189,6 +194,15 @@ export function validateSavedProject(input: unknown): SavedProject {
     if (resource.byteLength !== bytes.byteLength) {
       throw new Error(`Saved resource payload '${path}' has a byte length that does not match its descriptor.`);
     }
+  }
+  if (project.practiceState) {
+    const sourceResource = project.document.sourceMidiResourceId
+      ? resources.find((resource) => resource.resourceId === project.document.sourceMidiResourceId)
+      : resources.find((resource) => resource.purpose === "source-midi");
+    if (!sourceResource) {
+      throw new Error("A saved practice state requires a source MIDI resource descriptor.");
+    }
+    validatePracticeStateForProject(project.practiceState, project.document, sourceResource);
   }
   if (project.document.sourceMidiResourceId) {
     const source = resources.find((resource) => resource.resourceId === project.document.sourceMidiResourceId);

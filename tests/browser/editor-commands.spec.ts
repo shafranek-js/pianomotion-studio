@@ -23,7 +23,7 @@ test("Help works before opening a project and restores focus after shortcuts", a
 test("Auto-advance confirms fingers without fictitious edits and menus share the editor history", async ({page}) => {
   test.setTimeout(240_000);
   const errors:string[]=[];page.on("pageerror", error=>errors.push(error.message));
-  const initial=await loadStudioSong(page);
+  const initial=await loadStudioSong(page, { output: "synth", dimension: "2d" });
   await page.getByRole("button", {name:"Performance", exact:true}).click();
   const canvas=studioCanvas(page,"2d");
   await canvas.focus();

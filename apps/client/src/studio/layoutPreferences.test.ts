@@ -59,6 +59,13 @@ describe("studio layout preferences", () => {
       .toBe("right");
     expect(sanitizeStudioLayoutPreferences({ activePanel: "projects", pinnedSide: "right" }).pinnedSide)
       .toBe("left");
+    expect(sanitizeStudioLayoutPreferences({ activePanel: "practice", pinnedSide: "left" }).pinnedSide)
+      .toBe("right");
+  });
+
+  it("restores Practice as a supported right-side panel", () => {
+    expect(sanitizeStudioLayoutPreferences({ activePanel: "practice", pinnedSide: "right" }))
+      .toMatchObject({ activePanel: "practice", pinnedSide: "right" });
   });
 
   it("loads from the dedicated IndexedDB setting key", async () => {

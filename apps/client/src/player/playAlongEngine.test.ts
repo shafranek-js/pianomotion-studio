@@ -1,5 +1,5 @@
 import type { Note } from "@handthesia/contracts";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   clusterNotesIntoSteps,
   PlayAlongEngine,
@@ -18,6 +18,8 @@ function createMockNote(id: string, pitch: number, start: number, end: number, h
     glissando: false,
   };
 }
+
+afterEach(() => vi.useRealTimers());
 
 describe("PlayAlongEngine", () => {
   it("clusters simultaneous and near-simultaneous notes into steps", () => {
@@ -96,7 +98,7 @@ describe("PlayAlongEngine", () => {
 
     // Press first note of chord
     engine.noteOn(60, 90);
-    expect(onPlayNote).toHaveBeenCalledWith(60, 90);
+    expect(onPlayNote).toHaveBeenCalledWith(60, 90, "playalong-60");
     expect(engine.getState()).toBe("waiting"); // still waiting for 64
 
     // Press second note of chord -> chord fulfilled!
@@ -106,12 +108,12 @@ describe("PlayAlongEngine", () => {
 
     // Release only one note -> still held
     engine.noteOff(60);
-    expect(onStopNote).toHaveBeenCalledWith(60);
+    expect(onStopNote).toHaveBeenCalledWith(60, "playalong-60");
     expect(engine.getState()).toBe("held");
 
     // Release last note -> keys released! Advances to next step!
     engine.noteOff(64);
-    expect(onStopNote).toHaveBeenCalledWith(64);
+    expect(onStopNote).toHaveBeenCalledWith(64, "playalong-64");
     expect(engine.getCurrentStepIndex()).toBe(1);
     expect(engine.getState()).toBe("waiting");
     expect(onTimeChange).toHaveBeenCalledWith(2.0);
@@ -526,5 +528,237 @@ describe("PlayAlongEngine", () => {
     engine.noteOff(62);
     expect(engine.getCurrentStepIndex()).toBe(2);
     expect(engine.getState()).toBe("waiting");
+  });
+
+  it("schedules companion notes by their onset offset from the current step", async () => {
+    vi.useFakeTimers();
+    const notes: Note[] = [
+      createMockNote("r1", 60, 0, 0.9, "right"),
+      createMockNote("r2", 62, 1, 1.5, "right"),
+      createMockNote("l1", 48, 0, 0.2, "left"),
+      createMockNote("l2", 50, 0.5, 0.8, "left"),
+    ];
+    const onPlayNote = vi.fn();
+    const engine = new PlayAlongEngine({
+      notes,
+      handMode: "right",
+      transitionDurationMs: 0,
+      onPlayNote,
+    });
+
+    engine.start();
+    engine.noteOn(60);
+    expect(onPlayNote).toHaveBeenNthCalledWith(1, 60, 80, "playalong-60");
+    expect(onPlayNote).toHaveBeenNthCalledWith(2, 48, 75, "playalong-companion-1");
+
+    await vi.advanceTimersByTimeAsync(499);
+    expect(onPlayNote.mock.calls.map(([pitch]) => pitch)).not.toContain(50);
+
+    await vi.advanceTimersByTimeAsync(1);
+    expect(onPlayNote).toHaveBeenCalledWith(50, 75, "playalong-companion-2");
+  });
+
+  it.each(["stop", "seek", "hand mode", "auto-play disabled", "dispose"] as const)(
+    "cancels pending and active companion voices on %s",
+    async (action) => {
+      vi.useFakeTimers();
+      const notes: Note[] = [
+        createMockNote("r1", 60, 0, 0.9, "right"),
+        createMockNote("r2", 62, 1, 1.5, "right"),
+        createMockNote("l1", 48, 0, 1, "left"),
+        createMockNote("l2", 50, 0.5, 0.8, "left"),
+      ];
+      const onPlayNote = vi.fn();
+      const onStopNote = vi.fn();
+      const engine = new PlayAlongEngine({
+        notes,
+        handMode: "right",
+        transitionDurationMs: 0,
+        onPlayNote,
+        onStopNote,
+      });
+
+      engine.start();
+      engine.noteOn(60);
+      expect(onPlayNote).toHaveBeenCalledWith(48, 75, "playalong-companion-1");
+      expect(onStopNote).not.toHaveBeenCalledWith(48, "playalong-companion-1");
+
+      if (action === "stop") engine.stop();
+      else if (action === "seek") engine.seekToStep(1);
+      else if (action === "hand mode") engine.setHandMode("left");
+      else if (action === "auto-play disabled") engine.setAutoPlayOtherHand(false);
+      else engine.dispose();
+
+      expect(onStopNote).toHaveBeenCalledWith(48, "playalong-companion-1");
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(onPlayNote.mock.calls.filter(([, , voiceId]) => String(voiceId).startsWith("playalong-companion-")))
+        .toHaveLength(1);
+      expect(onStopNote.mock.calls.filter(([, voiceId]) => String(voiceId).startsWith("playalong-companion-")))
+        .toEqual([[48, "playalong-companion-1"]]);
+    },
+  );
+
+  it("uses separate occurrence IDs for repeated companion pitches and releases each owner exactly once", async () => {
+    vi.useFakeTimers();
+    const notes: Note[] = [
+      createMockNote("r1", 60, 0, 0.25, "right"),
+      createMockNote("r2", 62, 0.5, 1, "right"),
+      createMockNote("l1", 48, 0, 0.25, "left"),
+      createMockNote("l2", 48, 0.5, 2.5, "left"),
+    ];
+    const onPlayNote = vi.fn();
+    const onStopNote = vi.fn();
+    const engine = new PlayAlongEngine({
+      notes,
+      handMode: "right",
+      transitionDurationMs: 0,
+      onPlayNote,
+      onStopNote,
+    });
+
+    engine.start();
+    engine.noteOn(60);
+    engine.noteOff(60);
+    engine.noteOn(62);
+
+    expect(onPlayNote).toHaveBeenCalledWith(48, 75, "playalong-companion-1");
+    expect(onPlayNote).toHaveBeenCalledWith(48, 75, "playalong-companion-2");
+    expect(onStopNote).toHaveBeenCalledWith(48, "playalong-companion-1");
+
+    await vi.advanceTimersByTimeAsync(250);
+    expect(onStopNote.mock.calls.filter(([, voiceId]) => String(voiceId).startsWith("playalong-companion-")))
+      .toEqual([[48, "playalong-companion-1"]]);
+
+    await vi.advanceTimersByTimeAsync(1749);
+    expect(onStopNote).not.toHaveBeenCalledWith(48, "playalong-companion-2");
+    await vi.advanceTimersByTimeAsync(1);
+    expect(onStopNote.mock.calls.filter(([, voiceId]) => String(voiceId).startsWith("playalong-companion-")))
+      .toEqual([
+        [48, "playalong-companion-1"],
+        [48, "playalong-companion-2"],
+      ]);
+  });
+
+  it.each(["stop", "dispose"] as const)("stops held user voices on %s", (action) => {
+    const onStopNote = vi.fn();
+    const engine = new PlayAlongEngine({
+      notes: [createMockNote("r1", 60, 0, 1, "right")],
+      transitionDurationMs: 0,
+      onStopNote,
+    });
+
+    engine.start();
+    engine.noteOn(60);
+    if (action === "stop") engine.stop();
+    else engine.dispose();
+
+    expect(onStopNote).toHaveBeenCalledWith(60, "playalong-60");
+    expect(engine.getHeldUserPitches()).toEqual(new Set());
+  });
+
+  it("starts, advances, and wraps only across eligible A–B steps", () => {
+    const notes: Note[] = [
+      createMockNote("before", 60, 0.5, 0.8, "right"),
+      createMockNote("a", 62, 1.5, 1.8, "right"),
+      createMockNote("b", 64, 2.8, 3.1, "right"),
+      createMockNote("after", 65, 3.2, 3.5, "right"),
+    ];
+    const times: number[] = [];
+    const engine = new PlayAlongEngine({
+      notes,
+      transitionDurationMs: 0,
+      onTimeChange: (time) => times.push(time),
+    });
+    engine.setLoopRange({ startSeconds: 1.4, endSeconds: 3 });
+
+    engine.start();
+    expect(engine.getCurrentStep()?.timeSeconds).toBe(1.5);
+    engine.noteOn(62);
+    engine.noteOff(62);
+    expect(engine.getCurrentStep()?.timeSeconds).toBe(2.8);
+    engine.noteOn(64);
+    engine.noteOff(64);
+    expect(engine.getCurrentStep()?.timeSeconds).toBe(1.5);
+    expect(times).toEqual([1.5, 2.8, 1.5]);
+
+    engine.nextStep();
+    expect(engine.getCurrentStep()?.timeSeconds).toBe(2.8);
+    engine.nextStep();
+    expect(engine.getCurrentStep()?.timeSeconds).toBe(1.5);
+    engine.previousStep();
+    expect(engine.getCurrentStep()?.timeSeconds).toBe(2.8);
+    engine.dispose();
+  });
+
+  it("settles an in-flight transition when the A–B range changes", () => {
+    const times: number[] = [];
+    const engine = new PlayAlongEngine({
+      notes: [
+        createMockNote("a", 62, 1.5, 1.8, "right"),
+        createMockNote("b", 64, 2.8, 3.1, "right"),
+      ],
+      transitionDurationMs: 5_000,
+      onTimeChange: (time) => times.push(time),
+    });
+
+    engine.start();
+    engine.noteOn(62);
+    engine.noteOff(62);
+    expect(engine.getState()).toBe("transitioning");
+
+    engine.setLoopRange({ startSeconds: 2.7, endSeconds: 3.2 });
+
+    expect(engine.getState()).toBe("waiting");
+    expect(engine.getCurrentStep()?.timeSeconds).toBe(2.8);
+    expect(times.at(-1)).toBe(2.8);
+    engine.dispose();
+  });
+
+  it("completes without audio when A–B contains no playable step", () => {
+    const onPlayNote = vi.fn();
+    const onStepChange = vi.fn();
+    const engine = new PlayAlongEngine({
+      notes: [createMockNote("only", 60, 0.5, 0.8, "right")],
+      onPlayNote,
+      onStepChange,
+    });
+    engine.setLoopRange({ startSeconds: 1, endSeconds: 2 });
+    engine.start();
+
+    expect(engine.hasEligibleLoopSteps()).toBe(false);
+    expect(engine.getState()).toBe("completed");
+    expect(engine.getCurrentStep()).toBeNull();
+    expect(onPlayNote).not.toHaveBeenCalled();
+    engine.dispose();
+  });
+
+  it("does not schedule companion-note onsets at or beyond loop B", async () => {
+    vi.useFakeTimers();
+    const notes: Note[] = [
+      createMockNote("r1", 60, 1.5, 2.8, "right"),
+      createMockNote("r2", 62, 2.5, 2.9, "right"),
+      createMockNote("l-before-b", 48, 1.8, 1.95, "left"),
+      createMockNote("l-at-b", 50, 2, 2.2, "left"),
+      createMockNote("l-after-b", 52, 2.1, 2.3, "left"),
+    ];
+    const onPlayNote = vi.fn();
+    const engine = new PlayAlongEngine({
+      notes,
+      handMode: "right",
+      transitionDurationMs: 0,
+      onPlayNote,
+    });
+    engine.setLoopRange({ startSeconds: 1.4, endSeconds: 2 });
+    engine.start();
+    engine.noteOn(60);
+    await vi.advanceTimersByTimeAsync(700);
+
+    const companionPitches = onPlayNote.mock.calls
+      .filter(([, , voiceId]) => String(voiceId).startsWith("playalong-companion-"))
+      .map(([pitch]) => pitch);
+    expect(companionPitches).toContain(48);
+    expect(companionPitches).not.toContain(50);
+    expect(companionPitches).not.toContain(52);
+    engine.dispose();
   });
 });

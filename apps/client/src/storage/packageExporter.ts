@@ -258,6 +258,7 @@ export async function buildProjectPackage(
     fingeringPlan: validated.fingeringPlan ?? null,
     performancePlan: validated.performancePlan ?? null,
     motionPlan: validated.motionPlan ?? null,
+    ...(validated.practiceState ? { practiceState: validated.practiceState } : {}),
     resourcePayloads: encodedPayloads,
   };
   return validateProjectPackage(pkg);
@@ -308,6 +309,7 @@ export function buildProjectPackageSync(
     fingeringPlan: validated.fingeringPlan ?? null,
     performancePlan: validated.performancePlan ?? null,
     motionPlan: validated.motionPlan ?? null,
+    ...(validated.practiceState ? { practiceState: validated.practiceState } : {}),
     resourcePayloads: encodedPayloads,
   };
 
@@ -502,6 +504,7 @@ export function projectPackageToSavedProject(
     resources: pkg.resources,
     resourcePayloads: payloads,
     sourceContext: pkg.sourceContext,
+    ...(pkg.practiceState ? { practiceState: pkg.practiceState } : {}),
   };
 }
 

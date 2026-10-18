@@ -18,6 +18,7 @@ export async function createVideoFrameScene(
 ): Promise<VideoFrameScene> {
   const fixedViewport = { width: canvas.width, height: canvas.height, resolution: 1 as const };
   const displaySettings = {
+    stageAppearance: snapshot.settings.stageAppearance,
     showFingerLabels: snapshot.settings.showFingerLabels,
     showNoteNames: snapshot.settings.showNoteNames,
     skinStyle: snapshot.settings.skinStyle,

@@ -13,9 +13,11 @@ import type { KeyPressInfo } from "../render/keyboardView";
 import { lerpPose, type MotionBuffer } from "../render/motionBuffer";
 import type { PianoSceneDisplaySettings } from "../render/pianoScene";
 import { normalizeSkinSettings, type SkinSettings } from "../render/skins";
+import type { StageAppearance } from "../settings/stageAppearance";
 import { FallingNotes3DView, NoteTimeIndex } from "./fallingNotes3dView";
 import { Hand3DMeshGroup, KEYBOARD_WIDTH_IN } from "./handRigBuilder";
 import { Keyboard3DView } from "./keyboard3dView";
+import { PianoStage3D, type PianoStageDiagnostics } from "./pianoStage3d";
 
 export type Camera3DPreset = "concert" | "overhead" | "pov" | "side_arch";
 
@@ -166,6 +168,7 @@ export class PianoScene3D {
   private readonly fallingNotes3D: FallingNotes3DView;
   private readonly leftHand3D: Hand3DMeshGroup;
   private readonly rightHand3D: Hand3DMeshGroup;
+  private stage3D: PianoStage3D | null = null;
   private readonly fixedViewport: PianoScene3DOptions["fixedViewport"];
   private readonly ownsCanvas: boolean;
   private readonly raycaster = new THREE.Raycaster();
@@ -200,10 +203,7 @@ export class PianoScene3D {
   private pointerListenerCleanup: (() => void) | null = null;
   private isDestroyed = false;
   private isUpdatingControlsInternally = false;
-  private stageFloorMesh: THREE.Mesh | null = null;
-  private stageFloorGeo: THREE.PlaneGeometry | null = null;
-  private stageFloorMat: THREE.MeshPhysicalMaterial | null = null;
-  private stageFloorTexture: THREE.CanvasTexture | null = null;
+  private deferStageAppearanceRender = false;
 
   public constructor(
     private readonly target: HTMLElement,
@@ -225,7 +225,7 @@ export class PianoScene3D {
     const width = this.fixedViewport?.width ?? Math.max(2, target.clientWidth || 960);
     const height = this.fixedViewport?.height ?? Math.max(2, target.clientHeight || 540);
 
-    this.camera = new THREE.PerspectiveCamera(38, width / height, 0.5, 180);
+    this.camera = new THREE.PerspectiveCamera(38, width / height, 0.5, 360);
     this.renderer = new THREE.WebGLRenderer({
       ...(options.canvas ? { canvas: options.canvas } : {}),
       antialias: true,
@@ -289,8 +289,7 @@ export class PianoScene3D {
         });
       }
 
-      this.setupLighting();
-      this.setupStageFloor();
+      this.stage3D = new PianoStage3D(this.scene, this.renderer, width);
 
       this.keyboard3D = new Keyboard3DView();
       this.scene.add(this.keyboard3D.group);
@@ -318,136 +317,14 @@ export class PianoScene3D {
     this.resizeObserver?.disconnect();
     this.pointerListenerCleanup?.();
     this.controls?.dispose();
+    this.stage3D?.dispose();
     this.keyboard3D?.dispose();
     this.fallingNotes3D?.dispose();
     this.leftHand3D?.dispose();
     this.rightHand3D?.dispose();
     this.envMapTexture?.dispose();
-    this.stageFloorGeo?.dispose();
-    this.stageFloorMat?.dispose();
-    this.stageFloorTexture?.dispose();
     this.renderer.dispose();
     if (this.ownsCanvas) this.renderer.domElement.remove();
-  }
-
-  private setupLighting(): void {
-    // Low ambient hemisphere fill so directional shadows on white keys have rich dark contrast
-    const hemiLight = new THREE.HemisphereLight(0xdbeafe, 0x111015, 0.24);
-    hemiLight.position.set(0, 40, 0);
-    this.scene.add(hemiLight);
-
-    // Primary concert spot light casting high-contrast anatomical shadows from hands/fingers onto keys and floor
-    const keyLight = new THREE.DirectionalLight(0xfff5ea, 1.68);
-    keyLight.position.set(7, 25, 8);
-    keyLight.target.position.set(0, 0, -2.5);
-    keyLight.castShadow = true;
-    keyLight.shadow.mapSize.width = 2048;
-    keyLight.shadow.mapSize.height = 2048;
-    keyLight.shadow.camera.near = 2;
-    keyLight.shadow.camera.far = 72;
-    keyLight.shadow.camera.left = -30;
-    keyLight.shadow.camera.right = 30;
-    keyLight.shadow.camera.top = 18;
-    keyLight.shadow.camera.bottom = -28;
-    keyLight.shadow.bias = -0.0002;
-    keyLight.shadow.normalBias = 0.012;
-    keyLight.shadow.radius = 2.0;
-    this.scene.add(keyLight);
-    this.scene.add(keyLight.target);
-
-    // Subtle cool side-fill to sculpt lateral finger contours without flattening shadows
-    const fillLight = new THREE.DirectionalLight(0x93c5fd, 0.18);
-    fillLight.position.set(-18, 12, 14);
-    this.scene.add(fillLight);
-
-    // Gentle angled backlight to outline knuckles without creating central fallboard glare
-    const rimLight = new THREE.DirectionalLight(0xfde68a, 0.16);
-    rimLight.position.set(-10, 16, -24);
-    this.scene.add(rimLight);
-  }
-
-  private setupStageFloor(): void {
-    const floorSize = 160;
-    this.stageFloorGeo = new THREE.PlaneGeometry(floorSize, floorSize, 1, 1);
-    this.stageFloorGeo.rotateX(-Math.PI * 0.5);
-
-    let floorTexture: THREE.CanvasTexture | null = null;
-    if (typeof document !== "undefined") {
-      try {
-        const canvas = document.createElement("canvas");
-        canvas.width = 1024;
-        canvas.height = 1024;
-        const ctx = canvas.getContext("2d");
-        if (ctx) {
-          // Dark smoked oak / concert stage parquet planks running along Z
-          const numPlanks = 16;
-          const plankW = canvas.width / numPlanks;
-          const plankPalette = [
-            "#1c1815",
-            "#211c18",
-            "#191512",
-            "#241e1a",
-            "#1e1a16",
-            "#221d19",
-          ];
-
-          for (let i = 0; i < numPlanks; i++) {
-            const x = i * plankW;
-            const plankColor = plankPalette[i % plankPalette.length]!;
-            ctx.fillStyle = plankColor;
-            ctx.fillRect(x, 0, plankW, canvas.height);
-
-            // Subtle wood grain streaks along plank length
-            ctx.fillStyle = "rgba(255, 255, 255, 0.015)";
-            for (let g = 0; g < 12; g++) {
-              const gx = x + ((g * 17) % Math.floor(plankW));
-              ctx.fillRect(gx, 0, 1.5, canvas.height);
-            }
-            ctx.fillStyle = "rgba(0, 0, 0, 0.02)";
-            for (let g = 0; g < 12; g++) {
-              const gx = x + ((g * 23) % Math.floor(plankW));
-              ctx.fillRect(gx, 0, 1.5, canvas.height);
-            }
-
-            // Staggered butt joints across the plank
-            const jointOffset = (i * 197) % 512;
-            ctx.fillStyle = "#0a0807";
-            ctx.fillRect(x, jointOffset, plankW, 2.5);
-            ctx.fillRect(x, (jointOffset + 512) % 1024, plankW, 2.5);
-
-            // Seam between planks (dark shadow line + subtle highlight bevel)
-            ctx.fillStyle = "#0c0a09";
-            ctx.fillRect(x, 0, 2.5, canvas.height);
-            ctx.fillStyle = "rgba(255, 255, 255, 0.025)";
-            ctx.fillRect(x + 2.5, 0, 1, canvas.height);
-          }
-
-          floorTexture = new THREE.CanvasTexture(canvas);
-          floorTexture.wrapS = THREE.RepeatWrapping;
-          floorTexture.wrapT = THREE.RepeatWrapping;
-          floorTexture.repeat.set(6, 6);
-          this.stageFloorTexture = floorTexture;
-        }
-      } catch {
-        // Fallback without texture if canvas context is unavailable
-      }
-    }
-
-    this.stageFloorMat = new THREE.MeshPhysicalMaterial({
-      color: 0x1d1916,
-      ...(floorTexture ? { map: floorTexture } : {}),
-      roughness: 0.38,
-      metalness: 0.05,
-      clearcoat: 0.45,
-      clearcoatRoughness: 0.24,
-      reflectivity: 0.65,
-      envMapIntensity: 0.35,
-    });
-
-    this.stageFloorMesh = new THREE.Mesh(this.stageFloorGeo, this.stageFloorMat);
-    this.stageFloorMesh.position.set(0, -20.0, -16.0);
-    this.stageFloorMesh.receiveShadow = true;
-    this.scene.add(this.stageFloorMesh);
   }
 
   private setupResizeObserver(): void {
@@ -482,6 +359,7 @@ export class PianoScene3D {
     this.camera.fov = fit.fov;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(width, height);
+    this.stage3D?.setViewportWidth(width);
     if (this.controls) {
       this.controls.maxDistance = Math.max(180, fit.distance * 1.5);
       this.isUpdatingControlsInternally = true;
@@ -596,7 +474,25 @@ export class PianoScene3D {
         ...(settings.showHandShadow !== undefined ? { shadow: settings.showHandShadow } : {}),
       });
     }
+    if ("stageAppearance" in settings) {
+      this.deferStageAppearanceRender = true;
+      try {
+        this.setStageAppearance(settings.stageAppearance as StageAppearance);
+      } finally {
+        this.deferStageAppearanceRender = false;
+      }
+    }
     this.update(this.currentTransportTime, this.lastActiveNotes);
+  }
+
+  public setStageAppearance(appearance: StageAppearance): void {
+    if (this.isDestroyed) return;
+    this.stage3D?.setAppearance(appearance);
+    if (!this.deferStageAppearanceRender) this.renderFrame();
+  }
+
+  public getStageDiagnostics(): PianoStageDiagnostics | null {
+    return this.stage3D?.getDiagnostics() ?? null;
   }
 
   public setKeyInputHandlers(handlers: {
@@ -817,14 +713,12 @@ export class PianoScene3D {
     this.resizeObserver?.disconnect();
     this.pointerListenerCleanup?.();
     this.controls?.dispose();
+    this.stage3D?.dispose();
     this.keyboard3D.dispose();
     this.fallingNotes3D.dispose();
     this.leftHand3D.dispose();
     this.rightHand3D.dispose();
     this.envMapTexture?.dispose();
-    this.stageFloorGeo?.dispose();
-    this.stageFloorMat?.dispose();
-    this.stageFloorTexture?.dispose();
     this.renderer.dispose();
     if (this.ownsCanvas) this.canvas.remove();
   }

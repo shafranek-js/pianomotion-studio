@@ -13,6 +13,23 @@
   font-weight: 700;
 }
 
+.stageAppearance {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  border: 1px solid var(--studio-border, #39423f);
+  border-radius: 0.75rem;
+  background: var(--studio-surface, #1d2421);
+  padding: 0.8rem;
+}
+
+.subheading {
+  margin: 0;
+  color: var(--studio-text, #f3f5f4);
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
 .field {
   display: flex;
   flex-direction: column;
@@ -33,6 +50,31 @@
   padding: 0.5rem 0.65rem;
   font: inherit;
   font-weight: 500;
+}
+
+.rangeHeading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.rangeHeading output {
+  color: var(--studio-text, #f3f5f4);
+  font-variant-numeric: tabular-nums;
+}
+
+.field input.rangeInput {
+  min-height: 1.25rem;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  accent-color: var(--studio-accent, #4c8cca);
+  cursor: pointer;
+}
+
+.field input.rangeInput:disabled {
+  cursor: default;
 }
 
 .hint {

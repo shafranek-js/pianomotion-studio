@@ -187,6 +187,7 @@ export async function analyzeSavedProjectCandidate(
     keyStyle: sourceContext.keyStyle,
     sourceContext,
     sourceDescriptor: settledResult.resource,
+    ...(project.practiceState ? { practiceState: project.practiceState } : {}),
   };
   return {
     result: settledResult,

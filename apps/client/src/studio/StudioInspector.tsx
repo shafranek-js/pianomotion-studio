@@ -2,6 +2,8 @@ import type { ReactNode, ChangeEvent } from "react";
 import type { M1AnalyzeMidiResult, M1KeyStyle } from "@handthesia/contracts";
 import type { PianistProfile } from "../profiles";
 import type { AppSettings, CalculationEngine, SkinStyleSetting } from "../settings";
+import { normalizeStageAppearance, type StageAppearance, type StagePreset, type StageQuality } from "../settings/stageAppearance";
+import { useI18n } from "../i18n";
 import type { DecodedAudioRecording } from "../audio/recording/audioDecoder";
 import type { PlanDiagnostic } from "@handthesia/contracts";
 import type { DifficultyReport } from "../editor/types";
@@ -32,6 +34,7 @@ export interface StudioInspectorProps {
   onSelectNote?(noteId: string): void;
   onKeyStyleChange(style: M1KeyStyle): void;
   onSkinStyleChange(style: SkinStyleSetting): void;
+  onStageAppearanceChange?(value: StageAppearance): void;
   onCalculationEngineChange?(engine: CalculationEngine): void;
   onOpenPianist(): void;
   onAudioFileChange(event: ChangeEvent<HTMLInputElement>): void;
@@ -41,10 +44,89 @@ export interface StudioInspectorProps {
 
 export function StudioInspector(props: StudioInspectorProps) {
   const { tab, result, profile, settings, keyStyle, audioRecording, audioOffset, sourceName, busy } = props;
+  const { t } = useI18n();
+  const stageAppearance = normalizeStageAppearance(settings.stageAppearance);
 
   if (tab === "scene") return (
     <section className={styles.content} aria-label="Scene settings">
       <h2 className={styles.heading}>Scene</h2>
+      <div className={styles.stageAppearance}>
+        <h3 className={styles.subheading}>{t("stageAppearance.title")}</h3>
+        <label className={styles.field} htmlFor="studio-stage-preset">
+          <span>{t("stageAppearance.preset")}</span>
+          <select
+            id="studio-stage-preset"
+            value={stageAppearance.preset}
+            disabled={!props.onStageAppearanceChange}
+            onChange={(event) => props.onStageAppearanceChange?.({
+              ...stageAppearance,
+              preset: event.currentTarget.value as StagePreset,
+            })}
+          >
+            <option value="concert">{t("stageAppearance.concert")}</option>
+            <option value="studio">{t("stageAppearance.studio")}</option>
+          </select>
+        </label>
+        <label className={styles.field} htmlFor="studio-stage-brightness">
+          <span className={styles.rangeHeading}>
+            <span>{t("stageAppearance.brightness")}</span>
+            <output aria-hidden="true">{formatPercent(stageAppearance.brightness)}</output>
+          </span>
+          <input
+            id="studio-stage-brightness"
+            className={styles.rangeInput}
+            type="range"
+            min={0.5}
+            max={1.5}
+            step={0.05}
+            value={stageAppearance.brightness}
+            aria-valuetext={formatPercent(stageAppearance.brightness)}
+            disabled={!props.onStageAppearanceChange}
+            onChange={(event) => props.onStageAppearanceChange?.({
+              ...stageAppearance,
+              brightness: event.currentTarget.valueAsNumber,
+            })}
+          />
+        </label>
+        <label className={styles.field} htmlFor="studio-stage-reflection">
+          <span className={styles.rangeHeading}>
+            <span>{t("stageAppearance.reflectionStrength")}</span>
+            <output aria-hidden="true">{formatPercent(stageAppearance.reflection)}</output>
+          </span>
+          <input
+            id="studio-stage-reflection"
+            className={styles.rangeInput}
+            type="range"
+            min={0}
+            max={1}
+            step={0.01}
+            value={stageAppearance.reflection}
+            aria-valuetext={formatPercent(stageAppearance.reflection)}
+            disabled={!props.onStageAppearanceChange}
+            onChange={(event) => props.onStageAppearanceChange?.({
+              ...stageAppearance,
+              reflection: event.currentTarget.valueAsNumber,
+            })}
+          />
+        </label>
+        <label className={styles.field} htmlFor="studio-stage-quality">
+          <span>{t("stageAppearance.quality")}</span>
+          <select
+            id="studio-stage-quality"
+            value={stageAppearance.quality}
+            disabled={!props.onStageAppearanceChange}
+            onChange={(event) => props.onStageAppearanceChange?.({
+              ...stageAppearance,
+              quality: event.currentTarget.value as StageQuality,
+            })}
+          >
+            <option value="auto">{t("stageAppearance.qualityAuto")}</option>
+            <option value="low">{t("stageAppearance.qualityLow")}</option>
+            <option value="high">{t("stageAppearance.qualityHigh")}</option>
+          </select>
+        </label>
+        <p className={styles.hint}>{t("stageAppearance.storageHint")}</p>
+      </div>
       <label className={styles.field} htmlFor="studio-key-style">
         <span>Keyboard geometry</span>
         <select id="studio-key-style" value={keyStyle} disabled={busy} onChange={(event) => props.onKeyStyleChange(event.currentTarget.value as M1KeyStyle)}>
@@ -190,4 +272,8 @@ export function StudioInspector(props: StudioInspectorProps) {
 function formatTime(seconds: number): string {
   const minutes = Math.floor(seconds / 60);
   return `${minutes}:${String(Math.floor(seconds % 60)).padStart(2, "0")}`;
+}
+
+function formatPercent(value: number): string {
+  return `${Math.round(value * 100)}%`;
 }

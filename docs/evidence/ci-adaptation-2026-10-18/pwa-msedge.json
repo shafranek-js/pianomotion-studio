@@ -1,0 +1,145 @@
+{
+  "appVersion": "0.1.0-dev.14",
+  "stats": {
+    "startTime": "2026-10-18T12:17:00.353Z",
+    "duration": 128781.068,
+    "expected": 11,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  },
+  "tests": [
+    {
+      "file": "builtin-melodies-offline.spec.ts",
+      "title": "an unvisited built-in melody opens offline from a coherent production release",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 21345,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "file": "builtin-soundfont-offline.spec.ts",
+      "title": "included SF3 and decoder restore and play offline without a user bank",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 14332,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "file": "offline-pwa.spec.ts",
+      "title": "SoundFont save and delete reject IndexedDB aborts after request success",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 1769,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "file": "offline-pwa.spec.ts",
+      "title": "production offline lifecycle: online analysis -> close -> offline reload -> restore -> offline new MIDI import -> save",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 18961,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "file": "offline-pwa.spec.ts",
+      "title": "three real releases preserve pinned old tabs and roll back corrupt and partial installs",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 29873,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "file": "offline-pwa.spec.ts",
+      "title": "the exact /pianomotion/ base imports, saves, and restores a project offline",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 11119,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "file": "offline-pwa.spec.ts",
+      "title": "subpath releases use distinct service-worker scopes and cache namespaces",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 12202,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "file": "pwa-deployment-m8.spec.ts",
+      "title": "manifest link exists and serves valid PWA Web App Manifest JSON",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 595,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "file": "pwa-deployment-m8.spec.ts",
+      "title": "PWA application icons load with valid headers and image payloads",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 725,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "file": "pwa-deployment-m8.spec.ts",
+      "title": "Service Worker registers and installs correctly in browser context",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 3945,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "file": "soundfont-offline.spec.ts",
+      "title": "production offline navigation restores a stereo Blob bank and both new SF2 workers",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 9258,
+          "errors": []
+        }
+      ]
+    }
+  ]
+}

@@ -9,7 +9,7 @@ test.describe("M5 Profiles, Settings & Durable Persistence (W034–W038, Gate G5
     page.on("pageerror", (err) => pageErrors.push(err.message));
 
     test.setTimeout(180_000);
-    const initial = await loadStudioSong(page);
+    const initial = await loadStudioSong(page, { output: "synth", dimension: "2d" });
 
     // 4. Verify M5 action buttons in player header
     const profileBtn = page.getByRole("button", {name: "Open pianist settings", exact: true});
@@ -77,13 +77,14 @@ test.describe("M5 Profiles, Settings & Durable Persistence (W034–W038, Gate G5
 
     // Change a named anatomy value in the unsaved profile draft.
     const anatomySlider = profileModal.getByRole("slider", {
-      name: "Thumb Proximal Phalanx",
+      name: "Thumb proximal phalanx (Thumb Proximal Phalanx)",
       exact: true,
     });
     await expect(anatomySlider).toBeVisible();
     const anatomyBeforeEdit = Number(await anatomySlider.inputValue());
-    expect(anatomyBeforeEdit).toBe(duplicated.profile.anatomy.pp1);
-    const sliderMinimum = Number(await anatomySlider.getAttribute("min"));
+    // Native range inputs snap profile decimals to min + N * step.
+    const sliderStep = Number(await anatomySlider.getAttribute("step"));
+    expect(Math.abs(anatomyBeforeEdit - duplicated.profile.anatomy.pp1)).toBeLessThanOrEqual(sliderStep / 2);
     const sliderMaximum = Number(await anatomySlider.getAttribute("max"));
     const sliderDirection = anatomyBeforeEdit >= sliderMaximum ? "ArrowLeft" : "ArrowRight";
     await anatomySlider.press(sliderDirection);

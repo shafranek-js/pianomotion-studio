@@ -1,0 +1,16 @@
+
+> @handthesia/web@0.1.0-dev.22 test:unit
+> vitest run --config vitest.config.ts --maxWorkers=1
+
+
+ RUN  v5.0.4 C:/Projects/pianomotion-studio/scratch/release-dev22
+
+
+ Test Files  67 passed (67)
+      Tests  639 passed (639)
+   Start at  21:49:57
+   Duration  61.86s (tests 45%, import 43%, transform 11%, worker 1%)
+
+     Import  224 modules were evaluated 417 times · 18.66s total, 43% of tracked time
+             ~8.64s faster with isolate: false — shared modules are evaluated once per worker instead of once per file
+             learn more: https://vitest.dev/guide/improving-performance#test-isolation

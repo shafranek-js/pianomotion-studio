@@ -1,0 +1,234 @@
+{
+  "config": {
+    "argv": [
+      "C:\\nvm4w\\nodejs\\node.exe",
+      "C:\\Projects\\pianomotion-studio\\node_modules\\@playwright\\test\\cli.js",
+      "test",
+      "--config",
+      "scratch/practice-playwright.config.ts",
+      "tests/browser/practice-recording-dsp.spec.ts"
+    ],
+    "configFile": "C:\\Projects\\pianomotion-studio\\scratch\\practice-playwright.config.ts",
+    "rootDir": "C:/Projects/pianomotion-studio/tests/browser",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "C:/Projects/pianomotion-studio/test-results/practice-dsp-chrome",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "",
+        "name": "",
+        "testDir": "C:/Projects/pianomotion-studio/tests/browser",
+        "testIgnore": [
+          "**/offline-pwa.spec.ts",
+          "**/pwa-deployment-m8.spec.ts",
+          "**/media-export.spec.ts",
+          "**/video-export-m7.spec.ts",
+          "**/parity-m1.spec.ts",
+          "**/native-engine.spec.ts",
+          "**/native-parity.spec.ts",
+          "**/motion-streaming.spec.ts",
+          "**/motion-playback.spec.ts",
+          "**/audio-dsp.spec.ts",
+          "**/audio-output.spec.ts",
+          "**/soundfont-stereo.spec.ts",
+          "**/soundfont-sf3.spec.ts",
+          "**/builtin-soundfont-offline.spec.ts",
+          "**/soundfont-storage.spec.ts",
+          "**/soundfont-large.spec.ts",
+          "**/soundfont-user-banks.spec.ts",
+          "**/soundfont-offline.spec.ts",
+          "**/builtin-melodies-offline.spec.ts"
+        ],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 90000
+      }
+    ],
+    "filteredProjects": [
+      {
+        "grep": {},
+        "grepInvert": null,
+        "outputDir": "C:\\Projects\\pianomotion-studio\\test-results\\practice-dsp-chrome",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "name": "",
+        "testDir": "C:\\Projects\\pianomotion-studio\\tests\\browser",
+        "snapshotDir": "C:\\Projects\\pianomotion-studio\\tests\\browser",
+        "testIgnore": [
+          "**/offline-pwa.spec.ts",
+          "**/pwa-deployment-m8.spec.ts",
+          "**/media-export.spec.ts",
+          "**/video-export-m7.spec.ts",
+          "**/parity-m1.spec.ts",
+          "**/native-engine.spec.ts",
+          "**/native-parity.spec.ts",
+          "**/motion-streaming.spec.ts",
+          "**/motion-playback.spec.ts",
+          "**/audio-dsp.spec.ts",
+          "**/audio-output.spec.ts",
+          "**/soundfont-stereo.spec.ts",
+          "**/soundfont-sf3.spec.ts",
+          "**/builtin-soundfont-offline.spec.ts",
+          "**/soundfont-storage.spec.ts",
+          "**/soundfont-large.spec.ts",
+          "**/soundfont-user-banks.spec.ts",
+          "**/soundfont-offline.spec.ts",
+          "**/builtin-melodies-offline.spec.ts"
+        ],
+        "testMatch": "**/*.@(spec|test).?(c|m)[jt]s?(x)",
+        "timeout": 90000,
+        "use": {
+          "baseURL": "http://127.0.0.1:4201",
+          "browserName": "chromium",
+          "channel": "chrome",
+          "headless": true
+        },
+        "dependencies": [],
+        "ignoreSnapshots": false,
+        "__projectId": ""
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "list",
+        null
+      ],
+      [
+        "json",
+        {
+          "outputFile": "C:\\Projects\\pianomotion-studio\\test-results/reports/practice-dsp-chrome.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "default",
+    "updateSourceMethod": "patch",
+    "version": "1.64.0",
+    "workers": 1,
+    "webServer": {
+      "command": "node.exe node_modules/vite/bin/vite.js --config scratch/practice-vite.config.ts --host 127.0.0.1 --port 4201 --strictPort",
+      "cwd": "C:\\Projects\\pianomotion-studio\\",
+      "url": "http://127.0.0.1:4201",
+      "reuseExistingServer": false,
+      "timeout": 60000
+    }
+  },
+  "suites": [
+    {
+      "title": "practice-recording-dsp.spec.ts",
+      "file": "practice-recording-dsp.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "real Signalsmith recording playback repeats future A–B segments at the requested output times",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 2956,
+                  "error": {
+                    "message": "Error: 0.3s signal level\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeGreaterThan\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m\n\nExpected: > \u001b[32m0.02\u001b[39m\nReceived:   \u001b[31m0\u001b[39m",
+                    "stack": "Error: 0.3s signal level\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeGreaterThan\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m\n\nExpected: > \u001b[32m0.02\u001b[39m\nReceived:   \u001b[31m0\u001b[39m\n    at C:\\Projects\\pianomotion-studio\\tests\\browser\\practice-recording-dsp.spec.ts:108:75",
+                    "location": {
+                      "file": "C:\\Projects\\pianomotion-studio\\tests\\browser\\practice-recording-dsp.spec.ts",
+                      "column": 75,
+                      "line": 108
+                    },
+                    "snippet": "  106 |   for (const [index, window] of result.windows.entries()) {\n  107 |     const expectedFrequency = index % 2 === 0 ? 220 : 440;\n> 108 |     expect(window.peakAmplitude, `${window.centerSeconds}s signal level`).toBeGreaterThan(0.02);\n      |                                                                           ^\n  109 |     expect(window.peakHz, `${window.centerSeconds}s loop section frequency`).toBe(expectedFrequency);\n  110 |   }\n  111 | });"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "C:\\Projects\\pianomotion-studio\\tests\\browser\\practice-recording-dsp.spec.ts",
+                        "column": 75,
+                        "line": 108
+                      },
+                      "message": "Error: 0.3s signal level\n\n\u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeGreaterThan\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m\n\nExpected: > \u001b[32m0.02\u001b[39m\nReceived:   \u001b[31m0\u001b[39m\n\n  106 |   for (const [index, window] of result.windows.entries()) {\n  107 |     const expectedFrequency = index % 2 === 0 ? 220 : 440;\n> 108 |     expect(window.peakAmplitude, `${window.centerSeconds}s signal level`).toBeGreaterThan(0.02);\n      |                                                                           ^\n  109 |     expect(window.peakHz, `${window.centerSeconds}s loop section frequency`).toBe(expectedFrequency);\n  110 |   }\n  111 | });\n    at C:\\Projects\\pianomotion-studio\\tests\\browser\\practice-recording-dsp.spec.ts:108:75"
+                    }
+                  ],
+                  "stdout": [
+                    {
+                      "text": "PRACTICE_RECORDING_LOOP_DSP {\"windows\":[{\"centerSeconds\":0.3,\"peakHz\":220,\"peakAmplitude\":0,\"levels\":[0,0,0]},{\"centerSeconds\":0.7,\"peakHz\":220,\"peakAmplitude\":0,\"levels\":[0,0,0]},{\"centerSeconds\":1.3,\"peakHz\":220,\"peakAmplitude\":0,\"levels\":[0,0,0]},{\"centerSeconds\":1.7,\"peakHz\":220,\"peakAmplitude\":0.3474192243088805,\"levels\":[0.3474192243088805,0.0016521184458264504,0.001040617183452769]},{\"centerSeconds\":2.3,\"peakHz\":220,\"peakAmplitude\":0.3471030655586206,\"levels\":[0.3471030655586206,0.0015116913175671845,0.0010688038467862532]},{\"centerSeconds\":2.7,\"peakHz\":440,\"peakAmplitude\":0.34716770793919366,\"levels\":[0.001657629821627628,0.34716770793919366,0.0017205722510912342]}],\"errors\":[],\"loopStart\":0.5,\"loopEnd\":1.5,\"scheduledBoundaries\":[1,2],\"outputDurationSeconds\":2.9}\n"
+                    }
+                  ],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-18T18:52:56.573Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "practice-recording-loop-dsp",
+                      "contentType": "application/json",
+                      "body": "ewogICJ3aW5kb3dzIjogWwogICAgewogICAgICAiY2VudGVyU2Vjb25kcyI6IDAuMywKICAgICAgInBlYWtIeiI6IDIyMCwKICAgICAgInBlYWtBbXBsaXR1ZGUiOiAwLAogICAgICAibGV2ZWxzIjogWwogICAgICAgIDAsCiAgICAgICAgMCwKICAgICAgICAwCiAgICAgIF0KICAgIH0sCiAgICB7CiAgICAgICJjZW50ZXJTZWNvbmRzIjogMC43LAogICAgICAicGVha0h6IjogMjIwLAogICAgICAicGVha0FtcGxpdHVkZSI6IDAsCiAgICAgICJsZXZlbHMiOiBbCiAgICAgICAgMCwKICAgICAgICAwLAogICAgICAgIDAKICAgICAgXQogICAgfSwKICAgIHsKICAgICAgImNlbnRlclNlY29uZHMiOiAxLjMsCiAgICAgICJwZWFrSHoiOiAyMjAsCiAgICAgICJwZWFrQW1wbGl0dWRlIjogMCwKICAgICAgImxldmVscyI6IFsKICAgICAgICAwLAogICAgICAgIDAsCiAgICAgICAgMAogICAgICBdCiAgICB9LAogICAgewogICAgICAiY2VudGVyU2Vjb25kcyI6IDEuNywKICAgICAgInBlYWtIeiI6IDIyMCwKICAgICAgInBlYWtBbXBsaXR1ZGUiOiAwLjM0NzQxOTIyNDMwODg4MDUsCiAgICAgICJsZXZlbHMiOiBbCiAgICAgICAgMC4zNDc0MTkyMjQzMDg4ODA1LAogICAgICAgIDAuMDAxNjUyMTE4NDQ1ODI2NDUwNCwKICAgICAgICAwLjAwMTA0MDYxNzE4MzQ1Mjc2OQogICAgICBdCiAgICB9LAogICAgewogICAgICAiY2VudGVyU2Vjb25kcyI6IDIuMywKICAgICAgInBlYWtIeiI6IDIyMCwKICAgICAgInBlYWtBbXBsaXR1ZGUiOiAwLjM0NzEwMzA2NTU1ODYyMDYsCiAgICAgICJsZXZlbHMiOiBbCiAgICAgICAgMC4zNDcxMDMwNjU1NTg2MjA2LAogICAgICAgIDAuMDAxNTExNjkxMzE3NTY3MTg0NSwKICAgICAgICAwLjAwMTA2ODgwMzg0Njc4NjI1MzIKICAgICAgXQogICAgfSwKICAgIHsKICAgICAgImNlbnRlclNlY29uZHMiOiAyLjcsCiAgICAgICJwZWFrSHoiOiA0NDAsCiAgICAgICJwZWFrQW1wbGl0dWRlIjogMC4zNDcxNjc3MDc5MzkxOTM2NiwKICAgICAgImxldmVscyI6IFsKICAgICAgICAwLjAwMTY1NzYyOTgyMTYyNzYyOCwKICAgICAgICAwLjM0NzE2NzcwNzkzOTE5MzY2LAogICAgICAgIDAuMDAxNzIwNTcyMjUxMDkxMjM0MgogICAgICBdCiAgICB9CiAgXSwKICAiZXJyb3JzIjogW10sCiAgImxvb3BTdGFydCI6IDAuNSwKICAibG9vcEVuZCI6IDEuNSwKICAic2NoZWR1bGVkQm91bmRhcmllcyI6IFsKICAgIDEsCiAgICAyCiAgXSwKICAib3V0cHV0RHVyYXRpb25TZWNvbmRzIjogMi45Cn0="
+                    },
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "C:\\Projects\\pianomotion-studio\\test-results\\practice-dsp-chrome\\practice-recording-dsp-rea-ea0d0--the-requested-output-times\\error-context.md"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "C:\\Projects\\pianomotion-studio\\tests\\browser\\practice-recording-dsp.spec.ts",
+                    "column": 75,
+                    "line": 108
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "1d7ab00494bea2215623-586a78954b299ccec08e",
+          "file": "practice-recording-dsp.spec.ts",
+          "line": 3,
+          "column": 1
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-10-18T18:52:52.392Z",
+    "duration": 12200.711000000001,
+    "expected": 0,
+    "skipped": 0,
+    "unexpected": 1,
+    "flaky": 0
+  }
+}

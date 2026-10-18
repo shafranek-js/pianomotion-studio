@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { expectStudioCanvas, exportStudioPackage, loadStudioSong, saveStudioProject, settledStudio, studioCanvas } from "./studio-helpers";
+import { configureStudioTestOutput, expectStudioCanvas, exportStudioPackage, loadStudioSong, saveStudioProject, settledStudio, studioCanvas } from "./studio-helpers";
 
 async function openLibrary(page: Page) {
   await page.getByRole("button", { name: "File", exact: true }).click();
@@ -22,7 +22,8 @@ test("built-in melody opens, plays, edits, saves and restores with exact source 
   page.on("pageerror", error => errors.push(error.message));
   await page.goto("/?empty=true");
   await expect(page.getByRole("button", { name: "Play demo song", exact: true })).toBeEnabled({ timeout: 30_000 });
-  await page.getByRole("button", { name: "Browse built-in melodies", exact: true }).click();
+  await configureStudioTestOutput(page);
+  await page.getByTestId("studio-tool-rail").getByRole("button", { name: "Browse built-in melodies", exact: true }).click();
   const dialog = page.getByRole("dialog", { name: "Built-in melodies", exact: true });
   await expect(dialog.getByRole("list").getByRole("listitem")).toHaveCount(163);
   await dialog.getByRole("searchbox", { name: "Search melodies" }).fill("BRAHMS");
@@ -31,6 +32,7 @@ test("built-in melody opens, plays, edits, saves and restores with exact source 
   await dialog.getByRole("button", { name: "Open Brahms' Lullaby", exact: true }).click();
   await waitForOpenedMelody(page);
   const initial = await settledStudio(page, 0);
+  await page.getByRole("button", { name: "Performance", exact: true }).click();
   expect(initial.result.rawBaseline.fixtureId).toMatch(/^builtin-[a-f0-9]{64}$/);
   const sourceIds = initial.result.document!.notes.map(note => note.noteId);
   await expect(page.getByText("Brahms' Lullaby", { exact: true })).toBeVisible();
@@ -80,7 +82,7 @@ test("built-in melody opens, plays, edits, saves and restores with exact source 
 test("mobile catalog handles search, Escape, retry and damaged assets without replacing the open project", async ({ page }, testInfo) => {
   test.setTimeout(150_000);
   await page.setViewportSize({ width: 390, height: 844 });
-  await loadStudioSong(page);
+  await loadStudioSong(page, { output: "synth", dimension: "2d" });
   const projectId = await page.evaluate(() => window.__playerSnapshot!.result.projectId);
   let manifestRequests = 0;
   await page.route("**/builtin-melodies/manifest.json", route => {
@@ -88,7 +90,7 @@ test("mobile catalog handles search, Escape, retry and damaged assets without re
     return manifestRequests === 1 ? route.fulfill({ status: 503, body: "Unavailable" }) : route.continue();
   });
   await page.getByRole("button", { name: "Projects", exact: true }).click();
-  const trigger = page.getByRole("button", { name: "Built-in melodies", exact: true });
+  const trigger = page.getByTestId("projects-panel").getByRole("button", { name: "Browse built-in melodies", exact: true });
   await trigger.click();
   const dialog = page.getByRole("dialog", { name: "Built-in melodies", exact: true });
   await expect(dialog.getByRole("alert")).toContainText("Could not load built-in melodies");
@@ -116,12 +118,14 @@ test("the largest built-in MIDI opens through the real analysis Worker", async (
   test.setTimeout(240_000);
   await page.goto("/?empty=true");
   await expect(page.getByRole("button", { name: "Play demo song", exact: true })).toBeEnabled({ timeout: 30_000 });
+  await configureStudioTestOutput(page);
   const dialog = await openLibrary(page);
   await dialog.getByRole("searchbox", { name: "Search melodies" }).fill("Megalovania");
   const start = Date.now();
   await dialog.getByRole("button", { name: "Open Megalovania", exact: true }).click();
   await waitForOpenedMelody(page, 180_000);
   const snapshot = await settledStudio(page, 0);
+  await page.getByRole("button", { name: "Performance", exact: true }).click();
   expect(snapshot.result.document!.notes.length).toBeGreaterThan(1000);
   const analysisElapsedMs = Date.now() - start;
   await page.getByRole("button", { name: "Play", exact: true }).click();

@@ -1,0 +1,146 @@
+{
+  "stats": {
+    "startTime": "2026-10-18T11:58:16.874Z",
+    "duration": 126197.733,
+    "expected": 10,
+    "skipped": 0,
+    "unexpected": 1,
+    "flaky": 0
+  },
+  "tests": [
+    {
+      "file": "builtin-melodies-offline.spec.ts",
+      "title": "an unvisited built-in melody opens offline from a coherent production release",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 19211,
+          "errorSummary": []
+        }
+      ]
+    },
+    {
+      "file": "builtin-soundfont-offline.spec.ts",
+      "title": "included SF3 and decoder restore and play offline without a user bank",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 14304,
+          "errorSummary": []
+        }
+      ]
+    },
+    {
+      "file": "offline-pwa.spec.ts",
+      "title": "SoundFont save and delete reject IndexedDB aborts after request success",
+      "status": "unexpected",
+      "results": [
+        {
+          "status": "failed",
+          "durationMs": 1747,
+          "errorSummary": [
+            "Error: page.evaluate: InvalidSoundFontError: Invalid SoundFont: LIST 'INFO' ends with an incomplete chunk header.\n    at asInvalidSoundFontError (http://127.0.0.1:55182/src/audio/soundfont/sf2Parser.ts:741:9)\n    at http://127.0.0.1:55182/src/audio/soundfont/sf2Parser.ts:820:25\n    at finish (http://127.0.0.1:55182/src/audio/soundfont/sf2Parser.ts:805:4)\n    at worker.onmessage (http://127.0.0.1:55182/src/audio/soundfont/sf2Parser.ts:820:5)\n    at asInvalidSoundFontError (http://127.0.0.1:55182/"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "offline-pwa.spec.ts",
+      "title": "production offline lifecycle: online analysis -> close -> offline reload -> restore -> offline new MIDI import -> save",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 21594,
+          "errorSummary": []
+        }
+      ]
+    },
+    {
+      "file": "offline-pwa.spec.ts",
+      "title": "three real releases preserve pinned old tabs and roll back corrupt and partial installs",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 26766,
+          "errorSummary": []
+        }
+      ]
+    },
+    {
+      "file": "offline-pwa.spec.ts",
+      "title": "the exact /pianomotion/ base imports, saves, and restores a project offline",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 9920,
+          "errorSummary": []
+        }
+      ]
+    },
+    {
+      "file": "offline-pwa.spec.ts",
+      "title": "subpath releases use distinct service-worker scopes and cache namespaces",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 11810,
+          "errorSummary": []
+        }
+      ]
+    },
+    {
+      "file": "pwa-deployment-m8.spec.ts",
+      "title": "manifest link exists and serves valid PWA Web App Manifest JSON",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 590,
+          "errorSummary": []
+        }
+      ]
+    },
+    {
+      "file": "pwa-deployment-m8.spec.ts",
+      "title": "PWA application icons load with valid headers and image payloads",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 574,
+          "errorSummary": []
+        }
+      ]
+    },
+    {
+      "file": "pwa-deployment-m8.spec.ts",
+      "title": "Service Worker registers and installs correctly in browser context",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 3951,
+          "errorSummary": []
+        }
+      ]
+    },
+    {
+      "file": "soundfont-offline.spec.ts",
+      "title": "production offline navigation restores a stereo Blob bank and both new SF2 workers",
+      "status": "expected",
+      "results": [
+        {
+          "status": "passed",
+          "durationMs": 9200,
+          "errorSummary": []
+        }
+      ]
+    }
+  ]
+}

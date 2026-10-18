@@ -25,6 +25,7 @@ export class SyncedAudioSource {
   private lastSongTime = 0;
   private lastSpeed = 1.0;
   private intentGeneration = 0;
+  private pendingBaseSchedule: Promise<void> = Promise.resolve();
   private lastError: Error | null = null;
   private errorReported = false;
   private readonly errorListeners = new Set<(error: Error) => void>();
@@ -113,7 +114,7 @@ export class SyncedAudioSource {
   /**
    * Starts or resumes synchronized audio playback at songTime and speed.
    */
-  public play(songTime: number, speed: number): void {
+  public play(songTime: number, speed: number): Promise<void> {
     const intentGeneration = ++this.intentGeneration;
     this.lastSongTime = songTime;
     this.lastSpeed = speed;
@@ -123,7 +124,7 @@ export class SyncedAudioSource {
       if (this.recording && !this.stretchNode) {
         this.reportPlaybackError(new Error("Pitch-preserving playback is not prepared."));
       }
-      return;
+      return Promise.resolve();
     }
 
     const recordingPosition = this.calculateAudioTime(songTime);
@@ -132,8 +133,9 @@ export class SyncedAudioSource {
     // If already past the end of the recording, nothing to play (silence)
     if (recordingPosition >= duration) {
       this.isAudioPlaying = false;
-      void this.scheduleStretch({ output: this.audioContext.currentTime, active: false }, intentGeneration);
-      return;
+      this.pendingBaseSchedule = this.scheduleStretch({ output: this.audioContext.currentTime, active: false }, intentGeneration)
+        .then(() => undefined);
+      return this.pendingBaseSchedule;
     }
 
     this.isAudioPlaying = true;
@@ -141,7 +143,7 @@ export class SyncedAudioSource {
 
     const outputStart = Math.max(ctxNow, ctxNow + Math.max(0, -recordingPosition / Math.max(1e-6, speed)));
     const inputStart = Math.max(0, recordingPosition);
-    void this.scheduleStretch({ output: ctxNow, active: false }, intentGeneration).then((stopped) => {
+    this.pendingBaseSchedule = this.scheduleStretch({ output: ctxNow, active: false }, intentGeneration).then((stopped) => {
       if (!stopped || intentGeneration !== this.intentGeneration || !this.isAudioPlaying) return false;
       return this.scheduleStretch({
         output: outputStart,
@@ -152,7 +154,8 @@ export class SyncedAudioSource {
       }, intentGeneration);
     }).then((started) => {
       if (!started && intentGeneration === this.intentGeneration) this.isAudioPlaying = false;
-    });
+    }).then(() => undefined);
+    return this.pendingBaseSchedule;
   }
 
   /**
@@ -177,6 +180,44 @@ export class SyncedAudioSource {
     if (this.isAudioPlaying) {
       this.play(songTime, speed);
     }
+  }
+
+  /** Appends a future loop-head segment without interrupting the current source. */
+  public seekAt(songTime: number, speed: number, outputTime: number): Promise<void> {
+    const recording = this.recording;
+    const context = this.audioContext;
+    const intentGeneration = this.intentGeneration;
+    if (!this.isAudioPlaying || !recording || !context || !this.stretchNode ||
+        !Number.isFinite(songTime) || !Number.isFinite(speed) || speed <= 0 || !Number.isFinite(outputTime)) {
+      return Promise.resolve();
+    }
+
+    this.lastSongTime = songTime;
+    this.lastSpeed = speed;
+    const recordingPosition = this.calculateAudioTime(songTime);
+    const startAt = Math.max(context.currentTime, outputTime);
+    const pending = this.pendingBaseSchedule.then(async () => {
+      if (intentGeneration !== this.intentGeneration || !this.isAudioPlaying) return;
+      if (recordingPosition >= recording.durationSeconds) {
+        await this.scheduleStretchAtOutput({ active: false }, startAt, intentGeneration);
+        return;
+      }
+
+      const inputStart = Math.max(0, recordingPosition);
+      const activeAt = startAt + Math.max(0, -recordingPosition / speed);
+      if (activeAt > startAt) {
+        await this.scheduleStretchAtOutput({ active: false }, startAt, intentGeneration);
+      }
+      if (intentGeneration !== this.intentGeneration || !this.isAudioPlaying) return;
+      await this.scheduleStretchAtOutput({
+        input: inputStart,
+        rate: speed,
+        semitones: 0,
+        active: true,
+      }, activeAt, intentGeneration);
+    });
+    this.pendingBaseSchedule = pending;
+    return pending;
   }
 
   /**
@@ -321,6 +362,17 @@ export class SyncedAudioSource {
         return false;
       },
     );
+  }
+
+  private scheduleStretchAtOutput(
+    options: Parameters<StretchNode["schedule"]>[0],
+    outputTime: number,
+    intentGeneration: number,
+  ): Promise<boolean> {
+    // Signalsmith's bundled worklet uses outputTime to cut/re-anchor its future
+    // time map. `output` is retained for the public wrapper/API contract.
+    const timestampedOptions = { ...options, output: outputTime, outputTime } as Parameters<StretchNode["schedule"]>[0];
+    return this.scheduleStretch(timestampedOptions, intentGeneration);
   }
 
   private reportPlaybackError(error: Error): void {

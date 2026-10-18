@@ -1,0 +1,19 @@
+{
+  "extends": "../../apps/client/tsconfig.app.json",
+  "compilerOptions": {
+    "composite": false,
+    "noEmit": true,
+    "types": ["vite/client", "node"],
+    "paths": {
+      "/src/*": ["../../apps/client/src/*"],
+      "@handthesia/engine-ts": ["../../packages/engine-ts/src/index.ts"]
+    }
+  },
+  "include": [
+    "../../apps/client/src",
+    "./audit-session-recovery.spec.ts",
+    "./audit-playalong-audio.spec.ts",
+    "./audit-waveform.spec.ts",
+    "./studio-helpers.ts"
+  ]
+}

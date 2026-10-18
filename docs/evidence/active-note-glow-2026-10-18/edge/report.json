@@ -1,0 +1,248 @@
+{
+  "config": {
+    "argv": [
+      "C:\\nvm4w\\nodejs\\node.exe",
+      "C:\\Projects\\pianomotion-studio\\node_modules\\@playwright\\test\\cli.js",
+      "test",
+      "--config",
+      "test-results/note-glow.config.mts",
+      "tests/browser/stage-environment.spec.ts",
+      "--grep",
+      "glow|note surface"
+    ],
+    "configFile": "C:\\Projects\\pianomotion-studio\\test-results\\note-glow.config.mts",
+    "rootDir": "C:/Projects/pianomotion-studio/tests/browser",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "C:/Projects/pianomotion-studio/test-results/note-glow-msedge",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "",
+        "name": "",
+        "testDir": "C:/Projects/pianomotion-studio/tests/browser",
+        "testIgnore": [
+          "**/offline-pwa.spec.ts",
+          "**/pwa-deployment-m8.spec.ts",
+          "**/media-export.spec.ts",
+          "**/video-export-m7.spec.ts",
+          "**/parity-m1.spec.ts",
+          "**/native-engine.spec.ts",
+          "**/native-parity.spec.ts",
+          "**/motion-streaming.spec.ts",
+          "**/motion-playback.spec.ts",
+          "**/audio-dsp.spec.ts",
+          "**/audio-output.spec.ts",
+          "**/soundfont-stereo.spec.ts",
+          "**/soundfont-sf3.spec.ts",
+          "**/builtin-soundfont-offline.spec.ts",
+          "**/soundfont-storage.spec.ts",
+          "**/soundfont-large.spec.ts",
+          "**/soundfont-user-banks.spec.ts",
+          "**/soundfont-offline.spec.ts",
+          "**/builtin-melodies-offline.spec.ts"
+        ],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 90000
+      }
+    ],
+    "filteredProjects": [
+      {
+        "grep": {},
+        "grepInvert": null,
+        "outputDir": "C:\\Projects\\pianomotion-studio\\test-results\\note-glow-msedge",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "name": "",
+        "testDir": "C:\\Projects\\pianomotion-studio\\tests\\browser",
+        "snapshotDir": "C:\\Projects\\pianomotion-studio\\tests\\browser",
+        "testIgnore": [
+          "**/offline-pwa.spec.ts",
+          "**/pwa-deployment-m8.spec.ts",
+          "**/media-export.spec.ts",
+          "**/video-export-m7.spec.ts",
+          "**/parity-m1.spec.ts",
+          "**/native-engine.spec.ts",
+          "**/native-parity.spec.ts",
+          "**/motion-streaming.spec.ts",
+          "**/motion-playback.spec.ts",
+          "**/audio-dsp.spec.ts",
+          "**/audio-output.spec.ts",
+          "**/soundfont-stereo.spec.ts",
+          "**/soundfont-sf3.spec.ts",
+          "**/builtin-soundfont-offline.spec.ts",
+          "**/soundfont-storage.spec.ts",
+          "**/soundfont-large.spec.ts",
+          "**/soundfont-user-banks.spec.ts",
+          "**/soundfont-offline.spec.ts",
+          "**/builtin-melodies-offline.spec.ts"
+        ],
+        "testMatch": "**/*.@(spec|test).?(c|m)[jt]s?(x)",
+        "timeout": 90000,
+        "use": {
+          "baseURL": "http://127.0.0.1:4185",
+          "browserName": "chromium",
+          "channel": "msedge",
+          "headless": true
+        },
+        "dependencies": [],
+        "ignoreSnapshots": false,
+        "__projectId": ""
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "list",
+        null
+      ],
+      [
+        "json",
+        {
+          "outputFile": "C:\\Projects\\pianomotion-studio\\test-results\\reports\\note-glow-msedge.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "default",
+    "updateSourceMethod": "patch",
+    "version": "1.64.0",
+    "workers": 1,
+    "webServer": {
+      "command": "node node_modules/vite/bin/vite.js --config apps/client/vite.config.ts --host 127.0.0.1 --port 4185 --strictPort",
+      "cwd": "C:\\Projects\\pianomotion-studio",
+      "url": "http://127.0.0.1:4185",
+      "reuseExistingServer": false,
+      "timeout": 60000
+    }
+  },
+  "suites": [
+    {
+      "title": "stage-environment.spec.ts",
+      "file": "stage-environment.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "active 3D notes glow only during their timed intervals and recover after seek",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 31442,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-18T18:48:25.766Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "active-note-glow-evidence",
+                      "contentType": "application/json",
+                      "body": "ewogICJhY3RpdmUiOiB7CiAgICAiY291bnQiOiA0LAogICAgIm5vdGVJZHMiOiBbCiAgICAgICJzdGFnZS1iYXNzIiwKICAgICAgInN0YWdlLWhpZ2giLAogICAgICAic3RhZ2UtbWlkZGxlIiwKICAgICAgInN0YWdlLXRyZWJsZSIKICAgIF0KICB9LAogICJmdXR1cmUiOiB7CiAgICAic2FtcGxlcyI6IDY0MDAwLAogICAgImNoYW5nZWRTYW1wbGVzIjogMCwKICAgICJ0b3RhbENoYW5uZWxEZWx0YSI6IDAsCiAgICAibWF4Q2hhbm5lbERlbHRhIjogMAogIH0sCiAgInBpeGVscyI6IHsKICAgICJzYW1wbGVzIjogNjQwMDAsCiAgICAiY2hhbmdlZFNhbXBsZXMiOiAzNDgsCiAgICAidG90YWxDaGFubmVsRGVsdGEiOiAzNjAzNCwKICAgICJtYXhDaGFubmVsRGVsdGEiOiAyMzAKICB9LAogICJyZWxlYXNlZCI6IHsKICAgICJzYW1wbGVzIjogNjQwMDAsCiAgICAiY2hhbmdlZFNhbXBsZXMiOiAwLAogICAgInRvdGFsQ2hhbm5lbERlbHRhIjogMCwKICAgICJtYXhDaGFubmVsRGVsdGEiOiAwCiAgfSwKICAicmVzdG9yZWQiOiB7CiAgICAic2FtcGxlcyI6IDY0MDAwLAogICAgImNoYW5nZWRTYW1wbGVzIjogMCwKICAgICJ0b3RhbENoYW5uZWxEZWx0YSI6IDAsCiAgICAibWF4Q2hhbm5lbERlbHRhIjogMAogIH0KfQ=="
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "cb968f614591f9e74d02-f0596e51bcbc294d7893",
+          "file": "stage-environment.spec.ts",
+          "line": 66,
+          "column": 1
+        },
+        {
+          "title": "note surface has restrained highlights in the pianist and concert cameras",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 90000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 10833,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-18T18:49:52.707Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "deck-pov-luminance",
+                      "contentType": "application/json",
+                      "body": "ewogICJzYW1wbGVzIjogMzMyMSwKICAiY2hhbmdlZERlY2tTYW1wbGVzIjogMzE0NywKICAiYmVmb3JlIjogewogICAgInBlYWsiOiAyMzIuODc2OCwKICAgICJwOTkiOiAxODEuNDM5MDAwMDAwMDAwMDIsCiAgICAiYnJpZ2h0IjogMTgzCiAgfSwKICAiYWZ0ZXIiOiB7CiAgICAicGVhayI6IDk5LjMxODYsCiAgICAicDk5IjogMzUuNDUwMzk5OTk5OTk5OTk1LAogICAgImJyaWdodCI6IDAKICB9Cn0="
+                    },
+                    {
+                      "name": "deck-concert-luminance",
+                      "contentType": "application/json",
+                      "body": "ewogICJzYW1wbGVzIjogNDU3MywKICAiY2hhbmdlZERlY2tTYW1wbGVzIjogNDQzMSwKICAiYmVmb3JlIjogewogICAgInBlYWsiOiAxOTEuOTUyOTk5OTk5OTk5OTcsCiAgICAicDk5IjogMTYzLjI4MTQsCiAgICAiYnJpZ2h0IjogMTEyCiAgfSwKICAiYWZ0ZXIiOiB7CiAgICAicGVhayI6IDEwNS41ODc0LAogICAgInA5OSI6IDMwLjMwNTk5OTk5OTk5OTk5NywKICAgICJicmlnaHQiOiAwCiAgfQp9"
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "cb968f614591f9e74d02-5fb38fe423e442e4ab53",
+          "file": "stage-environment.spec.ts",
+          "line": 122,
+          "column": 1
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-10-18T18:48:18.971Z",
+    "duration": 109482.645,
+    "expected": 2,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}

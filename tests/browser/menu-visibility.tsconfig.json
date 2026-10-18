@@ -1,0 +1,8 @@
+{
+  "extends": "./audit.tsconfig.json",
+  "include": [
+    "../../apps/client/src",
+    "./menu-visibility.spec.ts",
+    "./studio-helpers.ts"
+  ]
+}

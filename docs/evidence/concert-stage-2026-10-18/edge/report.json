@@ -1,0 +1,298 @@
+{
+  "config": {
+    "argv": [
+      "C:\\nvm4w\\nodejs\\node.exe",
+      "C:\\Projects\\pianomotion-studio\\node_modules\\@playwright\\test\\cli.js",
+      "test",
+      "--config",
+      "playwright.config.ts",
+      "tests/browser/stage-environment.spec.ts",
+      "tests/browser/grand-highway.spec.ts"
+    ],
+    "configFile": "C:\\Projects\\pianomotion-studio\\playwright.config.ts",
+    "rootDir": "C:/Projects/pianomotion-studio/tests/browser",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "C:/Projects/pianomotion-studio/test-results/ui-msedge",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "",
+        "name": "",
+        "testDir": "C:/Projects/pianomotion-studio/tests/browser",
+        "testIgnore": [
+          "**/offline-pwa.spec.ts",
+          "**/pwa-deployment-m8.spec.ts",
+          "**/media-export.spec.ts",
+          "**/video-export-m7.spec.ts",
+          "**/parity-m1.spec.ts",
+          "**/native-engine.spec.ts",
+          "**/native-parity.spec.ts",
+          "**/motion-streaming.spec.ts",
+          "**/motion-playback.spec.ts",
+          "**/audio-dsp.spec.ts",
+          "**/audio-output.spec.ts",
+          "**/soundfont-stereo.spec.ts",
+          "**/soundfont-sf3.spec.ts",
+          "**/builtin-soundfont-offline.spec.ts",
+          "**/soundfont-storage.spec.ts",
+          "**/soundfont-large.spec.ts",
+          "**/soundfont-user-banks.spec.ts",
+          "**/soundfont-offline.spec.ts",
+          "**/builtin-melodies-offline.spec.ts"
+        ],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 90000
+      }
+    ],
+    "filteredProjects": [
+      {
+        "grep": {},
+        "grepInvert": null,
+        "outputDir": "C:\\Projects\\pianomotion-studio\\test-results\\ui-msedge",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "name": "",
+        "testDir": "C:\\Projects\\pianomotion-studio\\tests\\browser",
+        "snapshotDir": "C:\\Projects\\pianomotion-studio\\tests\\browser",
+        "testIgnore": [
+          "**/offline-pwa.spec.ts",
+          "**/pwa-deployment-m8.spec.ts",
+          "**/media-export.spec.ts",
+          "**/video-export-m7.spec.ts",
+          "**/parity-m1.spec.ts",
+          "**/native-engine.spec.ts",
+          "**/native-parity.spec.ts",
+          "**/motion-streaming.spec.ts",
+          "**/motion-playback.spec.ts",
+          "**/audio-dsp.spec.ts",
+          "**/audio-output.spec.ts",
+          "**/soundfont-stereo.spec.ts",
+          "**/soundfont-sf3.spec.ts",
+          "**/builtin-soundfont-offline.spec.ts",
+          "**/soundfont-storage.spec.ts",
+          "**/soundfont-large.spec.ts",
+          "**/soundfont-user-banks.spec.ts",
+          "**/soundfont-offline.spec.ts",
+          "**/builtin-melodies-offline.spec.ts"
+        ],
+        "testMatch": "**/*.@(spec|test).?(c|m)[jt]s?(x)",
+        "timeout": 90000,
+        "use": {
+          "baseURL": "http://127.0.0.1:4173",
+          "browserName": "chromium",
+          "channel": "msedge",
+          "headless": true
+        },
+        "dependencies": [],
+        "ignoreSnapshots": false,
+        "__projectId": ""
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      [
+        "list",
+        null
+      ],
+      [
+        "json",
+        {
+          "outputFile": "test-results/reports/ui-msedge.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "default",
+    "updateSourceMethod": "patch",
+    "version": "1.64.0",
+    "workers": 1,
+    "webServer": {
+      "command": "npm run dev -- --host 127.0.0.1 --port 4173 --strictPort",
+      "url": "http://127.0.0.1:4173",
+      "reuseExistingServer": false,
+      "timeout": 60000
+    }
+  },
+  "suites": [
+    {
+      "title": "grand-highway.spec.ts",
+      "file": "grand-highway.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "3D grand highway fills the curved tail, clips beyond the rim, and renders all fixed cameras",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 11018,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-18T17:44:17.432Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "geometry-evidence",
+                      "contentType": "application/json",
+                      "body": "ewogICJkZWNrRm91bmQiOiB0cnVlLAogICJyZWFyQ2F2aXR5SGl0cyI6IDEsCiAgIm91dHNpZGVSaWdodFJpbUhpdHMiOiAwLAogICJub3RlQ291bnQiOiAyLAogICJjZW50ZXJOb3RlTGVuZ3RoIjogMzcuNTc0OTgxNjg5NDUzMTI1LAogICJ0cmVibGVOb3RlTGVuZ3RoIjogOS42NDY2NDkzNjA2NTY3MzgsCiAgImNlbnRlckZyb250WiI6IC01LjIwMDAwMDc2MjkzOTQ1MywKICAidHJlYmxlRnJvbnRaIjogLTUuMjAwMDAwMjg2MTAyMjk1LAogICJsZWZ0Q2hlZWsiOiB7CiAgICAiZm91bmQiOiB0cnVlLAogICAgInZlcnRleENvdW50IjogMTQxMzYsCiAgICAiZmluaXRlVW5pdE5vcm1hbHMiOiB0cnVlCiAgfSwKICAicmlnaHRDaGVlayI6IHsKICAgICJmb3VuZCI6IHRydWUsCiAgICAidmVydGV4Q291bnQiOiAxNDEzNiwKICAgICJmaW5pdGVVbml0Tm9ybWFscyI6IHRydWUKICB9Cn0="
+                    },
+                    {
+                      "name": "branding-evidence",
+                      "contentType": "application/json",
+                      "body": "ewogICJmb3VuZCI6IHRydWUsCiAgImxpbmVzIjogWwogICAgIlBJQU5PTU9USU9OIiwKICAgICJDT05DRVJUIEdSQU5EIgogIF0sCiAgInBvc2l0aW9uIjogWwogICAgMCwKICAgIC0zLjQ2LAogICAgMC45NTIKICBdLAogICJnb2xkUGl4ZWxzIjogMjUzODkKfQ=="
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "c40896a72fff93aa62eb-087c611c461f650a37c6",
+          "file": "grand-highway.spec.ts",
+          "line": 39,
+          "column": 1
+        }
+      ]
+    },
+    {
+      "title": "stage-environment.spec.ts",
+      "file": "stage-environment.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "real 3D stage renders presets, reflection, a soft radial edge, and capped targets",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 120000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 22695,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-18T17:44:29.496Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "stage-fade-edge-evidence",
+                      "contentType": "application/json",
+                      "body": "ewogICJ2YWxpZFBhaXJzIjogODMsCiAgImF2ZXJhZ2VDaGFubmVsRGVsdGEiOiAwLjcwMzYxNDQ1NzgzMTMyNDYsCiAgIm1heENoYW5uZWxEZWx0YSI6IDIuNDAwMDAwMDAwMDAwMDAyCn0="
+                    },
+                    {
+                      "name": "preset-floor-pixels",
+                      "contentType": "application/json",
+                      "body": "eyJzYW1wbGVzIjoxMTA4LCJjaGFuZ2VkU2FtcGxlcyI6MTEwNCwidG90YWxDaGFubmVsRGVsdGEiOjEyMDQ3LCJtYXhDaGFubmVsRGVsdGEiOjM4fQ=="
+                    },
+                    {
+                      "name": "stage-render-evidence",
+                      "contentType": "application/json",
+                      "body": "ewogICJpbml0aWFsIjogewogICAgImRpYWdub3N0aWNzIjogewogICAgICAiYXBwZWFyYW5jZSI6IHsKICAgICAgICAicHJlc2V0IjogImNvbmNlcnQiLAogICAgICAgICJicmlnaHRuZXNzIjogMSwKICAgICAgICAicmVmbGVjdGlvbiI6IDAuMjgsCiAgICAgICAgInF1YWxpdHkiOiAiYXV0byIKICAgICAgfSwKICAgICAgInJhZGl1cyI6IDgwLAogICAgICAiZmxvb3JZIjogLTIwLAogICAgICAicmVmbGVjdGlvblJlc29sdXRpb24iOiA1MTIsCiAgICAgICJyZWZsZWN0aW9uVGFyZ2V0V2lkdGgiOiA1MTIsCiAgICAgICJyZWZsZWN0aW9uVGFyZ2V0SGVpZ2h0IjogNTEyLAogICAgICAicmVmbGVjdGlvblBhc3NFbmFibGVkIjogdHJ1ZSwKICAgICAgImRpc3Bvc2VkIjogZmFsc2UKICAgIH0sCiAgICAic2l6ZSI6IHsKICAgICAgIndpZHRoIjogMTI4MCwKICAgICAgImhlaWdodCI6IDgwMAogICAgfSwKICAgICJ3ZWJnbCI6IHsKICAgICAgInZlcnNpb24iOiAiV2ViR0wgMi4wIChPcGVuR0wgRVMgMy4wIENocm9taXVtKSIsCiAgICAgICJjb250ZXh0TG9zdCI6IGZhbHNlCiAgICB9LAogICAgImtleUNvdW50IjogODgKICB9LAogICJmYWRlIjogewogICAgInZhbGlkUGFpcnMiOiA4MywKICAgICJhdmVyYWdlQ2hhbm5lbERlbHRhIjogMC43MDM2MTQ0NTc4MzEzMjQ2LAogICAgIm1heENoYW5uZWxEZWx0YSI6IDIuNDAwMDAwMDAwMDAwMDAyCiAgfSwKICAicHJlc2V0UGl4ZWxzIjogewogICAgInNhbXBsZXMiOiAxMTA4LAogICAgImNoYW5nZWRTYW1wbGVzIjogMTEwNCwKICAgICJ0b3RhbENoYW5uZWxEZWx0YSI6IDEyMDQ3LAogICAgIm1heENoYW5uZWxEZWx0YSI6IDM4CiAgfSwKICAiYnJpZ2h0bmVzc1BpeGVscyI6IHsKICAgICJzYW1wbGVzIjogMTEwOCwKICAgICJjaGFuZ2VkU2FtcGxlcyI6IDI1NCwKICAgICJ0b3RhbENoYW5uZWxEZWx0YSI6IDYyNTksCiAgICAibWF4Q2hhbm5lbERlbHRhIjogNjQKICB9LAogICJsb3ciOiB7CiAgICAiYXBwZWFyYW5jZSI6IHsKICAgICAgInByZXNldCI6ICJjb25jZXJ0IiwKICAgICAgImJyaWdodG5lc3MiOiAxLAogICAgICAicmVmbGVjdGlvbiI6IDAuOCwKICAgICAgInF1YWxpdHkiOiAibG93IgogICAgfSwKICAgICJyYWRpdXMiOiA4MCwKICAgICJmbG9vclkiOiAtMjAsCiAgICAicmVmbGVjdGlvblJlc29sdXRpb24iOiAyNTYsCiAgICAicmVmbGVjdGlvblRhcmdldFdpZHRoIjogMjU2LAogICAgInJlZmxlY3Rpb25UYXJnZXRIZWlnaHQiOiAyNTYsCiAgICAicmVmbGVjdGlvblBhc3NFbmFibGVkIjogdHJ1ZSwKICAgICJkaXNwb3NlZCI6IGZhbHNlCiAgfSwKICAiaGlnaCI6IHsKICAgICJhcHBlYXJhbmNlIjogewogICAgICAicHJlc2V0IjogImNvbmNlcnQiLAogICAgICAiYnJpZ2h0bmVzcyI6IDEsCiAgICAgICJyZWZsZWN0aW9uIjogMC44LAogICAgICAicXVhbGl0eSI6ICJoaWdoIgogICAgfSwKICAgICJyYWRpdXMiOiA4MCwKICAgICJmbG9vclkiOiAtMjAsCiAgICAicmVmbGVjdGlvblJlc29sdXRpb24iOiAxMDI0LAogICAgInJlZmxlY3Rpb25UYXJnZXRXaWR0aCI6IDEwMjQsCiAgICAicmVmbGVjdGlvblRhcmdldEhlaWdodCI6IDEwMjQsCiAgICAicmVmbGVjdGlvblBhc3NFbmFibGVkIjogdHJ1ZSwKICAgICJkaXNwb3NlZCI6IGZhbHNlCiAgfSwKICAic3RhdGlvbmFyeVBpeGVscyI6IHsKICAgICJzYW1wbGVzIjogMTEwOCwKICAgICJjaGFuZ2VkU2FtcGxlcyI6IDAsCiAgICAidG90YWxDaGFubmVsRGVsdGEiOiAwLAogICAgIm1heENoYW5uZWxEZWx0YSI6IDAKICB9LAogICJtb3ZlbWVudFBpeGVscyI6IHsKICAgICJzYW1wbGVzIjogMTEwOCwKICAgICJjaGFuZ2VkU2FtcGxlcyI6IDEzLAogICAgInRvdGFsQ2hhbm5lbERlbHRhIjogNDU3LAogICAgIm1heENoYW5uZWxEZWx0YSI6IDYzCiAgfSwKICAiZW5hYmxlZCI6IHsKICAgICJhcHBlYXJhbmNlIjogewogICAgICAicHJlc2V0IjogImNvbmNlcnQiLAogICAgICAiYnJpZ2h0bmVzcyI6IDEsCiAgICAgICJyZWZsZWN0aW9uIjogMC44LAogICAgICAicXVhbGl0eSI6ICJoaWdoIgogICAgfSwKICAgICJyYWRpdXMiOiA4MCwKICAgICJmbG9vclkiOiAtMjAsCiAgICAicmVmbGVjdGlvblJlc29sdXRpb24iOiAxMDI0LAogICAgInJlZmxlY3Rpb25UYXJnZXRXaWR0aCI6IDEwMjQsCiAgICAicmVmbGVjdGlvblRhcmdldEhlaWdodCI6IDEwMjQsCiAgICAicmVmbGVjdGlvblBhc3NFbmFibGVkIjogdHJ1ZSwKICAgICJkaXNwb3NlZCI6IGZhbHNlCiAgfSwKICAiZGlzYWJsZWQiOiB7CiAgICAiYXBwZWFyYW5jZSI6IHsKICAgICAgInByZXNldCI6ICJjb25jZXJ0IiwKICAgICAgImJyaWdodG5lc3MiOiAxLAogICAgICAicmVmbGVjdGlvbiI6IDAsCiAgICAgICJxdWFsaXR5IjogImhpZ2giCiAgICB9LAogICAgInJhZGl1cyI6IDgwLAogICAgImZsb29yWSI6IC0yMCwKICAgICJyZWZsZWN0aW9uUmVzb2x1dGlvbiI6IDEwMjQsCiAgICAicmVmbGVjdGlvblRhcmdldFdpZHRoIjogMTAyNCwKICAgICJyZWZsZWN0aW9uVGFyZ2V0SGVpZ2h0IjogMTAyNCwKICAgICJyZWZsZWN0aW9uUGFzc0VuYWJsZWQiOiBmYWxzZSwKICAgICJkaXNwb3NlZCI6IGZhbHNlCiAgfSwKICAicmVmbGVjdGlvblBpeGVscyI6IHsKICAgICJzYW1wbGVzIjogMTEwOCwKICAgICJjaGFuZ2VkU2FtcGxlcyI6IDExMDcsCiAgICAidG90YWxDaGFubmVsRGVsdGEiOiAxMTg3MTIsCiAgICAibWF4Q2hhbm5lbERlbHRhIjogMTQxCiAgfSwKICAiZmluYWwiOiB7CiAgICAic2l6ZSI6IHsKICAgICAgIndpZHRoIjogMTI4MCwKICAgICAgImhlaWdodCI6IDgwMAogICAgfSwKICAgICJrZXlDb3VudCI6IDg4CiAgfQp9"
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "cb968f614591f9e74d02-bcefbf1baf3094c63358",
+          "file": "stage-environment.spec.ts",
+          "line": 58,
+          "column": 1
+        },
+        {
+          "title": "stage preferences persist through reload without restarting playback or the engine",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 150000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "",
+              "projectName": "",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 10901,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-18T17:44:52.210Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "cb968f614591f9e74d02-868686aa5a3c43718272",
+          "file": "stage-environment.spec.ts",
+          "line": 171,
+          "column": 1
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-10-18T17:44:09.305Z",
+    "duration": 74018.144,
+    "expected": 3,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}

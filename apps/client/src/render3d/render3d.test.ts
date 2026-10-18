@@ -20,6 +20,12 @@ import {
   calculateHandHoverLift,
   createGrandPedalGeometry,
 } from "../render";
+import {
+  createFingernailGeometry,
+  getFingernailTexture,
+  getSkinNormalMap,
+  getSkinRoughnessMap,
+} from "./handRigBuilder";
 
 function createMockPose(hand: "left" | "right" = "right", layerOrder = 0): MotionPose {
   return {
@@ -154,6 +160,95 @@ describe("render3d — 3D Hand Rig & Piano Scene", () => {
 
       handGroup.dispose();
     }
+  });
+
+  it("creates, sculpts, and configures 3D anatomical fingernails and PBR skin materials", () => {
+    for (const handSide of ["right", "left"] as const) {
+      const handGroup = new Hand3DMeshGroup(handSide);
+      const pose = createMockPose(handSide);
+
+      // Verify skinMaterial PBR maps and realistic skin properties
+      const skinMat = handGroup.skinMaterial;
+      expect(skinMat.normalMap).toBeDefined();
+      expect(skinMat.roughnessMap).toBeDefined();
+      expect(skinMat.normalScale.x).toBeCloseTo(0.12);
+      expect(skinMat.normalScale.y).toBeCloseTo(0.12);
+      expect(skinMat.transmission).toBeCloseTo(0.0);
+      expect(skinMat.sheen).toBeCloseTo(0.18);
+      expect(skinMat.sheenRoughness).toBeCloseTo(0.60);
+      expect(skinMat.sheenColor.getHex()).toBe(0xf0c8b8);
+      expect(skinMat.clearcoat).toBeCloseTo(0.08);
+      expect(skinMat.clearcoatRoughness).toBeCloseTo(0.40);
+
+      // Verify 5 fingernails created and opaque
+      expect(handGroup.fingernails).toHaveLength(5);
+      for (const nail of handGroup.fingernails) {
+        expect(nail).toBeInstanceOf(THREE.Mesh);
+        const nailMat = nail.material as THREE.MeshPhysicalMaterial;
+        expect(nailMat).toBeInstanceOf(THREE.MeshPhysicalMaterial);
+        expect(nailMat.map).toBeDefined();
+        expect(nailMat.roughness).toBeCloseTo(0.24);
+        expect(nailMat.metalness).toBe(0.0);
+        expect(nailMat.clearcoat).toBeCloseTo(0.40);
+        expect(nailMat.clearcoatRoughness).toBeCloseTo(0.15);
+        expect(nailMat.transmission).toBeCloseTo(0.0);
+        expect(nailMat.transparent).toBe(false);
+        expect(nailMat.depthWrite).toBe(true);
+        expect(nailMat.side).toBe(THREE.DoubleSide);
+
+        expect(nail.geometry.getAttribute("position")).toBeDefined();
+        expect(nail.geometry.getAttribute("normal")).toBeDefined();
+        expect(nail.geometry.getAttribute("uv")).toBeDefined();
+        expect(nail.geometry.getIndex()).toBeDefined();
+      }
+
+      // Update in realistic mode -> nails should be positioned and visible on each finger
+      handGroup.updateFromPose(pose, DEFAULT_SKIN_SETTINGS, false);
+      for (let f = 0; f < 5; f++) {
+        const nail = handGroup.fingernails[f]!;
+        expect(nail.visible).toBe(true);
+        expect(Number.isFinite(nail.position.x)).toBe(true);
+        expect(Number.isFinite(nail.position.y)).toBe(true);
+        expect(Number.isFinite(nail.position.z)).toBe(true);
+        expect(nail.scale.x).toBeGreaterThan(0.2);
+        expect(nail.scale.z).toBeGreaterThan(0.2);
+      }
+
+      // Thumb nail should be wider than pinky nail
+      expect(handGroup.fingernails[0]!.scale.x).toBeGreaterThan(handGroup.fingernails[4]!.scale.x);
+
+      // Update in gloves style -> nails must be hidden
+      const gloveSettings = {
+        ...DEFAULT_SKIN_SETTINGS,
+        style: "gloves" as const,
+      };
+      handGroup.updateFromPose(pose, gloveSettings, false);
+      for (const nail of handGroup.fingernails) {
+        expect(nail.visible).toBe(false);
+      }
+
+      handGroup.dispose();
+    }
+  });
+
+  it("verifies standalone fingernail and skin PBR generator helpers", () => {
+    const nailGeo = createFingernailGeometry();
+    expect(nailGeo.getAttribute("position").count).toBeGreaterThan(100);
+    expect(nailGeo.getAttribute("normal").count).toBeGreaterThan(100);
+    expect(nailGeo.getAttribute("uv").count).toBeGreaterThan(100);
+    nailGeo.dispose();
+
+    const nailTex = getFingernailTexture();
+    expect(nailTex).toBeInstanceOf(THREE.CanvasTexture);
+    expect(nailTex.flipY).toBe(false);
+
+    const normalMap = getSkinNormalMap();
+    expect(normalMap).toBeInstanceOf(THREE.CanvasTexture);
+    expect(normalMap.repeat.x).toBe(4);
+
+    const roughnessMap = getSkinRoughnessMap();
+    expect(roughnessMap).toBeInstanceOf(THREE.CanvasTexture);
+    expect(roughnessMap.repeat.x).toBe(4);
   });
 
   it("creates 88 3D Concert Grand Piano keys with outward normals on all black key faces and animates sustain pedal", () => {

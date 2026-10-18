@@ -33,10 +33,17 @@ export interface PlayAlongEngineOptions {
   onStepChange?: (step: PlayAlongStep | null, state: PlayAlongState) => void;
   onStateChange?: (state: PlayAlongState) => void;
   onTimeChange?: (timeSeconds: number) => void;
-  onPlayNote?: (pitch: number, velocity: number) => void;
-  onStopNote?: (pitch: number) => void;
+  /** Optional stable voice identity; legacy callbacks may ignore this argument. */
+  onPlayNote?: (pitch: number, velocity: number, voiceId?: string) => void;
+  /** Optional stable voice identity; legacy callbacks may ignore this argument. */
+  onStopNote?: (pitch: number, voiceId?: string) => void;
   onWrongNote?: (pitch: number) => void;
   onChordHit?: (step: PlayAlongStep) => void;
+}
+
+export interface PlayAlongLoopRange {
+  startSeconds: number;
+  endSeconds: number;
 }
 
 export const CLUSTER_WINDOW_SECONDS = 0.045; // 45ms chord onset cluster window
@@ -186,6 +193,14 @@ export class PlayAlongEngine {
   private transitionStartTime = 0;
   private transitionFromTime = 0;
   private transitionToTime = 0;
+  private loopRange: PlayAlongLoopRange | null = null;
+  private companionGeneration = 0;
+  private companionVoiceSequence = 0;
+  private readonly pendingCompanionTimers = new Set<ReturnType<typeof setTimeout>>();
+  private readonly activeCompanionVoices = new Map<string, {
+    pitch: number;
+    releaseTimer: ReturnType<typeof setTimeout>;
+  }>();
 
   private readonly options: PlayAlongEngineOptions;
 
@@ -198,6 +213,7 @@ export class PlayAlongEngine {
   }
 
   public rebuildSteps(): void {
+    this.cancelCompanionAudio();
     const assignmentByNoteId = new Map(
       (this.options.fingeringPlan?.assignments ?? []).map((a) => [a.noteId, a]),
     );
@@ -239,16 +255,21 @@ export class PlayAlongEngine {
   }
 
   public start(): void {
-    if (this.steps.length === 0) {
+    const eligible = this.getEligibleStepIndices();
+    if (eligible.length === 0) {
+      this.currentStepIndex = -1;
+      this.cancelCompanionAudio();
       this.setState("completed");
+      this.options.onStepChange?.(null, this.state);
       return;
     }
-    this.currentStepIndex = 0;
-    this.seekToStep(0);
+    this.seekToStep(eligible[0]!);
   }
 
   public stop(): void {
+    this.cancelCompanionAudio();
     this.cancelTransition();
+    this.stopUserVoices();
     this.heldUserPitches.clear();
     this.completedPitchesInStep.clear();
     this.waitReleasePitches.clear();
@@ -258,17 +279,20 @@ export class PlayAlongEngine {
 
   public setHandMode(mode: PlayAlongHandMode): void {
     if (this.handMode === mode) return;
+    this.cancelCompanionAudio();
     const prevTime = this.getCurrentStep()?.timeSeconds ?? 0;
     this.handMode = mode;
     this.rebuildSteps();
-    if (this.steps.length === 0) {
+    const eligible = this.getEligibleStepIndices();
+    if (eligible.length === 0) {
+      this.currentStepIndex = -1;
       this.setState("completed");
       this.options.onStepChange?.(null, this.state);
       return;
     }
-    let bestIdx = 0;
+    let bestIdx = eligible[0]!;
     let bestDiff = Infinity;
-    for (let i = 0; i < this.steps.length; i += 1) {
+    for (const i of eligible) {
       const diff = Math.abs(this.steps[i]!.timeSeconds - prevTime);
       if (diff < bestDiff) {
         bestDiff = diff;
@@ -283,11 +307,78 @@ export class PlayAlongEngine {
   }
 
   public setAutoPlayOtherHand(enabled: boolean): void {
+    if (this.autoPlayOtherHand && !enabled) this.cancelCompanionAudio();
     this.autoPlayOtherHand = enabled;
   }
 
   public getAutoPlayOtherHand(): boolean {
     return this.autoPlayOtherHand;
+  }
+
+  /** Restricts practice navigation to steps whose onset is inside [A, B). */
+  public setLoopRange(range: PlayAlongLoopRange | null): void {
+    this.cancelCompanionAudio();
+    const wasTransitioning = this.state === "transitioning";
+    this.cancelTransition();
+    this.loopRange = range && Number.isFinite(range.startSeconds) && Number.isFinite(range.endSeconds) &&
+      range.startSeconds >= 0 && range.endSeconds - range.startSeconds >= 0.1 - 1e-9
+      ? { startSeconds: range.startSeconds, endSeconds: range.endSeconds }
+      : null;
+
+    if (!this.loopRange) {
+      if (wasTransitioning) this.completeTransitionInstantly();
+      return;
+    }
+    const eligible = this.getEligibleStepIndices();
+    if (eligible.length === 0) {
+      this.currentStepIndex = -1;
+      if (this.state !== "idle") {
+        this.setState("completed");
+        this.options.onStepChange?.(null, this.state);
+      }
+      return;
+    }
+    if (!eligible.includes(this.currentStepIndex)) {
+      if (this.state === "idle") this.currentStepIndex = eligible[0]!;
+      else this.seekToStep(eligible[0]!);
+    } else if (wasTransitioning) {
+      this.completeTransitionInstantly();
+    }
+  }
+
+  public hasEligibleLoopSteps(): boolean {
+    return this.getEligibleStepIndices().length > 0;
+  }
+
+  private getEligibleStepIndices(): number[] {
+    const indices: number[] = [];
+    for (let index = 0; index < this.steps.length; index += 1) {
+      const time = this.steps[index]!.timeSeconds;
+      if (!this.loopRange || (time >= this.loopRange.startSeconds && time < this.loopRange.endSeconds)) {
+        indices.push(index);
+      }
+    }
+    return indices;
+  }
+
+  private getNextEligibleIndex(index: number): number | null {
+    const eligible = this.getEligibleStepIndices();
+    if (eligible.length === 0) return null;
+    const next = eligible.find((candidate) => candidate > index);
+    if (next !== undefined) return next;
+    if (this.loopRange) return eligible[0]!;
+    return null;
+  }
+
+  private getPreviousEligibleIndex(index: number): number | null {
+    const eligible = this.getEligibleStepIndices();
+    if (eligible.length === 0) return null;
+    for (let offset = eligible.length - 1; offset >= 0; offset -= 1) {
+      const candidate = eligible[offset]!;
+      if (candidate < index) return candidate;
+    }
+    if (this.loopRange) return eligible[eligible.length - 1]!;
+    return null;
   }
 
   public setTransitionDurationMs(ms: number): void {
@@ -337,7 +428,7 @@ export class PlayAlongEngine {
     }
 
     this.heldUserPitches.add(pitch);
-    this.options.onPlayNote?.(pitch, velocity);
+    this.options.onPlayNote?.(pitch, velocity, this.userVoiceId(pitch));
 
     if (this.state !== "waiting" && this.state !== "held") {
       return;
@@ -388,7 +479,7 @@ export class PlayAlongEngine {
 
   public noteOff(pitch: number): void {
     this.heldUserPitches.delete(pitch);
-    this.options.onStopNote?.(pitch);
+    this.options.onStopNote?.(pitch, this.userVoiceId(pitch));
 
     const step = this.getCurrentStep();
     if (!step) return;
@@ -409,7 +500,8 @@ export class PlayAlongEngine {
   }
 
   private getPitchesToReleaseForStep(step: PlayAlongStep): number[] {
-    const nextStep = this.steps[this.currentStepIndex + 1];
+    const nextIndex = this.getNextEligibleIndex(this.currentStepIndex);
+    const nextStep = nextIndex === null ? undefined : this.steps[nextIndex];
     const endingPitches = step.notes
       .filter((n) => step.activePitches.has(n.pitch) && (!nextStep || n.endSeconds <= nextStep.timeSeconds + 0.1))
       .map((n) => n.pitch);
@@ -417,17 +509,30 @@ export class PlayAlongEngine {
   }
 
   public seekToStep(index: number): void {
+    this.cancelCompanionAudio();
     this.cancelTransition();
     this.completedPitchesInStep.clear();
     this.waitReleasePitches.clear();
     this.previousStepPitches.clear();
 
-    if (this.steps.length === 0) {
+    const eligible = this.getEligibleStepIndices();
+    if (eligible.length === 0) {
+      this.currentStepIndex = -1;
       this.setState("completed");
+      this.options.onStepChange?.(null, this.state);
       return;
     }
 
-    const safeIndex = Math.max(0, Math.min(this.steps.length - 1, index));
+    const safeRequested = Math.max(0, Math.min(this.steps.length - 1, index));
+    const requestedTime = this.steps[safeRequested]!.timeSeconds;
+    const safeIndex = eligible.includes(safeRequested)
+      ? safeRequested
+      : eligible.reduce((nearest, candidate) =>
+        Math.abs(this.steps[candidate]!.timeSeconds - requestedTime) <
+          Math.abs(this.steps[nearest]!.timeSeconds - requestedTime)
+          ? candidate
+          : nearest,
+      eligible[0]!);
     this.currentStepIndex = safeIndex;
     const step = this.steps[safeIndex]!;
 
@@ -437,17 +542,19 @@ export class PlayAlongEngine {
   }
 
   public nextStep(): void {
-    if (this.currentStepIndex < this.steps.length - 1) {
-      this.seekToStep(this.currentStepIndex + 1);
+    const nextIndex = this.getNextEligibleIndex(this.currentStepIndex);
+    if (nextIndex !== null) {
+      this.seekToStep(nextIndex);
     } else {
+      this.cancelCompanionAudio();
       this.setState("completed");
+      this.options.onStepChange?.(null, this.state);
     }
   }
 
   public previousStep(): void {
-    if (this.currentStepIndex > 0) {
-      this.seekToStep(this.currentStepIndex - 1);
-    }
+    const previousIndex = this.getPreviousEligibleIndex(this.currentStepIndex);
+    if (previousIndex !== null) this.seekToStep(previousIndex);
   }
 
   public restart(): void {
@@ -467,8 +574,9 @@ export class PlayAlongEngine {
   }
 
   private advanceToNextStep(): void {
-    const nextIndex = this.currentStepIndex + 1;
-    if (nextIndex >= this.steps.length) {
+    this.cancelCompanionAudio();
+    const nextIndex = this.getNextEligibleIndex(this.currentStepIndex);
+    if (nextIndex === null) {
       this.setState("completed");
       this.options.onStepChange?.(null, this.state);
       return;
@@ -482,7 +590,7 @@ export class PlayAlongEngine {
     const fromTime = currentStep ? currentStep.timeSeconds : nextStep.timeSeconds;
     const toTime = nextStep.timeSeconds;
 
-    if (this.transitionDurationMs <= 0 || fromTime === toTime) {
+    if ((this.loopRange && toTime <= fromTime) || this.transitionDurationMs <= 0 || fromTime === toTime) {
       this.currentStepIndex = nextIndex;
       this.completedPitchesInStep.clear();
       this.options.onTimeChange?.(toTime);
@@ -552,7 +660,8 @@ export class PlayAlongEngine {
   }
 
   private isPitchInNextStep(pitch: number): boolean {
-    const nextStep = this.steps[this.currentStepIndex + 1];
+    const nextIndex = this.getNextEligibleIndex(this.currentStepIndex);
+    const nextStep = nextIndex === null ? undefined : this.steps[nextIndex];
     return nextStep ? nextStep.activePitches.has(pitch) : false;
   }
 
@@ -565,19 +674,72 @@ export class PlayAlongEngine {
   }
 
   private triggerCompanionAudio(step: PlayAlongStep): void {
-    const nextStep = this.steps[this.currentStepIndex + 1];
-    const endTime = nextStep ? nextStep.timeSeconds : step.timeSeconds + step.durationSeconds;
+    this.cancelCompanionAudio();
+    const generation = this.companionGeneration;
+    const nextIndex = this.getNextEligibleIndex(this.currentStepIndex);
+    const nextStep = nextIndex === null || nextIndex <= this.currentStepIndex
+      ? undefined
+      : this.steps[nextIndex];
+    const endTime = Math.min(
+      nextStep ? nextStep.timeSeconds : step.timeSeconds + step.durationSeconds,
+      this.loopRange?.endSeconds ?? Number.POSITIVE_INFINITY,
+    );
     for (const n of this.allPlayableNotes) {
       const isOtherHand = this.handMode === "right" ? n.hand === "left" : n.hand === "right";
       if (!isOtherHand) continue;
-      if (n.startSeconds >= step.timeSeconds - CLUSTER_WINDOW_SECONDS && n.startSeconds < endTime) {
-        this.options.onPlayNote?.(n.pitch, 75);
-        const stopPitch = n.pitch;
+      if (n.startSeconds >= step.timeSeconds - CLUSTER_WINDOW_SECONDS && n.startSeconds < endTime &&
+          (!this.loopRange || n.startSeconds < this.loopRange.endSeconds)) {
+        const delayMs = Math.max(0, n.startSeconds - step.timeSeconds) * 1000;
         const durMs = Math.min(2000, Math.max(250, (n.endSeconds - n.startSeconds) * 1000));
-        setTimeout(() => {
-          this.options.onStopNote?.(stopPitch);
-        }, durMs);
+        const startVoice = () => {
+          if (generation !== this.companionGeneration) return;
+
+          const voiceId = `playalong-companion-${++this.companionVoiceSequence}`;
+          const releaseTimer = setTimeout(() => this.releaseCompanionVoice(voiceId), durMs);
+          this.activeCompanionVoices.set(voiceId, { pitch: n.pitch, releaseTimer });
+          this.options.onPlayNote?.(n.pitch, 75, voiceId);
+        };
+        if (delayMs === 0) {
+          startVoice();
+        } else {
+          const onsetTimer = setTimeout(() => {
+            this.pendingCompanionTimers.delete(onsetTimer);
+            startVoice();
+          }, delayMs);
+          this.pendingCompanionTimers.add(onsetTimer);
+        }
       }
+    }
+  }
+
+  private userVoiceId(pitch: number): string {
+    // Keep the current user-note identity stable across engine recreation.
+    return `playalong-${pitch}`;
+  }
+
+  private stopUserVoices(): void {
+    for (const pitch of this.heldUserPitches) {
+      this.options.onStopNote?.(pitch, this.userVoiceId(pitch));
+    }
+  }
+
+  private releaseCompanionVoice(voiceId: string): void {
+    const voice = this.activeCompanionVoices.get(voiceId);
+    if (!voice) return;
+    clearTimeout(voice.releaseTimer);
+    this.activeCompanionVoices.delete(voiceId);
+    this.options.onStopNote?.(voice.pitch, voiceId);
+  }
+
+  private cancelCompanionAudio(): void {
+    this.companionGeneration += 1;
+    for (const timer of this.pendingCompanionTimers) clearTimeout(timer);
+    this.pendingCompanionTimers.clear();
+    const activeVoices = Array.from(this.activeCompanionVoices.entries());
+    this.activeCompanionVoices.clear();
+    for (const [voiceId, voice] of activeVoices) {
+      clearTimeout(voice.releaseTimer);
+      this.options.onStopNote?.(voice.pitch, voiceId);
     }
   }
 
@@ -595,7 +757,9 @@ export class PlayAlongEngine {
   }
 
   public dispose(): void {
+    this.cancelCompanionAudio();
     this.cancelTransition();
+    this.stopUserVoices();
     this.heldUserPitches.clear();
     this.completedPitchesInStep.clear();
     this.waitReleasePitches.clear();

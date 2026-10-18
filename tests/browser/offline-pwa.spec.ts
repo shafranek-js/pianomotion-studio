@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { createSyntheticMonoSf2 } from "../../apps/client/src/audio/soundfont/testing/syntheticMonoSf2";
 import { createReadStream } from "node:fs";
 import { mkdtemp, readFile, rm, stat } from "node:fs/promises";
 import { createServer, type Server } from "node:http";
@@ -8,52 +9,12 @@ import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { createServer as createViteServer } from "vite";
 import type { ViteDevServer } from "vite";
-import { expectStudioCanvas, loadStudioSong, saveStudioProject, settledStudio, studioMidiPath } from "./studio-helpers";
+import { committedStudioSettings, expectStudioCanvas, loadStudioSong, saveStudioProject, settledStudio, studioMidiPath } from "./studio-helpers";
 
 const secondMidiPath = fileURLToPath(
   new URL("../fixtures/midi/synthetic-scale-chords.mid", import.meta.url)
 );
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
-
-function createMinimalValidSf2(): ArrayBuffer {
-  const buffer = new ArrayBuffer(256);
-  const view = new DataView(buffer);
-  const bytes = new Uint8Array(buffer);
-  bytes.set(new TextEncoder().encode("RIFF"), 0);
-  view.setUint32(4, 248, true);
-  bytes.set(new TextEncoder().encode("sfbk"), 8);
-
-  bytes.set(new TextEncoder().encode("LIST"), 12);
-  view.setUint32(16, 24, true);
-  bytes.set(new TextEncoder().encode("INFO"), 20);
-  bytes.set(new TextEncoder().encode("INAM"), 24);
-  view.setUint32(28, 8, true);
-  bytes.set(new TextEncoder().encode("TestSF2\0"), 32);
-
-  bytes.set(new TextEncoder().encode("LIST"), 44);
-  view.setUint32(48, 32, true);
-  bytes.set(new TextEncoder().encode("sdta"), 52);
-  bytes.set(new TextEncoder().encode("smpl"), 56);
-  view.setUint32(60, 20, true);
-  for (let index = 0; index < 10; index += 1) view.setInt16(64 + index * 2, index * 100, true);
-
-  bytes.set(new TextEncoder().encode("LIST"), 84);
-  view.setUint32(88, 58, true);
-  bytes.set(new TextEncoder().encode("pdta"), 92);
-  bytes.set(new TextEncoder().encode("shdr"), 96);
-  view.setUint32(100, 46, true);
-  const sampleHeader = 104;
-  bytes.set(new TextEncoder().encode("Sample1\0\0\0\0\0\0\0\0\0\0\0\0\0"), sampleHeader);
-  view.setUint32(sampleHeader + 20, 0, true);
-  view.setUint32(sampleHeader + 24, 10, true);
-  view.setUint32(sampleHeader + 28, 0, true);
-  view.setUint32(sampleHeader + 32, 10, true);
-  view.setUint32(sampleHeader + 36, 44_100, true);
-  view.setUint8(sampleHeader + 40, 60);
-  view.setInt8(sampleHeader + 41, 0);
-  view.setUint16(sampleHeader + 44, 1, true);
-  return buffer;
-}
 
 type PwaTestServer = {
   origin: string;
@@ -207,7 +168,7 @@ async function waitForControlledRelease(
   page.on("requestfailed", (request) => {
     diagnostics.push(`request failed: ${request.url()} (${request.failure()?.errorText ?? "unknown"})`);
   });
-  await page.goto(`${origin}${appBase}`);
+  await page.goto(`${origin}${appBase}?empty=true`);
   await expect(page).toHaveTitle("PianoMotion Studio");
   await expect.poll(async () => page.evaluate(async (scopePath) => {
     const registration = await navigator.serviceWorker.getRegistration(scopePath);
@@ -295,8 +256,8 @@ test("SoundFont save and delete reject IndexedDB aborts after request success", 
     }
 
     const page = await browserContext.newPage();
-    await page.goto(`http://127.0.0.1:${address.port}/`);
-    const sf2Bytes = Array.from(new Uint8Array(createMinimalValidSf2()));
+    await page.goto(`http://127.0.0.1:${address.port}/?empty=true`);
+    const sf2Bytes = Array.from(new Uint8Array(createSyntheticMonoSf2()));
     const result = await page.evaluate(async (bytes) => {
       const store = await import("/src/audio/soundfont/soundfontAssetStore.ts");
       const array = Uint8Array.from(bytes);
@@ -307,11 +268,19 @@ test("SoundFont save and delete reject IndexedDB aborts after request success", 
       };
       const originalPut = prototype.put;
       const originalDelete = prototype.delete;
+      let putSucceeded = false;
+      let saveAborted = false;
+      let deleteSucceeded = false;
+      let deleteAborted = false;
       prototype.put = function (this: IDBObjectStore, ...args: unknown[]) {
         const request = originalPut.apply(this, args);
-        if (this.name === "assets") {
+        if (this.name === store.SOUNDFONT_METADATA_STORE_NAME) {
           const transaction = this.transaction;
-          request.addEventListener("success", () => queueMicrotask(() => transaction.abort()), { once: true });
+          transaction.addEventListener("abort", () => { saveAborted = true; }, { once: true });
+          request.addEventListener("success", () => {
+            putSucceeded = true;
+            queueMicrotask(() => transaction.abort());
+          }, { once: true });
         }
         return request;
       };
@@ -329,9 +298,13 @@ test("SoundFont save and delete reject IndexedDB aborts after request success", 
 
       prototype.delete = function (this: IDBObjectStore, ...args: unknown[]) {
         const request = originalDelete.apply(this, args);
-        if (this.name === "assets") {
+        if (this.name === store.SOUNDFONT_METADATA_STORE_NAME) {
           const transaction = this.transaction;
-          request.addEventListener("success", () => queueMicrotask(() => transaction.abort()), { once: true });
+          transaction.addEventListener("abort", () => { deleteAborted = true; }, { once: true });
+          request.addEventListener("success", () => {
+            deleteSucceeded = true;
+            queueMicrotask(() => transaction.abort());
+          }, { once: true });
         }
         return request;
       };
@@ -347,16 +320,20 @@ test("SoundFont save and delete reject IndexedDB aborts after request success", 
       store.closeSoundFontDb();
       return {
         saveRejected,
+        putSucceeded, saveAborted,
         missingAfterSaveAbort: missingAfterSaveAbort === null,
         deleteRejected,
+        deleteSucceeded, deleteAborted,
         retainedAfterDeleteAbort: retainedAfterDeleteAbort !== null,
       };
     }, sf2Bytes);
 
     expect(result).toEqual({
       saveRejected: true,
+      putSucceeded: true, saveAborted: true,
       missingAfterSaveAbort: true,
       deleteRejected: true,
+      deleteSucceeded: true, deleteAborted: true,
       retainedAfterDeleteAbort: true,
     });
   } finally {
@@ -404,8 +381,23 @@ test("production offline lifecycle: online analysis -> close -> offline reload -
   // Verify foreign cache is preserved
   expect(cacheNames).toContain("foreign-isolated-cache-v1");
 
+  // Exercise the Python runtime explicitly; fresh sessions otherwise use Native.
+  await page.getByRole("button", { name: "Open preferences", exact: true }).click();
+  const preferences = page.getByRole("dialog", { name: "Preferences", exact: true });
+  await preferences.locator("#settings-calculation-engine").selectOption("python");
+  await preferences.locator("#settings-sound-output").selectOption("synth");
+  await expect.poll(async () => {
+    const settings = await committedStudioSettings(page);
+    return { engine: settings.calculationEngine, output: settings.soundOutput };
+  }).toEqual({ engine: "python", output: "synth" });
+  await preferences.getByRole("button", { name: "Done", exact: true }).click();
+  const analysisWorkers: string[] = [];
+  page.on("worker", worker => analysisWorkers.push(worker.url()));
+
   // Load first song online and save project
-  const initial = await loadStudioSong(page);
+  const initial = await loadStudioSong(page, { dimension: "2d" });
+  expect(analysisWorkers.some(url => url.includes("midi-analysis.worker"))).toBe(true);
+  expect(analysisWorkers.some(url => url.includes("midi-analysis-ts.worker"))).toBe(false);
   expect(initial.result.document?.durationSeconds).toBeGreaterThan(0);
   await saveStudioProject(page);
 
@@ -416,7 +408,9 @@ test("production offline lifecycle: online analysis -> close -> offline reload -
   // 3. Open new page offline: verify offline navigation & session restoration
   const offlinePage = await context.newPage();
   const offlineErrors: string[] = [];
+  const offlineWorkerUrls: string[] = [];
   offlinePage.on("pageerror", (err) => offlineErrors.push(err.message));
+  offlinePage.on("worker", worker => offlineWorkerUrls.push(worker.url()));
 
   await offlinePage.goto("/");
   await expect(offlinePage).toHaveTitle("PianoMotion Studio");
@@ -424,6 +418,7 @@ test("production offline lifecycle: online analysis -> close -> offline reload -
   // Verify offline session restored previous project
   await settledStudio(offlinePage, initial.result.revision);
   await expectStudioCanvas(offlinePage);
+  await offlinePage.getByRole("button", { name: "Performance", exact: true }).click();
 
   // 4. Import a different MIDI while offline to prove self-hosted Pyodide & python-core work offline
   await offlinePage.locator("#midi-file").setInputFiles(secondMidiPath);
@@ -436,6 +431,8 @@ test("production offline lifecycle: online analysis -> close -> offline reload -
   const secondResult = await settledStudio(offlinePage, 0);
   expect(secondResult.result.projectId).not.toBe(initial.result.projectId);
   expect(secondResult.result.document?.notes.length).toBeGreaterThan(0);
+  expect(offlineWorkerUrls.filter(url => url.includes("midi-analysis.worker")).length).toBeGreaterThanOrEqual(2);
+  expect(offlineWorkerUrls.some(url => url.includes("midi-analysis-ts.worker"))).toBe(false);
 
   // Save the second project offline
   await saveStudioProject(offlinePage);
@@ -664,7 +661,6 @@ test("the exact /pianomotion/ base imports, saves, and restores a project offlin
     );
     expect(scopePaths).toContain(appBase);
 
-    await page.goto(`${server.origin}${appBase}?empty=true`);
     await expect(page.getByRole("button", { name: "Play demo song", exact: true })).toBeEnabled();
     await page.locator("#midi-file").setInputFiles(studioMidiPath);
     await expect.poll(async () => page.evaluate(() => window.__playerSnapshot?.result.document?.notes.length ?? 0), { timeout: 90_000 }).toBeGreaterThan(0);

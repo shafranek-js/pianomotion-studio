@@ -19,7 +19,7 @@ export interface StudioStatus {
 }
 
 export interface StudioLayoutPreferences {
-  activePanel: "projects" | "inspector" | null;
+  activePanel: "projects" | "inspector" | "practice" | null;
   pinnedSide: "left" | "right" | null;
   leftWidth: number;
   rightWidth: number;
@@ -79,6 +79,7 @@ export interface StudioShellProps {
   editActions?: StudioEditActions;
   projectsPanel: ReactNode;
   inspector: ReactNode | ((tab: InspectorTab) => ReactNode);
+  practicePanel?: ReactNode;
   workspace: ReactNode | ((layout: StudioWorkspaceLayout) => ReactNode);
   transport?: ReactNode;
   footerAddon?: ReactNode;

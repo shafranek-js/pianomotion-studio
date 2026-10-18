@@ -1,5 +1,5 @@
 {
   "extends": "../../../apps/client/tsconfig.app.json",
   "compilerOptions": { "composite": false, "noEmit": true },
-  "include": ["./acceptance.ts", "../../../apps/client/src/vite-env.d.ts"]
+  "include": ["./acceptance.ts", "./grand-highway.ts", "./stage-environment.ts", "../../../apps/client/src/vite-env.d.ts"]
 }

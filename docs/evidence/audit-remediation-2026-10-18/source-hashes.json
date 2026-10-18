@@ -1,0 +1,72 @@
+[
+  {
+    "path": "apps/client/src/App.tsx",
+    "checkoutSha256": "163f8a20f7d673546902af576f0844c9664e68e1d647c9e5138e19301f975adc",
+    "snapshotSha256": "da21c6f7f354de806c52123cbc962e214127293683cafe2a91fc34a43ed73d22",
+    "matches": false,
+    "matchesExceptReleaseDescription": true
+  },
+  {
+    "path": "apps/client/src/sessionOperation.ts",
+    "checkoutSha256": "4de633d24e93a7b03182ea41d4d937d486dbf046cd4df74c7222aa27e4ba8a6b",
+    "snapshotSha256": "4de633d24e93a7b03182ea41d4d937d486dbf046cd4df74c7222aa27e4ba8a6b",
+    "matches": true,
+    "matchesExceptReleaseDescription": true
+  },
+  {
+    "path": "apps/client/src/player/PianoPlayer.tsx",
+    "checkoutSha256": "3e177843656fe3f517d600d1e403503d82e0cff8dcfda299cc6f6451d54f12f1",
+    "snapshotSha256": "a2f140225ff90bb7c1882a1aeb72d1711d9d3cdc6338e895bb33c3a4a586466a",
+    "matches": false,
+    "matchesExceptReleaseDescription": true
+  },
+  {
+    "path": "apps/client/src/player/recoverySnapshot.ts",
+    "checkoutSha256": "24d75d547f1bc94e6a5e0e0ccb242eb700f5f8ba363b51f169ca56860df5b0fb",
+    "snapshotSha256": "24d75d547f1bc94e6a5e0e0ccb242eb700f5f8ba363b51f169ca56860df5b0fb",
+    "matches": true,
+    "matchesExceptReleaseDescription": true
+  },
+  {
+    "path": "apps/client/src/player/playAlongEngine.ts",
+    "checkoutSha256": "79e7af75e39afd1cbe9c6423eacc25b82d7122ef58f145a14550c4654bbfce1b",
+    "snapshotSha256": "79e7af75e39afd1cbe9c6423eacc25b82d7122ef58f145a14550c4654bbfce1b",
+    "matches": true,
+    "matchesExceptReleaseDescription": true
+  },
+  {
+    "path": "apps/client/src/editor/waveform/WaveformCanvas.tsx",
+    "checkoutSha256": "2e3a656c1b19b609a17268edb8ffb085763c2f7eabd057efed1c28b9c412a454",
+    "snapshotSha256": "2e3a656c1b19b609a17268edb8ffb085763c2f7eabd057efed1c28b9c412a454",
+    "matches": true,
+    "matchesExceptReleaseDescription": true
+  },
+  {
+    "path": "apps/client/src/editor/waveform/waveformCanvasRenderer.ts",
+    "checkoutSha256": "69902e6cb747eb861242fec8bd73c7cd0aea589ed344048923ce1bbb68d8055c",
+    "snapshotSha256": "69902e6cb747eb861242fec8bd73c7cd0aea589ed344048923ce1bbb68d8055c",
+    "matches": true,
+    "matchesExceptReleaseDescription": true
+  },
+  {
+    "path": "tests/browser/audit-session-recovery.spec.ts",
+    "checkoutSha256": "a7f20db75094259394d144cbc6c915576cb5dc977c6383f3214cf618579f6970",
+    "snapshotSha256": "a7f20db75094259394d144cbc6c915576cb5dc977c6383f3214cf618579f6970",
+    "matches": true,
+    "matchesExceptReleaseDescription": true
+  },
+  {
+    "path": "tests/browser/audit-playalong-audio.spec.ts",
+    "checkoutSha256": "fee28426cb16f4f3a9f42ed2b69398e7f9669f22dc663d75396997c582fb4ae4",
+    "snapshotSha256": "fee28426cb16f4f3a9f42ed2b69398e7f9669f22dc663d75396997c582fb4ae4",
+    "matches": true,
+    "matchesExceptReleaseDescription": true
+  },
+  {
+    "path": "tests/browser/audit-waveform.spec.ts",
+    "checkoutSha256": "82449593bec89a86581aaa26081b944b12dd8134a070a4b3e9a1c8a8de909207",
+    "snapshotSha256": "82449593bec89a86581aaa26081b944b12dd8134a070a4b3e9a1c8a8de909207",
+    "matches": true,
+    "matchesExceptReleaseDescription": true
+  }
+]

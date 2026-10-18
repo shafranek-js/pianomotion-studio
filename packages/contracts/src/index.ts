@@ -8,6 +8,7 @@ const EXPLICIT_GLISSANDO_MAX_GAP_SECONDS = 0.5;
 const id = z.string().trim().min(1).max(200);
 const finite = z.number().finite();
 const sourceTime = finite.min(0);
+export const PRACTICE_MIN_LOOP_SECONDS = 0.1;
 export const TransportTimeSchema = finite.min(-TRANSPORT_LEAD_IN_SECONDS);
 export type TransportTime = z.infer<typeof TransportTimeSchema>;
 
@@ -421,6 +422,66 @@ export const SongDocumentSchema = object({
 });
 export type SongDocument = z.infer<typeof SongDocumentSchema>;
 
+export const PracticeLoopSchema = object({
+  startSeconds: sourceTime,
+  endSeconds: sourceTime,
+  enabled: z.boolean(),
+}).superRefine((loop, ctx) => {
+  if (loop.endSeconds - loop.startSeconds < PRACTICE_MIN_LOOP_SECONDS - 1e-9) {
+    ctx.addIssue({ code: "custom", path: ["endSeconds"], message: "must be at least 0.1 seconds after startSeconds" });
+  }
+});
+export type PracticeLoop = z.infer<typeof PracticeLoopSchema>;
+
+const PracticeBookmarkSchema = object({
+  id: z.string().trim().min(1).max(200),
+  name: z.string().trim().min(1).max(120),
+  timeSeconds: sourceTime,
+});
+
+export const PracticeStateSchema = object({
+  schemaVersion: z.literal(1),
+  sourceMidiSha256: z.string().regex(/^[a-f0-9]{64}$/),
+  loop: PracticeLoopSchema.nullable(),
+  bookmarks: z.array(PracticeBookmarkSchema),
+}).superRefine((practice, ctx) => {
+  const ids = new Set<string>();
+  for (const [index, bookmark] of practice.bookmarks.entries()) {
+    if (ids.has(bookmark.id)) {
+      ctx.addIssue({ code: "custom", path: ["bookmarks", index, "id"], message: "bookmark IDs must be unique" });
+    }
+    ids.add(bookmark.id);
+  }
+});
+export type PracticeState = z.infer<typeof PracticeStateSchema>;
+
+/** Validates practice metadata against the exact source and duration of a project. */
+export function validatePracticeStateForProject(
+  input: unknown,
+  document: SongDocument,
+  sourceResource: ResourceDescriptor,
+): PracticeState {
+  const practice = PracticeStateSchema.parse(input);
+  if (sourceResource.purpose !== "source-midi") {
+    throw new Error("Practice state must reference a source MIDI resource.");
+  }
+  if (document.sourceMidiResourceId && sourceResource.resourceId !== document.sourceMidiResourceId) {
+    throw new Error("Practice state source resource does not match the project source MIDI resource ID.");
+  }
+  if (practice.sourceMidiSha256 !== sourceResource.sha256) {
+    throw new Error("Practice state source SHA-256 does not match the project source MIDI resource.");
+  }
+  if (practice.loop && practice.loop.endSeconds > document.durationSeconds) {
+    throw new Error("Practice loop endSeconds exceeds the project song duration.");
+  }
+  for (const [index, bookmark] of practice.bookmarks.entries()) {
+    if (bookmark.timeSeconds > document.durationSeconds) {
+      throw new Error(`Practice bookmark ${index + 1} exceeds the project song duration.`);
+    }
+  }
+  return practice;
+}
+
 const recordOfFinite = z.record(z.string(), finite);
 const profileBehaviorValue = z.union([finite, z.string(), z.boolean()]);
 export const PianistProfileSchema = object({
@@ -601,6 +662,7 @@ const projectPackageFields = {
   fingeringPlan: FingeringPlanSchema.nullable().optional(),
   performancePlan: PerformancePlanSchema.nullable().optional(),
   motionPlan: MotionPlanSchema.nullable().optional(),
+  practiceState: PracticeStateSchema.optional(),
 };
 type ProjectPackageFields = z.infer<ReturnType<typeof object<typeof projectPackageFields>>>;
 
@@ -619,6 +681,20 @@ function refineProjectPackage(pkg: ProjectPackageFields, ctx: z.RefinementCtx): 
     const source = pkg.resources.find((resource) => resource.resourceId === pkg.document.sourceMidiResourceId);
     if (!source || source.purpose !== "source-midi") {
       ctx.addIssue({ code: "custom", path: ["document", "sourceMidiResourceId"], message: "must reference a source-midi resource in this package" });
+    }
+  }
+  if (pkg.practiceState) {
+    const sourceResource = pkg.document.sourceMidiResourceId
+      ? pkg.resources.find((resource) => resource.resourceId === pkg.document.sourceMidiResourceId)
+      : pkg.resources.find((resource) => resource.purpose === "source-midi");
+    if (!sourceResource) {
+      ctx.addIssue({ code: "custom", path: ["practiceState"], message: "requires a source MIDI resource in this package" });
+    } else {
+      try {
+        validatePracticeStateForProject(pkg.practiceState, pkg.document, sourceResource);
+      } catch (error) {
+        ctx.addIssue({ code: "custom", path: ["practiceState"], message: error instanceof Error ? error.message : String(error) });
+      }
     }
   }
   const payloadPaths = new Set(Object.keys(pkg.resourcePayloads ?? {}));

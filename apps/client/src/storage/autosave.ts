@@ -14,6 +14,9 @@ import {
   FingeringPlanSchema,
   validateFingeringPlanReferences,
   validatePerformancePlanReferences,
+  PracticeStateSchema,
+  validatePracticeStateForProject,
+  type PracticeState,
 } from "@handthesia/contracts";
 import { z } from "zod";
 import {
@@ -52,6 +55,7 @@ export interface SessionSnapshot {
   activeProfileId?: string;
   viewMode?: StudioView | "split";
   sceneView?: { dimension: "2d" | "3d"; cameraPreset: "concert" | "overhead" | "pov" | "side_arch" };
+  practiceState?: PracticeState;
   recoveryCorruptReason?: string;
 }
 
@@ -82,6 +86,7 @@ const SessionSnapshotBaseSchema = z.object({
     dimension: z.enum(["2d", "3d"]),
     cameraPreset: z.enum(["concert", "overhead", "pov", "side_arch"]),
   }).optional(),
+  practiceState: PracticeStateSchema.optional(),
 }).passthrough();
 
 /**
@@ -140,6 +145,13 @@ async function writeSessionSnapshot(snapshot: SessionSnapshot): Promise<void> {
   if (result && validated.sourceDescriptor &&
       JSON.stringify(validated.sourceDescriptor) !== JSON.stringify(result.resource)) {
     throw new Error("Session source descriptor must match the analyzed source resource.");
+  }
+  if (validated.practiceState) {
+    const sourceResource = validated.sourceDescriptor ?? result?.resource;
+    if (!sourceResource) {
+      throw new Error("A session practice state requires a source MIDI resource descriptor.");
+    }
+    validatePracticeStateForProject(validated.practiceState, document, sourceResource);
   }
   let requiresRecompute = !result || !validated.rawMidiBytes || validated.rawMidiBytes.byteLength === 0;
   if (result?.document && document && JSON.stringify(result.document) !== JSON.stringify(document)) requiresRecompute = true;
@@ -278,6 +290,18 @@ export async function assessSessionSnapshot(
   const snapshot = parsed.data as SessionSnapshot;
   if (snapshot.recoveryCorruptReason) {
     return { status: "corrupt", reasons: [snapshot.recoveryCorruptReason] };
+  }
+  if (snapshot.practiceState) {
+    const practiceDocument = snapshot.document ?? snapshot.result?.document;
+    const sourceResource = snapshot.sourceDescriptor ?? snapshot.result?.resource;
+    if (!practiceDocument || !sourceResource) {
+      return { status: "corrupt", reasons: ["The saved practice state has no document or source MIDI resource."] };
+    }
+    try {
+      validatePracticeStateForProject(snapshot.practiceState, practiceDocument, sourceResource);
+    } catch (error) {
+      return { status: "corrupt", reasons: [error instanceof Error ? error.message : String(error)] };
+    }
   }
   const reasons: string[] = [];
   const result = snapshot.result ?? null;

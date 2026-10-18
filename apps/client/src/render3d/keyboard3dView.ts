@@ -6,8 +6,18 @@ import {
   type KeyPressInfo,
 } from "../render/keyboardView";
 import { KEYBOARD_WIDTH_IN, WHITE_KEY_WIDTH_IN } from "./handRigBuilder";
+import { createPianoCaseGeometry } from "./pianoCaseGeometry";
+import { createPianoBrandingMesh } from "./pianoBranding3d";
+import {
+  GRAND_PIANO_FRONT_DEPTH_IN,
+  GRAND_PIANO_HALF_WIDTH_IN,
+  GRAND_PIANO_INTERIOR_CONTOUR,
+  GRAND_PIANO_KEY_LENGTH_FACTOR,
+  GRAND_PIANO_TAIL_DEPTH_IN,
+  createGrandPianoInteriorShape,
+} from "./grandPianoFootprint";
 
-export const KEY_LEN_WW_3D = 5.6;
+export const KEY_LEN_WW_3D = GRAND_PIANO_KEY_LENGTH_FACTOR;
 export const WHITE_KEY_LEN_IN = KEY_LEN_WW_3D * WHITE_KEY_WIDTH_IN; // ~5.2 in
 export const BLACK_KEY_W_IN = WHITE_KEY_WIDTH_IN * 0.58;
 export const BLACK_KEY_LEN_IN = WHITE_KEY_LEN_IN * 0.635;
@@ -378,9 +388,9 @@ export class Keyboard3DView {
       envMapIntensity: 0.6,
     });
 
-    const halfW = KEYBOARD_WIDTH_IN * 0.5 + 1.18;
-    const zFront = -WHITE_KEY_LEN_IN - 0.4;
-    const zTail = -44.0;
+    const halfW = GRAND_PIANO_HALF_WIDTH_IN;
+    const zFront = -GRAND_PIANO_FRONT_DEPTH_IN;
+    const zTail = -GRAND_PIANO_TAIL_DEPTH_IN;
 
     // 1. Solid Keybed & Protruding Front Apron Shelf (supporting the keyboard down to y = -6.2)
     // The apron board protrudes 0.95" forward past the front of the keys (Z = 0.0), matching real piano console styling.
@@ -416,6 +426,9 @@ export class Keyboard3DView {
     brassTrim.position.set(0, -5.75, zFrontProtrusion + 0.02);
     this.group.add(brassTrim);
 
+    const branding = createPianoBrandingMesh(zFrontProtrusion);
+    if (branding) this.group.add(branding);
+
     // 2. Plush Crimson Felt Rail & Rear Ebony Keybed Rail
     const feltGeo = new THREE.BoxGeometry(KEYBOARD_WIDTH_IN + 0.2, 0.16, 0.24);
     const feltMat = new THREE.MeshStandardMaterial({
@@ -444,17 +457,17 @@ export class Keyboard3DView {
     cheekShape.lineTo(0, -6.2);
     cheekShape.closePath();
 
-    const cheekGeo = new THREE.ExtrudeGeometry(cheekShape, {
+    const cheekGeo = createPianoCaseGeometry(cheekShape, {
       depth: 1.05,
       bevelEnabled: true,
       bevelThickness: 0.08,
       bevelSize: 0.06,
-      bevelSegments: 3,
     });
     cheekGeo.rotateY(Math.PI * 0.5);
 
     for (const sign of [-1, 1] as const) {
       const cheek = new THREE.Mesh(cheekGeo, ebonyLacquerMat);
+      cheek.name = sign < 0 ? "grand-piano-cheek-left" : "grand-piano-cheek-right";
       const xOffset =
         sign < 0
           ? -KEYBOARD_WIDTH_IN * 0.5 - 1.12
@@ -469,7 +482,6 @@ export class Keyboard3DView {
 
     const yFront = -zFront;
     const yTail = -zTail;
-    const wallT = 1.35;
 
     // Open curved perimeter rim: wraps around bass spine, tail, and treble bentside.
     // The entire front width between cheek blocks is completely OPEN so falling notes are never obstructed!
@@ -497,72 +509,31 @@ export class Keyboard3DView {
     // Outer corner at right cheek block
     openRimShape.lineTo(halfW, yFront);
 
-    // Step inward along right cheek block
-    openRimShape.lineTo(halfW - wallT, yFront);
-    openRimShape.lineTo(halfW - wallT, yFront + 9.2);
-
-    // Inner bentside sweeping back to tail
-    openRimShape.bezierCurveTo(
-      10.4,
-      yFront + 17.2,
-      7.0,
-      yTail - 8.2,
-      1.8,
-      yTail - 3.0,
-    );
-    // Inner tail
-    openRimShape.bezierCurveTo(
-      -3.5,
-      yTail + 1.4,
-      -halfW + wallT,
-      yTail + 1.0,
-      -halfW + wallT,
-      yTail - 9.0,
-    );
-    // Inner bass spine running forward to left cheek block
-    openRimShape.lineTo(-halfW + wallT, yFront);
+    // Follow the shared inner contour back to the open front mouth.
+    for (let i = GRAND_PIANO_INTERIOR_CONTOUR.length - 1; i >= 0; i -= 1) {
+      const point = GRAND_PIANO_INTERIOR_CONTOUR[i]!;
+      openRimShape.lineTo(point.x, point.depth);
+    }
     // Close endcap at left cheek block
     openRimShape.closePath();
 
     const rimHeight = 8.2;
-    const rimGeo = new THREE.ExtrudeGeometry(openRimShape, {
+    const rimGeo = createPianoCaseGeometry(openRimShape, {
       depth: rimHeight,
       bevelEnabled: true,
       bevelThickness: 0.18,
       bevelSize: 0.14,
-      bevelSegments: 3,
     });
     rimGeo.rotateX(-Math.PI * 0.5);
     const rimMesh = new THREE.Mesh(rimGeo, ebonyLacquerMat);
+    rimMesh.name = "grand-piano-rim";
     rimMesh.position.set(0, -6.2, 0);
     rimMesh.castShadow = true;
     rimMesh.receiveShadow = true;
     this.group.add(rimMesh);
 
     // 5. Clean, deep obsidian interior cavity floor (no distracting strings, struts, or soundboard ribs)
-    const cavityShape = new THREE.Shape();
-    cavityShape.moveTo(-halfW + wallT, yFront);
-    cavityShape.lineTo(-halfW + wallT, yTail - 9.0);
-    cavityShape.bezierCurveTo(
-      -halfW + wallT,
-      yTail + 1.0,
-      -3.5,
-      yTail + 1.4,
-      1.8,
-      yTail - 3.0,
-    );
-    cavityShape.bezierCurveTo(
-      7.0,
-      yTail - 8.2,
-      10.4,
-      yFront + 17.2,
-      halfW - wallT,
-      yFront + 9.2,
-    );
-    cavityShape.lineTo(halfW - wallT, yFront);
-    cavityShape.closePath();
-
-    const cavityFloorGeo = new THREE.ShapeGeometry(cavityShape);
+    const cavityFloorGeo = new THREE.ShapeGeometry(createGrandPianoInteriorShape());
     cavityFloorGeo.rotateX(-Math.PI * 0.5);
     const cavityFloorMat = new THREE.MeshPhysicalMaterial({
       color: 0x07080c,
@@ -574,6 +545,7 @@ export class Keyboard3DView {
       envMapIntensity: 0.2,
     });
     const cavityFloor = new THREE.Mesh(cavityFloorGeo, cavityFloorMat);
+    cavityFloor.name = "grand-piano-cavity-floor";
     cavityFloor.position.set(0, -1.25, 0);
     cavityFloor.receiveShadow = true;
     this.group.add(cavityFloor);

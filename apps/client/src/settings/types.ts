@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { BUILTIN_SOUNDFONT_ID } from "../audio/soundfont/builtinSoundfont.ts";
 import { M1KeyStyleSchema, type M1KeyStyle } from "@handthesia/contracts";
+import { normalizeStageAppearance, type StageAppearance } from "./stageAppearance";
 
 export const SETTINGS_STORAGE_KEY = "handthesia:settings";
 
@@ -40,6 +41,8 @@ export const CalculationEngineSchema = z.enum(["python", "typescript"]);
 export type CalculationEngine = z.infer<typeof CalculationEngineSchema>;
 
 export interface Settings {
+  /** Visual environment preference; absent in settings saved by older versions. */
+  stageAppearance?: StageAppearance;
   language: AppLanguage;
   keyStyle: "realistic" | "equal";
   calculationEngine: "python" | "typescript";
@@ -70,6 +73,7 @@ export interface Settings {
 export type AppSettings = Settings;
 
 export const SettingsSchema = z.object({
+  stageAppearance: z.unknown().transform(normalizeStageAppearance).default(() => normalizeStageAppearance(undefined)),
   language: AppLanguageSchema.default("en"),
   keyStyle: KeyStyleSchema.default("realistic"),
   calculationEngine: CalculationEngineSchema.default("typescript"),
@@ -95,6 +99,7 @@ export const SettingsSchema = z.object({
 });
 
 export const DEFAULT_SETTINGS: Settings = {
+  stageAppearance: normalizeStageAppearance(undefined),
   language: "en",
   keyStyle: "realistic",
   calculationEngine: "typescript",
@@ -121,7 +126,7 @@ export type SettingsListener = (settings: Settings) => void;
  */
 export function sanitizeSettings(input: Partial<Settings> | unknown): Settings {
   if (!input || typeof input !== "object") {
-    return { ...DEFAULT_SETTINGS };
+    return { ...DEFAULT_SETTINGS, stageAppearance: normalizeStageAppearance(undefined) };
   }
   const raw = input as Partial<Settings>;
 
@@ -220,6 +225,7 @@ export function sanitizeSettings(input: Partial<Settings> | unknown): Settings {
       : null;
 
   return {
+    stageAppearance: normalizeStageAppearance(raw.stageAppearance),
     language,
     keyStyle,
     calculationEngine,

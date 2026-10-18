@@ -5,7 +5,7 @@ test("studio playback, geometry replan and committed project persistence",async(
   test.setTimeout(180_000);
   const errors:string[]=[];
   page.on("pageerror",error=>errors.push(error.message));
-  const initial=await loadStudioSong(page);
+  const initial=await loadStudioSong(page, { output: "synth", dimension: "2d" });
   const play=page.locator("#player-play-button");
   const seek=page.locator("#player-seek-slider");
   await play.click();

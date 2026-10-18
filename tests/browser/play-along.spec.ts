@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { expectStudioCanvas } from "./studio-helpers";
+import { configureStudioTestOutput, expectStudioCanvas } from "./studio-helpers";
 
 test("Play along mode activates, provides step-by-step chord practice, and handles hand filtering and navigation", async ({ page }) => {
   const pageErrors: string[] = [];
@@ -10,6 +10,8 @@ test("Play along mode activates, provides step-by-step chord practice, and handl
   await expect(page).toHaveTitle("PianoMotion Studio");
   await expectStudioCanvas(page, 60_000);
   await expect(page.getByTestId("studio-header").getByText("Гімн України")).toBeVisible();
+  await configureStudioTestOutput(page);
+  await page.getByRole("button", { name: "Performance", exact: true }).click();
 
   // 1. Switch to "Play along" mode
   const playAlongButton = page.getByRole("button", { name: "Play along", exact: true });
@@ -44,6 +46,11 @@ test("Play along mode activates, provides step-by-step chord practice, and handl
   await expect(practiceControls.getByText(/Step 1 of \d+/)).toBeVisible();
 
   // 6. Test computer keyboard navigation (ArrowRight and ArrowLeft)
+  // Shortcut navigation is scoped to the workspace so focused controls keep
+  // their native keyboard behavior.
+  const workspaceCanvas = page.getByLabel("Piano workspace");
+  await expect(workspaceCanvas).toBeVisible();
+  await workspaceCanvas.focus();
   await page.keyboard.press("ArrowRight");
   await expect(practiceControls.getByText(/Step 2 of \d+/)).toBeVisible();
   await page.keyboard.press("ArrowLeft");

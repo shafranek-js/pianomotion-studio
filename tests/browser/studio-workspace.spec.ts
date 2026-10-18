@@ -36,7 +36,7 @@ test("six responsive sizes preserve one scene, all keys, contextual tools and pa
     await page.screenshot({path:info.outputPath(`${size.width}x${size.height}-empty.png`)});
   }
   await page.setViewportSize(sizes[0]);
-  await loadStudioSong(page);
+  await loadStudioSong(page, { output: "synth", dimension: "2d" });
   await page.getByRole("button",{name:"Performance",exact:true}).click();
   const canvas=studioCanvas(page,"2d");
   await canvas.evaluate(el=>el.setAttribute("data-identity-probe","same-canvas"));
@@ -180,7 +180,7 @@ test("2D and 3D canvases survive the dimension, Fingering, and Performance trans
     if(url.includes("midi-analysis-ts.worker") || url.includes("midi-analysis.worker")) engineWorkerUrls.push(url);
   });
   page.on("console", msg => console.log("PAGE:", msg.text()));
-  const initial=await loadStudioSong(page);
+  const initial=await loadStudioSong(page, { output: "synth" });
   const canvas2d=studioCanvas(page,"2d");
   const canvas3d=studioCanvas(page,"3d");
   const canvasHost=page.getByTestId("piano-canvas");
@@ -266,7 +266,7 @@ test("2D and 3D canvases survive the dimension, Fingering, and Performance trans
 
 test("painted note editing survives commit, portable package and fresh browser context", async ({page,browser}) => {
   test.setTimeout(240_000);
-  const imported=await loadStudioSong(page);
+  const imported=await loadStudioSong(page, { output: "synth", dimension: "2d" });
   await page.getByRole("button",{name:"Open pianist settings",exact:true}).click();
   await page.locator("#active-profile-select").selectOption("small-hands");
   await page.getByRole("dialog",{name:"Pianist settings",exact:true}).getByRole("button",{name:"Close",exact:true}).click();
@@ -278,7 +278,11 @@ test("painted note editing survives commit, portable package and fresh browser c
   // The stopped transport includes a two-second lead-in. Scroll the editor's
   // independent timeline to bring source notes into view, using its real UI.
   await studioCanvas(page,"2d").hover();
+  const beforeScroll=(await geometry(page)).viewTime;
   await page.mouse.wheel(0,400);
+  // Playwright dispatches wheel asynchronously. Existing painted notes alone
+  // do not establish that the new scroll position has reached the renderer.
+  await expect.poll(async()=>(await geometry(page)).viewTime).toBeGreaterThan(beforeScroll);
   await expect.poll(async()=>(await geometry(page)).notes.length).toBeGreaterThan(0);
   const g=await geometry(page);
   const note=g.notes.find(n=>n.rect.height>=8 && n.rect.y>=0 && n.rect.y+n.rect.height<g.keyboardRect!.y)!;
@@ -320,7 +324,7 @@ test("painted note editing survives commit, portable package and fresh browser c
 
 test("invalid packages retain the active scene and committed project",async({page})=>{
   test.setTimeout(180_000);
-  const initial=await loadStudioSong(page);
+  const initial=await loadStudioSong(page, { output: "synth", dimension: "2d" });
   await saveStudioProject(page);
   await page.getByRole("button",{name:"Performance",exact:true}).click();
   const canvas=studioCanvas(page,"2d");
@@ -337,7 +341,7 @@ test("invalid packages retain the active scene and committed project",async({pag
 
 test("an IndexedDB abort after request success never announces a committed save",async({page})=>{
   test.setTimeout(150_000);
-  const initial=await loadStudioSong(page);
+  const initial=await loadStudioSong(page, { output: "synth", dimension: "2d" });
   await page.evaluate(()=>{
     const original=IDBObjectStore.prototype.put;
     IDBObjectStore.prototype.put=function(...args:Parameters<IDBObjectStore["put"]>){
@@ -373,7 +377,7 @@ test("an IndexedDB abort after request success never announces a committed save"
 
 test("legacy geometry is explicit, engine changes replan, and failed candidate replan retains the scene",async({page})=>{
   test.setTimeout(360_000);
-  const initial=await loadStudioSong(page);
+  const initial=await loadStudioSong(page, { output: "synth", dimension: "2d" });
   await saveStudioProject(page);
   const original=JSON.parse(await readFile(await exportStudioPackage(page),"utf8"));
   const legacy={...original,packageVersion:1};delete legacy.sourceContext;

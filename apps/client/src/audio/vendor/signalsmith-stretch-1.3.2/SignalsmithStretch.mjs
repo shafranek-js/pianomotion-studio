@@ -115,7 +115,7 @@ function registerWorkletProcessor(Module, audioNodeKey) {
 					}
 	
 					let currentMapSegment = this.timeMap[0];
-					while (this.timeMap.length > 1 && this.timeMap[1].output <= outputTime) {
+					while (this.timeMap.length > 1 && this.timeMap[1].output <= currentTime) {
 						this.timeMap.shift();
 						currentMapSegment = this.timeMap[0];
 					}

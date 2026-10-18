@@ -11,6 +11,11 @@ export interface PlaybackState {
   pedals: PedalState;
 }
 
+export interface PerformanceOutputWindow {
+  startSeconds: number;
+  endSeconds: number;
+}
+
 export type PerformanceOutputId = "synth" | "soundfont" | "webmidi";
 
 /**
@@ -28,6 +33,9 @@ export interface PerformanceOutput {
   /** Optional file-backed output readiness; includes voices held at startSeconds. */
   prepareWindow?(plan: PerformancePlan, startSeconds: number, endSeconds: number, signal?: AbortSignal): Promise<void>;
   isWindowPrepared?(plan: PerformancePlan, startSeconds: number, endSeconds: number): boolean;
+  /** Optional atomic preparation for disjoint windows that must be ready together (loop head + current segment). */
+  prepareWindows?(plan: PerformancePlan, windows: readonly PerformanceOutputWindow[], signal?: AbortSignal): Promise<void>;
+  isWindowsPrepared?(plan: PerformancePlan, windows: readonly PerformanceOutputWindow[]): boolean;
   warmInteractiveWindow?(plan: PerformancePlan, startSeconds: number, endSeconds: number): void;
   setVolume?(volume: number): void;
   subscribeUnavailable?(listener: (error: Error) => void): () => void;
@@ -100,10 +108,9 @@ export class SoundFontPerformanceOutput implements PerformanceOutput {
   private readonly synth: SoundFontSynth;
   private readonly fallbackSampler = new PianoSampler();
   private readonly activeNotes = new Map<string, number>();
-  private preparedWindow: {
+  private preparedWindows: {
     plan: PerformancePlan;
-    startSeconds: number;
-    endSeconds: number;
+    windows: PerformanceOutputWindow[];
     notes: Array<{ pitch: number; velocity: number }>;
   } | null = null;
 
@@ -121,15 +128,35 @@ export class SoundFontPerformanceOutput implements PerformanceOutput {
     endSeconds: number,
     signal?: AbortSignal,
   ): Promise<void> {
+    // Linear playback prepares from the transport playhead, which is negative
+    // during the lead-in. Keep that legacy single-window API permissive and
+    // clamp its sample request to song time zero; the atomic loop-window API
+    // deliberately remains non-negative and strict.
     if (!Number.isFinite(startSeconds) || !Number.isFinite(endSeconds) || endSeconds < startSeconds) {
-      throw new Error("SoundFont preparation window must have finite, ordered bounds.");
+      throw new RangeError("SoundFont preparation window must have finite, ordered bounds.");
     }
-    if (this.isWindowPrepared(plan, startSeconds, endSeconds)) return;
+    if (endSeconds < 0) return;
+    return this.prepareWindows(plan, [{ startSeconds: Math.max(0, startSeconds), endSeconds }], signal);
+  }
+
+  public async prepareWindows(
+    plan: PerformancePlan,
+    windows: readonly PerformanceOutputWindow[],
+    signal?: AbortSignal,
+  ): Promise<void> {
+    this.validateWindows(windows);
+    if (this.isWindowsPrepared(plan, windows)) return;
     if (signal?.aborted) throw new DOMException("SoundFont window preparation was cancelled.", "AbortError");
-    const notes = collectWindowNotes(plan, startSeconds, endSeconds);
-    await this.synth.prepareNotes(notes, signal);
+    const notes = new Map<string, { pitch: number; velocity: number }>();
+    for (const window of windows) {
+      for (const note of collectWindowNotes(plan, window.startSeconds, window.endSeconds)) {
+        notes.set(`${note.pitch}:${note.velocity}`, note);
+      }
+    }
+    const preparedNotes = [...notes.values()];
+    await this.synth.prepareNotes(preparedNotes, signal);
     if (signal?.aborted) throw new DOMException("SoundFont window preparation was cancelled.", "AbortError");
-    this.preparedWindow = { plan, startSeconds, endSeconds, notes };
+    this.preparedWindows = { plan, windows: windows.map((window) => ({ ...window })), notes: preparedNotes };
   }
 
   public warmInteractiveWindow(plan: PerformancePlan, startSeconds: number, endSeconds: number): void {
@@ -138,9 +165,17 @@ export class SoundFontPerformanceOutput implements PerformanceOutput {
   }
 
   public isWindowPrepared(plan: PerformancePlan, startSeconds: number, endSeconds: number): boolean {
-    const prepared = this.preparedWindow;
-    return Boolean(prepared && prepared.plan === plan && startSeconds >= prepared.startSeconds &&
-      endSeconds <= prepared.endSeconds && this.synth.areNotesPrepared(prepared.notes));
+    if (!Number.isFinite(startSeconds) || !Number.isFinite(endSeconds) || endSeconds < startSeconds) return false;
+    if (endSeconds < 0) return true;
+    return this.isWindowsPrepared(plan, [{ startSeconds: Math.max(0, startSeconds), endSeconds }]);
+  }
+
+  public isWindowsPrepared(plan: PerformancePlan, windows: readonly PerformanceOutputWindow[]): boolean {
+    if (!this.areWindowsValid(windows)) return false;
+    const prepared = this.preparedWindows;
+    if (!prepared || prepared.plan !== plan || !this.synth.areNotesPrepared(prepared.notes)) return false;
+    return windows.every((window) => prepared.windows.some((candidate) =>
+      window.startSeconds >= candidate.startSeconds && window.endSeconds <= candidate.endSeconds));
   }
 
   public noteOn(noteId: string, pitch: number, velocity: number, scheduledTime?: number): void {
@@ -188,6 +223,10 @@ export class SoundFontPerformanceOutput implements PerformanceOutput {
 
   public restoreState(state: PlaybackState): void {
     this.activeNotes.clear();
+    // SoundFont owns restored voices; the additive fallback only needs the
+    // matching pedal baseline so failed/missing samples cannot leave old audio
+    // sounding or leak pedal state across a seek or loop re-anchor.
+    this.fallbackSampler.restoreState({ voices: [], pedals: state.pedals });
     this.synth.restoreState(state);
     for (const voice of state.voices) this.activeNotes.set(voice.noteId, voice.pitch);
   }
@@ -200,8 +239,27 @@ export class SoundFontPerformanceOutput implements PerformanceOutput {
   public dispose(): void {
     this.panic();
     this.fallbackSampler.dispose();
-    this.preparedWindow = null;
+    this.preparedWindows = null;
     this.synth.dispose();
+  }
+
+  private validateWindows(windows: readonly PerformanceOutputWindow[]): void {
+    if (!this.areWindowsValid(windows)) {
+      throw new RangeError("SoundFont preparation windows must be non-empty, finite, non-negative, and ordered by start time.");
+    }
+  }
+
+  private areWindowsValid(windows: readonly PerformanceOutputWindow[]): boolean {
+    if (windows.length === 0) return false;
+    let previousStart = Number.NEGATIVE_INFINITY;
+    for (const window of windows) {
+      if (!Number.isFinite(window.startSeconds) || !Number.isFinite(window.endSeconds) ||
+          window.startSeconds < 0 || window.endSeconds < window.startSeconds || window.startSeconds < previousStart) {
+        return false;
+      }
+      previousStart = window.startSeconds;
+    }
+    return true;
   }
 }
 
