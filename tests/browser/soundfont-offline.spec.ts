@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { createSyntheticStereoSf2 } from "../../apps/client/src/audio/soundfont/testing/syntheticStereoSf2";
-import { loadStudioSong, openStudioInspector, saveStudioProject } from "./studio-helpers";
+import { expectStudioCanvas, loadStudioSong, openStudioInspector, saveStudioProject } from "./studio-helpers";
 
 test("production offline navigation restores a stereo Blob bank and both new SF2 workers", async ({ page, context }) => {
   test.setTimeout(240_000);
@@ -30,7 +30,7 @@ test("production offline navigation restores a stereo Blob bank and both new SF2
   const reopened = await context.newPage();
   try {
     await reopened.goto(process.env.PIANOMOTION_PREVIEW_BASE ?? "/");
-    await expect(reopened.locator("#piano-canvas-container canvas")).toBeVisible({ timeout: 90_000 });
+    await expectStudioCanvas(reopened, 90_000);
     await openStudioInspector(reopened, "Audio");
     await expect(reopened.getByText("Active output: Local SoundFont", { exact: true })).toBeVisible({ timeout: 45_000 });
     await reopened.getByRole("button", { name: "Play", exact: true }).click();

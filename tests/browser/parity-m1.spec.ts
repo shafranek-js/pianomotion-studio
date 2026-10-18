@@ -33,6 +33,7 @@ test.describe.serial("M1 Pyodide browser verification suite", () => {
 
   let page: Page;
   const pageErrors: string[] = [];
+  const analysisWorkerUrls: string[] = [];
   const benchmarkResults: {
     fixtureId: string;
     durationMs: number;
@@ -57,11 +58,27 @@ test.describe.serial("M1 Pyodide browser verification suite", () => {
       pageErrors.push(error.stack || error.message);
     });
     page.on("worker", (worker) => {
-      console.log(`[WORKER CREATED]`, worker.url());
+      const url = worker.url();
+      console.log(`[WORKER CREATED]`, url);
+      if (url.includes("midi-analysis.worker") || url.includes("midi-analysis-ts.worker")) {
+        analysisWorkerUrls.push(url);
+      }
     });
 
-    await page.goto("/");
+    await page.goto("/?empty=true");
     await expect(page).toHaveTitle("PianoMotion Studio");
+
+    await page.getByRole("button", { name: "Open preferences", exact: true }).click();
+    const preferences = page.getByRole("dialog", { name: "Preferences", exact: true });
+    await expect(preferences).toBeVisible();
+    const engineSelector = preferences.locator("#settings-calculation-engine");
+    await engineSelector.selectOption("python");
+    await expect(engineSelector).toHaveValue("python");
+    await expect.poll(() => page.evaluate(async () =>
+      (await import("/src/settings/settingsStore.ts")).getSettings().calculationEngine,
+    )).toBe("python");
+    await preferences.getByRole("button", { name: "Done", exact: true }).click();
+
     await openDeveloperTools();
     await expect(page.locator("#fixture-select")).toBeEnabled({ timeout: 30_000 });
   });
@@ -147,6 +164,9 @@ test.describe.serial("M1 Pyodide browser verification suite", () => {
     if (!evaluation.result) {
       throw new Error(`No result returned for ${fixtureId}`);
     }
+
+    expect(analysisWorkerUrls.some((url) => url.includes("midi-analysis.worker"))).toBe(true);
+    expect(analysisWorkerUrls.some((url) => url.includes("midi-analysis-ts.worker"))).toBe(false);
 
     return {
       result: evaluation.result,

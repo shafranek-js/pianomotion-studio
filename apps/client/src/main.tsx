@@ -5,6 +5,8 @@ import "./app.css";
 import { applicationBuildId, registerServiceWorker, unregisterDevelopmentServiceWorker } from "./pwa";
 import { initializeDiagnosticLog } from "./diagnostics/eventLog";
 
+import { I18nProvider } from "./i18n";
+
 initializeDiagnosticLog();
 
 const rootElement = document.getElementById("root");
@@ -15,7 +17,9 @@ if (!rootElement) {
 
 createRoot(rootElement).render(
   <StrictMode>
-    <App />
+    <I18nProvider>
+      <App />
+    </I18nProvider>
   </StrictMode>,
 );
 

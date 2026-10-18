@@ -2,15 +2,17 @@ import {expect,test} from "@playwright/test";
 import {readFile} from "node:fs/promises";
 import {createHash} from "node:crypto";
 import {ProjectPackageSchema} from "@handthesia/contracts";
-import {exportStudioPackage,focusStudioScene,loadStudioSong,openStudioEditMenu,openStudioInspector,saveStudioProject,settledStudio} from "./studio-helpers";
+import {exportStudioPackage,loadStudioSong,openStudioEditMenu,openStudioInspector,saveStudioProject,settledStudio,studioCanvas} from "./studio-helpers";
 
 test("selection does not calculate; edits preserve IDs/history and exported MIDI markers",async({page})=>{
   test.setTimeout(240_000);
   const errors:string[]=[];page.on("pageerror",e=>errors.push(e.message));
-  let workers=0;page.on("worker",()=>workers++);
+  let workers=0;page.on("worker",worker=>{if(worker.url().includes("midi-analysis-ts.worker") || worker.url().includes("midi-analysis.worker")) workers++;});
   const initial=await loadStudioSong(page);
   await page.getByRole("button",{name:"Fingering",exact:true}).click();
-  await focusStudioScene(page);await page.keyboard.press("ArrowRight");
+  const canvas=studioCanvas(page,"2d");
+  await expect(canvas).toBeVisible();
+  await canvas.focus();await page.keyboard.press("ArrowRight");
   const count=workers;
   await page.waitForTimeout(650); // Longer than the real edit debounce.
   expect(workers).toBe(count);
@@ -98,7 +100,9 @@ test("autosaved pending intent is recovered and replanned after reload",async({p
     };
   });
   await page.getByRole("button",{name:"Fingering",exact:true}).click();
-  await focusStudioScene(page);await page.keyboard.press("ArrowRight");
+  const canvas=studioCanvas(page,"2d");
+  await expect(canvas).toBeVisible();
+  await canvas.focus();await page.keyboard.press("ArrowRight");
   await page.getByTestId("studio-header").getByRole("button",{name:"Finger 4",exact:true}).click();
   await expect.poll(async()=>page.evaluate(async()=>{
     const db=await new Promise<IDBDatabase>(resolve=>{const r=indexedDB.open("handthesia_db",2);r.onsuccess=()=>resolve(r.result);});

@@ -57,6 +57,7 @@ import { StudioReleaseDetails, StudioShell } from "../studio/StudioShell";
 import { StudioTransport } from "../studio/StudioTransport";
 import { type InspectorTab, type StudioStatus, type StudioView, normalizeStudioView } from "../studio/types";
 import { StudioWorkspace } from "../studio/StudioWorkspace";
+import { useI18n } from "../i18n";
 import { runWorkerJob } from "./workerJob";
 import type { SaveResult, SaveSession } from "./saveResult";
 import { MotionStreamController, type MotionStreamFlight } from "./motionStreamController";
@@ -205,6 +206,7 @@ export function PianoPlayer({
   const onStatusChangeRef = useRef(onStatusChange);
   useEffect(() => { onStatusChangeRef.current = onStatusChange; }, [onStatusChange]);
 
+  const { dict } = useI18n();
   const settingsAtStart = getSettings();
   const calculationEngineRef = useRef<CalculationEngine>(settingsAtStart.calculationEngine);
   const [activeCalculationEngine, setActiveCalculationEngine] = useState<CalculationEngine>(
@@ -264,10 +266,16 @@ export function PianoPlayer({
   const camera3DPresetRef = useRef<Camera3DPreset>(camera3DPreset);
   useEffect(() => { camera3DPresetRef.current = camera3DPreset; }, [camera3DPreset]);
 
+  const baseDocument = useMemo(
+    () => initialSession?.result?.document ?? initialSession?.document ?? result.document ?? null,
+    [initialSession, result],
+  );
+
   const document = useMemo(() => {
-    if (!analysis.document) return null;
-    return materializeEditedDocument({ ...analysis.document, revision: draftPlan.inputRevision }, draftPlan);
-  }, [analysis.document, draftPlan]);
+    const base = baseDocument ?? analysis.document;
+    if (!base) return null;
+    return materializeEditedDocument({ ...base, revision: draftPlan.inputRevision }, draftPlan);
+  }, [baseDocument, analysis.document, draftPlan]);
   const needsReplan = Boolean(
     forceReplan > 0 || !document || draftPlan.inputRevision !== analysis.document?.revision ||
     activeProfile.profileId !== analysis.profile.profileId || activeProfile.revision !== analysis.profile.revision ||
@@ -1342,7 +1350,7 @@ export function PianoPlayer({
       return { status: "blocked", reason: "Wait for the current calculation before saving the project.", identity };
     }
     let projectCommitted = false;
-    onStatusChange({ kind: "saving", message: "Saving project to this browser…" });
+    onStatusChange({ kind: "saving", message: dict.header.file === "File" ? "Saving project to this browser…" : "Ukládání projektu do prohlížeče…" });
     try {
       const project = savedProject();
       await saveProject(project);
@@ -1369,7 +1377,7 @@ export function PianoPlayer({
       dirtyRef.current = false;
       onDirtyChange(false);
       onProjectSaved?.(project.projectId);
-      onStatusChange({ kind: "saved", message: "Project saved to this browser." });
+      onStatusChange({ kind: "saved", message: dict.header.file === "File" ? "Project saved to this browser." : "Projekt byl uložen do prohlížeče." });
       return { status: "committed", identity };
     } catch (error) {
       const reason = `${projectCommitted ? "Project saved, but recovery was not committed" : "Project was not saved"}: ${errorMessage(error)}`;
@@ -1377,7 +1385,7 @@ export function PianoPlayer({
       return { status: "failed", reason, identity };
     }
   }, [rawMidiBytes, savedProject, onDirtyChange, onProjectSaved, onStatusChange, analysis, draftPlan,
-    autosaveService, activeProfile, keyStyle, sourceContext, viewMode]);
+    autosaveService, activeProfile, keyStyle, sourceContext, viewMode, dict]);
 
   const saveToDatabaseRef = useRef(saveToDatabase);
   useEffect(() => { saveToDatabaseRef.current = saveToDatabase; }, [saveToDatabase]);
@@ -1404,18 +1412,18 @@ export function PianoPlayer({
         sourceContext,
         filename: `${projectName.replace(/\.mid(i)?$/i, "")}.pianomotion.json`,
       });
-      onStatusChange({ kind: dirtyRef.current ? "modified" : "saved", message: "Project package exported." });
+      onStatusChange({ kind: dirtyRef.current ? "modified" : "saved", message: dict.header.file === "File" ? "Project package exported." : "Balíček projektu byl exportován." });
     } catch (error) {
       onStatusChange({ kind: "error", message: `Project package export failed: ${errorMessage(error)}` });
     }
-  }, [needsReplan, rawMidiBytes, savedProject, activeProfile, analysis.resource, sourceContext, projectName, onStatusChange]);
+  }, [needsReplan, rawMidiBytes, savedProject, activeProfile, analysis.resource, sourceContext, projectName, onStatusChange, dict]);
 
   const handleExportMidi = useCallback(async () => {
     if (needsReplan || !rawMidiBytes || !document || !workerReadyRef.current) return;
     const worker = workerRef.current;
     if (!worker) return;
     const abort = new AbortController();
-    onStatusChange({ kind: "loading", message: "Exporting fingered MIDI…" });
+    onStatusChange({ kind: "loading", message: dict.header.file === "File" ? "Exporting fingered MIDI…" : "Exportování MIDI s prstokladem…" });
     try {
       const request = M1ExportMidiRequestSchema.parse({
         type: "export-midi",
@@ -1446,7 +1454,7 @@ export function PianoPlayer({
     } catch (error) {
       onStatusChange({ kind: "error", message: `Fingered MIDI export failed: ${errorMessage(error)}` });
     }
-  }, [needsReplan, rawMidiBytes, document, analysis.projectId, engineVersion, draftPlan, projectName, onStatusChange]);
+  }, [needsReplan, rawMidiBytes, document, analysis.projectId, engineVersion, draftPlan, projectName, onStatusChange, dict]);
 
   const handleDiagnosticNote = useCallback((noteId: string) => {
     const note = document?.notes.find(candidate => candidate.noteId === noteId);
@@ -1682,7 +1690,7 @@ export function PianoPlayer({
     workspace={workspace}
     transport={transport}
     headerAddon={<div ref={setAssignmentControlsHost} className="studio-fingering-assignment-host" />}
-    footerAddon={footerAddon ?? <StudioReleaseDetails description="0.1.0-dev.12 preview: corrected manual 3D export cameras, empty performance plans, continuous hand release and compact responsive camera controls. Local MIDI, SoundFont and project workflows are preserved." />}
+    footerAddon={footerAddon ?? <StudioReleaseDetails description="0.1.0-dev.13 preview: multi-language UI localization (EN/CS/UK/DE/ES/IT), unified 12px header layout, icon-based fingering actions, and editor undo replan stabilization." />}
     dialogs={<>
       {dialogs}
       <VideoExportModal

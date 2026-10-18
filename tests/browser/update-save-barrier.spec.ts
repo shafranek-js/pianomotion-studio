@@ -1,12 +1,14 @@
 import { expect, test } from "@playwright/test";
-import { focusStudioScene, loadStudioSong, saveStudioProject, settledStudio } from "./studio-helpers";
+import { expectStudioCanvas, loadStudioSong, saveStudioProject, settledStudio, studioCanvas } from "./studio-helpers";
 
 test("update never activates after real project transaction abort; edited session survives", async ({ page }) => {
   test.setTimeout(180_000);
   const original = await loadStudioSong(page);
   await saveStudioProject(page);
   await page.getByRole("button", { name: "Fingering", exact: true }).click();
-  await focusStudioScene(page);
+  const canvas = studioCanvas(page, "2d");
+  await expect(canvas).toBeVisible();
+  await canvas.focus();
   await page.keyboard.press("ArrowRight");
   await page.getByTestId("studio-header").getByRole("button", { name: "Finger 4", exact: true }).click();
   const edited = await settledStudio(page, original.result.revision + 1);
@@ -33,14 +35,16 @@ test("update never activates after real project transaction abort; edited sessio
   const retained = await page.evaluate(() => window.__playerSnapshot!);
   expect(retained.result.projectId).toBe(original.result.projectId);
   expect(retained.draftPlan.assignments).toEqual(edited.draftPlan.assignments);
-  await expect(page.locator("#piano-canvas-container canvas")).toBeVisible();
+  await expectStudioCanvas(page);
 });
 
 test("edits made during worker activation prevent the final reload", async ({ page }) => {
   test.setTimeout(180_000);
   const original = await loadStudioSong(page);
   await page.getByRole("button", { name: "Fingering", exact: true }).click();
-  await focusStudioScene(page);
+  const canvas = studioCanvas(page, "2d");
+  await expect(canvas).toBeVisible();
+  await canvas.focus();
   await page.keyboard.press("ArrowRight");
   await page.evaluate(() => {
     const state = window as typeof window & { updateActivationRequested?: boolean };
@@ -60,5 +64,5 @@ test("edits made during worker activation prevent the final reload", async ({ pa
   const retained = await page.evaluate(() => window.__playerSnapshot!);
   expect(retained.result.projectId).toBe(original.result.projectId);
   expect(retained.draftPlan.assignments.some(item => item.fingerMode === "manual" && item.finger === 4)).toBe(true);
-  await expect(page.locator("#piano-canvas-container canvas")).toBeVisible();
+  await expectStudioCanvas(page);
 });

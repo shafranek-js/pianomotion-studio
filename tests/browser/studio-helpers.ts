@@ -4,6 +4,22 @@ import { M1AnalyzeMidiResultSchema } from "@handthesia/contracts";
 
 export const studioMidiPath = fileURLToPath(new URL("../fixtures/midi/tracked-right-hand.mid", import.meta.url));
 
+// Both renderers stay mounted to preserve their state. Readiness targets the
+// visible surface; geometry, editing and identity checks name a renderer.
+export function studioCanvas(page: Page, dimension?: "2d" | "3d") {
+  const scene = page.locator("#piano-canvas-container");
+  if (dimension === "2d") return scene.locator('canvas[aria-label="Piano workspace"]');
+  if (dimension === "3d") return scene.getByTestId("piano-canvas-3d");
+  return scene.locator("canvas:visible");
+}
+
+export async function expectStudioCanvas(page: Page, timeout = 90_000) {
+  const canvas = studioCanvas(page);
+  await expect(canvas).toHaveCount(1, { timeout });
+  await expect(canvas).toBeVisible({ timeout });
+  return canvas;
+}
+
 export async function loadStudioSong(page: Page) {
   const base = process.env.PIANOMOTION_PREVIEW_BASE ?? "/";
   const url = base.includes("?") ? `${base}&empty=true` : `${base}?empty=true`;
@@ -11,16 +27,29 @@ export async function loadStudioSong(page: Page) {
   await expect(page).toHaveTitle("PianoMotion Studio");
   await expect(page.getByRole("button", {name:"Play demo song", exact:true})).toBeEnabled({ timeout: 30_000 });
   await page.locator("#midi-file").setInputFiles(studioMidiPath);
-  await expect(page.locator("#piano-canvas-container canvas:visible")).toHaveCount(1, { timeout: 90_000 });
+  await expectStudioCanvas(page);
   return settledStudio(page, 0);
 }
 
 export async function settledStudio(page: Page, minimumRevision: number) {
-  await page.waitForFunction(revision => {
-    const snapshot = window.__playerSnapshot;
-    return (snapshot && snapshot.scene?.keyCount === 88 && !snapshot.pending && snapshot.result.revision >= revision) ||
-      document.querySelector('.studio-save-state[data-kind="error"]') !== null;
-  }, minimumRevision, { timeout: 90_000 });
+  try {
+    await page.waitForFunction(revision => {
+      const snapshot = window.__playerSnapshot;
+      return (snapshot && snapshot.scene?.keyCount === 88 && !snapshot.pending && snapshot.result.revision >= revision) ||
+        document.querySelector('.studio-save-state[data-kind="error"]') !== null;
+    }, minimumRevision, { timeout: 90_000 });
+  } catch (cause) {
+    const state = await page.evaluate(() => {
+      const snapshot = window.__playerSnapshot;
+      return {
+        projectId: snapshot?.result.projectId, revision: snapshot?.result.revision,
+        draftRevision: snapshot?.draftPlan.inputRevision, pending: snapshot?.pending,
+        keyCount: snapshot?.scene?.keyCount, view: snapshot?.viewMode,
+        status: document.querySelector('[data-testid="studio-status"]')?.textContent,
+      };
+    }).catch(() => ({ status: "Page unavailable" }));
+    throw new Error(`Studio did not settle at revision ${minimumRevision}: ${JSON.stringify(state)}`, { cause });
+  }
   const snapshot = await page.evaluate(() => window.__playerSnapshot!);
   if (!snapshot || snapshot.pending || snapshot.result.revision < minimumRevision) {
     await openStudioInspector(page,"Diagnostics");
@@ -61,7 +90,7 @@ export async function saveStudioProject(page: Page) {
 }
 
 export async function focusStudioScene(page: Page) {
-  const canvas = page.locator("#piano-canvas-container canvas:visible");
+  const canvas = await expectStudioCanvas(page);
   await canvas.focus();
   return canvas;
 }

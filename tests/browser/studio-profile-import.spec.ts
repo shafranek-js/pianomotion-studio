@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 import { ProjectPackageSchema } from "@handthesia/contracts";
-import { exportStudioPackage, loadStudioSong, saveStudioProject, settledStudio } from "./studio-helpers";
+import { expectStudioCanvas, exportStudioPackage, loadStudioSong, saveStudioProject, settledStudio } from "./studio-helpers";
 
 test("a package-only profile can be edited, duplicated, and reopened from saved projects", async ({page,browser},info) => {
   test.setTimeout(240_000);
@@ -18,10 +18,10 @@ test("a package-only profile can be edited, duplicated, and reopened from saved 
   const context = await browser.newContext();
   try {
     const fresh = await context.newPage();
-    await fresh.goto(new URL("/",page.url()).href);
+    await fresh.goto(new URL("/?empty=true",page.url()).href);
     await expect(fresh.getByRole("button",{name:"Play demo song",exact:true})).toBeEnabled();
     await fresh.locator("#project-file").setInputFiles({name:"custom-profile.json",mimeType:"application/json",buffer:Buffer.from(JSON.stringify(pkg))});
-    await expect(fresh.locator("#piano-canvas-container canvas")).toBeVisible({timeout:90_000});
+    await expectStudioCanvas(fresh, 90_000);
     const imported = await settledStudio(fresh,0);
     await fresh.getByRole("button",{name:"Open pianist settings",exact:true}).click();
     const dialog = fresh.getByRole("dialog",{name:"Pianist settings",exact:true});

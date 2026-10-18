@@ -31,6 +31,7 @@ import { isCommittedSaveCurrent } from "./player/saveResult";
 import { applyGuardedStudioUpdate } from "./studio/updateGuard";
 import { recordDiagnostic } from "./diagnostics/eventLog";
 import { DiagnosticLogControls } from "./diagnostics/DiagnosticLogControls";
+import { useI18n } from "./i18n";
 
 type FixtureEntry = { fixturePath: string; fixtureSha256: string; scenarios?: string[] };
 type FixtureManifest = { fixtureSources: Record<string, FixtureEntry> };
@@ -63,6 +64,7 @@ declare global {
 }
 
 export default function App() {
+  const { dict, t } = useI18n();
   const [fixtureManifest, setFixtureManifest] = useState<FixtureManifest | null>(null);
   const [engineVersion, setEngineVersion] = useState("");
   const [active, setActive] = useState<ActiveSession | null>(null);
@@ -629,48 +631,48 @@ export default function App() {
     <BuiltinMelodiesDialog open={builtinMelodiesOpen} onClose={() => setBuiltinMelodiesOpen(false)}
       onChoose={entry => { void openBuiltinMelody(entry); }} busy={busy || !engineVersion} />
     {confirmReplace && pendingCandidate && <StudioDialog
-      title="Unsaved changes" titleId="replace-project-title"
-      description={`Save your current project before opening “${pendingCandidate.projectName}”?`}
+      title={dict.dialogs.unsavedTitle} titleId="replace-project-title"
+      description={t("dialogs.unsavedDescription", { name: pendingCandidate.projectName })}
       onClose={() => {void chooseReplace("cancel");}}
     >
         <div className="studio-confirm-actions">
-          <button type="button" onClick={() => void chooseReplace("save")}>Save and open</button>
-          <button type="button" onClick={() => void chooseReplace("discard")}>Discard and open</button>
-          <button type="button" onClick={() => void chooseReplace("cancel")}>Cancel</button>
+          <button type="button" onClick={() => void chooseReplace("save")}>{dict.dialogs.saveAndOpen}</button>
+          <button type="button" onClick={() => void chooseReplace("discard")}>{dict.dialogs.discardAndOpen}</button>
+          <button type="button" onClick={() => void chooseReplace("cancel")}>{dict.common.cancel}</button>
         </div>
     </StudioDialog>}
     {legacyResolution && <StudioDialog
-      title="Choose the original keyboard geometry" titleId="legacy-geometry-title"
-      description="Legacy source IDs identify the fixture, but this file does not store the keyboard geometry. Choose the original geometry to verify saved fingering against the MIDI."
+      title={dict.dialogs.legacyTitle} titleId="legacy-geometry-title"
+      description={dict.dialogs.legacyDescription}
       onClose={() => {setLegacyResolution(null); setLegacyKeyStyle(null);}}
     >
         <fieldset>
-          <legend>Keyboard geometry</legend>
-          <label><input type="radio" name="legacy-key-style" value="realistic" checked={legacyKeyStyle === "realistic"} onChange={() => setLegacyKeyStyle("realistic")} /> Realistic key widths</label>
-          <label><input type="radio" name="legacy-key-style" value="equal" checked={legacyKeyStyle === "equal"} onChange={() => setLegacyKeyStyle("equal")} /> Equal key widths</label>
+          <legend>{dict.settings.keyStyle}</legend>
+          <label><input type="radio" name="legacy-key-style" value="realistic" checked={legacyKeyStyle === "realistic"} onChange={() => setLegacyKeyStyle("realistic")} /> {dict.settings.realisticKeys}</label>
+          <label><input type="radio" name="legacy-key-style" value="equal" checked={legacyKeyStyle === "equal"} onChange={() => setLegacyKeyStyle("equal")} /> {dict.settings.equalKeys}</label>
         </fieldset>
         <div className="studio-confirm-actions">
-          <button type="button" disabled={!legacyKeyStyle} onClick={continueLegacyOpen}>Verify and open</button>
-          <button type="button" onClick={() => { setLegacyResolution(null); setLegacyKeyStyle(null); }}>Cancel</button>
+          <button type="button" disabled={!legacyKeyStyle} onClick={continueLegacyOpen}>{dict.dialogs.verifyAndOpen}</button>
+          <button type="button" onClick={() => { setLegacyResolution(null); setLegacyKeyStyle(null); }}>{dict.common.cancel}</button>
         </div>
     </StudioDialog>}
-    {fullScreenDialog === "preferences" && <StudioDialog screen title="Preferences" description="Application settings" onClose={() => setFullScreenDialog(null)}>
+    {fullScreenDialog === "preferences" && <StudioDialog screen title={dict.header.preferences} description={dict.settings.title} onClose={() => setFullScreenDialog(null)}>
       <SettingsModal presentation="workspace" isOpen onClose={() => setFullScreenDialog(null)} />
     </StudioDialog>}
-    {fullScreenDialog === "pianist" && <StudioDialog screen title="Pianist settings" description="Pianist anatomy and motion profile" onClose={() => setFullScreenDialog(null)}>
+    {fullScreenDialog === "pianist" && <StudioDialog screen title={dict.pianist.title} description={dict.pianist.subtitle} onClose={() => setFullScreenDialog(null)}>
       <ProfileModal presentation="workspace" initialProfile={active ? sessionProfile ?? active.result.profile : undefined} isOpen onClose={() => setFullScreenDialog(null)} />
     </StudioDialog>}
   </>;
 
   const emptyWorkspace = <div className="studio-welcome" data-testid="studio-welcome">
-    <p className="studio-welcome__eyebrow">PIANOMOTION STUDIO</p>
-    <h1>Open a project</h1>
-    <p>Choose a built-in melody, MIDI file, saved project, or demo song.</p>
+    <p className="studio-welcome__eyebrow">{dict.welcome.eyebrow}</p>
+    <h1>{dict.welcome.title}</h1>
+    <p>{dict.welcome.subtitle}</p>
     <div className="studio-welcome__actions">
-      <button type="button" onClick={() => midiInputRef.current?.click()}>Open MIDI</button>
-      <button type="button" onClick={openBuiltinMelodies}>Browse built-in melodies</button>
-      <button type="button" onClick={() => projectInputRef.current?.click()}>Open Project</button>
-      <button type="button" disabled={!fixtureManifest || busy} onClick={() => void openFixture(DEMO_FIXTURE_ID)}>Play demo song</button>
+      <button type="button" onClick={() => midiInputRef.current?.click()}>{dict.welcome.openMidi}</button>
+      <button type="button" onClick={openBuiltinMelodies}>{dict.welcome.browseMelodies}</button>
+      <button type="button" onClick={() => projectInputRef.current?.click()}>{dict.welcome.openProject}</button>
+      <button type="button" disabled={!fixtureManifest || busy} onClick={() => void openFixture(DEMO_FIXTURE_ID)}>{dict.welcome.playDemo}</button>
     </div>
   </div>;
 
@@ -683,7 +685,7 @@ export default function App() {
           type="button"
           className="studio-update-button"
           onClick={() => void handleApplyUpdate()}
-          title="A newer version of the studio is ready. Click to save and reload."
+          title={dict.dialogs.updateDescription}
           style={{
             background: "#22c55e",
             color: "#0a0c0d",
@@ -695,10 +697,10 @@ export default function App() {
             cursor: "pointer",
           }}
         >
-          Update ready
+          {dict.dialogs.updateReady}
         </button>
       )}
-      <StudioReleaseDetails description="0.1.0-dev.12 preview: corrected manual 3D export cameras, empty performance plans, continuous hand release and compact responsive camera controls. Local MIDI, SoundFont and project workflows are preserved." />
+      <StudioReleaseDetails description="0.1.0-dev.13 preview: multi-language UI localization (EN/CS/UK/DE/ES/IT), unified 12px header layout, icon-based fingering actions, and editor undo replan stabilization." />
     </div>
   );
 

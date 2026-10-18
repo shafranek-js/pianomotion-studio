@@ -18,6 +18,7 @@ import {
   isCanonicalProfile,
 } from "./profileStore";
 import { importLegacyPianistJson, exportProfileToJson } from "./legacyImporter";
+import { useI18n, type TranslationDictionary } from "../i18n";
 
 export interface ProfileModalProps {
   presentation?: "dialog" | "workspace";
@@ -35,7 +36,38 @@ function projectProfileChoices(profile?: PianistProfile): PianistProfile[] {
     : [...stored, profile];
 }
 
+function getProfilePresetName(profile: PianistProfile, dict: TranslationDictionary): string {
+  switch (profile.profileId) {
+    case "default":
+      return dict.pianist.defaultPreset;
+    case "small-hands":
+      return dict.pianist.smallHandsPreset;
+    case "virtuoso":
+      return dict.pianist.virtuosoPreset;
+    case "left-dominant":
+      return dict.pianist.leftDominantPreset;
+    default:
+      return profile.name || dict.pianist.customPreset;
+  }
+}
+
+function getFingerName(finger: 1 | 2 | 3 | 4 | 5, dict: TranslationDictionary): string {
+  switch (finger) {
+    case 1:
+      return dict.pianist.thumb;
+    case 2:
+      return dict.pianist.index;
+    case 3:
+      return dict.pianist.middle;
+    case 4:
+      return dict.pianist.ring;
+    case 5:
+      return dict.pianist.pinky;
+  }
+}
+
 export function ProfileModal({ isOpen, onClose, onProfileChanged, presentation = "dialog", initialProfile }: ProfileModalProps) {
+  const { dict } = useI18n();
   const [profiles, setProfiles] = useState<PianistProfile[]>(() => projectProfileChoices(initialProfile));
   const [selectedProfileId, setSelectedProfileId] = useState<string>(
     (initialProfile ?? getActiveProfile()).profileId,
@@ -277,14 +309,19 @@ export function ProfileModal({ isOpen, onClose, onProfileChanged, presentation =
         >
           <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
             <UserRound size={20} aria-hidden="true" />
-            <h2 id="profile-modal-title" style={{ margin: 0, fontSize: "1.15rem", fontWeight: 700 }}>
-              Pianist Profiles
-            </h2>
+            <div>
+              <h2 id="profile-modal-title" style={{ margin: 0, fontSize: "1.15rem", fontWeight: 700 }}>
+                {dict.pianist.title}
+              </h2>
+              <div style={{ fontSize: "0.75rem", color: "var(--muted, #9fac9f)", marginTop: "0.15rem" }}>
+                {dict.pianist.subtitle}
+              </div>
+            </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close"
+            aria-label={dict.common.close}
             style={{
               background: "transparent",
               border: "none",
@@ -313,7 +350,7 @@ export function ProfileModal({ isOpen, onClose, onProfileChanged, presentation =
         >
           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
             <label htmlFor="active-profile-select" style={{ fontSize: "0.82rem", color: "var(--muted, #9fac9f)" }}>
-              Active Profile:
+              {dict.pianist.presets}:
             </label>
             <select
               id="active-profile-select"
@@ -332,7 +369,7 @@ export function ProfileModal({ isOpen, onClose, onProfileChanged, presentation =
             >
               {profiles.map((p) => (
                 <option key={p.profileId} value={p.profileId}>
-                  {p.name} {p.profileId === "default" ? "(Built-in)" : ""}
+                  {getProfilePresetName(p, dict)}
                 </option>
               ))}
             </select>
@@ -353,7 +390,7 @@ export function ProfileModal({ isOpen, onClose, onProfileChanged, presentation =
                 cursor: "pointer",
               }}
             >
-              Duplicate
+              {dict.pianist.duplicate === "Duplicate profile" ? "Duplicate" : dict.pianist.duplicate}
             </button>
             {!isDefaultProfile && (
               <button
@@ -370,9 +407,30 @@ export function ProfileModal({ isOpen, onClose, onProfileChanged, presentation =
                   cursor: "pointer",
                 }}
               >
-                Delete
+                {dict.pianist.delete === "Delete profile" ? "Delete" : dict.pianist.delete}
               </button>
             )}
+            <button
+              type="button"
+              onClick={() => {
+                const prof = profiles.find((p) => p.profileId === selectedProfileId) ?? getActiveProfile();
+                setEditingProfile(JSON.parse(JSON.stringify(prof)));
+                setSaveFeedback(dict.pianist.reset);
+                setTimeout(() => setSaveFeedback(null), 2000);
+              }}
+              disabled={isSaving}
+              style={{
+                padding: "0.3rem 0.6rem",
+                borderRadius: "0.35rem",
+                fontSize: "0.78rem",
+                background: "rgba(255, 255, 255, 0.08)",
+                border: "1px solid var(--border, #33423a)",
+                color: "#edf2ed",
+                cursor: "pointer",
+              }}
+            >
+              {dict.pianist.reset === "Reset profile" ? "Reset" : dict.pianist.reset}
+            </button>
           </div>
         </div>
 
@@ -403,7 +461,7 @@ export function ProfileModal({ isOpen, onClose, onProfileChanged, presentation =
               cursor: "pointer",
             }}
           >
-            Hand Anatomy (19 Bones)
+            {dict.pianist.handDimensions} (Anatomy)
           </button>
           <button
             type="button"
@@ -421,7 +479,7 @@ export function ProfileModal({ isOpen, onClose, onProfileChanged, presentation =
               cursor: "pointer",
             }}
           >
-            Motion & Technique
+            Motion &amp; Technique
           </button>
           <button
             type="button"
@@ -489,55 +547,153 @@ export function ProfileModal({ isOpen, onClose, onProfileChanged, presentation =
           {activeTab === "anatomy" && (
             <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
               <p style={{ margin: 0, fontSize: "0.8rem", color: "var(--muted, #9fac9f)" }}>
-                Hand bone lengths in model units (1 unit ≈ 1.09 cm on standard piano key scale). Adjust to simulate smaller hands or virtuoso reach.
+                {dict.pianist.subtitle}. Hand bone lengths in model units (1 unit ≈ 1.09 cm on standard piano key scale). Adjust to simulate smaller hands or virtuoso reach.
               </p>
 
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fill, minmax(210px, 1fr))",
-                  gap: "0.8rem",
-                }}
-              >
-                {ANATOMY_BONES.map((bone) => {
-                  const currentVal = Number(editingProfile.anatomy[bone.id] ?? DEFAULT_ANATOMY[bone.id]);
-                  const pct = Math.round((currentVal / DEFAULT_ANATOMY[bone.id]) * 100);
-                  return (
+              {/* Palm Width & Wrist Height */}
+              <div>
+                <h3 style={{ margin: "0 0 0.6rem 0", fontSize: "0.9rem", color: "var(--mint, #a9d3bb)" }}>
+                  {dict.pianist.palmWidth} &amp; {dict.pianist.wristHeight}
+                </h3>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fill, minmax(210px, 1fr))",
+                    gap: "0.8rem",
+                    marginBottom: "1rem",
+                  }}
+                >
+                  {/* Wrist slider */}
+                  <div
+                    style={{
+                      background: "var(--panel-raised, #202b25)",
+                      padding: "0.6rem 0.8rem",
+                      borderRadius: "0.5rem",
+                      border: "1px solid var(--border, #33423a)",
+                    }}
+                  >
                     <div
-                      key={bone.id}
                       style={{
-                        background: "var(--panel-raised, #202b25)",
-                        padding: "0.6rem 0.8rem",
-                        borderRadius: "0.5rem",
-                        border: "1px solid var(--border, #33423a)",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        fontSize: "0.78rem",
+                        marginBottom: "0.3rem",
                       }}
                     >
+                      <span style={{ fontWeight: 600 }}>{dict.pianist.wristHeight}</span>
+                      <span style={{ color: "var(--mint, #a9d3bb)" }}>
+                        {(Number(editingProfile.anatomy.wrist ?? 1.0)).toFixed(2)}
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      aria-label={dict.pianist.wristHeight}
+                      min={0.5}
+                      max={2.0}
+                      step={0.05}
+                      value={Number(editingProfile.anatomy.wrist ?? 1.0)}
+                      onChange={(e) => handleBoneChange("wrist" as BoneId, parseFloat(e.target.value))}
+                      style={{ width: "100%", accentColor: "var(--mint, #a9d3bb)" }}
+                    />
+                  </div>
+
+                  {/* Metacarpal bones (Palm width) */}
+                  {ANATOMY_BONES.filter((b) => b.kind === "mc").map((bone) => {
+                    const currentVal = Number(editingProfile.anatomy[bone.id] ?? DEFAULT_ANATOMY[bone.id]);
+                    const pct = Math.round((currentVal / DEFAULT_ANATOMY[bone.id]) * 100);
+                    const fingerName = getFingerName(bone.finger, dict);
+                    return (
                       <div
+                        key={bone.id}
                         style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          fontSize: "0.78rem",
-                          marginBottom: "0.3rem",
+                          background: "var(--panel-raised, #202b25)",
+                          padding: "0.6rem 0.8rem",
+                          borderRadius: "0.5rem",
+                          border: "1px solid var(--border, #33423a)",
                         }}
                       >
-                        <span style={{ fontWeight: 600 }}>{bone.name}</span>
-                        <span style={{ color: "var(--mint, #a9d3bb)" }}>
-                          {currentVal.toFixed(2)} ({pct}%)
-                        </span>
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            fontSize: "0.78rem",
+                            marginBottom: "0.3rem",
+                          }}
+                        >
+                          <span style={{ fontWeight: 600 }}>{fingerName} ({dict.pianist.palmWidth})</span>
+                          <span style={{ color: "var(--mint, #a9d3bb)" }}>
+                            {currentVal.toFixed(2)} ({pct}%)
+                          </span>
+                        </div>
+                        <input
+                          type="range"
+                          aria-label={`${fingerName} ${dict.pianist.palmWidth} (${bone.name})`}
+                          min={bone.min}
+                          max={bone.max}
+                          step={0.05}
+                          value={currentVal}
+                          onChange={(e) => handleBoneChange(bone.id, parseFloat(e.target.value))}
+                          style={{ width: "100%", accentColor: "var(--mint, #a9d3bb)" }}
+                        />
                       </div>
-                      <input
-                        type="range"
-                        aria-label={bone.name}
-                        min={bone.min}
-                        max={bone.max}
-                        step={0.05}
-                        value={currentVal}
-                        onChange={(e) => handleBoneChange(bone.id, parseFloat(e.target.value))}
-                        style={{ width: "100%", accentColor: "var(--mint, #a9d3bb)" }}
-                      />
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Finger Lengths (phalanxes) */}
+              <div>
+                <h3 style={{ margin: "0 0 0.6rem 0", fontSize: "0.9rem", color: "var(--mint, #a9d3bb)" }}>
+                  {dict.pianist.fingerLengths}
+                </h3>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fill, minmax(210px, 1fr))",
+                    gap: "0.8rem",
+                  }}
+                >
+                  {ANATOMY_BONES.filter((b) => b.kind !== "mc").map((bone) => {
+                    const currentVal = Number(editingProfile.anatomy[bone.id] ?? DEFAULT_ANATOMY[bone.id]);
+                    const pct = Math.round((currentVal / DEFAULT_ANATOMY[bone.id]) * 100);
+                    const fingerName = getFingerName(bone.finger, dict);
+                    return (
+                      <div
+                        key={bone.id}
+                        style={{
+                          background: "var(--panel-raised, #202b25)",
+                          padding: "0.6rem 0.8rem",
+                          borderRadius: "0.5rem",
+                          border: "1px solid var(--border, #33423a)",
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            fontSize: "0.78rem",
+                            marginBottom: "0.3rem",
+                          }}
+                        >
+                          <span style={{ fontWeight: 600 }}>{fingerName} — {bone.kindName}</span>
+                          <span style={{ color: "var(--mint, #a9d3bb)" }}>
+                            {currentVal.toFixed(2)} ({pct}%)
+                          </span>
+                        </div>
+                        <input
+                          type="range"
+                          aria-label={`${fingerName} ${bone.kindName} (${bone.name})`}
+                          min={bone.min}
+                          max={bone.max}
+                          step={0.05}
+                          value={currentVal}
+                          onChange={(e) => handleBoneChange(bone.id, parseFloat(e.target.value))}
+                          style={{ width: "100%", accentColor: "var(--mint, #a9d3bb)" }}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           )}
@@ -547,7 +703,7 @@ export function ProfileModal({ isOpen, onClose, onProfileChanged, presentation =
             <div style={{ display: "flex", flexDirection: "column", gap: "1.2rem" }}>
               <div>
                 <h3 style={{ margin: "0 0 0.6rem 0", fontSize: "0.9rem", color: "var(--mint, #a9d3bb)" }}>
-                  Key Motion & Ergonomics
+                  Key Motion &amp; Ergonomics
                 </h3>
                 <div
                   style={{
@@ -558,6 +714,11 @@ export function ProfileModal({ isOpen, onClose, onProfileChanged, presentation =
                 >
                   {BEHAVIOR_SLIDERS.slice(0, 10).map((slider) => {
                     const currentVal = Number(editingProfile.behavior[slider.id] ?? slider.default);
+                    const labelText = slider.id === "max_speed"
+                      ? dict.pianist.speed
+                      : slider.id === "stretch_bias"
+                        ? dict.pianist.flexibility
+                        : slider.label;
                     return (
                       <div
                         key={slider.id}
@@ -576,14 +737,14 @@ export function ProfileModal({ isOpen, onClose, onProfileChanged, presentation =
                             marginBottom: "0.2rem",
                           }}
                         >
-                          <span style={{ fontWeight: 600 }}>{slider.label}</span>
+                          <span style={{ fontWeight: 600 }}>{labelText}</span>
                           <span style={{ color: "var(--mint, #a9d3bb)" }}>
                             {currentVal.toFixed(2)}{slider.unit ? ` ${slider.unit}` : ""}
                           </span>
                         </div>
                         <input
                           type="range"
-                          aria-label={slider.label}
+                          aria-label={labelText}
                           min={slider.min}
                           max={slider.max}
                           step={slider.step ?? 0.01}
@@ -665,7 +826,7 @@ export function ProfileModal({ isOpen, onClose, onProfileChanged, presentation =
                   border: "1px solid var(--border, #33423a)",
                 }}
               >
-                <h4 style={{ margin: "0 0 0.5rem 0", fontSize: "0.9rem" }}>Import Pianist Profile (.json)</h4>
+                <h4 style={{ margin: "0 0 0.5rem 0", fontSize: "0.9rem" }}>{dict.pianist.importProfile}</h4>
                 <p style={{ margin: "0 0 0.8rem 0", fontSize: "0.8rem", color: "var(--muted, #9fac9f)" }}>
                   Upload an external pianist profile JSON file.
                 </p>
@@ -700,7 +861,7 @@ export function ProfileModal({ isOpen, onClose, onProfileChanged, presentation =
                   border: "1px solid var(--border, #33423a)",
                 }}
               >
-                <h4 style={{ margin: "0 0 0.5rem 0", fontSize: "0.9rem" }}>Export Current Profile</h4>
+                <h4 style={{ margin: "0 0 0.5rem 0", fontSize: "0.9rem" }}>{dict.pianist.exportProfile}</h4>
                 <p style={{ margin: "0 0 0.8rem 0", fontSize: "0.8rem", color: "var(--muted, #9fac9f)" }}>
                   Download the currently active pianist profile as a standard JSON file.
                 </p>
@@ -752,7 +913,7 @@ export function ProfileModal({ isOpen, onClose, onProfileChanged, presentation =
                 cursor: "pointer",
               }}
             >
-              Cancel
+              {dict.common.cancel}
             </button>
             <button
               type="button"

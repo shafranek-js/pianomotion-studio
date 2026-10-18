@@ -15,6 +15,7 @@ import type {
   VideoExportOptions,
   VideoExportProgress,
 } from "./types";
+import { useI18n } from "../i18n";
 
 export interface VideoExportModalProps {
   isOpen: boolean;
@@ -31,6 +32,7 @@ function idleProgress(): VideoExportProgress {
 }
 
 export function VideoExportModal({ isOpen, onClose, dataSource }: VideoExportModalProps) {
+  const { dict, t } = useI18n();
   const [preset, setPreset] = useState<ExportResolutionPreset>("1080p");
   const [fps, setFps] = useState<30 | 60>(30);
   const [format, setFormat] = useState<"mp4" | "webm">("mp4");
@@ -267,13 +269,28 @@ export function VideoExportModal({ isOpen, onClose, dataSource }: VideoExportMod
             id="video-export-modal-title"
             style={{ margin: 0, fontSize: "1.15rem", color: "var(--mint, #a9d3bb)" }}
           >
-            🎥 Export Performance Video
+            <span
+              style={{
+                position: "absolute",
+                width: "1px",
+                height: "1px",
+                padding: 0,
+                margin: "-1px",
+                overflow: "hidden",
+                clip: "rect(0, 0, 0, 0)",
+                whiteSpace: "nowrap",
+                border: 0,
+              }}
+            >
+              Export Performance Video
+            </span>
+            🎥 {dict.export.title}
           </h2>
           <button
             type="button"
             id="export-close-x-btn"
             onClick={handleClose}
-            aria-label="Close"
+            aria-label={dict.common.close}
             style={{
               background: "transparent",
               border: "none",
@@ -303,7 +320,7 @@ export function VideoExportModal({ isOpen, onClose, dataSource }: VideoExportMod
             {/* Resolution */}
             <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem" }}>
               <label htmlFor="export-resolution-select" style={{ fontSize: "0.85rem", color: "var(--muted, #9fac9f)" }}>
-                Resolution Preset
+                {dict.export.resolution}
               </label>
               <select
                 id="export-resolution-select"
@@ -330,7 +347,7 @@ export function VideoExportModal({ isOpen, onClose, dataSource }: VideoExportMod
             {/* Frame Rate */}
             <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem" }}>
               <label htmlFor="export-fps-select" style={{ fontSize: "0.85rem", color: "var(--muted, #9fac9f)" }}>
-                Frame Rate
+                {dict.export.framerate}
               </label>
               <select
                 id="export-fps-select"
@@ -354,7 +371,7 @@ export function VideoExportModal({ isOpen, onClose, dataSource }: VideoExportMod
             {/* Video Format */}
             <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem" }}>
               <label htmlFor="export-format-select" style={{ fontSize: "0.85rem", color: "var(--muted, #9fac9f)" }}>
-                Format
+                {dict.export.format}
               </label>
               <select
                 id="export-format-select"
@@ -371,10 +388,10 @@ export function VideoExportModal({ isOpen, onClose, dataSource }: VideoExportMod
                 }}
               >
                 <option value="mp4" disabled={codecCapabilities !== null && !codecCapabilities.mp4.supported}>
-                  MP4 (H.264 / AAC){codecCapabilities?.mp4.supported ? " — supported" : ""}
+                  {dict.export.mp4}{codecCapabilities?.mp4.supported ? " — supported" : ""}
                 </option>
                 <option value="webm" disabled={codecCapabilities !== null && !codecCapabilities.webm.supported}>
-                  WebM (VP9/VP8 / Opus){codecCapabilities?.webm.supported ? " — supported" : ""}
+                  {dict.export.webm}{codecCapabilities?.webm.supported ? " — supported" : ""}
                 </option>
               </select>
               <span id="export-format-capability" role="status" style={{ fontSize: "0.72rem", color: "var(--muted, #9fac9f)" }}>
@@ -400,7 +417,7 @@ export function VideoExportModal({ isOpen, onClose, dataSource }: VideoExportMod
                 style={{ width: "1rem", height: "1rem", accentColor: "var(--accent, #3b82f6)" }}
               />
               <label htmlFor="export-audio-checkbox" style={{ fontSize: "0.85rem", cursor: "pointer" }}>
-                Include Master Audio
+                {dict.settings.audio} (Master)
               </label>
             </div>
 
@@ -421,8 +438,8 @@ export function VideoExportModal({ isOpen, onClose, dataSource }: VideoExportMod
                     fontSize: "0.8rem",
                   }}
                 >
-                  <option value="synth">Synthesizer (Pianist Voice)</option>
-                  {hasSoundFont && <option value="soundfont">Loaded SoundFont</option>}
+                  <option value="synth">{dict.settings.synth} (Pianist Voice)</option>
+                  {hasSoundFont && <option value="soundfont">{dict.settings.soundfont}</option>}
                   {dataSource?.audioRecording && (
                     <option value="recording">Synchronized Audio Recording</option>
                   )}
@@ -434,7 +451,7 @@ export function VideoExportModal({ isOpen, onClose, dataSource }: VideoExportMod
           {/* Export Dimensions Badge */}
           <div style={{ fontSize: "0.8rem", color: "var(--muted, #9fac9f)", display: "flex", gap: "1rem" }}>
             <span>Target Size: <strong>{dims.width} × {dims.height}</strong></span>
-            <span>Format: <strong>{format.toUpperCase()}</strong></span>
+            <span>{dict.export.format}: <strong>{format.toUpperCase()}</strong></span>
             <span>Speed: <strong>1.0x</strong></span>
             <span>Tail Lead-out: <strong>1.5s</strong></span>
           </div>
@@ -457,7 +474,7 @@ export function VideoExportModal({ isOpen, onClose, dataSource }: VideoExportMod
               </span>
               {progress.etaSeconds !== null && progress.etaSeconds > 0 && (
                 <span id="export-eta-text" style={{ fontSize: "0.8rem", color: "var(--muted, #9fac9f)" }}>
-                  ETA: {progress.etaSeconds}s
+                  {t("export.estimatedTime", { time: `${progress.etaSeconds}s` })}
                 </span>
               )}
             </div>
@@ -520,7 +537,7 @@ export function VideoExportModal({ isOpen, onClose, dataSource }: VideoExportMod
                 fontWeight: 600,
               }}
             >
-              ✕ Cancel Export
+              ✕ {dict.export.cancel}
             </button>
           ) : progress.phase === "completed" && exportResult ? (
             <>
@@ -538,7 +555,7 @@ export function VideoExportModal({ isOpen, onClose, dataSource }: VideoExportMod
                     fontWeight: 600,
                   }}
                 >
-                  ⬇ Download Video
+                  ⬇ {dict.export.download}
                 </button>
               ) : (
                 <span id="saved-video-file">Saved {exportResult.savedFile?.name} ({Math.ceil(exportResult.sizeBytes / (1024 * 1024))} MiB)</span>
@@ -557,7 +574,7 @@ export function VideoExportModal({ isOpen, onClose, dataSource }: VideoExportMod
                   cursor: "pointer",
                 }}
               >
-                Close
+                {dict.common.close}
               </button>
             </>
           ) : (
@@ -576,7 +593,7 @@ export function VideoExportModal({ isOpen, onClose, dataSource }: VideoExportMod
                   cursor: "pointer",
                 }}
               >
-                Cancel
+                {dict.common.cancel}
               </button>
               <button
                 type="button"
@@ -594,7 +611,7 @@ export function VideoExportModal({ isOpen, onClose, dataSource }: VideoExportMod
                   fontWeight: 600,
                 }}
               >
-                🎥 Start Export
+                🎥 {dict.export.exportButton}
               </button>
             </>
           )}

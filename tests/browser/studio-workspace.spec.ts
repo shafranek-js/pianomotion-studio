@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 import { ProjectPackageSchema } from "@handthesia/contracts";
-import { exportStudioPackage, loadStudioSong, openStudioInspector, saveStudioProject, settledStudio, studioMidiPath } from "./studio-helpers";
+import { expectStudioCanvas, exportStudioPackage, loadStudioSong, openStudioEditMenu, openStudioInspector, saveStudioProject, settledStudio, studioCanvas, studioMidiPath } from "./studio-helpers";
 
 const sizes = [
   {width:1920,height:1080}, {width:1440,height:900}, {width:1366,height:768},
@@ -24,8 +24,11 @@ test("six responsive sizes preserve one scene, all keys, contextual tools and pa
   const errors:string[]=[];
   page.on("pageerror", error=>errors.push(error.message));
   let workers=0;
-  page.on("worker",worker=>{if(worker.url().includes("midi-analysis.worker")) workers++;});
-  await page.goto("/");
+  page.on("worker",worker=>{
+    const url=worker.url();
+    if(url.includes("midi-analysis-ts.worker") || url.includes("midi-analysis.worker")) workers++;
+  });
+  await page.goto("/?empty=true");
   for (const size of sizes) {
     await page.setViewportSize(size);
     await expect(page.getByRole("button",{name:"Open MIDI",exact:true})).toBeInViewport();
@@ -34,7 +37,8 @@ test("six responsive sizes preserve one scene, all keys, contextual tools and pa
   }
   await page.setViewportSize(sizes[0]);
   await loadStudioSong(page);
-  const canvas=page.locator("#piano-canvas-container canvas");
+  await page.getByRole("button",{name:"Performance",exact:true}).click();
+  const canvas=studioCanvas(page,"2d");
   await canvas.evaluate(el=>el.setAttribute("data-identity-probe","same-canvas"));
   const stableWorkerCount=workers;
   expect(stableWorkerCount).toBe(1); // Preparation hands its real Worker to the player.
@@ -44,7 +48,8 @@ test("six responsive sizes preserve one scene, all keys, contextual tools and pa
       await page.getByRole("button",{name:mode,exact:true}).click();
       await expect(canvas).toBeVisible();
       await expect(canvas).toHaveAttribute("data-identity-probe","same-canvas");
-      await expect(page.getByTestId("studio-workspace").locator("canvas")).toHaveCount(1);
+      await expect(page.getByTestId("piano-canvas").locator("canvas")).toHaveCount(2);
+      await expect(page.getByTestId("piano-canvas").locator("canvas:visible")).toHaveCount(1);
       await expect.poll(async()=>page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
       await expect(page.locator("#player-play-button")).toBeInViewport();
       await expect(page.getByTestId("studio-status")).toBeInViewport();
@@ -167,6 +172,98 @@ test("six responsive sizes preserve one scene, all keys, contextual tools and pa
   expect(errors).toEqual([]);
 });
 
+test("2D and 3D canvases survive the dimension, Fingering, and Performance transitions", async ({page}) => {
+  test.setTimeout(180_000);
+  const engineWorkerUrls:string[]=[];
+  page.on("worker",worker=>{
+    const url=worker.url();
+    if(url.includes("midi-analysis-ts.worker") || url.includes("midi-analysis.worker")) engineWorkerUrls.push(url);
+  });
+  page.on("console", msg => console.log("PAGE:", msg.text()));
+  const initial=await loadStudioSong(page);
+  const canvas2d=studioCanvas(page,"2d");
+  const canvas3d=studioCanvas(page,"3d");
+  const canvasHost=page.getByTestId("piano-canvas");
+  await expect(canvas3d).toBeVisible();
+  await expect(canvas2d).toBeHidden();
+  await expect(canvasHost.locator("canvas")).toHaveCount(2);
+  await expect(canvasHost.locator("canvas:visible")).toHaveCount(1);
+  await canvas2d.evaluate(el=>el.setAttribute("data-identity-probe","persistent-2d"));
+  await canvas3d.evaluate(el=>el.setAttribute("data-identity-probe","persistent-3d"));
+  expect(engineWorkerUrls).toHaveLength(1);
+  const stableWorkerCount=engineWorkerUrls.length;
+
+  await page.getByRole("button",{name:"Performance",exact:true}).click();
+  await expect(canvas2d).toBeVisible();
+  await expect(canvas3d).toBeHidden();
+  await page.getByTestId("studio-3d-view-toggle").click();
+  await expectStudioCanvas(page);
+  await expect(canvas2d).toBeHidden();
+  await expect(canvas3d).toBeVisible();
+  await expect(canvasHost.locator("canvas")).toHaveCount(2);
+  await expect(canvasHost.locator("canvas:visible")).toHaveCount(1);
+  await expect(canvas2d).toHaveAttribute("data-identity-probe","persistent-2d");
+  await expect(canvas3d).toHaveAttribute("data-identity-probe","persistent-3d");
+
+  const play=page.locator("#player-play-button");
+  const seek=page.getByRole("slider",{name:"Seek position"});
+  await play.click();
+  await expect(play).toContainText("Pause");
+  await expect.poll(async()=>Number(await seek.inputValue())).toBeGreaterThan(-1.5);
+  const beforeFingering=Number(await seek.inputValue());
+  await page.getByRole("button",{name:"Fingering",exact:true}).click();
+  await expect(canvas2d).toBeVisible();
+  await expect(canvas3d).toBeHidden();
+  await expect(canvasHost.locator("canvas")).toHaveCount(2);
+  await expect(canvasHost.locator("canvas:visible")).toHaveCount(1);
+  await expect(canvas2d).toHaveAttribute("data-identity-probe","persistent-2d");
+  await expect(canvas3d).toHaveAttribute("data-identity-probe","persistent-3d");
+  await expect(play).toContainText("Pause");
+  await expect.poll(async()=>Number(await seek.inputValue())).toBeGreaterThan(beforeFingering);
+  await play.click();
+  await expect(play).toContainText("Play");
+
+  await canvas2d.focus();
+  await page.keyboard.press("ArrowRight");
+  await expect.poll(()=>page.evaluate(()=>window.__playerSnapshot?.editorSelectedNoteIds?.length??0)).toBeGreaterThan(0);
+  const selectedId=await page.evaluate(()=>window.__playerSnapshot!.editorSelectedNoteIds![0]!);
+  const originalAssignment=initial.result.fingeringPlan!.assignments.find(item=>item.noteId===selectedId)!;
+  const finger=originalAssignment.finger===4?3:4;
+  await page.getByTestId("studio-header").getByRole("button",{name:`Finger ${finger}`,exact:true}).click();
+  const edited=await settledStudio(page,initial.result.revision+1);
+  expect(edited.result.fingeringPlan!.assignments.find(item=>item.noteId===selectedId)).toMatchObject({finger,fingerMode:"manual"});
+  await page.keyboard.press("Control+z");
+  const undone=await settledStudio(page,edited.result.revision+1);
+  const undoneAssignment=undone.result.fingeringPlan!.assignments.find(item=>item.noteId===selectedId)!;
+  expect(undoneAssignment.finger).toBe(originalAssignment.finger);
+  expect(undoneAssignment.fingerMode).toBe(originalAssignment.fingerMode);
+  await page.keyboard.press("Control+Shift+z");
+  const redone=await settledStudio(page,undone.result.revision+1);
+  expect(redone.result.fingeringPlan!.assignments.find(item=>item.noteId===selectedId)).toMatchObject({finger,fingerMode:"manual"});
+
+  await page.getByRole("button",{name:"Performance",exact:true}).click();
+  await expect(canvas2d).toBeVisible();
+  await expect(canvas3d).toBeHidden();
+  await expect(canvasHost.locator("canvas")).toHaveCount(2);
+  await expect(canvasHost.locator("canvas:visible")).toHaveCount(1);
+  await expect(canvas2d).toHaveAttribute("data-identity-probe","persistent-2d");
+  await expect(canvas3d).toHaveAttribute("data-identity-probe","persistent-3d");
+  await page.getByRole("button",{name:"Fingering",exact:true}).click();
+  await openStudioEditMenu(page);
+  await expect(page.getByRole("menuitem",{name:/^Undo/})).toBeEnabled();
+  await page.keyboard.press("Escape");
+  await page.getByRole("button",{name:"Performance",exact:true}).click();
+  await expect(canvas2d).toBeVisible();
+  await expect(canvas3d).toBeHidden();
+  await play.click();
+  await expect(play).toContainText("Pause");
+  const beforePerformancePlayback=Number(await seek.inputValue());
+  await expect.poll(async()=>Number(await seek.inputValue())).toBeGreaterThan(beforePerformancePlayback);
+  await play.click();
+  expect(engineWorkerUrls).toHaveLength(stableWorkerCount);
+  expect(redone.result.revision).toBeGreaterThan(initial.result.revision);
+});
+
 test("painted note editing survives commit, portable package and fresh browser context", async ({page,browser}) => {
   test.setTimeout(240_000);
   const imported=await loadStudioSong(page);
@@ -180,13 +277,13 @@ test("painted note editing survives commit, portable package and fresh browser c
   await page.getByRole("button",{name:"Fingering",exact:true}).click();
   // The stopped transport includes a two-second lead-in. Scroll the editor's
   // independent timeline to bring source notes into view, using its real UI.
-  await page.locator("#piano-canvas-container canvas").hover();
+  await studioCanvas(page,"2d").hover();
   await page.mouse.wheel(0,400);
   await expect.poll(async()=>(await geometry(page)).notes.length).toBeGreaterThan(0);
   const g=await geometry(page);
   const note=g.notes.find(n=>n.rect.height>=8 && n.rect.y>=0 && n.rect.y+n.rect.height<g.keyboardRect!.y)!;
   expect(note).toBeDefined();
-  const canvas=page.locator("#piano-canvas-container canvas");
+  const canvas=studioCanvas(page,"2d");
   await canvas.click({position:{x:note.rect.x+note.rect.width/2,y:note.rect.y+note.rect.height/2}});
   await expect.poll(()=>page.evaluate(()=>window.__playerSnapshot!.editorSelectedNoteIds)).toEqual([note.noteId]);
   const previous=initial.result.fingeringPlan!.assignments.find(a=>a.noteId===note.noteId)!;
@@ -203,10 +300,10 @@ test("painted note editing survives commit, portable package and fresh browser c
   const fresh=await browser.newContext();
   try {
     const reopened=await fresh.newPage();
-    await reopened.goto(new URL("/",page.url()).href);
+    await reopened.goto(new URL("/?empty=true",page.url()).href);
     await expect(reopened.getByRole("button",{name:"Play demo song",exact:true})).toBeEnabled();
     await reopened.locator("#project-file").setInputFiles(file);
-    await expect(reopened.locator("#piano-canvas-container canvas")).toBeVisible({timeout:90_000});
+    await expectStudioCanvas(reopened,90_000);
     const restored=await settledStudio(reopened,edited.result.revision);
     expect(restored.result.document!.notes.map(n=>n.noteId)).toEqual(edited.result.document!.notes.map(n=>n.noteId));
     expect(restored.profile).toEqual(edited.profile);
@@ -225,7 +322,8 @@ test("invalid packages retain the active scene and committed project",async({pag
   test.setTimeout(180_000);
   const initial=await loadStudioSong(page);
   await saveStudioProject(page);
-  const canvas=page.locator("#piano-canvas-container canvas");
+  await page.getByRole("button",{name:"Performance",exact:true}).click();
+  const canvas=studioCanvas(page,"2d");
   await canvas.evaluate(el=>el.setAttribute("data-identity-probe","retained"));
   const exported=await exportStudioPackage(page);
   const pkg=JSON.parse(await readFile(exported,"utf8"));
@@ -299,7 +397,8 @@ test("legacy geometry is explicit, engine changes replan, and failed candidate r
   expect(updated.result.fingeringPlan!.engineVersion).toBe(initial.result.engineVersion);
   expect(updated.result.document!.notes.map(n=>n.noteId)).toEqual(initial.result.document!.notes.map(n=>n.noteId));
   await saveStudioProject(page);
-  const canvas=page.locator("#piano-canvas-container canvas");
+  await page.getByRole("button",{name:"Performance",exact:true}).click();
+  const canvas=studioCanvas(page,"2d");
   await canvas.evaluate(el=>el.setAttribute("data-identity-probe","before-failed-replan"));
   await page.evaluate(()=>{
     const originalPost=Worker.prototype.postMessage;

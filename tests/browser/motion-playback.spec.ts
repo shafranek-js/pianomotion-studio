@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { expectStudioCanvas } from "./studio-helpers";
 
 test("playback keeps a reserve with delayed real Worker motion and honors Pause after an uncovered seek", async ({ page }, testInfo) => {
   test.setTimeout(180_000);
@@ -15,10 +16,9 @@ test("playback keeps a reserve with delayed real Worker motion and honors Pause 
       return Reflect.apply(original, this, args);
     };
   });
-  await page.goto("/");
+  await page.goto("/?empty=true");
   await page.getByRole("button", { name: "Play demo song", exact: true }).click();
-  const canvas = page.locator("#piano-canvas-container canvas");
-  await expect(canvas).toBeVisible({ timeout: 90_000 });
+  await expectStudioCanvas(page, 90_000);
   await page.waitForFunction(() => window.__playerSnapshot?.scene?.keyCount === 88 && !window.__playerSnapshot.pending);
   await page.locator("#player-play-button").click();
   // Transport exposes current time through the accessible seek control; unlike
@@ -49,9 +49,9 @@ test("real Worker keeps the animation reserve during double-speed playback", asy
   test.setTimeout(150_000);
   const errors: string[] = [];
   page.on("pageerror", error => errors.push(error.message));
-  await page.goto("/");
+  await page.goto("/?empty=true");
   await page.getByRole("button", { name: "Play demo song", exact: true }).click();
-  await expect(page.locator("#piano-canvas-container canvas")).toBeVisible({ timeout: 90_000 });
+  await expectStudioCanvas(page, 90_000);
   await page.getByRole("combobox", { name: "Speed", exact: true }).selectOption("2");
   await page.locator("#player-play-button").click();
   await expect.poll(() => page.getByRole("slider", { name: "Seek position", exact: true }).inputValue().then(Number),

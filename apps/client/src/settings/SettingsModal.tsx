@@ -20,6 +20,7 @@ import { BUILTIN_SOUNDFONT_ID, BUILTIN_SOUNDFONT_NAME } from "../audio/soundfont
 import { releaseAssetUrl } from "../pwa/urls";
 import { WebMidiOutputManager, getSharedWebMidiOutputManager } from "../midi/webMidiOutput.ts";
 import type { WebMidiStatus } from "../midi/types.ts";
+import { useI18n, SUPPORTED_LANGUAGES, type AppLanguage } from "../i18n";
 
 export interface SettingsModalProps {
   presentation?: "dialog" | "workspace";
@@ -29,6 +30,7 @@ export interface SettingsModalProps {
 }
 
 export function SettingsModal({ isOpen, onClose, onSettingsChanged, presentation = "dialog" }: SettingsModalProps) {
+  const { dict, setLanguage } = useI18n();
   const [settings, setSettings] = useState<AppSettings>(getSettings());
   const [quotaInfo, setQuotaInfo] = useState<{ usageBytes: number; quotaBytes: number; percentUsed: number } | null>(null);
   const [feedback, setFeedback] = useState<string | null>(null);
@@ -251,13 +253,13 @@ export function SettingsModal({ isOpen, onClose, onSettingsChanged, presentation
           <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
             <Settings2 size={20} aria-hidden="true" />
             <h2 id="settings-modal-title" style={{ margin: 0, fontSize: "1.15rem", fontWeight: 700 }}>
-              Settings & Preferences
+              {dict.settings.title}
             </h2>
           </div>
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close"
+            aria-label={dict.common.close}
             style={{
               background: "transparent",
               border: "none",
@@ -294,7 +296,7 @@ export function SettingsModal({ isOpen, onClose, onSettingsChanged, presentation
             </div>
           )}
 
-          {/* Section 1: Keyboard Geometry */}
+          {/* Section 1: General / Visual & Keyboard Geometry */}
           <div
             style={{
               background: "var(--panel-raised, #202b25)",
@@ -304,13 +306,52 @@ export function SettingsModal({ isOpen, onClose, onSettingsChanged, presentation
             }}
           >
             <h3 style={{ margin: "0 0 0.8rem 0", fontSize: "0.9rem", color: "var(--mint, #a9d3bb)" }}>
-              Keyboard Geometry & Visuals
+              {dict.settings.general} / {dict.settings.visual}
             </h3>
 
             <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
               <div>
+                <label htmlFor="settings-language" style={{ display: "block", fontSize: "0.8rem", color: "var(--muted, #9fac9f)", marginBottom: "0.3rem" }}>
+                  {dict.settings.language}:
+                </label>
+                <select
+                  id="settings-language"
+                  value={settings.language}
+                  onChange={(e) => {
+                    const val = e.target.value as AppLanguage;
+                    void handleChange("language", val);
+                    setLanguage(val);
+                  }}
+                  style={{
+                    background: "#19211d",
+                    color: "#edf2ed",
+                    border: "1px solid var(--border, #33423a)",
+                    borderRadius: "0.35rem",
+                    padding: "0.4rem 0.6rem",
+                    fontSize: "0.85rem",
+                  }}
+                >
+                  {SUPPORTED_LANGUAGES.map((lang) => {
+                    const langNames: Record<AppLanguage, string> = {
+                      en: dict.settings.languageEn,
+                      cs: dict.settings.languageCs,
+                      uk: dict.settings.languageUk,
+                      de: dict.settings.languageDe,
+                      es: dict.settings.languageEs,
+                      it: dict.settings.languageIt,
+                    };
+                    return (
+                      <option key={lang.id} value={lang.id}>
+                        {langNames[lang.id] ?? lang.label}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+
+              <div>
                 <label htmlFor="settings-key-style" style={{ display: "block", fontSize: "0.8rem", color: "var(--muted, #9fac9f)", marginBottom: "0.3rem" }}>
-                  Key Width Proportions:
+                  {dict.settings.keyStyle}:
                 </label>
                 <select
                   id="settings-key-style"
@@ -325,8 +366,8 @@ export function SettingsModal({ isOpen, onClose, onSettingsChanged, presentation
                     fontSize: "0.85rem",
                   }}
                 >
-                  <option value="realistic">Realistic Key Widths (standard acoustic piano & 3D view)</option>
-                  <option value="equal">Equal Key Widths (uniform lanes, 2D view only)</option>
+                  <option value="realistic">{dict.settings.realisticKeys}</option>
+                  <option value="equal">{dict.settings.equalKeys}</option>
                 </select>
                 <div style={{ marginTop: "0.25rem", fontSize: "0.75rem", color: "var(--muted, #9fac9f)", lineHeight: 1.4 }}>
                   Realistic geometry is required for accurate 3D finger placement on the piano keys.
@@ -335,7 +376,7 @@ export function SettingsModal({ isOpen, onClose, onSettingsChanged, presentation
 
               <div>
                 <label htmlFor="settings-skin-style" style={{ display: "block", fontSize: "0.8rem", color: "var(--muted, #9fac9f)", marginBottom: "0.3rem" }}>
-                  Hand Skin Style:
+                  {dict.settings.skinStyle}:
                 </label>
                 <select
                   id="settings-skin-style"
@@ -350,11 +391,11 @@ export function SettingsModal({ isOpen, onClose, onSettingsChanged, presentation
                     fontSize: "0.85rem",
                   }}
                 >
-                  <option value="realistic">Vector Anatomical (Shaded Flesh & Tendons)</option>
-                  <option value="cartoon">Cartoon (Flesh & Sleeve)</option>
-                  <option value="gloves">White Gloves (Animated Cartoon)</option>
-                  <option value="robot">Robot (Futuristic Shell)</option>
-                  <option value="skeleton">Skeleton (Bare Bones & Joints)</option>
+                  <option value="realistic">{dict.settings.skinRealistic}</option>
+                  <option value="cartoon">{dict.settings.skinCartoon}</option>
+                  <option value="gloves">{dict.settings.skinGloves}</option>
+                  <option value="robot">{dict.settings.skinRobot}</option>
+                  <option value="skeleton">{dict.settings.skinSkeleton}</option>
                 </select>
               </div>
 
@@ -366,7 +407,7 @@ export function SettingsModal({ isOpen, onClose, onSettingsChanged, presentation
                     onChange={(e) => handleChange("showFingerLabels", e.target.checked)}
                     style={{ accentColor: "var(--mint, #a9d3bb)" }}
                   />
-                  Show Finger Labels (1..5)
+                  {dict.settings.showFingerLabels}
                 </label>
 
                 <label style={{ display: "flex", alignItems: "center", gap: "0.4rem", fontSize: "0.82rem", cursor: "pointer" }}>
@@ -376,7 +417,7 @@ export function SettingsModal({ isOpen, onClose, onSettingsChanged, presentation
                     onChange={(e) => handleChange("showNoteNames", e.target.checked)}
                     style={{ accentColor: "var(--mint, #a9d3bb)" }}
                   />
-                  Show Note Names on Keys
+                  {dict.settings.showNoteNames}
                 </label>
 
                 <label style={{ display: "flex", alignItems: "center", gap: "0.4rem", fontSize: "0.82rem", cursor: "pointer" }}>
@@ -387,7 +428,7 @@ export function SettingsModal({ isOpen, onClose, onSettingsChanged, presentation
                     onChange={(e) => handleChange("showHandShadow", e.target.checked)}
                     style={{ accentColor: "var(--mint, #a9d3bb)" }}
                   />
-                  Show Hand Drop Shadow
+                  {dict.settings.showShadow}
                 </label>
               </div>
             </div>
@@ -403,13 +444,13 @@ export function SettingsModal({ isOpen, onClose, onSettingsChanged, presentation
             }}
           >
             <h3 style={{ margin: "0 0 0.8rem 0", fontSize: "0.9rem", color: "var(--mint, #a9d3bb)" }}>
-              Audio & Playback
+              {dict.settings.audio}
             </h3>
 
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "0.8rem" }}>
               <div>
                 <label htmlFor="settings-sound-output" style={{ display: "block", fontSize: "0.8rem", color: "var(--muted, #9fac9f)", marginBottom: "0.3rem" }}>
-                  Audio Output Engine:
+                  {dict.settings.soundOutput}:
                 </label>
                 <select
                   id="settings-sound-output"
@@ -426,9 +467,9 @@ export function SettingsModal({ isOpen, onClose, onSettingsChanged, presentation
                     fontSize: "0.85rem",
                   }}
                 >
-                  <option value="synth">Web Audio Synth (Built-in Polyphonic Sampler)</option>
-                  <option value="soundfont">SoundFont (SF2 / SF3 instrument bank)</option>
-                  <option value="webmidi">Web MIDI Output (Hardware Synthesizer / Piano)</option>
+                  <option value="synth">{dict.settings.synth}</option>
+                  <option value="soundfont">{dict.settings.soundfont}</option>
+                  <option value="webmidi">{dict.settings.webMidi}</option>
                 </select>
                 <p id="settings-sound-output-note" style={{ margin: "0.35rem 0 0", color: "var(--muted, #9fac9f)", fontSize: "0.74rem" }}>
                   {settings.soundOutput === "synth" && "Built-in polyphonic synthesis running directly in the browser via Web Audio."}
@@ -440,7 +481,7 @@ export function SettingsModal({ isOpen, onClose, onSettingsChanged, presentation
               {settings.soundOutput === "synth" && (
                 <div>
                   <label htmlFor="settings-timbre" style={{ display: "block", fontSize: "0.8rem", color: "var(--muted, #9fac9f)", marginBottom: "0.3rem" }}>
-                    Piano Synth Timbre:
+                    {dict.settings.timbre}:
                   </label>
                   <select
                     id="settings-timbre"
@@ -456,9 +497,9 @@ export function SettingsModal({ isOpen, onClose, onSettingsChanged, presentation
                       fontSize: "0.85rem",
                     }}
                   >
-                    <option value="acoustic">Acoustic Grand (Balanced)</option>
-                    <option value="bright">Bright Concert (Crisp Attack)</option>
-                    <option value="warm">Warm Upright (Mellow)</option>
+                    <option value="acoustic">{dict.settings.acoustic}</option>
+                    <option value="bright">{dict.settings.bright}</option>
+                    <option value="warm">{dict.settings.warm}</option>
                   </select>
                 </div>
               )}
@@ -466,7 +507,7 @@ export function SettingsModal({ isOpen, onClose, onSettingsChanged, presentation
               {settings.soundOutput === "soundfont" && (
                 <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem" }}>
                   <label htmlFor="settings-soundfont-select" style={{ display: "block", fontSize: "0.8rem", color: "var(--muted, #9fac9f)" }}>
-                    SoundFont bank:
+                    {dict.settings.soundfont}:
                   </label>
                   {(
                     <div style={{ display: "flex", gap: "0.4rem", alignItems: "center" }}>
@@ -495,8 +536,8 @@ export function SettingsModal({ isOpen, onClose, onSettingsChanged, presentation
                         <button
                           type="button"
                           onClick={() => handleSoundFontDelete(settings.soundfontAssetId!)}
-                          title="Delete SoundFont"
-                          aria-label="Delete SoundFont"
+                          title={dict.common.delete}
+                          aria-label={dict.common.delete}
                           style={{
                             background: "rgba(239, 68, 68, 0.15)",
                             border: "1px solid rgba(239, 68, 68, 0.4)",
@@ -528,7 +569,7 @@ export function SettingsModal({ isOpen, onClose, onSettingsChanged, presentation
                       }}
                     >
                       <Upload size={13} aria-hidden="true" />
-                      {sfUploading ? "Importing SoundFont..." : "Upload SoundFont (.sf2 / .sf3)"}
+                      {sfUploading ? "Importing SoundFont..." : dict.settings.uploadSoundfont}
                       <input
                         type="file"
                         accept=".sf2,.sf3"
@@ -550,7 +591,7 @@ export function SettingsModal({ isOpen, onClose, onSettingsChanged, presentation
                           {sfProgress?.totalBytes ? ` ${Math.floor((sfProgress.loadedBytes / sfProgress.totalBytes) * 100)}%` : ""}
                         </span>
                         <button type="button" onClick={() => sfAbortController.current?.abort()} style={{ fontSize: "0.72rem" }}>
-                          Cancel
+                          {dict.common.cancel}
                         </button>
                       </div>
                     )}
@@ -580,7 +621,7 @@ export function SettingsModal({ isOpen, onClose, onSettingsChanged, presentation
                     }).catch(error => setFeedback(error instanceof Error ? error.message : String(error)));
                   }}>Connect MIDI device</button>
                   <label htmlFor="settings-webmidi-select" style={{ display: "block", fontSize: "0.8rem", color: "var(--muted, #9fac9f)" }}>
-                    MIDI Output Device:
+                    {dict.settings.webMidiOutputDevice}:
                   </label>
                   {midiStatus?.permission === "unsupported" ? (
                     <p style={{ margin: "0.2rem 0", color: "#f87171", fontSize: "0.78rem" }}>
@@ -616,7 +657,7 @@ export function SettingsModal({ isOpen, onClose, onSettingsChanged, presentation
                       ))}
                     </select>
                   )}
-                  <label htmlFor="settings-webmidi-channel">MIDI channel</label>
+                  <label htmlFor="settings-webmidi-channel">{dict.settings.webMidiChannel}</label>
                   <select id="settings-webmidi-channel" value={settings.webMidiChannel ?? 0}
                     onChange={event => void handleChange("webMidiChannel", Number(event.target.value))}>
                     {Array.from({ length: 16 }, (_, channel) => <option key={channel} value={channel}>{channel + 1}</option>)}
@@ -653,7 +694,7 @@ export function SettingsModal({ isOpen, onClose, onSettingsChanged, presentation
             }}
           >
             <h3 style={{ margin: "0 0 0.8rem 0", fontSize: "0.9rem", color: "var(--mint, #a9d3bb)" }}>
-              Rendering & Diagnostics
+              {dict.settings.engine}
             </h3>
 
             <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
@@ -664,12 +705,12 @@ export function SettingsModal({ isOpen, onClose, onSettingsChanged, presentation
                   onChange={(e) => handleChange("showFpsOverlay", e.target.checked)}
                   style={{ accentColor: "var(--mint, #a9d3bb)" }}
                 />
-                Show FPS Performance Overlay
+                {dict.settings.showFps}
               </label>
 
               <div>
                 <label htmlFor="settings-calculation-engine" style={{ display: "block", fontSize: "0.8rem", color: "var(--muted, #9fac9f)", marginBottom: "0.3rem" }}>
-                  Calculation Engine (Fingering & Kinematics):
+                  {dict.settings.calculationEngine}:
                 </label>
                 <select
                   id="settings-calculation-engine"
@@ -684,8 +725,8 @@ export function SettingsModal({ isOpen, onClose, onSettingsChanged, presentation
                     fontSize: "0.85rem",
                   }}
                 >
-                  <option value="typescript">TypeScript (Native — Default)</option>
-                  <option value="python">Python (Pyodide)</option>
+                  <option value="typescript">{dict.settings.tsEngine}</option>
+                  <option value="python">{dict.settings.pythonEngine}</option>
                 </select>
                 <p style={{ margin: "0.35rem 0 0", color: "var(--muted, #9fac9f)", fontSize: "0.74rem" }}>
                   {settings.calculationEngine === "python"
@@ -696,7 +737,7 @@ export function SettingsModal({ isOpen, onClose, onSettingsChanged, presentation
 
               <div>
                 <label htmlFor="settings-frame-cap" style={{ display: "block", fontSize: "0.8rem", color: "var(--muted, #9fac9f)", marginBottom: "0.3rem" }}>
-                  Render Rate Target:
+                  {dict.settings.frameCap}:
                 </label>
                 <select
                   id="settings-frame-cap"
@@ -730,12 +771,12 @@ export function SettingsModal({ isOpen, onClose, onSettingsChanged, presentation
             }}
           >
             <h3 style={{ margin: "0 0 0.6rem 0", fontSize: "0.9rem", color: "var(--mint, #a9d3bb)" }}>
-              Browser Storage & Quota
+              {dict.settings.storage}
             </h3>
 
             {quotaInfo ? (
               <div style={{ fontSize: "0.8rem", color: "var(--muted, #9fac9f)", marginBottom: "0.8rem" }}>
-                Storage usage: <strong style={{ color: "#edf2ed" }}>{formatBytes(quotaInfo.usageBytes)}</strong> of{" "}
+                {dict.settings.storageQuota}: <strong style={{ color: "#edf2ed" }}>{formatBytes(quotaInfo.usageBytes)}</strong> of{" "}
                 <strong style={{ color: "#edf2ed" }}>{formatBytes(quotaInfo.quotaBytes)}</strong> (
                 {(quotaInfo.percentUsed * 100).toFixed(1)}% used)
               </div>
@@ -759,7 +800,7 @@ export function SettingsModal({ isOpen, onClose, onSettingsChanged, presentation
                   cursor: "pointer",
                 }}
               >
-                Clear Autosave Cache
+                {dict.settings.clearCache}
               </button>
               <button
                 type="button"
@@ -774,7 +815,7 @@ export function SettingsModal({ isOpen, onClose, onSettingsChanged, presentation
                   cursor: "pointer",
                 }}
               >
-                Reset to Defaults
+                {dict.settings.resetDefaults}
               </button>
             </div>
           </div>
@@ -804,7 +845,7 @@ export function SettingsModal({ isOpen, onClose, onSettingsChanged, presentation
               cursor: "pointer",
             }}
           >
-            Done
+            {dict.common.done}
           </button>
         </div>
       </div>

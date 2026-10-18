@@ -64,6 +64,13 @@ body:has(.studio-shell) {
   padding: 0 12px;
   border-bottom: 1px solid var(--studio-border);
   background: #15181d;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  white-space: nowrap;
+}
+.studio-header::-webkit-scrollbar {
+  display: none;
 }
 
 .studio-brand {
@@ -74,7 +81,7 @@ body:has(.studio-shell) {
   min-width: 0;
   margin-right: 2px;
   color: var(--studio-text);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 650;
   letter-spacing: -0.02em;
 }
@@ -93,7 +100,7 @@ body:has(.studio-shell) {
 
 .studio-brand-name { white-space: nowrap; }
 .studio-header-spacer { flex: 1 1 auto; min-width: 4px; }
-.studio-header-addon { display: flex; min-width: 0; max-width: 100%; flex: 0 1 auto; align-items: center; }
+.studio-header-addon { display: flex; min-width: max-content; flex: 0 0 auto; align-items: center; }
 .studio-header-addon[hidden] { display: none !important; }
 .studio-menu-group { position: relative; display: inline-flex; flex: 0 0 auto; }
 
@@ -108,11 +115,13 @@ body:has(.studio-shell) {
   gap: 6px;
 }
 
+.studio-header-addon .fingering-assignment-controls,
+.studio-header-addon .fingering-assignment-controls__groups,
+.studio-header-addon .fingering-control-group,
 .studio-header-addon .fingering-assignment-controls [role="group"] {
   display: inline-flex !important;
-  min-width: 0;
-  max-width: 100%;
-  flex-wrap: wrap;
+  min-width: max-content;
+  flex-wrap: nowrap;
 }
 
 .studio-header-addon .fingering-assignment-controls button {
@@ -164,6 +173,7 @@ body:has(.studio-shell) {
 .fingering-hand-button--right.is-selected { background: #187c65; color: #fff; }
 .fingering-finger-button { width: 44px; padding: 0; background: #1a1e24; }
 .fingering-finger-button.is-selected { background: var(--studio-accent); color: #111714; }
+.fingering-action-button { width: 44px; min-width: 44px; padding: 0; }
 .fingering-action-button--clear { background: rgb(239 68 68 / 12%); color: #f87171; }
 .fingering-action-button--unplayable { border-color: rgb(248 113 113 / 35%); background: rgb(239 68 68 / 6%); color: #f87171; }
 .fingering-action-button--glissando { background: rgb(245 158 11 / 15%); color: #fbbf24; }
@@ -183,7 +193,7 @@ body:has(.studio-shell) {
   background: transparent;
   color: #cbd2db;
   cursor: pointer;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 550;
   white-space: nowrap;
 }
@@ -206,7 +216,7 @@ body:has(.studio-shell) {
   margin: 0 8px;
   overflow: hidden;
   color: #d7dce3;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -819,54 +829,23 @@ body:has(.studio-shell) {
 
 .studio-shell[data-focus-mode="on"] .studio-tool-rail button:not(.studio-focus-toggle) { display: none; }
 .studio-shell[data-focus-mode="on"] .studio-main { grid-column: 2; }
-
-@media (min-width: 1900px) and (max-width: 1920px) {
+@media (max-width: 1799px) {
+  .studio-header { gap: 4px; padding: 0 8px; }
   .studio-brand-name,
-  .studio-save-state span { display: none; }
+  .studio-file-label,
+  .studio-edit-menu span,
+  .studio-save-state span,
+  .studio-export-button > span { display: none; }
   .studio-save-state { gap: 0; }
-}
-
-@media (max-width: 1899px) {
-  .studio-header {
-    display: grid;
-    grid-template-columns: max-content max-content max-content minmax(100px, 1fr) max-content minmax(4px, 1fr) auto max-content max-content 44px 44px;
-    grid-template-rows: 56px auto;
-    align-content: start;
-    align-items: center;
-    gap: 0 8px;
-    padding: 0 12px;
-  }
-  .studio-header > .studio-brand { grid-column: 1; grid-row: 1; }
-  .studio-header > .studio-file-menu { grid-column: 2; grid-row: 1; }
-  .studio-header > .studio-edit-menu { grid-column: 3; grid-row: 1; }
-  .studio-header > .studio-project-name { grid-column: 4; grid-row: 1; }
-  .studio-header > .studio-view-switch { grid-column: 5; grid-row: 1; }
-  .studio-header > .studio-header-spacer { grid-column: 6; grid-row: 1; }
-  .studio-header > .studio-header-camera-hud {
-    grid-column: 1 / -1;
-    grid-row: 2;
-    justify-self: stretch;
-    width: 100%;
-    min-width: 0;
-    margin: 0;
-  }
-  .studio-header > .studio-save-state { grid-column: 7; grid-row: 1; }
-  .studio-header > .studio-export-menu { grid-column: 8; grid-row: 1; }
-  .studio-header > .studio-pianist-button { grid-column: 9; grid-row: 1; }
-  .studio-header > .studio-help-menu { grid-column: 10; grid-row: 1; }
-  .studio-header > .studio-preferences-button { grid-column: 11; grid-row: 1; }
-  .studio-header > .studio-header-addon {
-    grid-column: 1 / -1;
-    grid-row: 2;
-    align-self: start;
-    width: 100%;
-    padding-bottom: 6px;
-  }
-  .studio-fingering-assignment-host { width: 100%; }
+  .studio-project-name { max-width: 120px; }
+  .studio-view-switch button { padding: 0 5px; }
+  .studio-header-button { padding: 0 6px; }
+  .fingering-hand-button { padding: 0 6px; }
 }
 
 @media (max-width: 1199px) {
   .studio-header {
+    display: grid;
     grid-template-columns: 34px 44px max-content minmax(24px, 1fr) 44px 44px 44px;
     grid-template-rows: 56px 44px auto;
     gap: 3px;
@@ -893,14 +872,25 @@ body:has(.studio-shell) {
     min-width: 0;
     margin: 0;
   }
-  .studio-header > .studio-header-addon { grid-column: 1 / -1; grid-row: 3; width: 100%; padding-bottom: 6px; }
+  .studio-header > .studio-header-addon { grid-column: 1 / -1; grid-row: 3; width: 100%; min-width: 0; flex: 1 1 auto; padding-bottom: 6px; }
   .studio-file-label,
   .studio-export-button > span { display: none; }
   .studio-header-button { min-width: 44px; padding: 0 5px; }
   .studio-icon-button { width: 44px; min-width: 44px; }
+  .studio-header-addon .fingering-assignment-controls,
+  .studio-header-addon .fingering-assignment-controls__groups,
+  .studio-header-addon .fingering-control-group {
+    flex-wrap: wrap;
+    min-width: 0;
+  }
 }
 
 @media (max-width: 899px) {
+  .studio-header-addon .fingering-assignment-controls [role="group"],
+  .studio-header-addon .fingering-control-group {
+    flex-wrap: wrap !important;
+    min-width: 0 !important;
+  }
   .studio-shell { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(56px, auto) 44px minmax(0, 1fr) auto 24px; }
   .studio-header { grid-row: 1; gap: 5px; padding: 0 8px; }
   .studio-header-camera-hud .studio-camera-hud__mode-group { flex: 1 1 0; min-width: 0; }

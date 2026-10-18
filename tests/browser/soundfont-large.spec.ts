@@ -8,7 +8,7 @@ import type { Browser } from "@playwright/test";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { createSyntheticStereoSf2 } from "../../apps/client/src/audio/soundfont/testing/syntheticStereoSf2";
-import { loadStudioSong, openStudioInspector, saveStudioProject } from "./studio-helpers";
+import { expectStudioCanvas, loadStudioSong, openStudioInspector, saveStudioProject } from "./studio-helpers";
 
 async function observeBrowserMemory(browser: Browser) {
   const samples: Array<{ elapsedMs: number; privateBytes: number }> = [];
@@ -204,7 +204,7 @@ test("user-provided Nice Steinway stereo bank activates, plays and restores with
   await page.getByRole("button", { name: "Pause", exact: true }).click();
   await saveStudioProject(page);
   await page.reload();
-  await expect(page.locator("#piano-canvas-container canvas")).toBeVisible({ timeout: 90_000 });
+  await expectStudioCanvas(page, 90_000);
   await openStudioInspector(page, "Audio");
   await expect(page.getByText("Active output: Local SoundFont", { exact: true })).toBeVisible({ timeout: 90_000 });
   const result = await page.evaluate(async id => {

@@ -8,7 +8,7 @@ import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { createServer as createViteServer } from "vite";
 import type { ViteDevServer } from "vite";
-import { loadStudioSong, saveStudioProject, settledStudio, studioMidiPath } from "./studio-helpers";
+import { expectStudioCanvas, loadStudioSong, saveStudioProject, settledStudio, studioMidiPath } from "./studio-helpers";
 
 const secondMidiPath = fileURLToPath(
   new URL("../fixtures/midi/synthetic-scale-chords.mid", import.meta.url)
@@ -376,7 +376,7 @@ test("production offline lifecycle: online analysis -> close -> offline reload -
   page.on("pageerror", (err) => errors.push(err.message));
 
   // Seed a foreign cache on this origin to verify namespace isolation
-  await page.goto("/");
+  await page.goto("/?empty=true");
   await page.evaluate(async () => {
     const foreignCache = await caches.open("foreign-isolated-cache-v1");
     await foreignCache.put(
@@ -423,7 +423,7 @@ test("production offline lifecycle: online analysis -> close -> offline reload -
 
   // Verify offline session restored previous project
   await settledStudio(offlinePage, initial.result.revision);
-  await expect(offlinePage.locator("#piano-canvas-container canvas")).toBeVisible();
+  await expectStudioCanvas(offlinePage);
 
   // 4. Import a different MIDI while offline to prove self-hosted Pyodide & python-core work offline
   await offlinePage.locator("#midi-file").setInputFiles(secondMidiPath);
@@ -664,6 +664,7 @@ test("the exact /pianomotion/ base imports, saves, and restores a project offlin
     );
     expect(scopePaths).toContain(appBase);
 
+    await page.goto(`${server.origin}${appBase}?empty=true`);
     await expect(page.getByRole("button", { name: "Play demo song", exact: true })).toBeEnabled();
     await page.locator("#midi-file").setInputFiles(studioMidiPath);
     await expect.poll(async () => page.evaluate(() => window.__playerSnapshot?.result.document?.notes.length ?? 0), { timeout: 90_000 }).toBeGreaterThan(0);
@@ -675,7 +676,7 @@ test("the exact /pianomotion/ base imports, saves, and restores a project offlin
     await restoredPage.goto(`${server.origin}${appBase}`);
     await expect(restoredPage).toHaveTitle("PianoMotion Studio");
     await settledStudio(restoredPage, imported.result.revision);
-    await expect(restoredPage.locator("#piano-canvas-container canvas")).toBeVisible();
+    await expectStudioCanvas(restoredPage);
     const restoredProjectId = await restoredPage.evaluate(() => window.__playerSnapshot?.result.projectId ?? null);
     expect(restoredProjectId).toBe(imported.result.projectId);
     await context.setOffline(false);

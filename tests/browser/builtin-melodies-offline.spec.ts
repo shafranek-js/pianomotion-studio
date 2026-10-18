@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { saveStudioProject } from "./studio-helpers";
+import { expectStudioCanvas, saveStudioProject } from "./studio-helpers";
 
 test("an unvisited built-in melody opens offline from a coherent production release", async ({ page, context }) => {
   const previewBase = process.env.PIANOMOTION_PREVIEW_BASE ?? "/";
@@ -10,7 +10,7 @@ test("an unvisited built-in melody opens offline from a coherent production rele
   const dialog = page.getByRole("dialog", { name: "Built-in melodies", exact: true });
   await dialog.getByRole("searchbox", { name: "Search melodies" }).fill("Brahms");
   await dialog.getByRole("button", { name: "Open Brahms' Lullaby", exact: true }).click();
-  await expect(page.locator("#piano-canvas-container canvas")).toBeVisible({ timeout: 90_000 });
+  await expectStudioCanvas(page, 90_000);
   const originalId = await page.evaluate(() => window.__playerSnapshot!.result.projectId);
   await saveStudioProject(page);
   await page.close();
@@ -18,7 +18,7 @@ test("an unvisited built-in melody opens offline from a coherent production rele
   const reopened = await context.newPage();
   try {
     await reopened.goto(process.env.PIANOMOTION_PREVIEW_BASE ?? "/");
-    await expect(reopened.locator("#piano-canvas-container canvas")).toBeVisible({ timeout: 90_000 });
+    await expectStudioCanvas(reopened, 90_000);
     await reopened.getByRole("button", { name: "File", exact: true }).click();
     await reopened.getByRole("menuitem", { name: "Built-in melodies…", exact: true }).click();
     const offlineDialog = reopened.getByRole("dialog", { name: "Built-in melodies", exact: true });

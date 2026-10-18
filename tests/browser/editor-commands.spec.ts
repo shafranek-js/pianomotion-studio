@@ -1,8 +1,8 @@
 import { expect, test } from "@playwright/test";
-import { focusStudioScene, loadStudioSong, openStudioEditMenu, settledStudio } from "./studio-helpers";
+import { loadStudioSong, openStudioEditMenu, settledStudio, studioCanvas } from "./studio-helpers";
 
 test("Help works before opening a project and restores focus after shortcuts", async ({page}) => {
-  await page.goto("/");
+  await page.goto("/?empty=true");
   await expect(page.getByRole("button", {name:"Play demo song", exact:true})).toBeEnabled();
   const help=page.getByRole("button", {name:"Help", exact:true});
   await help.click();
@@ -24,9 +24,14 @@ test("Auto-advance confirms fingers without fictitious edits and menus share the
   test.setTimeout(240_000);
   const errors:string[]=[];page.on("pageerror", error=>errors.push(error.message));
   const initial=await loadStudioSong(page);
-  const canvas=await focusStudioScene(page);
+  await page.getByRole("button", {name:"Performance", exact:true}).click();
+  const canvas=studioCanvas(page,"2d");
+  await canvas.focus();
   await canvas.evaluate(el=>el.setAttribute("data-commands-probe", "same-canvas"));
   await page.getByRole("button", {name:"Fingering", exact:true}).click();
+  await expect(canvas).toBeVisible();
+  await expect(page.getByTestId("piano-canvas").locator("canvas")).toHaveCount(2);
+  await expect(page.getByTestId("piano-canvas").locator("canvas:visible")).toHaveCount(1);
   await expect(page.getByTestId("studio-editor-toolbar")).toHaveCount(0);
   await expect(page.getByRole("button", {name:/^Undo/})).toHaveCount(0);
   await expect(page.getByRole("button", {name:/^Redo/})).toHaveCount(0);
@@ -35,7 +40,7 @@ test("Auto-advance confirms fingers without fictitious edits and menus share the
   await expect(auto).toHaveAttribute("aria-pressed", "false");
   const notes=[...initial.result.document!.notes].sort((a,b)=>a.startSeconds-b.startSeconds || a.pitch-b.pitch);
   const selected=()=>page.evaluate(()=>window.__playerSnapshot!.editorSelectedNoteIds);
-  await focusStudioScene(page);await page.keyboard.press("ArrowRight");
+  await canvas.focus();await page.keyboard.press("ArrowRight");
   await expect.poll(selected).toEqual([notes[0]!.noteId]);
   await header.getByRole("button", {name:"Finger 4", exact:true}).click();
   const first=await settledStudio(page, initial.result.revision+1);

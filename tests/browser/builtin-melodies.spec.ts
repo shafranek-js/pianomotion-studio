@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { exportStudioPackage, loadStudioSong, saveStudioProject, settledStudio } from "./studio-helpers";
+import { expectStudioCanvas, exportStudioPackage, loadStudioSong, saveStudioProject, settledStudio, studioCanvas } from "./studio-helpers";
 
 async function openLibrary(page: Page) {
   await page.getByRole("button", { name: "File", exact: true }).click();
@@ -10,10 +10,10 @@ async function openLibrary(page: Page) {
 }
 
 async function waitForOpenedMelody(page: Page, timeout = 90_000) {
-  await page.waitForFunction(() => Boolean(document.querySelector("#piano-canvas-container canvas")) || Boolean(window.__m1LastError), undefined, { timeout });
+  await page.waitForFunction(() => Boolean(document.querySelector('#piano-canvas-container canvas[aria-label="Piano workspace"], #piano-canvas-container [data-testid="piano-canvas-3d"]')) || Boolean(window.__m1LastError), undefined, { timeout });
   const error = await page.evaluate(() => window.__m1LastError);
   expect(error?.slice(0, 1500) ?? null).toBeNull();
-  await expect(page.locator("#piano-canvas-container canvas")).toBeVisible();
+  await expectStudioCanvas(page, timeout);
 }
 
 test("built-in melody opens, plays, edits, saves and restores with exact source identities", async ({ page, browser }, testInfo) => {
@@ -38,7 +38,7 @@ test("built-in melody opens, plays, edits, saves and restores with exact source 
   await expect.poll(() => page.getByRole("slider", { name: "Seek position" }).inputValue().then(Number), { timeout: 15_000 }).toBeGreaterThan(0);
   await page.getByRole("button", { name: "Pause", exact: true }).click();
   await page.getByRole("button", { name: "Fingering", exact: true }).click();
-  const canvas = page.locator("#piano-canvas-container canvas");
+  const canvas = studioCanvas(page, "2d");
   await canvas.focus();
   await canvas.press("ArrowRight");
   await expect.poll(() => page.evaluate(() => window.__playerSnapshot?.editorSelectedNoteIds?.length ?? 0)).toBeGreaterThan(0);
@@ -56,7 +56,7 @@ test("built-in melody opens, plays, edits, saves and restores with exact source 
   await guard.getByRole("button", { name: "Cancel", exact: true }).click();
   await saveStudioProject(page);
   await page.reload();
-  await expect(page.locator("#piano-canvas-container canvas")).toBeVisible({ timeout: 90_000 });
+  await expectStudioCanvas(page, 90_000);
   const restored = await settledStudio(page, edited.result.revision);
   expect(restored.result.document!.notes.map(note => note.noteId)).toEqual(sourceIds);
   expect(restored.draftPlan.assignments.find(assignment => assignment.noteId === selectedId)).toMatchObject({ finger: 3, fingerMode: "manual" });
@@ -65,7 +65,7 @@ test("built-in melody opens, plays, edits, saves and restores with exact source 
   const fresh = await browser.newContext();
   try {
     const importedPage = await fresh.newPage();
-    await importedPage.goto(new URL("/", page.url()).href);
+    await importedPage.goto(new URL("/?empty=true", page.url()).href);
     await expect(importedPage.getByRole("button", { name: "Play demo song", exact: true })).toBeEnabled({ timeout: 30_000 });
     await importedPage.locator("#project-file").setInputFiles(packagePath);
     await waitForOpenedMelody(importedPage);

@@ -50,6 +50,7 @@ import type {
   StudioView,
 } from "./types.ts";
 import { CAMERA_PRESETS, normalizeStudioView } from "./types.ts";
+import { useI18n, type TranslationDictionary } from "../i18n";
 
 const inspectorTabs: Array<{ id: InspectorTab; label: string }> = [
   { id: "scene", label: "Scene" },
@@ -58,19 +59,22 @@ const inspectorTabs: Array<{ id: InspectorTab; label: string }> = [
   { id: "diagnostics", label: "Diagnostics" },
 ];
 
-const editorShortcuts = [
-  { key: "Ctrl / Cmd + A", description: "Select all notes" },
-  { key: "Escape", description: "Clear the current selection" },
-  { key: "← / →", description: "Select the previous or next note by time" },
-  { key: "1 – 5", description: "Assign a finger to selected notes" },
-  { key: "0", description: "Clear manual fingering for automatic replanning" },
-  { key: "Delete / Backspace", description: "Mark selected notes unplayable" },
-  { key: "L / R", description: "Assign the left or right hand" },
-  { key: "G", description: "Toggle glissando" },
-  { key: "Ctrl / Cmd + Z", description: "Undo the last edit" },
-  { key: "Ctrl / Cmd + Y", description: "Redo the last edit" },
-  { key: "Ctrl / Cmd + Shift + Z", description: "Redo the last edit" },
-];
+function getEditorShortcuts(dict: TranslationDictionary) {
+  const isEn = dict.header.file === "File";
+  return [
+    { key: "Ctrl / Cmd + A", description: isEn ? "Select all notes" : "Vybrat všechny noty" },
+    { key: "Escape", description: isEn ? "Clear the current selection" : "Zrušit aktuální výběr" },
+    { key: "← / →", description: isEn ? "Select the previous or next note by time" : "Vybrat předchozí nebo následující notu podle času" },
+    { key: "1 – 5", description: isEn ? "Assign a finger to selected notes" : "Přiřadit prst vybraným notám" },
+    { key: "0", description: isEn ? "Clear manual fingering for automatic replanning" : "Vymazat ruční prstoklad pro automatické přepočítání" },
+    { key: "Delete / Backspace", description: isEn ? "Mark selected notes unplayable" : "Označit vybrané noty jako nehratelné" },
+    { key: "L / R", description: isEn ? "Assign the left or right hand" : "Přiřadit levou nebo pravou ruku" },
+    { key: "G", description: isEn ? "Toggle glissando" : "Přepnout glissando" },
+    { key: "Ctrl / Cmd + Z", description: isEn ? "Undo the last edit" : "Vrátit poslední úpravu" },
+    { key: "Ctrl / Cmd + Y", description: isEn ? "Redo the last edit" : "Zopakovat poslední úpravu" },
+    { key: "Ctrl / Cmd + Shift + Z", description: isEn ? "Redo the last edit" : "Zopakovat poslední úpravu" },
+  ];
+}
 
 const studioPackageVersion = clientPackage.version;
 
@@ -110,6 +114,7 @@ export function StudioShell(props: StudioShellProps) {
     headerAddon,
     editActions,
   } = props;
+  const { dict } = useI18n();
   const [preferences, setPreferences] = useState<StudioLayoutPreferences>({
     ...DEFAULT_STUDIO_LAYOUT_PREFERENCES,
   });
@@ -120,6 +125,7 @@ export function StudioShell(props: StudioShellProps) {
   );
   const [menu, setMenu] = useState<"file" | "edit" | "export" | "help" | null>(null);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [aboutOpen, setAboutOpen] = useState(false);
   const [preferenceSaveError, setPreferenceSaveError] = useState(false);
   const resizeRef = useRef<{ side: ResizeSide; startX: number; startWidth: number } | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
@@ -417,6 +423,7 @@ export function StudioShell(props: StudioShellProps) {
     : 0;
   const canUndo = effectiveView === "editor" && Boolean(editActions?.canUndo);
   const canRedo = effectiveView === "editor" && Boolean(editActions?.canRedo);
+  const isEn = dict.header.file === "File";
 
   return (
     <div className="studio-shell" data-focus-mode={preferences.focusMode ? "on" : "off"} data-layout-ready={preferencesReady ? "true" : "false"} data-testid="studio-shell">
@@ -430,22 +437,22 @@ export function StudioShell(props: StudioShellProps) {
           <button
             type="button"
             className={`studio-header-button studio-menu-trigger ${menu === "file" ? "is-open" : ""}`}
-            aria-label="File"
+            aria-label={dict.header.file}
             aria-haspopup="menu"
             aria-expanded={menu === "file"}
             ref={fileMenuTriggerRef}
             onClick={() => toggleMenu("file")}
-          ><span className="studio-file-label">File</span><ChevronDown size={14} />
+          ><span className="studio-file-label">{dict.header.file}</span><ChevronDown size={14} />
           </button>
           {menu === "file" && (
-            <div className="studio-menu-popover" role="menu" aria-label="File" onKeyDown={handleMenuKeyDown}>
-              <span className="studio-menu-label">Project</span>
-              <MenuItem icon={<FileUp />} onClick={() => chooseFromMenu(onOpenMidi)}>Open MIDI…</MenuItem>
-              {onOpenBuiltinMelodies && <MenuItem icon={<FolderOpen />} onClick={() => chooseFromMenu(onOpenBuiltinMelodies)}>Built-in melodies…</MenuItem>}
-              <MenuItem icon={<FolderOpen />} onClick={() => chooseFromMenu(onOpenPackage)}>Open project package…</MenuItem>
-              <MenuItem icon={<FolderOpen />} onClick={() => chooseFromMenu(() => openPanel("projects", fileMenuTriggerRef.current ?? undefined))}>Open saved project…</MenuItem>
+            <div className="studio-menu-popover" role="menu" aria-label={dict.header.file} onKeyDown={handleMenuKeyDown}>
+              <span className="studio-menu-label">{isEn ? "Project" : "Projekt"}</span>
+              <MenuItem icon={<FileUp />} onClick={() => chooseFromMenu(onOpenMidi)}>{dict.header.openMidi}</MenuItem>
+              {onOpenBuiltinMelodies && <MenuItem icon={<FolderOpen />} onClick={() => chooseFromMenu(onOpenBuiltinMelodies)}>{dict.header.builtinMelodies.endsWith("...") ? dict.header.builtinMelodies.slice(0, -3) + "…" : dict.header.builtinMelodies}</MenuItem>}
+              <MenuItem icon={<FolderOpen />} onClick={() => chooseFromMenu(onOpenPackage)}>{dict.header.openPackage.endsWith("...") ? dict.header.openPackage.slice(0, -3) + "…" : dict.header.openPackage}</MenuItem>
+              <MenuItem icon={<FolderOpen />} onClick={() => chooseFromMenu(() => openPanel("projects", fileMenuTriggerRef.current ?? undefined))}>{isEn ? "Open saved project…" : "Otevřít uložený projekt…"}</MenuItem>
               <span className="studio-menu-divider" />
-              <MenuItem icon={<Save />} disabled={!canSaveProject} onClick={() => onSave && chooseFromMenu(onSave)}>Save project</MenuItem>
+              <MenuItem icon={<Save />} disabled={!canSaveProject} onClick={() => onSave && chooseFromMenu(onSave)}>{dict.header.saveProject}</MenuItem>
             </div>
           )}
         </div>
@@ -454,29 +461,29 @@ export function StudioShell(props: StudioShellProps) {
           <button
             type="button"
             className={`studio-header-button studio-menu-trigger ${menu === "edit" ? "is-open" : ""}`}
-            aria-label="Edit"
+            aria-label={dict.header.edit}
             aria-haspopup="menu"
             aria-expanded={menu === "edit"}
             ref={editMenuTriggerRef}
             onClick={() => toggleMenu("edit")}
-          ><span>Edit</span><ChevronDown size={14} />
+          ><span>{dict.header.edit}</span><ChevronDown size={14} />
           </button>
           {menu === "edit" && (
-            <div className="studio-menu-popover studio-menu-edit" role="menu" aria-label="Edit" onKeyDown={handleMenuKeyDown}>
-              <span className="studio-menu-label">History</span>
+            <div className="studio-menu-popover studio-menu-edit" role="menu" aria-label={dict.header.edit} onKeyDown={handleMenuKeyDown}>
+              <span className="studio-menu-label">{isEn ? "History" : "Historie"}</span>
               <MenuItem icon={<Undo2 />} disabled={!canUndo} onClick={() => chooseFromMenu(() => editActions?.undo())}>
-                Undo <kbd className="studio-menu-shortcut">Ctrl+Z</kbd>
+                {dict.header.undo} <kbd className="studio-menu-shortcut">Ctrl+Z</kbd>
               </MenuItem>
               <MenuItem icon={<Redo2 />} disabled={!canRedo} onClick={() => chooseFromMenu(() => editActions?.redo())}>
-                Redo <kbd className="studio-menu-shortcut">Ctrl+Y</kbd>
+                {dict.header.redo} <kbd className="studio-menu-shortcut">Ctrl+Y</kbd>
               </MenuItem>
             </div>
           )}
         </div>
 
-        <div className="studio-project-name" title={projectName || "Untitled project"}>
+        <div className="studio-project-name" title={projectName || (isEn ? "Untitled project" : "Projekt bez názvu")}>
           <span className="studio-project-dot" data-has-project={hasProject ? "true" : "false"} aria-hidden="true" />
-          <span>{projectName ? (projectName.length > 36 ? projectName.slice(0, 33) + "…" : projectName) : "Untitled project"}</span>
+          <span>{projectName ? (projectName.length > 36 ? projectName.slice(0, 33) + "…" : projectName) : (isEn ? "Untitled project" : "Projekt bez názvu")}</span>
         </div>
 
         <div className="studio-view-switch" role="group" aria-label="Workspace view">
@@ -488,8 +495,8 @@ export function StudioShell(props: StudioShellProps) {
               onToggle3DView?.(false);
               onViewModeChange("performance");
             }}
-            title="Performance view"
-          >Performance</button>
+            title={dict.views.performance}
+          >{dict.views.performance.replace(/\s*\([^)]*\)$/, "")}</button>
           {onToggle3DView && (
             <button
               type="button"
@@ -503,17 +510,17 @@ export function StudioShell(props: StudioShellProps) {
                   onToggle3DView(!is3DView);
                 }
               }}
-              title="3D View"
+              title={dict.views.view3D}
               data-testid="studio-3d-view-toggle"
-            >3D View</button>
+            >{isEn ? "3D View" : "3D Pohled"}</button>
           )}
           <button
             type="button"
             aria-pressed={effectiveView === "play_along"}
             className={effectiveView === "play_along" ? "is-active" : ""}
             onClick={() => onViewModeChange("play_along")}
-            title="Play along view"
-          >Play along</button>
+            title={dict.playback.playAlong}
+          >{dict.playback.playAlong === "Play-along" ? "Play along" : dict.playback.playAlong}</button>
           <button
             type="button"
             aria-pressed={effectiveView === "editor"}
@@ -522,8 +529,8 @@ export function StudioShell(props: StudioShellProps) {
               onToggle3DView?.(false);
               onViewModeChange("editor");
             }}
-            title="Fingering view"
-          >Fingering</button>
+            title={dict.views.fingering}
+          >{dict.views.fingering}</button>
         </div>
 
         {headerAddon && <div className="studio-header-addon" hidden={effectiveView !== "editor"}>{headerAddon}</div>}
@@ -543,7 +550,7 @@ export function StudioShell(props: StudioShellProps) {
                 className={`studio-camera-hud__btn ${!is3DView ? "is-active" : ""}`}
                 aria-pressed={!is3DView}
                 onClick={() => onToggle3DView(false)}
-                title="2D top-down view"
+                title={dict.views.view2D}
               >
                 2D
               </button>
@@ -552,7 +559,7 @@ export function StudioShell(props: StudioShellProps) {
                 className={`studio-camera-hud__btn ${is3DView ? "is-active" : ""}`}
                 aria-pressed={is3DView}
                 onClick={() => onToggle3DView(true)}
-                title="3D realistic view (Three.js)"
+                title={dict.views.view3D}
               >
                 3D
               </button>
@@ -599,66 +606,69 @@ export function StudioShell(props: StudioShellProps) {
             : status.kind === "error" ? <CircleAlert size={15} />
               : status.kind === "loading" || status.kind === "calculating" || status.kind === "saving"
                 ? <LoaderCircle className="studio-spin" size={15} /> : <CircleDot size={15} />}
-          <span>{status.kind === "saved" ? "Saved" : status.kind === "modified" ? "Modified" : status.kind === "saving" ? "Saving" : status.kind === "loading" ? "Loading" : status.kind === "calculating" ? "Calculating" : status.kind === "error" ? "Error" : "Ready"}</span>
+          <span>{status.kind === "saved" ? (isEn ? "Saved" : "Uloženo") : status.kind === "modified" ? (isEn ? "Modified" : "Změněno") : status.kind === "saving" ? (isEn ? "Saving" : "Ukládání") : status.kind === "loading" ? (isEn ? "Loading" : "Načítání") : status.kind === "calculating" ? (isEn ? "Calculating" : "Počítání") : status.kind === "error" ? (isEn ? "Error" : "Chyba") : (isEn ? "Ready" : "Připraveno")}</span>
         </div>
 
         <div className="studio-menu-group studio-export-menu" ref={menu === "export" ? activeMenuRef : undefined}>
           <button
             type="button"
             className={`studio-header-button studio-export-button ${menu === "export" ? "is-open" : ""}`}
-            aria-label="Export"
+            aria-label={isEn ? "Export" : "Exportovat"}
             aria-haspopup="menu"
             aria-expanded={menu === "export"}
             ref={exportMenuTriggerRef}
             onClick={() => toggleMenu("export")}
-          ><Download size={15} /><span>Export</span><ChevronDown size={14} />
+          ><Download size={15} /><span>{isEn ? "Export" : "Exportovat"}</span><ChevronDown size={14} />
           </button>
           {menu === "export" && (
-            <div className="studio-menu-popover studio-menu-right" role="menu" aria-label="Export" onKeyDown={handleMenuKeyDown}>
-              <span className="studio-menu-label">Export project</span>
-              <MenuItem icon={<Activity />} disabled={!canExportProject || !onExportMidi} onClick={() => onExportMidi && chooseFromMenu(onExportMidi)}>Fingered MIDI (.mid)</MenuItem>
-              <MenuItem icon={<Download />} disabled={!canExportProject || !onExportPackage} onClick={() => onExportPackage && chooseFromMenu(onExportPackage)}>Project package (.json)</MenuItem>
+            <div className="studio-menu-popover studio-menu-right" role="menu" aria-label={isEn ? "Export" : "Exportovat"} onKeyDown={handleMenuKeyDown}>
+              <span className="studio-menu-label">{isEn ? "Export project" : "Exportovat projekt"}</span>
+              <MenuItem icon={<Activity />} disabled={!canExportProject || !onExportMidi} onClick={() => onExportMidi && chooseFromMenu(onExportMidi)}>{isEn ? "Fingered MIDI (.mid)" : "MIDI s prstokladem (.mid)"}</MenuItem>
+              <MenuItem icon={<Download />} disabled={!canExportProject || !onExportPackage} onClick={() => onExportPackage && chooseFromMenu(onExportPackage)}>{isEn ? "Project package (.json)" : "Balíček projektu (.json)"}</MenuItem>
               <span className="studio-menu-divider" />
               <MenuItem
                 icon={<Activity />}
                 disabled={!canExportProject || !onExportVideo || Boolean(videoExportUnavailableReason)}
                 onClick={() => onExportVideo && chooseFromMenu(onExportVideo)}
               >
-                Performance video (.mp4 / .webm)
+                {isEn ? "Performance video (.mp4 / .webm)" : "Video vystoupení (.mp4 / .webm)"}
               </MenuItem>
               {videoExportUnavailableReason && <span id="studio-video-export-reason" className="studio-menu-label">{videoExportUnavailableReason}</span>}
             </div>
           )}
         </div>
 
-        {onOpenPianist && <button className="studio-icon-button studio-pianist-button" type="button" onClick={onOpenPianist} aria-label="Open pianist settings" title="Pianist"><UserRound size={17} /></button>}
+        {onOpenPianist && <button className="studio-icon-button studio-pianist-button" type="button" onClick={onOpenPianist} aria-label="Open pianist settings" title={dict.header.pianistProfile}><UserRound size={17} /></button>}
         <div className="studio-menu-group studio-help-menu" ref={menu === "help" ? activeMenuRef : undefined}>
           <button
             className={`studio-icon-button studio-help-button ${menu === "help" ? "is-open" : ""}`}
             type="button"
             onClick={() => toggleMenu("help")}
-            aria-label="Help"
+            aria-label={dict.header.help}
             aria-haspopup="menu"
             aria-expanded={menu === "help"}
             ref={helpMenuTriggerRef}
-            title="Help"
+            title={dict.header.help}
           ><CircleHelp size={18} aria-hidden="true" /></button>
           {menu === "help" && (
-            <div className="studio-menu-popover studio-menu-right" role="menu" aria-label="Help" onKeyDown={handleMenuKeyDown}>
-              <span className="studio-menu-label">Help</span>
+            <div className="studio-menu-popover studio-menu-right" role="menu" aria-label={dict.header.help} onKeyDown={handleMenuKeyDown}>
+              <span className="studio-menu-label">{dict.header.help}</span>
               <MenuItem icon={<Keyboard />} onClick={() => chooseFromMenu(() => setShortcutsOpen(true), false)}>
-                Keyboard shortcuts
+                {dict.header.keyboardShortcuts}
+              </MenuItem>
+              <MenuItem icon={<Piano />} onClick={() => chooseFromMenu(() => setAboutOpen(true), false)}>
+                {dict.header.about}
               </MenuItem>
             </div>
           )}
         </div>
-        {onOpenPreferences && <button className="studio-icon-button studio-preferences-button" type="button" onClick={onOpenPreferences} aria-label="Open preferences" title="Preferences"><Settings2 size={17} /></button>}
+        {onOpenPreferences && <button className="studio-icon-button studio-preferences-button" type="button" onClick={onOpenPreferences} aria-label="Open preferences" title={dict.header.preferences}><Settings2 size={17} /></button>}
       </header>
 
       <div className="studio-tool-rail" aria-label="Workspace panels">
-        <button ref={(node) => { panelTriggersRef.current.projects = node; }} type="button" className={preferences.activePanel === "projects" ? "is-active" : ""} aria-pressed={preferences.activePanel === "projects"} onClick={(event) => openPanel("projects", event.currentTarget)} title="Projects" aria-label="Projects"><PanelLeft size={17} /><span>Projects</span></button>
-        <button ref={(node) => { panelTriggersRef.current.inspector = node; }} type="button" className={preferences.activePanel === "inspector" ? "is-active" : ""} aria-pressed={preferences.activePanel === "inspector"} onClick={(event) => openPanel("inspector", event.currentTarget)} title="Inspector" aria-label="Inspector"><PanelRight size={17} /><span>Inspector</span></button>
-        <button type="button" className={`studio-focus-toggle ${preferences.focusMode ? "is-active" : ""}`} aria-pressed={preferences.focusMode} onClick={toggleFocusMode} title={preferences.focusMode ? "Exit focus mode" : "Focus mode"} aria-label="Focus mode"><Activity size={17} /><span>Focus</span></button>
+        <button ref={(node) => { panelTriggersRef.current.projects = node; }} type="button" className={preferences.activePanel === "projects" ? "is-active" : ""} aria-pressed={preferences.activePanel === "projects"} onClick={(event) => openPanel("projects", event.currentTarget)} title={dict.header.projects} aria-label={dict.header.projects}><PanelLeft size={17} /><span>{dict.header.projects}</span></button>
+        <button ref={(node) => { panelTriggersRef.current.inspector = node; }} type="button" className={preferences.activePanel === "inspector" ? "is-active" : ""} aria-pressed={preferences.activePanel === "inspector"} onClick={(event) => openPanel("inspector", event.currentTarget)} title={dict.header.inspector} aria-label={dict.header.inspector}><PanelRight size={17} /><span>{dict.header.inspector}</span></button>
+        <button type="button" className={`studio-focus-toggle ${preferences.focusMode ? "is-active" : ""}`} aria-pressed={preferences.focusMode} onClick={toggleFocusMode} title={preferences.focusMode ? (isEn ? "Exit focus mode" : "Ukončit režim soustředění") : dict.header.focusMode} aria-label={dict.header.focusMode}><Activity size={17} /><span>{isEn ? "Focus" : "Soustředění"}</span></button>
       </div>
 
       <main className="studio-main" data-testid="studio-main" style={mainStyle}>
@@ -739,9 +749,9 @@ export function StudioShell(props: StudioShellProps) {
           </div>
         )}
         {status.details && <button type="button" className="studio-status-details" title={status.details} aria-label={`Open diagnostics: ${status.details}`} onClick={openDiagnostics}>{status.details}</button>}
-        {preferenceSaveError && <span className="studio-preference-warning" title="Layout preferences could not be saved locally">Layout not saved</span>}
+        {preferenceSaveError && <span className="studio-preference-warning" title={isEn ? "Layout preferences could not be saved locally" : "Předvolby rozvržení nebylo možné uložit"}>{isEn ? "Layout not saved" : "Rozvržení neuloženo"}</span>}
         <span className="studio-status-spacer" />
-        <span className="studio-status-label">{status.kind === "saved" ? "All changes saved" : status.kind === "modified" ? "Unsaved changes" : status.kind === "error" ? "Needs attention" : "PianoMotion Studio"}</span>
+        <span className="studio-status-label">{status.kind === "saved" ? (isEn ? "All changes saved" : "Všechny změny uloženy") : status.kind === "modified" ? (isEn ? "Unsaved changes" : "Neuložené změny") : status.kind === "error" ? (isEn ? "Needs attention" : "Vyžaduje pozornost") : "PianoMotion Studio"}</span>
         {footerAddon && <div className="studio-footer-addon">{footerAddon}</div>}
       </footer>
       {dialogs && <div className="studio-fullscreen-screen">{dialogs}</div>}
@@ -749,6 +759,13 @@ export function StudioShell(props: StudioShellProps) {
         open={shortcutsOpen}
         onOpenChange={setShortcutsOpen}
         onReturnFocus={() => helpMenuTriggerRef.current?.focus({ preventScroll: true })}
+        dict={dict}
+      />
+      <AboutDialog
+        open={aboutOpen}
+        onOpenChange={setAboutOpen}
+        onReturnFocus={() => helpMenuTriggerRef.current?.focus({ preventScroll: true })}
+        dict={dict}
       />
     </div>
   );
@@ -776,10 +793,62 @@ function KeyboardShortcutsDialog({
   open,
   onOpenChange,
   onReturnFocus,
+  dict,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onReturnFocus: () => void;
+  dict: TranslationDictionary;
+}) {
+  const isEn = dict.header.file === "File";
+  const shortcuts = getEditorShortcuts(dict);
+
+  return (
+    <Dialog.Root open={open} onOpenChange={onOpenChange}>
+      <Dialog.Portal>
+        <Dialog.Overlay className="studio-shortcuts-overlay" />
+        <Dialog.Content
+          className="studio-shortcuts-dialog"
+          onCloseAutoFocus={(event) => {
+            event.preventDefault();
+            window.requestAnimationFrame(onReturnFocus);
+          }}
+        >
+          <div className="studio-shortcuts-dialog__heading">
+            <Dialog.Title>{dict.header.keyboardShortcuts}</Dialog.Title>
+            <Dialog.Close asChild>
+              <button type="button" className="studio-icon-button" aria-label="Close keyboard shortcuts" title={dict.common.close}>
+                <X size={17} aria-hidden="true" />
+              </button>
+            </Dialog.Close>
+          </div>
+          <Dialog.Description className="studio-shortcuts-dialog__description">
+            {isEn ? "Editing shortcuts work in Fingering mode. This help is available in both views." : "Klávesové zkratky pro úpravy fungují v režimu prstokladu. Tato nápověda je dostupná v obou pohledech."}
+          </Dialog.Description>
+          <dl className="studio-shortcuts-list">
+            {shortcuts.map((shortcut) => (
+              <div key={shortcut.key} className="studio-shortcuts-list__row">
+                <dt><kbd>{shortcut.key}</kbd></dt>
+                <dd>{shortcut.description}</dd>
+              </div>
+            ))}
+          </dl>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
+  );
+}
+
+function AboutDialog({
+  open,
+  onOpenChange,
+  onReturnFocus,
+  dict,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onReturnFocus: () => void;
+  dict: TranslationDictionary;
 }) {
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
@@ -793,24 +862,19 @@ function KeyboardShortcutsDialog({
           }}
         >
           <div className="studio-shortcuts-dialog__heading">
-            <Dialog.Title>Keyboard shortcuts</Dialog.Title>
+            <Dialog.Title>{dict.header.about}</Dialog.Title>
             <Dialog.Close asChild>
-              <button type="button" className="studio-icon-button" aria-label="Close keyboard shortcuts" title="Close">
+              <button type="button" className="studio-icon-button" aria-label={dict.common.close} title={dict.common.close}>
                 <X size={17} aria-hidden="true" />
               </button>
             </Dialog.Close>
           </div>
           <Dialog.Description className="studio-shortcuts-dialog__description">
-            Editing shortcuts work in Fingering mode. This help is available in both views.
+            {dict.header.file === "File" ? "Browser-based piano performance and fingering workspace." : "Prohlížečové prostředí pro klavírní interpretaci a prstoklad."}
           </Dialog.Description>
-          <dl className="studio-shortcuts-list">
-            {editorShortcuts.map((shortcut) => (
-              <div key={shortcut.key} className="studio-shortcuts-list__row">
-                <dt><kbd>{shortcut.key}</kbd></dt>
-                <dd>{shortcut.description}</dd>
-              </div>
-            ))}
-          </dl>
+          <div style={{ marginTop: "1rem", fontSize: "0.875rem", color: "#c2cbd5" }}>
+            <p><strong>{dict.common.version}:</strong> v{studioPackageVersion}</p>
+          </div>
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>

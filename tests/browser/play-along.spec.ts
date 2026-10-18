@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { expectStudioCanvas } from "./studio-helpers";
 
 test("Play along mode activates, provides step-by-step chord practice, and handles hand filtering and navigation", async ({ page }) => {
   const pageErrors: string[] = [];
@@ -7,7 +8,7 @@ test("Play along mode activates, provides step-by-step chord practice, and handl
   await page.goto("/");
 
   await expect(page).toHaveTitle("PianoMotion Studio");
-  await expect(page.locator("#piano-canvas-container canvas")).toBeVisible({ timeout: 60_000 });
+  await expectStudioCanvas(page, 60_000);
   await expect(page.getByTestId("studio-header").getByText("Гімн України")).toBeVisible();
 
   // 1. Switch to "Play along" mode

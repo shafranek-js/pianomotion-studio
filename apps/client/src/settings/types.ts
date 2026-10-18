@@ -4,6 +4,9 @@ import { M1KeyStyleSchema, type M1KeyStyle } from "@handthesia/contracts";
 
 export const SETTINGS_STORAGE_KEY = "handthesia:settings";
 
+export type AppLanguage = "en" | "cs" | "uk" | "de" | "es" | "it";
+export const AppLanguageSchema = z.enum(["en", "cs", "uk", "de", "es", "it"]);
+
 export const KeyStyleSchema = M1KeyStyleSchema;
 export type KeyStyle = M1KeyStyle;
 
@@ -37,6 +40,7 @@ export const CalculationEngineSchema = z.enum(["python", "typescript"]);
 export type CalculationEngine = z.infer<typeof CalculationEngineSchema>;
 
 export interface Settings {
+  language: AppLanguage;
   keyStyle: "realistic" | "equal";
   calculationEngine: "python" | "typescript";
   playbackSpeed: number;
@@ -66,6 +70,7 @@ export interface Settings {
 export type AppSettings = Settings;
 
 export const SettingsSchema = z.object({
+  language: AppLanguageSchema.default("en"),
   keyStyle: KeyStyleSchema.default("realistic"),
   calculationEngine: CalculationEngineSchema.default("typescript"),
   playbackSpeed: z.number().min(0.25).max(2.0).default(1.0),
@@ -90,6 +95,7 @@ export const SettingsSchema = z.object({
 });
 
 export const DEFAULT_SETTINGS: Settings = {
+  language: "en",
   keyStyle: "realistic",
   calculationEngine: "typescript",
   playbackSpeed: 1.0,
@@ -118,6 +124,11 @@ export function sanitizeSettings(input: Partial<Settings> | unknown): Settings {
     return { ...DEFAULT_SETTINGS };
   }
   const raw = input as Partial<Settings>;
+
+  const language: AppLanguage =
+    raw.language && AppLanguageSchema.safeParse(raw.language).success
+      ? (raw.language as AppLanguage)
+      : DEFAULT_SETTINGS.language;
 
   const keyStyle: "realistic" | "equal" =
     raw.keyStyle === "equal" || raw.keyStyle === "realistic"
@@ -209,6 +220,7 @@ export function sanitizeSettings(input: Partial<Settings> | unknown): Settings {
       : null;
 
   return {
+    language,
     keyStyle,
     calculationEngine,
     playbackSpeed,

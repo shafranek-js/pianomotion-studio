@@ -50,7 +50,24 @@ test.describe("M5 Profiles, Settings & Durable Persistence (W034–W038, Gate G5
     await expect(profileModal.getByRole("button", {name:"Save & Apply",exact:true})).toBeDisabled();
     await profileModal.getByRole("button", {name:"Duplicate",exact:true}).click();
     await expect(activeProfileSelect).not.toHaveValue("virtuoso");
-    const customProfileId=await activeProfileSelect.inputValue();
+    const customProfileId = await activeProfileSelect.inputValue();
+
+    // Duplicate activates a new profile. Wait until its calculation has settled
+    // so the edits below start from the profile actually applied to the project.
+    await page.waitForFunction(({ profileId, minimumRevision }) => {
+      const snapshot = window.__playerSnapshot;
+      return Boolean(
+        snapshot &&
+          !snapshot.pending &&
+          snapshot.profile.profileId === profileId &&
+          snapshot.result.revision > minimumRevision,
+      );
+    }, { profileId: customProfileId, minimumRevision: initial.result.revision }, { timeout: 90_000 });
+    const duplicateRevision = await page.evaluate(() => window.__playerSnapshot!.result.revision);
+    const duplicated = await settledStudio(page, duplicateRevision);
+    expect(duplicated.result.revision).toBeGreaterThan(initial.result.revision);
+    expect(duplicated.profile.profileId).toBe(customProfileId);
+    expect(duplicated.profile.revision).toBe(0);
 
     // Switch to Motion tab
     await profileModal.getByRole("tab", { name: /Motion/i }).click();
@@ -58,16 +75,39 @@ test.describe("M5 Profiles, Settings & Durable Persistence (W034–W038, Gate G5
     // Switch to Hand Anatomy tab
     await profileModal.getByRole("tab", { name: /Anatomy/i }).click();
 
+    // Change a named anatomy value in the unsaved profile draft.
+    const anatomySlider = profileModal.getByRole("slider", {
+      name: "Thumb Proximal Phalanx",
+      exact: true,
+    });
+    await expect(anatomySlider).toBeVisible();
+    const anatomyBeforeEdit = Number(await anatomySlider.inputValue());
+    expect(anatomyBeforeEdit).toBe(duplicated.profile.anatomy.pp1);
+    const sliderMinimum = Number(await anatomySlider.getAttribute("min"));
+    const sliderMaximum = Number(await anatomySlider.getAttribute("max"));
+    const sliderDirection = anatomyBeforeEdit >= sliderMaximum ? "ArrowLeft" : "ArrowRight";
+    await anatomySlider.press(sliderDirection);
+    const anatomyDraftValue = Number(await anatomySlider.inputValue());
+    expect(anatomyDraftValue).not.toBe(anatomyBeforeEdit);
+
     // Click "Save & Apply"
-    await profileModal.getByRole("button", { name: "Save & Apply" }).click();
+    const saveAndApply = profileModal.getByRole("button", { name: "Save & Apply", exact: true });
+    await expect(saveAndApply).toBeEnabled();
+    await saveAndApply.click();
+    await expect(profileModal.getByRole("status")).toContainText("Profile saved & applied!");
+
+    const applied = await settledStudio(page, duplicated.result.revision + 1);
+    expect(applied.result.revision).toBeGreaterThan(duplicated.result.revision);
+    expect(applied.profile.profileId).toBe(customProfileId);
+    expect(applied.profile.revision).toBeGreaterThan(duplicated.profile.revision);
+    expect(applied.profile.anatomy.pp1).not.toBe(duplicated.profile.anatomy.pp1);
+    expect(applied.profile.anatomy.pp1).toBeCloseTo(anatomyDraftValue, 3);
 
     // Close Profile Modal
     await profileModal.getByRole("button", { name: "Close" }).click();
     await expect(profileModal).toBeHidden();
 
     // Player header updates to show "Virtuoso" profile
-    const applied = await settledStudio(page, initial.result.revision);
-    expect(applied.profile.profileId).toBe(customProfileId);
     expect(applied.keyStyle).toBe("equal");
 
     // 7. Verify Autosave session in IndexedDB (wait for debounce flush)

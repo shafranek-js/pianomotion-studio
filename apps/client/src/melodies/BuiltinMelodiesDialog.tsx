@@ -3,6 +3,7 @@ import { ArrowUpDown, Music2, RotateCw, Search, Star, X } from "lucide-react";
 import { StudioDialog } from "../studio/StudioDialog";
 import { loadBuiltinMelodies, type BuiltinMelodyEntry, type BuiltinMelodyTier } from "./catalog";
 import { getFavouriteMelodyIds, subscribeFavourites, toggleFavouriteMelody } from "./favourites";
+import { useI18n } from "../i18n";
 import styles from "./BuiltinMelodiesDialog.module.css";
 
 type CatalogResult =
@@ -35,6 +36,7 @@ function tierBadgeClass(tier: BuiltinMelodyTier): string {
 }
 
 export function BuiltinMelodiesDialog({ open, onClose, onChoose, busy = false }: BuiltinMelodiesDialogProps) {
+  const { dict } = useI18n();
   const searchId = useId();
   const sortId = useId();
   const [query, setQuery] = useState("");
@@ -125,7 +127,7 @@ export function BuiltinMelodiesDialog({ open, onClose, onChoose, busy = false }:
   return (
     <StudioDialog
       screen
-      title="Built-in melodies"
+      title={dict.melodies.title === "Built-in Melodies" ? "Built-in melodies" : dict.melodies.title}
       description="Choose a built-in MIDI melody to open as a project."
       onClose={onClose}
     >
@@ -133,9 +135,9 @@ export function BuiltinMelodiesDialog({ open, onClose, onChoose, busy = false }:
         <header className={styles.header}>
           <div className={styles.titleGroup}>
             <span className={styles.titleIcon} aria-hidden="true"><Music2 size={20} /></span>
-            <h1>Built-in melodies</h1>
+            <h1>{dict.melodies.title}</h1>
           </div>
-          <button className={styles.close} type="button" onClick={onClose} aria-label="Close built-in melodies">
+          <button className={styles.close} type="button" onClick={onClose} aria-label={`${dict.common.close} ${dict.melodies.title}`}>
             <X size={19} aria-hidden="true" />
           </button>
         </header>
@@ -151,13 +153,13 @@ export function BuiltinMelodiesDialog({ open, onClose, onChoose, busy = false }:
                 type="search"
                 value={query}
                 onChange={(event) => setQuery(event.currentTarget.value)}
-                placeholder="Search by title…"
+                placeholder={dict.melodies.searchPlaceholder}
                 autoComplete="off"
               />
             </div>
             <div className={styles.sortBox}>
               <ArrowUpDown className={styles.sortIcon} size={15} aria-hidden="true" />
-              <label className={styles.visuallyHidden} htmlFor={sortId}>Sort melodies</label>
+              <label className={styles.visuallyHidden} htmlFor={sortId}>{dict.melodies.difficulty}</label>
               <select
                 id={sortId}
                 className={styles.sortSelect}
@@ -166,13 +168,13 @@ export function BuiltinMelodiesDialog({ open, onClose, onChoose, busy = false }:
                 aria-label="Sort melodies"
               >
                 <option value="title">Title (A–Z)</option>
-                <option value="difficulty-asc">Difficulty: Easiest first</option>
-                <option value="difficulty-desc">Difficulty: Hardest first</option>
+                <option value="difficulty-asc">{dict.melodies.difficulty}: Easiest first</option>
+                <option value="difficulty-desc">{dict.melodies.difficulty}: Hardest first</option>
               </select>
             </div>
           </div>
 
-          <div className={styles.filterBar} role="tablist" aria-label="Filter melodies">
+          <div className={styles.filterBar} role="tablist" aria-label={dict.melodies.filterByTag}>
             <button
               className={`${styles.filterChip} ${activeFilter === "all" ? styles.filterChipActive : ""}`}
               type="button"
@@ -180,7 +182,7 @@ export function BuiltinMelodiesDialog({ open, onClose, onChoose, busy = false }:
               aria-selected={activeFilter === "all"}
               onClick={() => setActiveFilter("all")}
             >
-              All <span className={styles.chipCount}>({filterCounts.all})</span>
+              {dict.melodies.allTags} <span className={styles.chipCount}>({filterCounts.all})</span>
             </button>
             <button
               className={`${styles.filterChip} ${styles.chipFavourites} ${activeFilter === "favourites" ? styles.filterChipActive : ""}`}
@@ -190,7 +192,7 @@ export function BuiltinMelodiesDialog({ open, onClose, onChoose, busy = false }:
               onClick={() => setActiveFilter("favourites")}
             >
               <Star className={styles.chipFavouritesIcon} size={13} fill="currentColor" aria-hidden="true" />
-              Favourites <span className={styles.chipCount}>({filterCounts.favourites})</span>
+              {dict.melodies.favourites} <span className={styles.chipCount}>({filterCounts.favourites})</span>
             </button>
             <button
               className={`${styles.filterChip} ${styles.chipBeginner} ${activeFilter === "Beginner" ? styles.filterChipActive : ""}`}
@@ -232,13 +234,13 @@ export function BuiltinMelodiesDialog({ open, onClose, onChoose, busy = false }:
 
         <div className={styles.results}>
           {catalogState === "loading" && (
-            <p className={styles.message} role="status" aria-live="polite">Loading built-in melodies…</p>
+            <p className={styles.message} role="status" aria-live="polite">{dict.common.loading}</p>
           )}
           {catalogState === "error" && (
             <div className={styles.error} role="alert">
               <p>{loadError}</p>
               <button className={styles.retry} type="button" onClick={() => setLoadAttempt((attempt) => attempt + 1)}>
-                <RotateCw size={16} aria-hidden="true" /> Retry
+                <RotateCw size={16} aria-hidden="true" /> {dict.common.retry}
               </button>
             </div>
           )}
@@ -248,11 +250,11 @@ export function BuiltinMelodiesDialog({ open, onClose, onChoose, busy = false }:
                 ? `No melodies match “${query.trim()}”.`
                 : activeFilter === "favourites"
                   ? "No favourite melodies yet. Click the star icon on any melody to add it to your favourites."
-                  : "No built-in melodies match the selected filter."}
+                  : dict.melodies.noMelodiesFound}
             </p>
           )}
           {catalogState === "ready" && filteredEntries.length > 0 && (
-            <ul className={styles.list} aria-label="Built-in melodies">
+            <ul className={styles.list} aria-label={dict.melodies.title}>
               {filteredEntries.map((entry) => {
                 const isFav = favouriteIds.has(entry.id);
                 return (
@@ -261,7 +263,8 @@ export function BuiltinMelodiesDialog({ open, onClose, onChoose, busy = false }:
                       <button
                         className={styles.choice}
                         type="button"
-                        aria-label={`Open ${entry.title}`}
+                        aria-label={dict.melodies.openMelody === "Open melody" ? `Open ${entry.title}` : `${dict.melodies.openMelody} ${entry.title}`}
+                        title={dict.melodies.openMelody}
                         disabled={busy}
                         onClick={() => onChoose(entry)}
                       >
@@ -271,7 +274,7 @@ export function BuiltinMelodiesDialog({ open, onClose, onChoose, busy = false }:
                           <span className={styles.metaRow}>
                             <span className={styles.meta}>{entry.fileName}</span>
                             <span className={`${styles.badge} ${tierBadgeClass(entry.difficultyTier)}`}>
-                              {entry.difficultyTier} • {entry.difficultyScore.toFixed(1)}/10
+                              {entry.difficultyTier} • {dict.melodies.difficulty} {entry.difficultyScore.toFixed(1)}/10
                             </span>
                           </span>
                         </span>
@@ -279,7 +282,8 @@ export function BuiltinMelodiesDialog({ open, onClose, onChoose, busy = false }:
                       <button
                         className={`${styles.favouriteButton} ${isFav ? styles.favouriteButtonActive : ""}`}
                         type="button"
-                        aria-label={isFav ? `Remove ${entry.title} from favourites` : `Add ${entry.title} to favourites`}
+                        aria-label={isFav ? `${dict.melodies.removeFromFavourites}: ${entry.title}` : `${dict.melodies.addToFavourites}: ${entry.title}`}
+                        title={isFav ? dict.melodies.removeFromFavourites : dict.melodies.addToFavourites}
                         aria-pressed={isFav}
                         onClick={(event) => {
                           event.stopPropagation();
@@ -299,7 +303,7 @@ export function BuiltinMelodiesDialog({ open, onClose, onChoose, busy = false }:
               })}
             </ul>
           )}
-          {busy && <p className={styles.opening} role="status" aria-live="polite">Opening melody…</p>}
+          {busy && <p className={styles.opening} role="status" aria-live="polite">{dict.melodies.openMelody}…</p>}
         </div>
       </div>
     </StudioDialog>

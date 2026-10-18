@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import type { Camera3DPreset } from "../render";
 import { CAMERA_PRESETS, type StudioView } from "./types";
+import { useI18n } from "../i18n";
 import "./workspace.css";
 
 export interface StudioWorkspaceProps {
@@ -41,6 +42,8 @@ export function StudioWorkspace({
   onCamera3DPresetChange,
   showCameraHud = true,
 }: StudioWorkspaceProps) {
+  const { dict } = useI18n();
+
   return (
     <section
       className={`studio-workspace-layout studio-workspace-layout--${viewMode}`}
@@ -60,13 +63,13 @@ export function StudioWorkspace({
       <div
         className="studio-workspace-layout__scene-content"
         data-testid="studio-scene-pane"
-        aria-label={viewMode === "editor" ? "Fingering workspace" : "Piano performance scene"}
+        aria-label={viewMode === "editor" ? dict.views.fingering : dict.views.performance}
       >
         {viewMode === "editor" && (
           <div className="studio-workspace-layout__time-anchor" data-testid="studio-time-anchor">
-            <span>{editorViewTime === null ? "Following playhead" : `View ${formatAnchorTime(editorViewTime)}`}</span>
-            <button type="button" onClick={onReturnToPlayhead} disabled={editorViewTime === null} aria-label="Return to playhead">
-              Return to playhead
+            <span>{editorViewTime === null ? dict.views.followingPlayhead : `View ${formatAnchorTime(editorViewTime)}`}</span>
+            <button type="button" onClick={onReturnToPlayhead} disabled={editorViewTime === null} aria-label={dict.views.returnToPlayhead}>
+              {dict.views.returnToPlayhead}
             </button>
             {editorViewTime !== null && editorViewTime !== transportTime && (
               <span className="studio-workspace-layout__playhead-time">Playhead {formatAnchorTime(transportTime)}</span>
@@ -86,7 +89,7 @@ export function StudioWorkspace({
                 className={`studio-camera-hud__btn ${!is3DView ? "is-active" : ""}`}
                 aria-pressed={!is3DView}
                 onClick={() => onToggle3DView(false)}
-                title="2D top-down view"
+                title={dict.views.view2D}
               >
                 2D
               </button>
@@ -95,7 +98,7 @@ export function StudioWorkspace({
                 className={`studio-camera-hud__btn ${is3DView ? "is-active" : ""}`}
                 aria-pressed={is3DView}
                 onClick={() => onToggle3DView(true)}
-                title="3D realistic view (Three.js)"
+                title={dict.views.view3D}
               >
                 3D
               </button>

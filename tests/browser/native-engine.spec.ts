@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import type { M1AnalyzeMidiResult, MotionPose } from "@handthesia/contracts";
-import { focusStudioScene, openStudioInspector, settledStudio, studioMidiPath } from "./studio-helpers";
+import { expectStudioCanvas, openStudioInspector, settledStudio, studioCanvas, studioMidiPath } from "./studio-helpers";
 import fs from "node:fs/promises";
 
 type WorkerTraceEntry = {
@@ -86,7 +86,9 @@ async function chooseEngine(page: Page, engine: "python" | "typescript", workerN
 
 async function editFirstNoteAndReplan(page: Page) {
   await page.getByRole("button", { name: "Fingering", exact: true }).click();
-  const canvas = await focusStudioScene(page);
+  const canvas = studioCanvas(page, "2d");
+  await expect(canvas).toBeVisible();
+  await canvas.focus();
   await canvas.press("ArrowRight");
   await expect.poll(() => page.evaluate(() =>
     (window as unknown as { __playerSnapshot?: AcceptanceSnapshot }).__playerSnapshot?.editorSelectedNoteIds?.length ?? 0,
@@ -240,7 +242,7 @@ test("native TypeScript Worker loads, replans, streams real hand poses, and reta
     };
   });
 
-  await page.goto("/");
+  await page.goto("/?empty=true");
   await expect(page).toHaveTitle("PianoMotion Studio");
   await expect(page.getByRole("button", { name: "Play demo song", exact: true })).toBeEnabled({ timeout: 30_000 });
 
@@ -265,7 +267,7 @@ test("native TypeScript Worker loads, replans, streams real hand poses, and reta
   expect(nativeAnalysis.status).toBe("loaded");
   expect(nativeAnalysis.poses?.length).toBeGreaterThan(0);
   startupGeometry = inspectAnatomicalPoses(nativeAnalysis.poses!);
-  await expect(page.locator("#piano-canvas-container canvas")).toBeVisible({ timeout: 90_000 });
+  await expectStudioCanvas(page, 90_000);
   const chopsticks = await settledStudio(page, 0);
   await testInfo.attach("native-chopsticks-startup", { contentType: "image/png", body: await page.screenshot({ fullPage: true }) });
   expect(chopsticks.result.rawBaseline.fixtureId).toMatch(/^builtin-[a-f0-9]{64}$/);
@@ -307,14 +309,16 @@ test("native TypeScript Worker loads, replans, streams real hand poses, and reta
   });
 
   const undoOffset = (await workerTrace(page)).length;
-  await focusStudioScene(page);
+  await expect(studioCanvas(page, "2d")).toBeVisible();
+  await studioCanvas(page, "2d").focus();
   await page.keyboard.press("Control+z");
   await waitForWorkerJob(page, nativeWorkerName, "replan-document", undoOffset);
   const undone = await settledStudio(page, edited.edited.result.revision + 1);
   expect(undone.result.fingeringPlan!.assignments.find((item: { noteId: string; fingerMode: string }) => item.noteId === edited.selectedNoteId)?.fingerMode).not.toBe("manual");
 
   const redoOffset = (await workerTrace(page)).length;
-  await focusStudioScene(page);
+  await expect(studioCanvas(page, "2d")).toBeVisible();
+  await studioCanvas(page, "2d").focus();
   await page.keyboard.press("Control+y");
   const redoResponse = await waitForWorkerJob(page, nativeWorkerName, "replan-document", redoOffset);
   const redone = await settledStudio(page, undone.result.revision + 1);

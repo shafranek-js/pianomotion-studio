@@ -3,7 +3,7 @@ import fs from "node:fs/promises";
 import { openStudioInspector } from "./studio-helpers";
 
 test("local diagnostic history survives reload and downloads from an empty studio", async ({ page }, testInfo) => {
-  await page.goto("/");
+  await page.goto("/?empty=true");
   await expect(page.getByRole("button", { name: "Play demo song", exact: true })).toBeEnabled();
   const marker = "Diagnostic acceptance: intentional browser exception";
   const expectedError = page.waitForEvent("pageerror");

@@ -1,5 +1,37 @@
 # PianoMotion Studio: журнал оркестрации
 
+## Локализация интерфейса (i18n): EN, CS, UK, DE, ES, IT — 2026-10-18
+
+По прямому указанию пользователя реализована мультиязычная локализация интерфейса:
+- Исходный пул: Английский (`en`, English) и Чешский (`cs`, Čeština).
+- Расширение пула: Украинский (`uk`, Українська), Немецкий (`de`, Deutsch), Испанский (`es`, Español) и Итальянский (`it`, Italiano).
+
+Оркестратор разделил работу на специализированных исполнителей GPT-6 Luna Extra High:
+1. `i18n_core`: Базовая типизированная архитектура i18n (`apps/client/src/i18n/`):
+   - Контракты типов `TranslationDictionary`, `AppLanguage = "en" | "cs" | "uk" | "de" | "es" | "it"`, `I18nContextValue`.
+   - Полные словари для английского (`locales/en.ts`) и чешского (`locales/cs.ts`) языков.
+   - Автономный `getTranslation(lang, path, params)` с интерполяцией и fallback на английский.
+   - Реактивный `I18nProvider` и хук `useI18n()` с реакцией на смену настроек.
+   - Расширение `Settings` полем `language` с сохранением в IndexedDB и localStorage.
+2. `i18n_settings_modals`: Локализация окон и настроек:
+   - `SettingsModal.tsx`: селектор всех 6 языков в настройках, перевод всех вкладок (General, Audio, Engine, Storage).
+   - `ProfileModal.tsx`, `BuiltinMelodiesDialog.tsx`, `VideoExportModal.tsx`.
+3. `i18n_studio_player`: Локализация оболочки и плеера:
+   - `StudioShell.tsx`, `StudioWorkspace.tsx`, `ProjectsPanel.tsx`, `PianoPlayer.tsx`, `FingeringToolbar.tsx`.
+4. `i18n_uk_de`:
+   - `locales/uk.ts`: полный украинский словарь (242 ключа: аплікатура, клавіатура, ліва/права рука, звуковий банк, вбудовані мелодії, експорт).
+   - `locales/de.ts`: полный немецкий словарь (242 ключа: Fingersatz, Klaviatur, linke/rechte Hand, SoundFont, integrierte Melodien, Export).
+5. `i18n_es_it`:
+   - `locales/es.ts`: полный испанский словарь (242 ключа: digitación, teclado, mano izquierda/derecha, banco de sonidos, melodías integradas, exportación).
+   - `locales/it.ts`: полный итальянский словарь (242 ключа: diteggiatura, tastiera, mano sinistra/destra, banco di suoni, brani integrati, esportazione).
+
+Результаты верификации:
+- 100% структурное соответствие (242/242 ключа во всех 6 языках), интерполяционные плейсхолдеры `{name}`, `{time}`, `{date}`, `{progress}` идентичны.
+- `npm run test:unit`: 54 файла, 573 теста PASS (0 failures).
+- `npm run typecheck`: PASS (0 ошибок).
+- `npm run lint`: PASS (0 предупреждений/ошибок).
+- `npm run build`: PASS (сборка релиза успешна).
+
 ## R3D-01–04 — dev.12, 2026-10-17
 
 Номер повышен с dev.11 по прямому указанию пользователя: dev.11 уже опубликована им на GitHub. Существующие скриншоты/метрики остаются историческим свидетельством проверенного кода до переименования; новая сборка dev.12 проверяется отдельно.
@@ -244,3 +276,13 @@ W006: actual lock inventory содержит 243 package records, 19 direct name
 - Названия треков имеют приоритет в выборе руки; не совпадающее с регистром название — существующая политика, а не изменение этого цикла.
 
 Эти наблюдения не означают внесённых исправлений desktop. Изменение музыкальной семантики отделяется от задачи переноса и требует явного решения/fixture expectations.
+
+
+## Верхняя панель (Header Layout & Typography)
+
+- В `apps/client/src/studio/studio.css` верхняя панель `.studio-header` переведена в строго однорядный flex-режим (`display: flex; flex-direction: row; flex-wrap: nowrap; align-items: center; height: 34px`).
+- Устранены многострочные CSS-сетки (`grid-template-rows: 56px auto` и `grid-template-rows: 56px 44px auto`), ранее принудительно переносившие элементы аппликатуры и `Auto-advance` на вторую и третью строки на экранах $\le 1899\text{px}$ и $\le 1199\text{px}$.
+- Унифицирован размер всех шрифтов и элементов в панели до единого значения `11px` (включая логотип, пункты меню, название проекта, переключатель видов, кнопки аппликатуры, индикатор сохранения и экспорт).
+- Кнопки компактно масштабированы до высоты 22–24px, кнопки пальцев — до 20px, без нарушения кликабельности и доступности.
+- Исправлен `handAssignment` в `en.ts` ("Hand selection") и `FingeringToolbar.tsx` для сохранения полной совместимости с локализацией и тестами.
+- Проведено полное тестирование: 54 тестовых файла (573 теста) успешно пройдены, typecheck — 0 ошибок, lint — 0 предупреждений, production build собран успешно.

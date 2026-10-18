@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { loadStudioSong, openStudioInspector, saveStudioProject } from "./studio-helpers";
+import { expectStudioCanvas, loadStudioSong, openStudioInspector, saveStudioProject } from "./studio-helpers";
 
 test("included SF3 and decoder restore and play offline without a user bank", async ({page, context}, testInfo) => {
   test.setTimeout(240_000);
@@ -24,7 +24,7 @@ test("included SF3 and decoder restore and play offline without a user bank", as
   const restored = await context.newPage();
   try {
     await restored.goto(process.env.PIANOMOTION_PREVIEW_BASE ?? "/");
-    await expect(restored.locator("#piano-canvas-container canvas")).toBeVisible({timeout:90_000});
+    await expectStudioCanvas(restored, 90_000);
     await openStudioInspector(restored, "Audio");
     await expect(restored.getByText("Active output: MuseScore General v0.2", {exact:true})).toBeVisible({timeout:120_000});
     await expect.poll(() => restored.evaluate(() => window.__playerSnapshot?.result.document?.notes.length ?? 0), {timeout:30_000})

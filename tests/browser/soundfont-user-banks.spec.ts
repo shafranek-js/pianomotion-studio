@@ -2,7 +2,7 @@ import { createReadStream, existsSync, readdirSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { basename, resolve } from "node:path";
 import { expect, test } from "@playwright/test";
-import { loadStudioSong, openStudioInspector, saveStudioProject } from "./studio-helpers";
+import { expectStudioCanvas, loadStudioSong, openStudioInspector, saveStudioProject } from "./studio-helpers";
 
 const bankDirectory = resolve(process.env.PIANOMOTION_TEST_SOUNDFONT_DIR ?? "soundfonts");
 const bankPaths = existsSync(bankDirectory)
@@ -69,7 +69,7 @@ for (const path of [...bankPaths.filter((path) => !invalidSf2Paths.includes(path
     await saveStudioProject(page);
 
     await page.reload();
-    await expect(page.locator("#piano-canvas-container canvas")).toBeVisible({ timeout: 120_000 });
+    await expectStudioCanvas(page, 120_000);
     await page.getByRole("button", { name: "Open preferences", exact: true }).click();
     await expect(page.locator("#settings-soundfont-select")).toHaveValue(sourceHashBefore, { timeout: 90_000 });
     await page.getByRole("button", { name: "Close", exact: true }).click();

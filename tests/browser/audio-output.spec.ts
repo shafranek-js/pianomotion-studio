@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { expect, test } from "@playwright/test";
 import { createSyntheticMonoSf2 } from "../../apps/client/src/audio/soundfont/testing/syntheticMonoSf2";
-import { loadStudioSong, openStudioInspector, saveStudioProject } from "./studio-helpers";
+import { expectStudioCanvas, loadStudioSong, openStudioInspector, saveStudioProject } from "./studio-helpers";
 
 test("uploads, parses, activates and reloads a real synthetic mono SF2 output", async ({ page }) => {
   test.setTimeout(180_000);
@@ -79,7 +79,7 @@ test("uploads, parses, activates and reloads a real synthetic mono SF2 output", 
   await saveStudioProject(page);
   await page.reload();
   await expect(page.getByRole("button", { name: "Open preferences", exact: true })).toBeVisible({ timeout: 90_000 });
-  await expect(page.locator("#piano-canvas-container canvas")).toBeVisible({ timeout: 90_000 });
+  await expectStudioCanvas(page, 90_000);
   await openStudioInspector(page, "Audio");
   await expect(page.getByText("Active output: Local SoundFont", { exact: true })).toBeVisible({ timeout: 30_000 });
 

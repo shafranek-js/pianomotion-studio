@@ -1,18 +1,21 @@
 import { expect, test } from "@playwright/test";
-import { focusStudioScene, loadStudioSong, openStudioEditMenu, openStudioInspector, settledStudio } from "./studio-helpers";
+import { loadStudioSong, openStudioEditMenu, openStudioInspector, settledStudio, studioCanvas } from "./studio-helpers";
 
 test("unified fingering scene retains history, contextual tools and live playback", async ({page}) => {
   test.setTimeout(180_000);
   const errors: string[] = [];
   page.on("pageerror", error => errors.push(error.message));
   const initial = await loadStudioSong(page);
-  const canvas = page.locator("#piano-canvas-container canvas");
+  await page.getByRole("button", {name: "Performance", exact: true}).click();
+  const canvas = studioCanvas(page, "2d");
   await canvas.evaluate(element => element.setAttribute("data-identity-probe", "original-scene"));
   await expect(page.getByTestId("studio-editor-toolbar")).toHaveCount(0);
   await expect(page.getByRole("button", {name: "Split", exact: true})).toHaveCount(0);
   await page.getByRole("button", {name: "Fingering", exact: true}).click();
   await expect(canvas).toBeVisible();
-  await expect(page.getByTestId("studio-workspace").locator("canvas")).toHaveCount(1);
+  const canvasHost = page.getByTestId("piano-canvas");
+  await expect(canvasHost.locator("canvas")).toHaveCount(2);
+  await expect(canvasHost.locator("canvas:visible")).toHaveCount(1);
   await expect(page.getByTestId("studio-editor-toolbar")).toHaveCount(0);
   await openStudioEditMenu(page);
   const undo = page.getByRole("menuitem", {name: /^Undo/});
@@ -20,7 +23,7 @@ test("unified fingering scene retains history, contextual tools and live playbac
   await expect(undo).toBeDisabled();
   await expect(redo).toBeDisabled();
   await page.keyboard.press("Escape");
-  await focusStudioScene(page);
+  await canvas.focus();
   await page.keyboard.press("ArrowRight");
   await page.getByTestId("studio-header").getByRole("button", {name: "Finger 4", exact: true}).click();
   const edited = await settledStudio(page, initial.result.revision + 1);
@@ -32,7 +35,7 @@ test("unified fingering scene retains history, contextual tools and live playbac
   await openStudioEditMenu(page);
   await expect(redo).toBeEnabled();
   await page.keyboard.press("Escape");
-  await focusStudioScene(page);
+  await canvas.focus();
   await page.keyboard.press("Control+Shift+z");
   const redone = await settledStudio(page, undone.result.revision + 1);
   expect(redone.result.fingeringPlan!.assignments.find(a => a.noteId === pin!.noteId)?.finger).toBe(4);
