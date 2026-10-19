@@ -1,0 +1,58 @@
+PianoMotion Studio License (MIT with attribution)
+=================================================
+
+Copyright (c) 2026 shafranek-js
+https://github.com/shafranek-js/pianomotion-studio
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+1. The above copyright notice and this permission notice shall be included in
+   all copies or substantial portions of the Software.
+
+2. Attribution. If you use the Software, or a substantial part of its code,
+   algorithms or ideas, in another project that you distribute or publish,
+   you must credit the original author visibly — for example in the project's
+   README, documentation, about screen or release notes — under the name
+   "shafranek-js", with a link to
+   https://github.com/shafranek-js/pianomotion-studio.
+   Private, internal use that is not distributed does not require this credit.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+
+Scope
+-----
+
+This license covers the source code of this repository and the documentation
+written for it. It does not, and cannot, change the terms of material that came
+from elsewhere:
+
+- The fingering engine in `python-core/handthesia_core` and its TypeScript port
+  in `packages/engine-ts` are derived from V9011N's Hand-thesia
+  (https://github.com/V9011N/pygame-piano-animator), which is published without
+  a license. That part remains under its author's terms; obtain V9011N's
+  permission before redistributing it. See "Credits" in README.md.
+
+- Third-party components keep their own licenses: MuseScore General v0.2 (MIT),
+  Pyodide (MPL-2.0), NumPy (BSD-3-Clause), pretty-midi and mido (MIT), PixiJS
+  and Three.js (MIT), Mediabunny (MPL-2.0), hash-wasm (MIT), Signalsmith
+  Stretch (MIT), React, Radix UI and Lucide. Notices live in
+  `apps/client/public/notices/` and `docs/licenses/`.
+
+- Bundled media is not relicensed here: the MIDI files in `builtin_melodies/`
+  and the hand textures and models in `apps/client/public/` have no recorded
+  provenance and are not cleared for redistribution.
+
+If you contribute to this repository, you agree that your contributions are
+licensed under the same terms.

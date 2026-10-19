@@ -2,6 +2,7 @@
   "name": "@handthesia/web",
   "version": "0.1.0-dev.22",
   "private": true,
+  "license": "SEE LICENSE IN LICENSE",
   "type": "module",
   "workspaces": [
     "apps/*",
