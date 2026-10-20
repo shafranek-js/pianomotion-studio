@@ -57,6 +57,7 @@ test("an unfinished SoundFont cannot leave a disabled Play button without the lo
     await expect(play).toBeDisabled({timeout: 30_000});
     await expect(loader).toBeVisible({timeout: 30_000});
     await expect(loader).toHaveAttribute("data-phase", "audio", {timeout: 30_000});
+    await expect(loader).toHaveAttribute("data-mode", "prominent");
     await expect(loader.getByRole("progressbar")).not.toHaveAttribute("aria-valuenow", /.+/);
   } finally {
     releaseSoundFont();
