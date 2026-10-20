@@ -33,6 +33,8 @@ import { recordDiagnostic } from "./diagnostics/eventLog";
 import { DiagnosticLogControls } from "./diagnostics/DiagnosticLogControls";
 import { useI18n } from "./i18n";
 import { SessionOperationLifecycle, type SessionOperation } from "./sessionOperation";
+import { MusicalLoading } from "./studio/MusicalLoading";
+import { phaseFromWorkerProgress, type LoadingExperienceState, type LoadingPhase } from "./studio/loadingExperience";
 
 type FixtureEntry = { fixturePath: string; fixtureSha256: string; scenarios?: string[] };
 type FixtureManifest = { fixtureSources: Record<string, FixtureEntry> };
@@ -66,13 +68,16 @@ declare global {
 }
 
 export default function App() {
-  const { dict, t } = useI18n();
+  const { dict, t, language } = useI18n();
   const [fixtureManifest, setFixtureManifest] = useState<FixtureManifest | null>(null);
   const [engineVersion, setEngineVersion] = useState("");
   const [active, setActive] = useState<ActiveSession | null>(null);
   const [sessionProfile, setSessionProfile] = useState<PianistProfile | null>(null);
   const [status, setStatus] = useState<StudioStatus>({ kind: "loading", message: "Preparing the local studio…" });
   const [busy, setBusy] = useState(false);
+  const [loadingExperience, setLoadingExperience] = useState<LoadingExperienceState>({
+    generation: 0, phase: "startup", detail: "Preparing the local studio…",
+  });
   const [builtinMelodiesOpen, setBuiltinMelodiesOpen] = useState(false);
   const openBuiltinMelodies = useCallback(() => setBuiltinMelodiesOpen(true), []);
   const [dirty, setDirty] = useState(false);
@@ -98,6 +103,12 @@ export default function App() {
   const preparedGenerationRef = useRef<number | null>(null);
   const operationLifecycleRef = useRef(new SessionOperationLifecycle());
   const startupRuntimePromiseRef = useRef<Promise<StartupRuntime> | null>(null);
+  /** Ignore late Worker progress from canceled/superseded operations. */
+  const reportLoading = useCallback((generation: number, detail: string, phase?: LoadingPhase) => {
+    setLoadingExperience(previous => previous?.generation === generation
+      ? { ...previous, phase: phase ?? phaseFromWorkerProgress(detail, previous.phase), detail, progress: undefined }
+      : previous);
+  }, []);
   const autosaveService = useMemo(() => createAutosaveService({
     delayMs: 400,
     onError: (error) => setStatus({ kind: "error", message: `Session recovery could not be saved: ${error.message}` }),
@@ -181,6 +192,7 @@ export default function App() {
     const lifecycle = operationLifecycleRef.current;
     const operation = lifecycle.begin("bootstrap");
     const isCurrent = () => lifecycle.isCurrent(operation);
+    setLoadingExperience({ generation: operation.generation, phase: "startup", detail: "Loading local studio manifests…" });
     let disposed = false;
     const cacheBust = import.meta.env.DEV ? `?t=${Date.now()}` : "";
     const runtimePromise = Promise.all([
@@ -214,6 +226,7 @@ export default function App() {
         const urlParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
         const forceEmpty = urlParams?.has("empty");
 
+        reportLoading(operation.generation, "Checking the saved session…", "restoring");
         const snapshot = await loadSessionSnapshot();
         if (!isCurrent()) return;
         if (!snapshot) {
@@ -225,6 +238,7 @@ export default function App() {
             );
             if (defaultEntry) {
               setStatus({ kind: "loading", message: `Loading ${defaultEntry.title}…` });
+              reportLoading(operation.generation, `Reading ${defaultEntry.title}…`, "reading");
               const midiBytes = await loadBuiltinMelodyBytes(defaultEntry, operation.signal);
               if (!isCurrent()) return;
               const sourceContext: ProjectSourceContext = {
@@ -238,7 +252,7 @@ export default function App() {
                 engineVersion: coreEngineVersion,
                 sourceContext,
                 signal: operation.signal,
-                onProgress: (msg) => { if (isCurrent()) setStatus({ kind: "calculating", message: msg }); },
+                onProgress: (msg) => { if (isCurrent()) { setStatus({ kind: "calculating", message: msg }); reportLoading(operation.generation, msg); } },
               });
               if (!isCurrent()) {
                 analysisWorker.terminate();
@@ -268,6 +282,7 @@ export default function App() {
           if (isCurrent()) setStatus({ kind: "idle", message: "Open a MIDI file, a saved project, or the demo song to begin." });
           return;
         }
+        reportLoading(operation.generation, "Verifying saved project identity…", "restoring");
         const assessed = await assessSessionSnapshot(snapshot, coreEngineVersion);
         if (!isCurrent()) return;
         if (!snapshot.result || !snapshot.rawMidiBytes || (assessed.status !== "compatible" && assessed.status !== "recompute-required")) {
@@ -285,7 +300,9 @@ export default function App() {
           return;
         }
         const savedProject = snapshotToSavedProject(snapshot, restoredSourceContext);
-        const rebuilt = await analyzeSavedProjectCandidate(savedProject, coreEngineVersion, operation.signal, undefined, restoredSourceContext);
+        const rebuilt = await analyzeSavedProjectCandidate(savedProject, coreEngineVersion, operation.signal,
+          (msg) => { if (isCurrent()) { setStatus({ kind: "calculating", message: msg }); reportLoading(operation.generation, msg); } },
+          restoredSourceContext);
         if (!isCurrent()) { rebuilt.analysisWorker.terminate(); return; }
         const restored: ActiveSession = {
           result: rebuilt.result,
@@ -313,6 +330,7 @@ export default function App() {
           setStatus({ kind: "error", message: `Studio startup failed: ${message}` });
         }
       } finally {
+        if (isCurrent()) setLoadingExperience(null);
         lifecycle.finish(operation);
       }
     };
@@ -324,7 +342,7 @@ export default function App() {
       preparedRef.current = null;
       preparedGenerationRef.current = null;
     };
-  }, []);
+  }, [reportLoading]);
 
   const fixtureIds = useMemo(() => Object.keys(fixtureManifest?.fixtureSources ?? {}).sort(), [fixtureManifest]);
 
@@ -369,6 +387,9 @@ export default function App() {
     preparedGenerationRef.current = null;
     const { signal } = operation;
     setBusy(true);
+    setLoadingExperience({ generation: operation.generation,
+      phase: description === "saved project" ? "restoring" : "reading",
+      detail: `Opening ${description}…` });
     setPendingCandidate(null);
     setConfirmReplace(false);
     setStatus({ kind: "calculating", message: `Validating ${description}…` });
@@ -379,7 +400,10 @@ export default function App() {
       const runtime = await runtimePromise;
       if (!lifecycle.isCurrent(operation)) return;
       const candidate = await prepare(signal, (message) => {
-        if (lifecycle.isCurrent(operation)) setStatus({ kind: "calculating", message });
+        if (lifecycle.isCurrent(operation)) {
+          setStatus({ kind: "calculating", message });
+          reportLoading(operation.generation, message);
+        }
       }, runtime.engineVersion);
       if (!lifecycle.isCurrent(operation)) {candidate.analysisWorker.terminate(); return;}
       if (dirtyRef.current && activeRef.current) {
@@ -406,11 +430,12 @@ export default function App() {
       setStatus({ kind: "error", message: `${description} was not opened: ${message}` });
     } finally {
       if (lifecycle.isCurrent(operation)) {
+        setLoadingExperience(null);
         lifecycle.finish(operation);
         setBusy(false);
       }
     }
-  }, [commitCandidate]);
+  }, [commitCandidate, reportLoading]);
 
   const openMidiFile = useCallback(async (file: File) => {
     await runCandidate(file.name, async (signal, progress, runtimeEngineVersion) => {
@@ -494,6 +519,7 @@ export default function App() {
     preparedRef.current = null;
     preparedGenerationRef.current = null;
     setBusy(false);
+    setLoadingExperience(null);
     setPendingCandidate(null);
     setConfirmReplace(false);
     window.__m1LastError = null;
@@ -815,6 +841,8 @@ export default function App() {
       footerAddon={studioFooterAddon}
       dialogs={dialogs}
     />}
+    {loadingExperience && <MusicalLoading key={loadingExperience.generation}
+      loading={loadingExperience} language={language} prominent={!active} />}
   </>;
 }
 
