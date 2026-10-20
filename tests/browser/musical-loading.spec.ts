@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { expectStudioCanvas, studioMidiPath } from "./studio-helpers";
+import { configureStudioTestOutput, expectStudioCanvas, studioMidiPath } from "./studio-helpers";
 
 test("cold startup has an honest musical staff and an English-only pianist, then clears", async ({page}, info) => {
   test.setTimeout(90_000);
@@ -27,6 +27,9 @@ test("imported MIDI loads without holding the musical loader over a playable sta
   test.setTimeout(120_000);
   await page.goto("/?empty=true");
   await expect(page.getByTestId("musical-loading")).toHaveCount(0, {timeout: 25000});
+  // The default SoundFont performs a separate asynchronous load. Use the
+  // built-in synth to test MIDI readiness without conflating those lifecycles.
+  await configureStudioTestOutput(page);
   await page.locator("#midi-file").setInputFiles(studioMidiPath);
   await expectStudioCanvas(page);
   await expect(page.getByTestId("musical-loading")).toHaveCount(0, {timeout: 30000});
