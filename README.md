@@ -207,7 +207,7 @@ pianomotion-studio/
 ├── docs/                  implementation notes, verification evidence, licences
 ├── builtin_melodies/midi/ 163 MIDI files behind the built-in library
 ├── assets/soundfonts/     MuseScore General v0.2 (SF3, MIT)
-└── .github/workflows/     verify.yml (Chrome + Edge), deploy-pages.yml (GitHub Pages)
+└── .github/workflows/     verify.yml (static + build + parallel browser groups), deploy-pages.yml
 ```
 
 The npm workspace namespace is still `@handthesia/*`; the product name is PianoMotion Studio.
@@ -252,6 +252,7 @@ publishable `dist`.
 | Command | What it does |
 |---|---|
 | `npm run dev` | Prepare assets and start the Vite dev server. |
+| `npm run dev:test` | Start Vite, staging Pyodide, melodies and the SoundFont only if missing; used by Playwright. |
 | `npm run build` | Content-addressed production build into `apps/client/dist`. |
 | `npm run preview` | Serve the production build. |
 | `npm run typecheck` | `tsc` for client, contracts, engine-ts and the tooling config. |
@@ -294,14 +295,26 @@ itself rather than passing silently. CI checks that project out at commit
 `f8189c021d9235005fb35faa2c8cfbc09a3768a0`.
 
 Browser suites use the Chromium channel named by `PIANOMOTION_BROWSER_CHANNEL` (`chrome` or `msedge`).
+Their `webServer` runs `dev:test`, so the generated assets are staged once and reused; a local
+`npm run test:browser` therefore works from a fresh checkout without a separate preparation step.
 `npm run test:browser:all` expects a production build first, because the offline group runs against the
 preview server. Golden fixtures are compared exactly; changing them is a deliberate parity decision,
 not a side effect of a fix.
 
-`.github/workflows/verify.yml` runs on Windows for both Chrome and Edge: it installs the dependencies
-and the pinned desktop reference, then runs `npm run ci` — Python and goldens, melody catalogue,
-typecheck, lint, Vitest, native parity, production build, and the browser groups. Failure artifacts
-(`test-results/`, `playwright-report/`) are uploaded for each browser channel.
+`.github/workflows/verify.yml` splits verification into independent jobs, so nothing waits behind the
+browser suites:
+
+- a Windows **static** job runs Python and goldens, the melody catalogue, typecheck, lint, Vitest and
+  native parity once for all channels (the desktop geometry comparison needs the pinned sibling
+  checkout);
+- an Ubuntu **build** job produces the production `dist` and publishes it as an artifact;
+- **browser** jobs run one group each — the UI suite in three shards, plus GPU, worker, audio and
+  SoundFont — instead of one sequential two-hour chain, so a failure in one group no longer hides the
+  others;
+- an **offline** matrix runs the PWA and media groups against the built artifact.
+
+Chrome runs on pull requests; Chrome and Edge run on `main` and manual dispatches, because Edge adds
+roughly twenty minutes for the same code. Every job uploads `test-results/` and `playwright-report/`.
 
 ## Deployment
 

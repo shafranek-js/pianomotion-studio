@@ -49,11 +49,11 @@ export default defineConfig({
     ...failureArtifacts,
   },
   webServer: {
-    command: "npm run dev -- --host 127.0.0.1 --port 4173 --strictPort",
+    command: "npm run dev:test -- --host 127.0.0.1 --port 4173 --strictPort",
     url: "http://127.0.0.1:4173",
     reuseExistingServer: false,
-    // `npm run dev` first stages Pyodide (21 MiB), the melody catalogue and the
-    // SoundFont; 60 s was tight on a cold CI runner.
+    // `dev:test` stages Pyodide (21 MiB), the melody catalogue and the
+    // SoundFont only when they are missing; a cold CI runner still needs room.
     timeout: 180_000,
   },
 });
