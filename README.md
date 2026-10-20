@@ -269,7 +269,7 @@ publishable `dist`.
 | `npm run test:python` | pytest for `python-core` in `.venv-test`. |
 | `npm run test:parity` | Golden parity between the Python engine and the desktop reference. |
 | `npm run test:native-parity` | The TypeScript engine against the same goldens. |
-| `npm run ci` | The full 8-step pipeline, stopping at the first failure. |
+| `npm run ci` | Local sequential sweep (the CI runs the same checks as parallel jobs). |
 | `npm run archive` | Zip the sources without `node_modules` or test output. |
 
 Individual preparation steps are also available as `prepare:m1:assets`, `prepare:melodies` and
@@ -322,10 +322,12 @@ The production site is published to GitHub Pages:
 
 **https://shafranek-js.github.io/pianomotion-studio/**
 
-`.github/workflows/deploy-pages.yml` runs typecheck, lint, unit tests and the production build on
-every push to `main` and on manual dispatch, then uploads `apps/client/dist`. The deploy job itself
-only runs for `main` and only when the repository variable **`PAGES_ENABLED`** is set to `true`; the
-build uses the base path `/pianomotion-studio/`.
+`.github/workflows/deploy-pages.yml` no longer publishes on every push. It listens for a completed
+**Verify studio** run on `main`, rebuilds the site only when that run succeeded, and uploads
+`apps/client/dist`; the deploy job itself additionally requires the repository variable
+**`PAGES_ENABLED=true`**. A manual dispatch remains available as an explicit override, and only then
+does it repeat typecheck, lint and unit tests (a verification run already ran them). The build uses the
+base path `/pianomotion-studio/`.
 
 Publishing is atomic by design. The service worker lives only in production, refuses a manifest whose
 `buildId` is not the running one, checks the SHA-256 of every file, and activates a new release only
