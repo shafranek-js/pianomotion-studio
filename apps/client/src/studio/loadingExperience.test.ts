@@ -24,7 +24,7 @@ describe("musical loading experience", () => {
     for (const line of remarks) {
       expect(line).toBe(line.trim());
       expect(line.length).toBeLessThanOrEqual(80);
-      expect(line).toMatch(/^[\\x20-\\x7e\\u2018-\\u2019\\u2026]+$/);
+      expect(line).toMatch(/^[\x20-\x7e\u2018-\u2019\u2026]+$/);
     }
   });
 
