@@ -1,0 +1,88 @@
+/* Musical loading experience: lightweight DOM/SVG; no Pixi/Three rendering or transport hooks. */
+.musical-loading {
+  --ml-ink: #ecf2fb;
+  --ml-muted: #a3b2c6;
+  --ml-accent: #bca8ff;
+  color: var(--ml-ink);
+  z-index: 55;
+  pointer-events: none;
+}
+.musical-loading--prominent {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: radial-gradient(ellipse at 50% 40%, #232c3d 0%, #131a25 60%, #0e121b 100%);
+  pointer-events: auto;
+}
+.musical-loading--compact {
+  position: fixed;
+  top: clamp(64px, 13vh, 112px);
+  left: 50%;
+  width: min(420px, calc(100vw - 28px));
+  transform: translateX(-50%);
+}
+.musical-loading__panel {
+  position: relative;
+  width: min(525px, 100%);
+  margin: auto;
+  padding: 29px 34px 26px;
+  border: 1px solid rgba(173,188,219,.25);
+  border-radius: 20px;
+  background: linear-gradient(160deg, rgba(37,45,65,.98), rgba(21,27,40,.98));
+  box-shadow: 0 20px 65px rgba(0,0,0,.32);
+  text-align: center;
+}
+.musical-loading--compact .musical-loading__panel {
+  padding: 13px 20px 14px;
+  border-radius: 14px;
+  background: rgba(22,29,42,.96);
+  box-shadow: 0 10px 30px #0007;
+}
+.musical-loading__brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: .025em;
+}
+.musical-loading__brand-note { font-size: 24px; line-height: 1; color: var(--ml-accent); }
+.musical-loading__score { margin: 9px auto 1px; max-width: 360px; }
+.musical-loading__score svg { width: 100%; height: auto; display: block; overflow: visible; }
+.musical-loading__staff { stroke: #7887a3; stroke-width: 1.1; opacity: .7; }
+.musical-loading__note { fill: var(--ml-accent); stroke: var(--ml-accent); stroke-width: 1.4; animation: ml-note-breathe 2.5s ease-in-out infinite; }
+.musical-loading__track { stroke: #414b63; stroke-width: 5; stroke-linecap: round; }
+.musical-loading__track-progress { stroke: var(--ml-accent); stroke-width: 5; stroke-linecap: round; }
+.musical-loading__track-indeterminate { stroke: var(--ml-accent); stroke-width: 5; stroke-linecap: round; animation: ml-scan 2.3s ease-in-out infinite alternate; }
+.musical-loading__factual { min-height: 48px; }
+.musical-loading__factual h2 { font-size: 17px; line-height: 1.35; font-weight: 650; margin: 0 0 5px; }
+.musical-loading__factual p { font-size: 12px; color: var(--ml-muted); margin: 0; overflow-wrap: anywhere; }
+.musical-loading__pianist { margin: 14px 0 16px; min-height: 22px; color: #d7c9ff; font-style: italic; font-size: 13px; }
+.musical-loading__progress { position: relative; overflow: hidden; width: 100%; height: 7px; background: #424d62; border-radius: 20px; }
+.musical-loading__progress>span { display: block; height: 100%; background: var(--ml-accent); border-radius: inherit; }
+.musical-loading__indeterminate { width: 33%; animation: ml-progress 2.3s ease-in-out infinite alternate; }
+.musical-loading__percent { display: inline-block; font-variant-numeric: tabular-nums; margin-top: 8px; color: var(--ml-muted); font-size: 11px; }
+.musical-loading--compact .musical-loading__brand { font-size: 12px; }
+.musical-loading--compact .musical-loading__brand-note { font-size: 18px; }
+.musical-loading--compact .musical-loading__score { width: 235px; margin: 0 auto; }
+.musical-loading--compact .musical-loading__factual h2 { font-size: 14px; }
+.musical-loading--compact .musical-loading__factual { min-height: 32px; }
+.musical-loading--compact .musical-loading__pianist { margin: 6px 0 9px; font-size: 12px; }
+.musical-loading--compact .musical-loading__progress { height: 5px; }
+@keyframes ml-note-breathe { 0%,100% { filter: brightness(.75); } 50% { filter: brightness(1.4); } }
+@keyframes ml-scan { 0% { transform: translateX(0); } 100% { transform: translateX(245px); } }
+@keyframes ml-progress { 0% { transform: translateX(-100%); } 100% { transform: translateX(300%); } }
+@media (max-width: 480px) {
+  .musical-loading__panel { padding: 20px 18px; border-radius: 15px; }
+  .musical-loading__factual h2 { font-size: 16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .musical-loading__note,
+  .musical-loading__track-indeterminate,
+  .musical-loading__indeterminate { animation: none; }
+  .musical-loading__indeterminate { width: 40%; }
+}
