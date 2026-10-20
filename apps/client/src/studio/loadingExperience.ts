@@ -74,7 +74,8 @@ export const virtualPianistLines: Record<LoadingPhase, readonly string[]> = {
     "The soundboard requested a dramatic entrance.",
     "The audio engine is practicing its scales backstage.",
     "The final chord is ready. The first one is being shy.",
-  ],};
+  ],
+};
 
 export function loadingStageLabel(phase: LoadingPhase, language: AppLanguage): string {
   return factualLabels[language][phase];
