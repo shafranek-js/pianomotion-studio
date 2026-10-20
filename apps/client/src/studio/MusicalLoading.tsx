@@ -8,6 +8,8 @@ interface MusicalLoadingProps {
   language: AppLanguage;
   /** Full work-area cover during initial startup; compact and nonmodal for background operations. */
   prominent: boolean;
+  /** A blocked Play button needs feedback immediately, not after the usual compact debounce. */
+  immediate?: boolean;
 }
 
 function PianistLine({ phase }: { phase: LoadingExperienceState["phase"] }) {
@@ -21,14 +23,14 @@ function PianistLine({ phase }: { phase: LoadingExperienceState["phase"] }) {
 }
 
 /** Does not own the musical transport, worker, or source data. */
-export function MusicalLoading({ loading, language, prominent }: MusicalLoadingProps) {
+export function MusicalLoading({ loading, language, prominent, immediate = false }: MusicalLoadingProps) {
   const [delayPassed, setDelayPassed] = useState(false);
   useEffect(() => {
-    if (prominent) return;
+    if (prominent || immediate) return;
     const timeout = window.setTimeout(() => setDelayPassed(true), 220);
     return () => window.clearTimeout(timeout);
-  }, [prominent]);
-  if (!prominent && !delayPassed) return null;
+  }, [prominent, immediate]);
+  if (!prominent && !immediate && !delayPassed) return null;
   const fraction = measuredProgress(loading.progress);
   const percent = fraction === undefined ? undefined : Math.round(fraction * 100);
   const title = loadingStageLabel(loading.phase, language);
