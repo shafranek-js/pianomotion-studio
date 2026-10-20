@@ -17,6 +17,17 @@ describe("musical loading experience", () => {
     expect(loadingStageLabel("reading", "cs")).not.toBe(loadingStageLabel("reading", "en"));
   });
 
+  it("offers twenty distinct concise English jokes while audio is being prepared", () => {
+    const remarks = virtualPianistLines.audio;
+    expect(remarks).toHaveLength(20);
+    expect(new Set(remarks).size).toBe(20);
+    for (const line of remarks) {
+      expect(line).toBe(line.trim());
+      expect(line.length).toBeLessThanOrEqual(80);
+      expect(line).toMatch(/^[\\x20-\\x7e\\u2018-\\u2019\\u2026]+$/);
+    }
+  });
+
   it("classifies the reported Worker task without fabricating unseen stages", () => {
     expect(phaseFromWorkerProgress("Loading self-hosted Pyodide 314.0.7.", "reading")).toBe("runtime");
     expect(phaseFromWorkerProgress("Loaded 12 notes; planning fingering...", "runtime")).toBe("fingering");
