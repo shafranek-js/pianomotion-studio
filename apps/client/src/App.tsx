@@ -75,7 +75,7 @@ export default function App() {
   const [sessionProfile, setSessionProfile] = useState<PianistProfile | null>(null);
   const [status, setStatus] = useState<StudioStatus>({ kind: "loading", message: "Preparing the local studio…" });
   const [busy, setBusy] = useState(false);
-  const [loadingExperience, setLoadingExperience] = useState<LoadingExperienceState>({
+  const [loadingExperience, setLoadingExperience] = useState<LoadingExperienceState | null>({
     generation: 0, phase: "startup", detail: "Preparing the local studio…",
   });
   const [builtinMelodiesOpen, setBuiltinMelodiesOpen] = useState(false);
