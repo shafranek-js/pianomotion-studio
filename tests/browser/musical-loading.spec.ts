@@ -1,6 +1,15 @@
 import { expect, test } from "@playwright/test";
 import { configureStudioTestOutput, expectStudioCanvas, studioMidiPath } from "./studio-helpers";
 
+test("status bar and release details display the current application version", async ({page}) => {
+  await page.goto("/?empty=true");
+  const release = page.locator(".studio-release-disclosure summary");
+  await expect(release).toContainText("v0.1.0-dev.23");
+  await expect(release).toHaveAttribute("aria-label", /Release details, version 0\\.1\\.0-dev\\.23/);
+  await release.click();
+  await expect(page.getByRole("region", {name: "Release details"})).toContainText("0.1.0-dev.23");
+});
+
 test("cold startup has an honest musical staff and an English-only pianist, then clears", async ({page}, info) => {
   test.setTimeout(90_000);
   const errors: string[] = [];
