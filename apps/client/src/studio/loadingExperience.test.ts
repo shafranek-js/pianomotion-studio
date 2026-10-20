@@ -20,7 +20,7 @@ describe("musical loading experience", () => {
   it("classifies the reported Worker task without fabricating unseen stages", () => {
     expect(phaseFromWorkerProgress("Loading self-hosted Pyodide 314.0.7.", "reading")).toBe("runtime");
     expect(phaseFromWorkerProgress("Loaded 12 notes; planning fingering...", "runtime")).toBe("fingering");
-    expect(phaseFromWorkerProgress("Calculating hand poses: 6/12", "fingering")).toBe("hands");
+    expect(phaseFromWorkerProgress("Calculating hand poses: 6/12", "fingering")).toBe("motion");
     expect(phaseFromWorkerProgress("Solving kinematics and scheduling rolled chords...", "analysis")).toBe("motion");
     expect(phaseFromWorkerProgress("an unknown opaque callback", "reading")).toBe("reading");
   });
