@@ -15,6 +15,7 @@ concurrency:
 jobs:
   windows:
     runs-on: windows-latest
+    timeout-minutes: 180
     strategy:
       fail-fast: false
       matrix:
@@ -56,4 +57,3 @@ jobs:
             pianomotion-studio/test-results/
             !pianomotion-studio/test-results/soundfont-inputs/**
             pianomotion-studio/playwright-report/
-            pianomotion-studio/docs/evidence/audit-repair-2026-10-15/

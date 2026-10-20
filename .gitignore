@@ -9,6 +9,8 @@
 dist/
 /apps/client/dist/
 test-results/
+playwright-report/
+*.log
 *.zip
 node_modules/
 .venv*/

@@ -200,7 +200,7 @@ pianomotion-studio/
 │   └── engine-ts/         TypeScript port of the Python engine
 ├── python-core/           handthesia_core — the reference engine (12 modules)
 ├── tests/
-│   ├── browser/           43 Playwright specs across 6 configurations
+│   ├── browser/           43 Playwright specs across 7 configurations
 │   ├── unit/              Vitest specs that do not live beside their source file
 │   └── fixtures/          13 MIDI inputs and 13 golden outputs from the desktop reference
 ├── tools/                 asset preparation, release build, CI driver, packaging
@@ -258,6 +258,7 @@ publishable `dist`.
 | `npm run lint` | ESLint over configs, tools and sources. |
 | `npm run test:unit` | Vitest: contracts, engine, parsers, editor, storage, 3D. |
 | `npm run test:browser` | Playwright UI suite. |
+| `npm run test:gpu` | WebGL/3D harness specs with a longer timeout. |
 | `npm run test:worker` | Worker, streaming and native-parity specs. |
 | `npm run test:audio` | Audio, DSP and SoundFont suites. |
 | `npm run test:soundfont` | Large and user SoundFont banks. |
@@ -278,7 +279,7 @@ Individual preparation steps are also available as `prepare:m1:assets`, `prepare
 | Suite | Files | Scope |
 |---|---|---|
 | Vitest | 67 files, 639 tests | Contracts, engine, MIDI, SoundFont SF2/SF3, storage, editor, render3d, i18n |
-| Playwright | 43 specs, 6 configs | UI, worker/parity, audio, SoundFont, offline PWA, media |
+| Playwright | 43 specs, 7 configs | UI, GPU/3D, worker/parity, audio, SoundFont, offline PWA, media |
 | pytest | 4 files, 31 tests | Core API, export, motion window, replan |
 | Goldens | 13 MIDI + 13 JSON | Desktop reference: notes, fingering, performance, pedals, poses |
 
