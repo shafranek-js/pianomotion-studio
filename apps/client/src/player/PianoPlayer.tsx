@@ -74,6 +74,7 @@ import { PlayAlongTransport } from "../studio/PlayAlongTransport";
 import { PracticePanel } from "../studio/PracticePanel";
 import type { KeyPressInfo } from "../render/keyboardView";
 import { buildRecoverySnapshot } from "./recoverySnapshot";
+import { playbackBlocker, type PlaybackBlocker } from "./playbackReadiness";
 
 export interface PianoPlayerProps {
   result: M1AnalyzeMidiResult;
@@ -99,6 +100,8 @@ export interface PianoPlayerProps {
   onOpenPianist(): void;
   onOpenProject(projectId: string): void;
   onRegisterSaveHandler(handler: SaveSession | null): void;
+  /** Reports when transport can actually start playback, after audio and plan preparation. */
+  onPlaybackReadinessChange?(requestId: string, blocker: PlaybackBlocker | null): void;
   onProjectSaved?(projectId: string): void;
   onProfileStateChange?(profile: PianistProfile): void;
   analysisWorker?: Worker;
@@ -212,6 +215,7 @@ export function PianoPlayer({
   onOpenPianist,
   onOpenProject,
   onRegisterSaveHandler,
+  onPlaybackReadinessChange,
   onProjectSaved,
   footerAddon,
 }: PianoPlayerProps) {
@@ -345,6 +349,10 @@ export function PianoPlayer({
     activeProfile.profileId !== analysis.profile.profileId || activeProfile.revision !== analysis.profile.revision ||
     keyStyle !== appliedKeyStyle || analysis.engineVersion !== engineVersion,
   );
+  const transportBlocker = playbackBlocker({ busy, needsReplan, preparingOutput, isPlaying, isBuffering });
+  useEffect(() => {
+    onPlaybackReadinessChange?.(result.requestId, transportBlocker);
+  }, [onPlaybackReadinessChange, result.requestId, transportBlocker]);
 
   useEffect(() => { needsReplanRef.current = needsReplan; }, [needsReplan]);
   useEffect(() => { dirtyRef.current = isDirty; }, [isDirty]);
@@ -1990,8 +1998,8 @@ export function PianoPlayer({
       onSeek={handleSeek}
       onSpeedChange={handleSpeedChange}
       onVolumeChange={handleVolumeChange}
-      disabled={busy || needsReplan}
-      playDisabled={preparingOutput && !isPlaying && !isBuffering}
+      disabled={transportBlocker === "reading" || transportBlocker === "analysis"}
+      playDisabled={transportBlocker === "audio"}
     />
   );
 
