@@ -1,8 +1,17 @@
 name: Verify studio
 on:
   push:
+    branches:
+      - main
   pull_request:
   workflow_dispatch:
+
+# A feature branch with an open PR needs one verification per latest commit,
+# not duplicate Chrome/Edge matrices for every push and PR synchronization.
+concurrency:
+  group: verify-studio-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   windows:
     runs-on: windows-latest

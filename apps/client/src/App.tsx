@@ -33,6 +33,8 @@ import { recordDiagnostic } from "./diagnostics/eventLog";
 import { DiagnosticLogControls } from "./diagnostics/DiagnosticLogControls";
 import { useI18n } from "./i18n";
 import { SessionOperationLifecycle, type SessionOperation } from "./sessionOperation";
+import { MusicalLoading } from "./studio/MusicalLoading";
+import { phaseFromWorkerProgress, measuredProgress, type LoadingExperienceState, type LoadingPhase } from "./studio/loadingExperience";
 
 type FixtureEntry = { fixturePath: string; fixtureSha256: string; scenarios?: string[] };
 type FixtureManifest = { fixtureSources: Record<string, FixtureEntry> };
@@ -66,13 +68,16 @@ declare global {
 }
 
 export default function App() {
-  const { dict, t } = useI18n();
+  const { dict, t, language } = useI18n();
   const [fixtureManifest, setFixtureManifest] = useState<FixtureManifest | null>(null);
   const [engineVersion, setEngineVersion] = useState("");
   const [active, setActive] = useState<ActiveSession | null>(null);
   const [sessionProfile, setSessionProfile] = useState<PianistProfile | null>(null);
   const [status, setStatus] = useState<StudioStatus>({ kind: "loading", message: "Preparing the local studio…" });
   const [busy, setBusy] = useState(false);
+  const [loadingExperience, setLoadingExperience] = useState<LoadingExperienceState | null>({
+    generation: 0, phase: "startup", detail: "Preparing the local studio…",
+  });
   const [builtinMelodiesOpen, setBuiltinMelodiesOpen] = useState(false);
   const openBuiltinMelodies = useCallback(() => setBuiltinMelodiesOpen(true), []);
   const [dirty, setDirty] = useState(false);
@@ -98,6 +103,12 @@ export default function App() {
   const preparedGenerationRef = useRef<number | null>(null);
   const operationLifecycleRef = useRef(new SessionOperationLifecycle());
   const startupRuntimePromiseRef = useRef<Promise<StartupRuntime> | null>(null);
+  /** Ignore late Worker progress from canceled/superseded operations. */
+  const reportLoading = useCallback((generation: number, detail: string, phase?: LoadingPhase, progress?: number) => {
+    setLoadingExperience(previous => previous?.generation === generation
+      ? { ...previous, phase: phase ?? phaseFromWorkerProgress(detail, previous.phase), detail, progress: measuredProgress(progress) }
+      : previous);
+  }, []);
   const autosaveService = useMemo(() => createAutosaveService({
     delayMs: 400,
     onError: (error) => setStatus({ kind: "error", message: `Session recovery could not be saved: ${error.message}` }),
@@ -181,6 +192,9 @@ export default function App() {
     const lifecycle = operationLifecycleRef.current;
     const operation = lifecycle.begin("bootstrap");
     const isCurrent = () => lifecycle.isCurrent(operation);
+    queueMicrotask(() => { if (isCurrent()) setLoadingExperience({
+      generation: operation.generation, phase: "startup", detail: "Loading local studio manifests…",
+    }); });
     let disposed = false;
     const cacheBust = import.meta.env.DEV ? `?t=${Date.now()}` : "";
     const runtimePromise = Promise.all([
@@ -214,6 +228,7 @@ export default function App() {
         const urlParams = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
         const forceEmpty = urlParams?.has("empty");
 
+        reportLoading(operation.generation, "Checking the saved session…", "restoring");
         const snapshot = await loadSessionSnapshot();
         if (!isCurrent()) return;
         if (!snapshot) {
@@ -225,6 +240,7 @@ export default function App() {
             );
             if (defaultEntry) {
               setStatus({ kind: "loading", message: `Loading ${defaultEntry.title}…` });
+              reportLoading(operation.generation, `Reading ${defaultEntry.title}…`, "reading");
               const midiBytes = await loadBuiltinMelodyBytes(defaultEntry, operation.signal);
               if (!isCurrent()) return;
               const sourceContext: ProjectSourceContext = {
@@ -238,7 +254,7 @@ export default function App() {
                 engineVersion: coreEngineVersion,
                 sourceContext,
                 signal: operation.signal,
-                onProgress: (msg) => { if (isCurrent()) setStatus({ kind: "calculating", message: msg }); },
+                onProgress: (msg, progress) => { if (isCurrent()) { setStatus({ kind: "calculating", message: msg, progress: measuredProgress(progress) }); reportLoading(operation.generation, msg, undefined, progress); } },
               });
               if (!isCurrent()) {
                 analysisWorker.terminate();
@@ -268,6 +284,7 @@ export default function App() {
           if (isCurrent()) setStatus({ kind: "idle", message: "Open a MIDI file, a saved project, or the demo song to begin." });
           return;
         }
+        reportLoading(operation.generation, "Verifying saved project identity…", "restoring");
         const assessed = await assessSessionSnapshot(snapshot, coreEngineVersion);
         if (!isCurrent()) return;
         if (!snapshot.result || !snapshot.rawMidiBytes || (assessed.status !== "compatible" && assessed.status !== "recompute-required")) {
@@ -285,7 +302,9 @@ export default function App() {
           return;
         }
         const savedProject = snapshotToSavedProject(snapshot, restoredSourceContext);
-        const rebuilt = await analyzeSavedProjectCandidate(savedProject, coreEngineVersion, operation.signal, undefined, restoredSourceContext);
+        const rebuilt = await analyzeSavedProjectCandidate(savedProject, coreEngineVersion, operation.signal,
+          (msg, progress) => { if (isCurrent()) { setStatus({ kind: "calculating", message: msg, progress: measuredProgress(progress) }); reportLoading(operation.generation, msg, undefined, progress); } },
+          restoredSourceContext);
         if (!isCurrent()) { rebuilt.analysisWorker.terminate(); return; }
         const restored: ActiveSession = {
           result: rebuilt.result,
@@ -313,6 +332,7 @@ export default function App() {
           setStatus({ kind: "error", message: `Studio startup failed: ${message}` });
         }
       } finally {
+        if (isCurrent()) setLoadingExperience(null);
         lifecycle.finish(operation);
       }
     };
@@ -324,7 +344,7 @@ export default function App() {
       preparedRef.current = null;
       preparedGenerationRef.current = null;
     };
-  }, []);
+  }, [reportLoading]);
 
   const fixtureIds = useMemo(() => Object.keys(fixtureManifest?.fixtureSources ?? {}).sort(), [fixtureManifest]);
 
@@ -359,7 +379,7 @@ export default function App() {
 
   const runCandidate = useCallback(async (
     description: string,
-    prepare: (signal: AbortSignal, progress: (message: string) => void, engineVersion: string) => Promise<ActiveSession>,
+    prepare: (signal: AbortSignal, progress: (message: string, progress?: number) => void, engineVersion: string) => Promise<ActiveSession>,
     operation: SessionOperation = operationLifecycleRef.current.begin("open"),
   ) => {
     const lifecycle = operationLifecycleRef.current;
@@ -369,6 +389,9 @@ export default function App() {
     preparedGenerationRef.current = null;
     const { signal } = operation;
     setBusy(true);
+    setLoadingExperience({ generation: operation.generation,
+      phase: description === "saved project" ? "restoring" : "reading",
+      detail: `Opening ${description}…` });
     setPendingCandidate(null);
     setConfirmReplace(false);
     setStatus({ kind: "calculating", message: `Validating ${description}…` });
@@ -378,8 +401,11 @@ export default function App() {
       if (!runtimePromise) throw new Error("The studio startup manifest is not ready.");
       const runtime = await runtimePromise;
       if (!lifecycle.isCurrent(operation)) return;
-      const candidate = await prepare(signal, (message) => {
-        if (lifecycle.isCurrent(operation)) setStatus({ kind: "calculating", message });
+      const candidate = await prepare(signal, (message, progress) => {
+        if (lifecycle.isCurrent(operation)) {
+          setStatus({ kind: "calculating", message, progress: measuredProgress(progress) });
+          reportLoading(operation.generation, message, undefined, progress);
+        }
       }, runtime.engineVersion);
       if (!lifecycle.isCurrent(operation)) {candidate.analysisWorker.terminate(); return;}
       if (dirtyRef.current && activeRef.current) {
@@ -406,11 +432,12 @@ export default function App() {
       setStatus({ kind: "error", message: `${description} was not opened: ${message}` });
     } finally {
       if (lifecycle.isCurrent(operation)) {
+        setLoadingExperience(null);
         lifecycle.finish(operation);
         setBusy(false);
       }
     }
-  }, [commitCandidate]);
+  }, [commitCandidate, reportLoading]);
 
   const openMidiFile = useCallback(async (file: File) => {
     await runCandidate(file.name, async (signal, progress, runtimeEngineVersion) => {
@@ -494,6 +521,7 @@ export default function App() {
     preparedRef.current = null;
     preparedGenerationRef.current = null;
     setBusy(false);
+    setLoadingExperience(null);
     setPendingCandidate(null);
     setConfirmReplace(false);
     window.__m1LastError = null;
@@ -732,6 +760,13 @@ export default function App() {
     </div>
   </div>;
 
+  // Player-local operations (such as editing/replanning or preparing audio)
+  // have their own genuine StudioStatus, separate from App's source-open lifecycle.
+  const stageLoading: LoadingExperienceState | null = active &&
+    (status.kind === "loading" || status.kind === "calculating")
+    ? { generation: -1, phase: phaseFromWorkerProgress(status.message, "analysis"), detail: status.message, progress: measuredProgress(status.progress) }
+    : null;
+  const displayedLoading = loadingExperience ?? stageLoading;
   const shellStatus: StudioStatus = active ? status : (busy ? { kind: "calculating", message: status.message } : status);
 
   const studioFooterAddon = (
@@ -815,6 +850,8 @@ export default function App() {
       footerAddon={studioFooterAddon}
       dialogs={dialogs}
     />}
+    {displayedLoading && <MusicalLoading key={displayedLoading.generation}
+      loading={displayedLoading} language={language} prominent={!active} />}
   </>;
 }
 

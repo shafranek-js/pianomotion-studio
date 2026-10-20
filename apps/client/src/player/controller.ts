@@ -28,7 +28,7 @@ export interface AnalyzeSourceOptions {
   sourceContext: ProjectSourceContext;
   profile?: SavedProject["profile"];
   signal: AbortSignal;
-  onProgress?: (message: string) => void;
+  onProgress?: (message: string, progress?: number) => void;
   allowInvalidResult?: boolean;
   onAnalysisResult?: (result: M1AnalyzeMidiResult) => void;
   worker?: Worker;
@@ -93,7 +93,7 @@ export async function analyzeSavedProjectCandidate(
   input: SavedProject,
   engineVersion: string,
   signal: AbortSignal,
-  onProgress?: (message: string) => void,
+  onProgress?: (message: string, progress?: number) => void,
   sourceContextOverride?: ProjectSourceContext,
 ): Promise<{ result: M1AnalyzeMidiResult; session: SessionSnapshot; project: SavedProject; sourceContext: ProjectSourceContext; analysisWorker:Worker }> {
   const project = validateSavedProject(input);

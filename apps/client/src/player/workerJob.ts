@@ -15,7 +15,7 @@ export function runWorkerJob<T>(
   send: (worker: Worker) => void,
   accept: (message: M1EngineMessage) => T | undefined,
   signal: AbortSignal,
-  onProgress?: (message: string) => void,
+  onProgress?: (message: string, progress?: number) => void,
   options: WorkerJobOptions = {},
 ): Promise<T> {
   return new Promise((resolve, reject) => {
@@ -46,7 +46,7 @@ export function runWorkerJob<T>(
         if (message.requestId !== request.requestId || message.projectId !== request.projectId ||
           message.revision !== request.revision) return;
         if (message.type === "worker-error") { finish(undefined, new Error(message.error.message)); return; }
-        if (message.type === "progress") { onProgress?.(message.message ?? message.stage); return; }
+        if (message.type === "progress") { onProgress?.(message.message ?? message.stage, message.stage === "compute" ? message.progress : undefined); return; }
         const accepted = accept(message);
         if (accepted !== undefined) finish(accepted);
       } catch (error) { finish(undefined, error); }

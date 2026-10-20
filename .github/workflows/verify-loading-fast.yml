@@ -1,0 +1,50 @@
+name: Fast PR validation
+
+on:
+  pull_request:
+    paths:
+      - "apps/client/src/**"
+      - "tests/browser/musical-loading.spec.ts"
+      - ".github/workflows/verify-loading-fast.yml"
+      - ".github/workflows/verify.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: fast-pr-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  fast-loading:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - name: Node 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+      - run: npm ci
+      - name: Check TypeScript
+        run: npm run typecheck
+      - name: Lint
+        run: npm run lint
+      - name: Unit tests
+        run: npm run test:unit
+      - name: Build release
+        env:
+          APP_BASE: /pianomotion-studio/
+        run: npm run build
+      - name: Install Chromium and system libraries
+        run: npx playwright install --with-deps chromium
+      - name: Loading experience browser acceptance
+        run: npx playwright test --config playwright.config.ts tests/browser/musical-loading.spec.ts
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: musical-loading-diagnostics
+          path: test-results/
+          retention-days: 5
