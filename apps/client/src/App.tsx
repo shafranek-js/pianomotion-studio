@@ -192,7 +192,9 @@ export default function App() {
     const lifecycle = operationLifecycleRef.current;
     const operation = lifecycle.begin("bootstrap");
     const isCurrent = () => lifecycle.isCurrent(operation);
-    setLoadingExperience({ generation: operation.generation, phase: "startup", detail: "Loading local studio manifests…" });
+    queueMicrotask(() => { if (isCurrent()) setLoadingExperience({
+      generation: operation.generation, phase: "startup", detail: "Loading local studio manifests…",
+    }); });
     let disposed = false;
     const cacheBust = import.meta.env.DEV ? `?t=${Date.now()}` : "";
     const runtimePromise = Promise.all([
