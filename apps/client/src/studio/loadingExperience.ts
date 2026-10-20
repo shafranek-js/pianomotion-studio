@@ -69,7 +69,7 @@ export function phaseFromWorkerProgress(message: string, previous: LoadingPhase)
   if (/pyodide|python runtime|runtime assets|wheel|python.core|python core|package|engine version|source files/.test(lower)) return "runtime";
   if (/finger|fingering|beam search/.test(lower)) return "fingering";
   if (/separat|hand split|left.hand|right.hand|assigning hands/.test(lower)) return "hands";
-  if (/motion|kinematic|trajectory|wrist/.test(lower)) return "motion";
+  if (/motion|kinematic|trajectory|wrist|hand poses/.test(lower)) return "motion";
   if (/audio|soundfont|synthesiz/.test(lower)) return "audio";
   if (/midi bytes|reading midi|loading midi|parsing midi|decoding midi/.test(lower)) return "reading";
   if (/analy|comput|calculat|note|score|performance/.test(lower)) return "analysis";
