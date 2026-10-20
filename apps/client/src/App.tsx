@@ -758,6 +758,13 @@ export default function App() {
     </div>
   </div>;
 
+  // Player-local operations (such as editing/replanning or preparing audio)
+  // have their own genuine StudioStatus, separate from App's source-open lifecycle.
+  const stageLoading: LoadingExperienceState | null = active &&
+    (status.kind === "loading" || status.kind === "calculating")
+    ? { generation: -1, phase: phaseFromWorkerProgress(status.message, "analysis"), detail: status.message }
+    : null;
+  const displayedLoading = loadingExperience ?? stageLoading;
   const shellStatus: StudioStatus = active ? status : (busy ? { kind: "calculating", message: status.message } : status);
 
   const studioFooterAddon = (
@@ -841,8 +848,8 @@ export default function App() {
       footerAddon={studioFooterAddon}
       dialogs={dialogs}
     />}
-    {loadingExperience && <MusicalLoading key={loadingExperience.generation}
-      loading={loadingExperience} language={language} prominent={!active} />}
+    {displayedLoading && <MusicalLoading key={displayedLoading.generation}
+      loading={displayedLoading} language={language} prominent={!active} />}
   </>;
 }
 
