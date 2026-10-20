@@ -41,7 +41,7 @@ export function MusicalLoading({ loading, language, prominent }: MusicalLoadingP
           <svg viewBox="0 0 340 112" xmlns="http://www.w3.org/2000/svg" focusable="false">
             {[26, 39, 52, 65, 78].map((y) => <line key={y} x1="8" y1={y} x2="332" y2={y} className="musical-loading__staff" />)}
             {[{x:38,y:65},{x:78,y:52},{x:119,y:59},{x:161,y:39},{x:204,y:52},{x:248,y:45},{x:292,y:65}].map((n,i) => (
-              <g key={i} className="musical-loading__note" style={{ animationDelay: `${i*0.22}s`,
+              <g key={i} className={fraction === undefined ? "musical-loading__note musical-loading__note--indeterminate" : "musical-loading__note"} style={{ animationDelay: `${i*0.32}s`,
                 opacity: fraction === undefined ? undefined : fraction >= (i+1)/7 ? 1 : .24 }}>
                 <ellipse cx={n.x} cy={n.y} rx="7.3" ry="4.9" transform={`rotate(-20 ${n.x} ${n.y})`} />
                 <path d={`M${n.x+7} ${n.y-1} v-34`} />
