@@ -21,7 +21,7 @@ import { reset_context } from "./fingering.ts";
 
 const EMBEDDED_MANIFEST = {
   "schemaVersion": 1,
-  "engineVersion": "60341216864eb0a548fbc66ba2b1848b9bb7b6b2de85c2c1e7f03fbd655bc63a",
+  "engineVersion": "cfb68636b58b2dd2b28eb4cfb7190f4ad539023e3925ee14fb632cb56e59f961",
   "entrypoint": "handthesia_core.api:analyze_midi",
   "replanEntrypoint": "handthesia_core.api:replan_document",
   "pythonPackages": [
@@ -31,16 +31,16 @@ const EMBEDDED_MANIFEST = {
   ],
   "files": {
     "handthesia_core/__init__.py": "b717704c7b696ca09293395731d10d903b82772d691f5ef60028bcf4d4e67ac0",
-    "handthesia_core/api.py": "37acbed56dc14555a5bd929185ee660f458af15efe945c43506f7d1a4c458e29",
+    "handthesia_core/api.py": "e50548bc59a9fb6fb1fb1ce27088c7713b74dd0ce5a88528c6356cc9589c3f5a",
     "handthesia_core/figures.py": "0c89b85176c73f566528c692944e6c7192444f9c7134c13d5ec027063fb86fb9",
-    "handthesia_core/fingering.py": "88f9d1f4875e33c67c33e01fd536e710eb113be704a9ebffcd7fc69d065b4376",
+    "handthesia_core/fingering.py": "2140b2a5b81e4724fce03e99470edef9aff0c97f56fc6bff07c66aedf672c9ac",
     "handthesia_core/geometry.py": "df96013f715b51fb21ed95087259a1fe202dd7e828e6e09e4578172a43f3c5fd",
     "handthesia_core/glissando.py": "7c1a472b3edb380d222a06ca41def651bb84078ecaddcb6180ee4b0a2b772923",
     "handthesia_core/hand_split.py": "0e2dc047343befe0fa8b0384f81a19fe9ab944736a46dda62d4280eb2f4f4243",
     "handthesia_core/hands.py": "065239356c3a63565edf4d684294cfe9bfcb740b6572ffe577e1e736d565d800",
     "handthesia_core/identity.py": "a2bf6d82f09e2bea6610b29ad0d494931e64ee43744bfcbc8e6b20cfab694906",
     "handthesia_core/midi_loader.py": "883fe70d80f1af7baebddffafd78647947ebff6c810012ea798f6d3987b96359",
-    "handthesia_core/pianist.py": "4898a30747011dbc4d604f83a9b25f0727d4bfe0397540b96b1ed8d68c827afe",
+    "handthesia_core/pianist.py": "e80a4b4c4f2511e344d9b8ee8921f83442dac816ea53dfc8f5d2747e0f49cb19",
     "handthesia_core/progress.py": "e068d2edf6dbde6b51028259d6516594d86c277193e3bdca5b95f23e1c632d6a"
   },
   "desktopSourceCommit": "f8189c021d9235005fb35faa2c8cfbc09a3768a0",
@@ -105,7 +105,7 @@ export function _resolve_profile(value: any = null): any {
   required = ['schemaVersion', 'profileId', 'revision', 'name', 'colorRgb', 'anatomy', 'behavior', 'skin', 'weights', 'createdAtUnixSeconds', 'modifiedAtUnixSeconds'];
   missing = Array.from(pyIter(required)).filter((key: any) => ((!pyIn(key, profile)))).map((key: any) => key);
   if (bool(missing)) {
-    throw ValueError(('profile DTO is missing: ' + ', '.join(missing)));
+    throw ValueError(('profile DTO is missing: ' + missing.join(', ')));
   }
   if ((pyNotEq(profile['schemaVersion'], SCHEMA_VERSION))) {
     throw ValueError('unsupported profile schemaVersion');
@@ -116,7 +116,7 @@ export function _resolve_profile(value: any = null): any {
   if ((bool((!bool(String(profile['profileId']).trim()))) ? ((!bool(String(profile['profileId']).trim()))) : ((!bool(String(profile['name']).trim()))))) {
     throw ValueError('profile identity and name must be nonempty');
   }
-  resolved = { ['schemaVersion']: SCHEMA_VERSION, ['profileId']: String(profile['profileId']), ['revision']: Math.trunc(profile['revision']), ['name']: String(profile['name']), ['colorRgb']: Array.from(pyIter(profile['colorRgb'])).map((c: any) => Math.trunc(c)), ['anatomy']: Object.fromEntries(Array.from(pyIter(pyItems(profile['anatomy']))).map(([k, v]: any) => [String(k), _finite(v, `profile.anatomy.${k}`)])), ['behavior']: { ...profile['behavior'] }, ['skin']: { ...profile['skin'] }, ['weights']: Object.fromEntries(Array.from(pyIter(pyItems(profile['weights']))).map(([k, v]: any) => [String(k), _finite(v, `profile.weights.${k}`)])), ['createdAtUnixSeconds']: _finite(profile['createdAtUnixSeconds'], 'profile.createdAtUnixSeconds'), ['modifiedAtUnixSeconds']: _finite(profile['modifiedAtUnixSeconds'], 'profile.modifiedAtUnixSeconds') };
+  resolved = { ['schemaVersion']: SCHEMA_VERSION, ['profileId']: String(profile['profileId']), ['revision']: Math.trunc(profile['revision']), ['name']: String(profile['name']), ['colorRgb']: Array.from(pyIter(profile['colorRgb'])).map((c: any) => Math.trunc(c)), ['anatomy']: Object.fromEntries(Array.from(pyIter(pyItems(profile['anatomy']))).map(([k, v]: any) => [String(k), _finite(v, `profile.anatomy.${k}`)])), ['behavior']: pianist_module.normalize_behavior(profile['behavior'], { strict: true }), ['skin']: { ...profile['skin'] }, ['weights']: Object.fromEntries(Array.from(pyIter(pyItems(profile['weights']))).map(([k, v]: any) => [String(k), _finite(v, `profile.weights.${k}`)])), ['createdAtUnixSeconds']: _finite(profile['createdAtUnixSeconds'], 'profile.createdAtUnixSeconds'), ['modifiedAtUnixSeconds']: _finite(profile['modifiedAtUnixSeconds'], 'profile.modifiedAtUnixSeconds') };
   context = pianist_module.from_profile_dto(resolved);
   return [resolved, context];
 }
@@ -220,7 +220,7 @@ export function _dedupe_serialized_motion_poses(poses: any = null): any {
 }
 export function _plan_id(kind: any = null, request_id: any = null): any {
   let digest: any;
-  digest = ({ hexdigest: () => sha256(new TextEncoder().encode(`${kind} ${request_id}`)) }).hexdigest().slice(0, 24);
+  digest = ({ hexdigest: () => sha256(new TextEncoder().encode(`${kind}\u0000${request_id}`)) }).hexdigest().slice(0, 24);
   return `${kind}/${digest}`;
 }
 export function _same_json(left: any = null, right: any = null): any {
@@ -342,10 +342,10 @@ export function _profile_diagnostics(diagnostics: any = null): any {
 export function analyze_midi(data: any = null, options: any = null): any {
   let _lead: any, _strength: any, _top: any, aliases_by_note: any, ambiguous_alias_ids: any, ambiguous_normalized_ids: any, ambiguous_source_identity_diagnostic: any, ambiguous_source_ids: any, animator: any, animators: any, arranged: any, assignment_by_identity: any, assignment_dto: any, assignment_dtos: any, assignments: any, bpm: any, cleanup: any, common_plan: any, common_result: any, common_sample_times: any, controller: any, crossing_episodes: any, decoded: any, desktop_notes: any, diagnostics: any, disposition: any, document: any, document_notes: any, dto: any, edited_assignments: any, edited_assignments_by_id: any, edited_document: any, edited_intent: any, edited_note: any, edited_notes: any, edited_plan: any, end: any, engine_version: any, entry: any, entry_by_id: any, entry_by_object: any, error: any, event: any, event_by_source_id: any, finger: any, fingering_plan: any, fixture_id: any, frac: any, gliss_ids: any, hand_name: any, hands_summary: any, identity_losses: any, identity_mappings: any, index: any, initial_end: any, initial_motion_window: any, input_hash: any, intent_key: any, key_style: any, keyboard: any, keyboard_rect: any, locators: any, manifest: any, missing: any, motion_plan: any, motion_poses: any, normalized: any, normalized_id: any, note: any, note_id: any, note_id_by_object: any, observed: any, ordinal: any, original_song: any, paired: any, parse_errors: any, parser_cleanup: any, pedal_controls: any, pedals: any, performance_events: any, performance_plan: any, performance_plan_events: any, planning_song: any, pose: any, press: any, profile_context: any, profile_dto: any, profile_id: any, profile_revision: any, project_id: any, raw: any, raw_baseline: any, raw_channels: any, raw_events: any, raw_observation: any, raw_pedals: any, raw_poses: any, raw_status: any, raw_tracks: any, rect_values: any, release: any, replan_context: any, report_step: any, request_id: any, requested_times: any, required: any, resource: any, resource_id: any, revision: any, sample_time: any, sample_times_by_hand: any, sampled: any, sampled_window: any, shared: any, solved_count: any, song: any, source: any, source_bytes: any, source_decode_error: any, source_event_map: any, source_id: any, source_ids: any, source_items: any, source_note: any, source_notes: any, source_notes_by_id: any, source_parse_errors: any, source_pm: any, start: any, status: any, tempi: any, tempo_map: any, tempo_times: any, time_seconds: any, total_samples: any, track: any, track_dto: any, track_dtos: any, tracks_by_index: any, unmapped_source_ids: any, unplayable_ids: any, updated_entries: any, updated_note_ids: any, updated_notes: any, value: any;
   // Import, normalize, finger, schedule, and sample a MIDI in one job.
-  // 
+  //
   //     ``data`` remains in memory and its SHA-256 is returned as a resource
   //     descriptor. No Python object identity is serialized.
-  //     
+  //
   if (bool((!bool((data instanceof Uint8Array || data instanceof ArrayBuffer))))) {
     throw TypeError('data must be bytes-like');
   }
@@ -737,16 +737,16 @@ export function analyze_midi(data: any = null, options: any = null): any {
 export function replan_document(data: any = null, document: any = null, fingering_plan: any = null, options: any = null): any {
   let actual_hash: any, analyze_options: any, baseline: any, missing: any, profile_id: any, profile_revision: any, required: any, resource: any, result: any, source_bytes: any;
   // Recompute performance and motion from original bytes plus typed edits.
-  // 
+  //
   //     The normalized source is decoded again, then edited note intents are joined
   //     only by the document's persistent note IDs. No MIDI export/reimport or
   //     pitch/time proximity matching participates in the replan.
-  //     
+  //
   options = { ...(bool(options) ? (options) : ({  })) };
   required = ['fixtureId', 'projectId', 'revision', 'requestId', 'engineVersion', 'profile', 'keyStyle', 'resource', 'rawBaseline'];
   missing = Array.from(pyIter(required)).filter((key: any) => ((!pyIn(key, options)))).map((key: any) => key);
   if (bool(missing)) {
-    throw ValueError(('options is missing: ' + ', '.join(missing)));
+    throw ValueError(('options is missing: ' + missing.join(', ')));
   }
   source_bytes = (data instanceof Uint8Array ? data : new Uint8Array(data));
   resource = options['resource'];
@@ -811,7 +811,7 @@ export function export_fingered_midi(data: any = null, document: any = null, fin
   //     Maps FingeringPlan.assignments to note objects.
   //     Calls save_fingered_midi_bytes.
   //     Returns: {"exportedBytes": exported_bytes, "markedCount": count}.
-  //     
+  //
   if (bool((!bool((data instanceof Uint8Array || data instanceof ArrayBuffer))))) {
     throw TypeError('data must be bytes-like');
   }
@@ -851,15 +851,15 @@ export function export_fingered_midi(data: any = null, document: any = null, fin
 export function sample_motion_window(data: any = null, document: any = null, fingering_plan: any = null, start_time: any = null, end_time: any = null, options: any = null): any {
   let _lead: any, _n: any, _notes: any, _strength: any, _top: any, animator: any, animator_hand: any, animators: any, arranged: any, assign: any, assignments_by_id: any, c_end: any, c_start: any, ce: any, cleanup: any, continuation_time: any, continuous_end: any, coverage: any, coverage_hand: any, cs: any, curr_t: any, decoded: any, desktop_notes: any, disposition: any, doc_note: any, edited_note: any, effective_end_time: any, engine_version: any, entry_by_object: any, episodes: any, event: any, finger: any, fixture_id: any, gap: any, grid_step: any, h: any, h_poses: any, h_times: any, hand: any, hand_key: any, hand_name: any, hand_val: any, has_gap: any, idx: any, is_complete: any, is_gliss: any, key_style: any, keyboard: any, keyboard_rect: any, lowest_key_left: any, manifest: any, max_poses: any, mid: any, motion_poses: any, nid: any, note: any, note_id_by_object: any, notes_by_id: any, observed: any, p: any, paired: any, pf: any, planning_notes: any, planning_song: any, pose: any, poses_for_t: any, press: any, profile_context: any, profile_dto: any, profile_id: any, project_id: any, raw_finger: any, raw_hand: any, raw_max_poses: any, rect_values: any, release: any, request_id: any, res: any, revision: any, rf: any, sample_times: any, sampled: any, session: any, session_key: any, single_coverage: any, single_pose: any, song: any, sorted_times: any, source: any, source_bytes: any, source_event_map: any, source_notes: any, strike_dt: any, t: any, tf: any, truncated: any, unmapped_source_ids: any, unplayable_ids: any, updated_notes: any, window_end: any, window_start: any;
   // Bounded motion lookahead buffer sampling.
-  // 
+  //
   //     Samples from the explicit start through the effective end plus a small forward
   //     strike lookahead. Continuations should pass their own boundary overlap; implicit
   //     history is excluded so a dense capped window can make forward progress. Samples
   //     note events, crossings, and uniform steps no farther apart than 250ms, while
   //     keeping poses at each timestamp together under the total pose cap.
-  // 
+  //
   //     Active animator sessions are cached by (projectId, revision, profileId).
-  //     
+  //
   options = { ...(bool(options) ? (options) : ({  })) };
   start_time = _finite(start_time, 'start_time');
   end_time = _finite(end_time, 'end_time');

@@ -635,6 +635,65 @@ export const BEHAVIOR: Readonly<Record<string, BehaviorSpec>> =
 export const DEFAULT_BEHAVIOR: Readonly<Record<string, number | string>> =
   Object.fromEntries(BEHAVIORS.map((b) => [b.id, b.default]));
 
+export interface NormalizeBehaviorOptions {
+  strict?: boolean;
+}
+
+/**
+ * A behavior mapping checked against BEHAVIORS.
+ *
+ * Slider values are coerced to numbers and clamped to their spec range, so a
+ * profile can never install an out-of-range speed, smoothing time or other
+ * constant that the rest of the model divides by. Option values must be one of
+ * the spec's options; anything else keeps the default. Unknown keys are
+ * ignored. With strict, a malformed value throws instead of falling back.
+ */
+export function normalizeBehavior(
+  values: unknown,
+  options: NormalizeBehaviorOptions = {},
+): Record<string, number | string> {
+  const strict = options.strict === true;
+  const behavior: Record<string, number | string> = { ...DEFAULT_BEHAVIOR };
+  if (values === null || values === undefined) {
+    return behavior;
+  }
+  if (typeof values !== "object" || Array.isArray(values)) {
+    throw new Error("profile behavior must be an object");
+  }
+  for (const [key, raw] of Object.entries(values as Record<string, unknown>)) {
+    const spec = BEHAVIOR[key];
+    if (spec === undefined) {
+      continue;
+    }
+    if (spec.kind === "slider") {
+      const malformed =
+        typeof raw === "boolean" ||
+        raw === null ||
+        raw === undefined ||
+        (typeof raw === "string" && raw.trim() === "");
+      const number = malformed ? Number.NaN : Number(raw);
+      if (!Number.isFinite(number)) {
+        if (strict) {
+          throw new Error(`profile.behavior.${key} must be a finite number`);
+        }
+        continue;
+      }
+      behavior[key] = Math.min(spec.max, Math.max(spec.min, number));
+    } else {
+      const allowed = spec.options.map((option) => option[0]);
+      if (typeof raw === "string" && allowed.includes(raw)) {
+        behavior[key] = raw;
+      } else if (strict) {
+        throw new Error(`profile.behavior.${key} must be one of: ${allowed.join(", ")}`);
+      }
+    }
+  }
+  return behavior;
+}
+
+export const normalize_behavior = normalizeBehavior;
+
+
 const FINE_TUNE_ID_SET = new Set<string>([
   "stretch",
   "cramp",
@@ -1071,7 +1130,7 @@ export function fromProfileDto(profile: Record<string, any> | null | undefined):
       Number(colorRgb[2] ?? 14),
     ],
     profile.anatomy ? { ...profile.anatomy } : { ...DEFAULT_ANATOMY },
-    profile.behavior ? { ...profile.behavior } : { ...DEFAULT_BEHAVIOR },
+    normalizeBehavior(profile.behavior),
     Number(profile.createdAtUnixSeconds ?? 0.0),
     Number(profile.modifiedAtUnixSeconds ?? 0.0),
     profile.skin ? { ...profile.skin } : { style: "cartoon" },

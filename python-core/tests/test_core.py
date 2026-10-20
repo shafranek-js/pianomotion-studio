@@ -330,6 +330,42 @@ def test_profile_a_b_a_runs_are_observationally_isolated():
     assert run_b["motionPlan"] != default["motionPlan"]
 
 
+def test_profile_behavior_is_clamped_and_validated():
+    from handthesia_core import fingering, pianist
+    from handthesia_core.api import _resolve_profile
+
+    base, _ = _resolve_profile(None)
+
+    # A zero or negative speed is a valid request: clamp it, never divide by it.
+    zero_speed = json.loads(json.dumps(base))
+    zero_speed["profileId"] = "zero-speed"
+    zero_speed["revision"] = 1
+    zero_speed["behavior"]["max_speed"] = 0.0
+    zero_speed["behavior"]["smoothness"] = 1e9
+    resolved, context = _resolve_profile(zero_speed)
+    assert resolved["behavior"]["max_speed"] == pianist.BEHAVIOR["max_speed"]["min"]
+    assert resolved["behavior"]["smoothness"] == pianist.BEHAVIOR["smoothness"]["max"]
+    assert context.behavior["max_speed"] == resolved["behavior"]["max_speed"]
+    fingering.apply_pianist(context)
+    assert fingering.travel_time(1.0) > 0.0
+
+    # A Pianist constructed outside the API is still safe.
+    raw = pianist.from_profile_dto({"behavior": {"max_speed": 0.0}})
+    fingering.apply_pianist(raw)
+    assert fingering.travel_time(1.0) > 0.0
+
+    # Malformed values are reported instead of being silently repaired.
+    bad_type = json.loads(json.dumps(base))
+    bad_type["behavior"]["max_speed"] = "fast"
+    with pytest.raises(ValueError):
+        _resolve_profile(bad_type)
+
+    bad_option = json.loads(json.dumps(base))
+    bad_option["behavior"]["octaves"] = "nonsense"
+    with pytest.raises(ValueError):
+        _resolve_profile(bad_option)
+
+
 if __name__ == "__main__":
     for test in (
         test_python_package_imports_without_pygame,
@@ -342,6 +378,7 @@ if __name__ == "__main__":
         test_motion_pose_dedup_only_removes_identical_serialized_collisions,
         test_document_source_ids_follow_normalizer_aliases_not_pitch_time_join,
         test_profile_a_b_a_runs_are_observationally_isolated,
+        test_profile_behavior_is_clamped_and_validated,
     ):
         test()
         print(f"PASS: {test.__name__}")

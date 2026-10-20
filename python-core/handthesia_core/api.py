@@ -102,7 +102,7 @@ def _resolve_profile(value):
         "name": str(profile["name"]),
         "colorRgb": [int(c) for c in profile["colorRgb"]],
         "anatomy": {str(k): _finite(v, f"profile.anatomy.{k}") for k, v in profile["anatomy"].items()},
-        "behavior": dict(profile["behavior"]),
+        "behavior": pianist.normalize_behavior(profile["behavior"], strict=True),
         "skin": dict(profile["skin"]),
         "weights": {str(k): _finite(v, f"profile.weights.{k}") for k, v in profile["weights"].items()},
         "createdAtUnixSeconds": _finite(profile["createdAtUnixSeconds"], "profile.createdAtUnixSeconds"),

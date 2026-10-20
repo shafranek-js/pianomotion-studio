@@ -143,7 +143,11 @@ export const HAND_SLACK = 1.5;
 export const MOVE_SHARE = 0.75;
 
 export function travel_time(dist_wk: number, max_speed: number | null = null): number {
-  return (PEAK_RATIO * Math.abs(dist_wk) * WHITE_KEY_M) / (max_speed || MAX_SPEED);
+  let speed = max_speed || MAX_SPEED;
+  if (!Number.isFinite(speed) || speed <= 0) {
+    speed = DEFAULT_MAX_SPEED;
+  }
+  return (PEAK_RATIO * Math.abs(dist_wk) * WHITE_KEY_M) / speed;
 }
 export const travelTime = travel_time;
 
@@ -677,7 +681,8 @@ export function reset_context(p: PianistLike | null = null): void {
 export const resetContext = reset_context;
 
 function _apply_preferences(p: PianistLike, base: Record<string, number>): void {
-  MAX_SPEED = Number(getPianistBehavior(p, "max_speed"));
+  const speed = Number(getPianistBehavior(p, "max_speed"));
+  MAX_SPEED = Number.isFinite(speed) && speed > 0 ? speed : DEFAULT_MAX_SPEED;
   const kSpan = hand_span_inches(p.anatomy) / hand_span_inches(null);
   for (const [f, v] of Object.entries(BASE_RELAXED)) {
     RELAXED[Number(f)] = v * kSpan;
