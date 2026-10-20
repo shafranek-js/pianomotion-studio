@@ -35,6 +35,7 @@ import { useI18n } from "./i18n";
 import { SessionOperationLifecycle, type SessionOperation } from "./sessionOperation";
 import { MusicalLoading } from "./studio/MusicalLoading";
 import { phaseFromWorkerProgress, measuredProgress, type LoadingExperienceState, type LoadingPhase } from "./studio/loadingExperience";
+import type { PlaybackBlocker } from "./player/playbackReadiness";
 
 type FixtureEntry = { fixturePath: string; fixtureSha256: string; scenarios?: string[] };
 type FixtureManifest = { fixtureSources: Record<string, FixtureEntry> };
@@ -78,6 +79,14 @@ export default function App() {
   const [loadingExperience, setLoadingExperience] = useState<LoadingExperienceState | null>({
     generation: 0, phase: "startup", detail: "Preparing the local studio…",
   });
+  const [playbackReadiness, setPlaybackReadiness] = useState<{
+    requestId: string;
+    blocker: PlaybackBlocker | null;
+  } | null>(null);
+  const handlePlaybackReadinessChange = useCallback((requestId: string, blocker: PlaybackBlocker | null) => {
+    setPlaybackReadiness(previous => previous?.requestId === requestId && previous.blocker === blocker
+      ? previous : { requestId, blocker });
+  }, []);
   const [builtinMelodiesOpen, setBuiltinMelodiesOpen] = useState(false);
   const openBuiltinMelodies = useCallback(() => setBuiltinMelodiesOpen(true), []);
   const [dirty, setDirty] = useState(false);
@@ -766,7 +775,25 @@ export default function App() {
     (status.kind === "loading" || status.kind === "calculating")
     ? { generation: -1, phase: phaseFromWorkerProgress(status.message, "analysis"), detail: status.message, progress: measuredProgress(status.progress) }
     : null;
-  const displayedLoading = loadingExperience ?? stageLoading;
+  // A finished MIDI analysis is NOT equivalent to playback readiness: the
+  // newly mounted player still decodes and prepares its selected SoundFont.
+  // Match the session identity so a prior player's "ready" cannot dismiss the
+  // current source's indicator during a switch.
+  const readinessBlocker: PlaybackBlocker | null = active
+    ? playbackReadiness?.requestId === active.result.requestId
+      ? playbackReadiness.blocker
+      : "audio"
+    : null;
+  const awaitingPlayback: LoadingExperienceState | null = active && readinessBlocker && status.kind !== "error"
+    ? {
+      generation: -2,
+      phase: readinessBlocker,
+      detail: readinessBlocker === "audio" ? "Preparing the selected audio output…"
+        : readinessBlocker === "analysis" ? "Preparing the playback plan…"
+          : "Opening your project…",
+    }
+    : null;
+  const displayedLoading = loadingExperience ?? stageLoading ?? awaitingPlayback;
   const shellStatus: StudioStatus = active ? status : (busy ? { kind: "calculating", message: status.message } : status);
 
   const studioFooterAddon = (
@@ -814,6 +841,7 @@ export default function App() {
       autosaveService={autosaveService}
       onViewModeChange={setViewMode}
       onStatusChange={setStatus}
+      onPlaybackReadinessChange={handlePlaybackReadinessChange}
       onOpenMidi={() => midiInputRef.current?.click()}
       onOpenBuiltinMelodies={openBuiltinMelodies}
       onOpenPackage={() => projectInputRef.current?.click()}
@@ -851,7 +879,7 @@ export default function App() {
       dialogs={dialogs}
     />}
     {displayedLoading && <MusicalLoading key={displayedLoading.generation}
-      loading={displayedLoading} language={language} prominent={!active} />}
+      loading={displayedLoading} language={language} prominent={!active} immediate={Boolean(awaitingPlayback)} />}
   </>;
 }
 
