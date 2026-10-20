@@ -34,7 +34,7 @@ import { DiagnosticLogControls } from "./diagnostics/DiagnosticLogControls";
 import { useI18n } from "./i18n";
 import { SessionOperationLifecycle, type SessionOperation } from "./sessionOperation";
 import { MusicalLoading } from "./studio/MusicalLoading";
-import { phaseFromWorkerProgress, type LoadingExperienceState, type LoadingPhase } from "./studio/loadingExperience";
+import { phaseFromWorkerProgress, measuredProgress, type LoadingExperienceState, type LoadingPhase } from "./studio/loadingExperience";
 
 type FixtureEntry = { fixturePath: string; fixtureSha256: string; scenarios?: string[] };
 type FixtureManifest = { fixtureSources: Record<string, FixtureEntry> };
@@ -104,9 +104,9 @@ export default function App() {
   const operationLifecycleRef = useRef(new SessionOperationLifecycle());
   const startupRuntimePromiseRef = useRef<Promise<StartupRuntime> | null>(null);
   /** Ignore late Worker progress from canceled/superseded operations. */
-  const reportLoading = useCallback((generation: number, detail: string, phase?: LoadingPhase) => {
+  const reportLoading = useCallback((generation: number, detail: string, phase?: LoadingPhase, progress?: number) => {
     setLoadingExperience(previous => previous?.generation === generation
-      ? { ...previous, phase: phase ?? phaseFromWorkerProgress(detail, previous.phase), detail, progress: undefined }
+      ? { ...previous, phase: phase ?? phaseFromWorkerProgress(detail, previous.phase), detail, progress: measuredProgress(progress) }
       : previous);
   }, []);
   const autosaveService = useMemo(() => createAutosaveService({
@@ -254,7 +254,7 @@ export default function App() {
                 engineVersion: coreEngineVersion,
                 sourceContext,
                 signal: operation.signal,
-                onProgress: (msg) => { if (isCurrent()) { setStatus({ kind: "calculating", message: msg }); reportLoading(operation.generation, msg); } },
+                onProgress: (msg, progress) => { if (isCurrent()) { setStatus({ kind: "calculating", message: msg, progress: measuredProgress(progress) }); reportLoading(operation.generation, msg, undefined, progress); } },
               });
               if (!isCurrent()) {
                 analysisWorker.terminate();
@@ -303,7 +303,7 @@ export default function App() {
         }
         const savedProject = snapshotToSavedProject(snapshot, restoredSourceContext);
         const rebuilt = await analyzeSavedProjectCandidate(savedProject, coreEngineVersion, operation.signal,
-          (msg) => { if (isCurrent()) { setStatus({ kind: "calculating", message: msg }); reportLoading(operation.generation, msg); } },
+          (msg, progress) => { if (isCurrent()) { setStatus({ kind: "calculating", message: msg, progress: measuredProgress(progress) }); reportLoading(operation.generation, msg, undefined, progress); } },
           restoredSourceContext);
         if (!isCurrent()) { rebuilt.analysisWorker.terminate(); return; }
         const restored: ActiveSession = {
@@ -379,7 +379,7 @@ export default function App() {
 
   const runCandidate = useCallback(async (
     description: string,
-    prepare: (signal: AbortSignal, progress: (message: string) => void, engineVersion: string) => Promise<ActiveSession>,
+    prepare: (signal: AbortSignal, progress: (message: string, progress?: number) => void, engineVersion: string) => Promise<ActiveSession>,
     operation: SessionOperation = operationLifecycleRef.current.begin("open"),
   ) => {
     const lifecycle = operationLifecycleRef.current;
@@ -401,10 +401,10 @@ export default function App() {
       if (!runtimePromise) throw new Error("The studio startup manifest is not ready.");
       const runtime = await runtimePromise;
       if (!lifecycle.isCurrent(operation)) return;
-      const candidate = await prepare(signal, (message) => {
+      const candidate = await prepare(signal, (message, progress) => {
         if (lifecycle.isCurrent(operation)) {
-          setStatus({ kind: "calculating", message });
-          reportLoading(operation.generation, message);
+          setStatus({ kind: "calculating", message, progress: measuredProgress(progress) });
+          reportLoading(operation.generation, message, undefined, progress);
         }
       }, runtime.engineVersion);
       if (!lifecycle.isCurrent(operation)) {candidate.analysisWorker.terminate(); return;}
@@ -764,7 +764,7 @@ export default function App() {
   // have their own genuine StudioStatus, separate from App's source-open lifecycle.
   const stageLoading: LoadingExperienceState | null = active &&
     (status.kind === "loading" || status.kind === "calculating")
-    ? { generation: -1, phase: phaseFromWorkerProgress(status.message, "analysis"), detail: status.message }
+    ? { generation: -1, phase: phaseFromWorkerProgress(status.message, "analysis"), detail: status.message, progress: measuredProgress(status.progress) }
     : null;
   const displayedLoading = loadingExperience ?? stageLoading;
   const shellStatus: StudioStatus = active ? status : (busy ? { kind: "calculating", message: status.message } : status);
