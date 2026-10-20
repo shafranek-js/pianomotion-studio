@@ -79,6 +79,8 @@ export default function App() {
   const [loadingExperience, setLoadingExperience] = useState<LoadingExperienceState | null>({
     generation: 0, phase: "startup", detail: "Preparing the local studio…",
   });
+  // Keep the full-screen score visible until the first actual playable session.
+  const [hasPlayedReadySession, setHasPlayedReadySession] = useState(false);
   const [playbackReadiness, setPlaybackReadiness] = useState<{
     requestId: string;
     blocker: PlaybackBlocker | null;
@@ -86,6 +88,7 @@ export default function App() {
   const handlePlaybackReadinessChange = useCallback((requestId: string, blocker: PlaybackBlocker | null) => {
     setPlaybackReadiness(previous => previous?.requestId === requestId && previous.blocker === blocker
       ? previous : { requestId, blocker });
+    if (blocker === null) setHasPlayedReadySession(true);
   }, []);
   const [builtinMelodiesOpen, setBuiltinMelodiesOpen] = useState(false);
   const openBuiltinMelodies = useCallback(() => setBuiltinMelodiesOpen(true), []);
@@ -879,7 +882,9 @@ export default function App() {
       dialogs={dialogs}
     />}
     {displayedLoading && <MusicalLoading key={displayedLoading.generation}
-      loading={displayedLoading} language={language} prominent={!active} immediate={Boolean(awaitingPlayback)} />}
+      loading={displayedLoading} language={language}
+      prominent={!active || (!hasPlayedReadySession && Boolean(awaitingPlayback))}
+      immediate={Boolean(awaitingPlayback)} />}
   </>;
 }
 
