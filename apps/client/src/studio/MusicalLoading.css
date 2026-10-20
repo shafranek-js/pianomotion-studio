@@ -54,7 +54,8 @@
 .musical-loading__score { margin: 9px auto 1px; max-width: 360px; }
 .musical-loading__score svg { width: 100%; height: auto; display: block; overflow: visible; }
 .musical-loading__staff { stroke: #7887a3; stroke-width: 1.1; opacity: .7; }
-.musical-loading__note { fill: var(--ml-accent); stroke: var(--ml-accent); stroke-width: 1.4; animation: ml-note-breathe 2.5s ease-in-out infinite; }
+.musical-loading__note { fill: var(--ml-accent); stroke: var(--ml-accent); stroke-width: 1.4; transition: opacity .3s ease; }
+.musical-loading__note--indeterminate { animation: ml-note-appear 3.3s ease-in-out infinite; }
 .musical-loading__track { stroke: #414b63; stroke-width: 5; stroke-linecap: round; }
 .musical-loading__track-progress { stroke: var(--ml-accent); stroke-width: 5; stroke-linecap: round; }
 .musical-loading__track-indeterminate { stroke: var(--ml-accent); stroke-width: 5; stroke-linecap: round; animation: ml-scan 2.3s ease-in-out infinite alternate; }
@@ -73,7 +74,7 @@
 .musical-loading--compact .musical-loading__factual { min-height: 32px; }
 .musical-loading--compact .musical-loading__pianist { margin: 6px 0 9px; font-size: 12px; }
 .musical-loading--compact .musical-loading__progress { height: 5px; }
-@keyframes ml-note-breathe { 0%,100% { filter: brightness(.75); } 50% { filter: brightness(1.4); } }
+@keyframes ml-note-appear { 0%, 10% { opacity: .2; } 30%, 82% { opacity: 1; } 100% { opacity: .2; } }
 @keyframes ml-scan { 0% { transform: translateX(0); } 100% { transform: translateX(245px); } }
 @keyframes ml-progress { 0% { transform: translateX(-100%); } 100% { transform: translateX(300%); } }
 @media (max-width: 480px) {
@@ -81,7 +82,7 @@
   .musical-loading__factual h2 { font-size: 16px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .musical-loading__note,
+  .musical-loading__note--indeterminate,
   .musical-loading__track-indeterminate,
   .musical-loading__indeterminate { animation: none; }
   .musical-loading__indeterminate { width: 40%; }
