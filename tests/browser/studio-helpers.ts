@@ -47,23 +47,40 @@ export async function committedStudioSettings(page: Page) {
   });
 }
 
-export async function loadStudioSong(page: Page, options: { output?: "synth"; dimension?: "2d" } = {}) {
+/** The loading overlay replaces the workspace until the session is playable. */
+export async function waitForLoadingToClear(page: Page, timeout = 120_000) {
+  await expect(page.getByTestId("musical-loading")).toHaveCount(0, { timeout });
+}
+
+export async function loadStudioSong(
+  page: Page,
+  options: { output?: "synth" | "soundfont"; dimension?: "2d" } = {},
+) {
   const base = process.env.PIANOMOTION_PREVIEW_BASE ?? "/";
   const url = base.includes("?") ? `${base}&empty=true` : `${base}?empty=true`;
   await page.goto(url);
   await expect(page).toHaveTitle("PianoMotion Studio");
-  await expect(page.getByRole("button", {name:"Play demo song", exact:true})).toBeEnabled({ timeout: 30_000 });
-  if (options.output === "synth") await configureStudioTestOutput(page);
+  await waitForLoadingToClear(page);
+  await expect(page.getByRole("button", {name:"Play demo song", exact:true})).toBeEnabled({ timeout: 60_000 });
+  // The lightweight synth is the default for UI scenarios: the 38 MiB SoundFont
+  // is not needed to exercise transport, editing or geometry, and preparing it
+  // on a CI runner used to push every interaction past its timeout. Audio
+  // acceptance passes output: "soundfont" and keeps the product default.
+  if ((options.output ?? "synth") === "synth") await configureStudioTestOutput(page);
   await page.locator("#midi-file").setInputFiles(studioMidiPath);
   await expectStudioCanvas(page);
-  if (options.dimension === "2d") {
-    await page.getByRole("button", { name: "Performance", exact: true }).click();
+  await waitForLoadingToClear(page);
+  if (options.dimension === "2d") {    await page.getByRole("button", { name: "Performance", exact: true }).click();
     await expect(studioCanvas(page, "2d")).toBeVisible();
   }
   return settledStudio(page, 0);
 }
 
 export async function settledStudio(page: Page, minimumRevision: number) {
+  // The loading score covers the workspace until the selected output is ready
+  // and leaves the play button disabled; interacting earlier hits the overlay.
+  await expect(page.locator("#player-play-button")).toBeEnabled({ timeout: 120_000 });
+  await waitForLoadingToClear(page);
   try {
     await page.waitForFunction(revision => {
       const snapshot = window.__playerSnapshot;

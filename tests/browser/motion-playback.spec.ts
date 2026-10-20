@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { expectStudioCanvas } from "./studio-helpers";
+import { expectStudioCanvas, waitForLoadingToClear } from "./studio-helpers";
 
 test("playback keeps a reserve with delayed real Worker motion and honors Pause after an uncovered seek", async ({ page }, testInfo) => {
   test.setTimeout(180_000);
@@ -17,8 +17,11 @@ test("playback keeps a reserve with delayed real Worker motion and honors Pause 
     };
   });
   await page.goto("/?empty=true");
+  await waitForLoadingToClear(page);
   await page.getByRole("button", { name: "Play demo song", exact: true }).click();
   await expectStudioCanvas(page, 90_000);
+  await waitForLoadingToClear(page);
+  await expect(page.locator("#player-play-button")).toBeEnabled({ timeout: 120_000 });
   await page.waitForFunction(() => window.__playerSnapshot?.scene?.keyCount === 88 && !window.__playerSnapshot.pending);
   await page.locator("#player-play-button").click();
   // Transport exposes current time through the accessible seek control; unlike
@@ -50,12 +53,18 @@ test("real Worker keeps the animation reserve during double-speed playback", asy
   const errors: string[] = [];
   page.on("pageerror", error => errors.push(error.message));
   await page.goto("/?empty=true");
+  await waitForLoadingToClear(page);
   await page.getByRole("button", { name: "Play demo song", exact: true }).click();
   await expectStudioCanvas(page, 90_000);
+  await waitForLoadingToClear(page);
+  await expect(page.locator("#player-play-button")).toBeEnabled({ timeout: 120_000 });
   await page.getByRole("combobox", { name: "Speed", exact: true }).selectOption("2");
   await page.locator("#player-play-button").click();
   await expect.poll(() => page.getByRole("slider", { name: "Seek position", exact: true }).inputValue().then(Number),
     { timeout: 45_000, intervals: [500] }).toBeGreaterThan(25);
+  // The snapshot is written by a render effect; at double speed the music clock
+  // can pass the threshold before the first motion-streaming sample lands.
+  await page.waitForFunction(() => Boolean(window.__playerSnapshot?.motionStreaming), undefined, { timeout: 15_000 });
   const streaming = await page.evaluate(() => window.__playerSnapshot!.motionStreaming!);
   await testInfo.attach("motion-double-speed", { contentType: "application/json", body: JSON.stringify({ streaming, errors }, null, 2) });
   expect(streaming.pauseCount).toBe(0);

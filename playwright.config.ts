@@ -8,6 +8,8 @@ import {
   retries,
 } from "./playwright.shared";
 
+const testPort = Number(process.env.PIANOMOTION_TEST_PORT ?? 4173);
+
 export default defineConfig({
   testDir: "./tests/browser",
   testIgnore: [
@@ -42,15 +44,15 @@ export default defineConfig({
   outputDir: `test-results/ui-${browserChannel || "chromium"}`,
   reporter: reporters("ui"),
   use: {
-    baseURL: "http://127.0.0.1:4173",
+    baseURL: `http://127.0.0.1:${testPort}`,
     browserName: "chromium",
     channel: browserChannel,
     headless: true,
     ...failureArtifacts,
   },
   webServer: {
-    command: "npm run dev:test -- --host 127.0.0.1 --port 4173 --strictPort",
-    url: "http://127.0.0.1:4173",
+    command: `npm run dev:test -- --host 127.0.0.1 --port ${testPort} --strictPort`,
+    url: `http://127.0.0.1:${testPort}`,
     reuseExistingServer: false,
     // `dev:test` stages Pyodide (21 MiB), the melody catalogue and the
     // SoundFont only when they are missing; a cold CI runner still needs room.

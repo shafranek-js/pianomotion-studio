@@ -20,3 +20,5 @@ __pycache__/
 # Generated authorized built-in bank; source + notices live under assets/soundfonts.
 /apps/client/public/soundfonts/
 scratch/
+# Local CI runner logs (tools/ci-local.mjs).
+/.ci-local/

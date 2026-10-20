@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { readFile } from "node:fs/promises";
-import { configureStudioTestOutput, expectStudioCanvas, settledStudio, studioCanvas, studioMidiPath } from "./studio-helpers";
+import { configureStudioTestOutput, expectStudioCanvas, settledStudio, studioCanvas, studioMidiPath, waitForLoadingToClear } from "./studio-helpers";
 
 type RecoveryProbe = {
   defaultMidiFetchStarted: boolean;
@@ -93,10 +93,12 @@ test("a delayed default melody cannot replace an imported MIDI after a manual fi
 
   await page.goto("/");
   await page.waitForFunction(() => Boolean(window.__sessionRecoveryProbe?.defaultMidiFetchStarted), undefined, { timeout: 90_000 });
-  await expect(page.getByRole("button", { name: "Play demo song", exact: true })).toBeEnabled({ timeout: 30_000 });
-  await configureStudioTestOutput(page);
+  // The start-up loading score now covers the workspace while the held default
+  // fetch is pending, so the welcome controls are deliberately unreachable here.
+  // The file input still accepts the replacement MIDI directly.
   await page.locator("#midi-file").setInputFiles(studioMidiPath);
   await expectStudioCanvas(page);
+  await waitForLoadingToClear(page);
   const opened = await settledStudio(page, 0);
   const { noteId, edited } = await editSelectedNoteToFive(page);
   const projectId = edited.result.projectId;
@@ -121,9 +123,11 @@ test("a delayed default melody cannot replace an imported MIDI after a manual fi
 test("an explicit open supersedes a saved-session restore even after its real Worker finishes", async ({ page }) => {
   test.setTimeout(240_000);
   await page.goto("/?empty=true");
+  await waitForLoadingToClear(page);
   await configureStudioTestOutput(page);
   await page.locator("#midi-file").setInputFiles(studioMidiPath);
   await expectStudioCanvas(page);
+  await waitForLoadingToClear(page);
   const seeded = await settledStudio(page, 0);
   await page.getByRole("button", { name: "File", exact: true }).click();
   await page.getByRole("menuitem", { name: "Save project", exact: true }).click();
@@ -183,9 +187,11 @@ test("explicit Save restores a named MIDI, camera, view mode, and manual fingeri
   test.setTimeout(240_000);
   const bytes = await readFile(studioMidiPath);
   await page.goto("/?empty=true");
+  await waitForLoadingToClear(page);
   await configureStudioTestOutput(page);
   await page.locator("#midi-file").setInputFiles({ name: "Named Etude.mid", mimeType: "audio/midi", buffer: bytes });
   await expectStudioCanvas(page);
+  await waitForLoadingToClear(page);
   const imported = await settledStudio(page, 0);
   const { noteId, edited } = await editSelectedNoteToFive(page);
 
@@ -221,6 +227,7 @@ test("explicit Save restores a named MIDI, camera, view mode, and manual fingeri
 
   await page.reload();
   await expectStudioCanvas(page);
+  await waitForLoadingToClear(page);
   const restored = await settledStudio(page, edited.result.revision);
   expect(restored.result.resource.sha256).toBe(imported.result.resource.sha256);
   expect(restored.draftPlan.assignments.find(assignment => assignment.noteId === noteId)).toMatchObject({ finger: 5, fingerMode: "manual" });

@@ -41,7 +41,7 @@ test.describe("M6 Visual Hand Skins & Audio Sync (W039–W044)", () => {
     const pageErrors: string[] = [];
     page.on("pageerror", (err) => pageErrors.push(err.message));
 
-    await loadStudioSong(page);
+    await loadStudioSong(page, { output: "soundfont" });
 
     // 3. Open Settings Modal
     const settingsBtn = page.getByRole("button", {name: "Open preferences", exact: true});

@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import type { M1AnalyzeMidiResult, MotionPose } from "@handthesia/contracts";
-import { expectStudioCanvas, openStudioInspector, settledStudio, studioCanvas, studioMidiPath } from "./studio-helpers";
+import { expectStudioCanvas, openStudioInspector, settledStudio, studioCanvas, studioMidiPath, waitForLoadingToClear } from "./studio-helpers";
 import fs from "node:fs/promises";
 
 type WorkerTraceEntry = {
@@ -244,7 +244,8 @@ test("native TypeScript Worker loads, replans, streams real hand poses, and reta
 
   await page.goto("/?empty=true");
   await expect(page).toHaveTitle("PianoMotion Studio");
-  await expect(page.getByRole("button", { name: "Play demo song", exact: true })).toBeEnabled({ timeout: 30_000 });
+  await waitForLoadingToClear(page);
+  await expect(page.getByRole("button", { name: "Play demo song", exact: true })).toBeEnabled({ timeout: 60_000 });
 
   // Select TypeScript before opening the built-in so the MIDI is analyzed by its real Worker.
   await page.getByRole("button", { name: "Open preferences", exact: true }).click();

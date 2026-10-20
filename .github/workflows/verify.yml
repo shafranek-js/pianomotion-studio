@@ -73,9 +73,10 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci
+      # The preview-based groups (PWA, media) serve this artifact from the site
+      # root, so it must be built with the default base. The Pages build with
+      # APP_BASE=/pianomotion-studio/ lives in deploy-pages.yml.
       - name: Build the site
-        env:
-          APP_BASE: /pianomotion-studio/
         run: npm run build
       - uses: actions/upload-artifact@v4
         with:

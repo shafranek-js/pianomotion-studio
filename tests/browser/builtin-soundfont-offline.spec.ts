@@ -12,7 +12,7 @@ test("included SF3 and decoder restore and play offline without a user bank", as
       return Reflect.apply(start, this, args);
     };
   });
-  const savedStudio = await loadStudioSong(page);
+  const savedStudio = await loadStudioSong(page, { output: "soundfont" });
   const savedNoteCount = savedStudio.result.document?.notes.length ?? 0;
   expect(savedNoteCount).toBeGreaterThan(0);
   await openStudioInspector(page, "Audio");

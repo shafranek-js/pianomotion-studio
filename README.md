@@ -270,6 +270,7 @@ publishable `dist`.
 | `npm run test:parity` | Golden parity between the Python engine and the desktop reference. |
 | `npm run test:native-parity` | The TypeScript engine against the same goldens. |
 | `npm run ci` | Local sequential sweep (the CI runs the same checks as parallel jobs). |
+| `npm run ci:local` | The verification jobs locally: groups, UI shards, separate ports, logs in `.ci-local/`. |
 | `npm run archive` | Zip the sources without `node_modules` or test output. |
 
 Individual preparation steps are also available as `prepare:m1:assets`, `prepare:melodies` and
