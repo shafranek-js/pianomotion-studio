@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { spawn } from "node:child_process";
-import { cp, lstat, mkdir, readFile, readdir, realpath, rename, stat, writeFile } from "node:fs/promises";
+import { cp, lstat, mkdir, readFile, readdir, realpath, rename, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -233,6 +233,69 @@ async function moveViteAssetsToRelease(distRoot, releaseRoot) {
   await rename(builtAssets, releaseAssets);
 }
 
+/** Files that must stay at the site root: the shell, the worker and hosting rules. */
+const DIST_ROOT_FILES = new Set(["sw.js", "_headers"]);
+
+const CSP_LINE = /^[ \t]*Content-Security-Policy:[ \t]*(.+)$/im;
+/** Directives a <meta> CSP cannot deliver; they stay in `_headers` for hosts that honour it. */
+const META_UNSUPPORTED_CSP = /^(frame-ancestors|report-uri|report-to|sandbox)\b/i;
+
+/**
+ * GitHub Pages ignores `_headers`, so the policy is also delivered as a meta tag
+ * in the built `index.html`. The policy is read from `_headers` so the two cannot
+ * drift apart, and directives that are invalid in a meta tag are dropped.
+ */
+async function injectCspMeta(distRoot) {
+  const headers = await readFile(path.join(publicRoot, "_headers"), "utf8");
+  const match = CSP_LINE.exec(headers);
+  if (!match) {
+    throw new Error("_headers is missing its Content-Security-Policy line.");
+  }
+  const policy = match[1]
+    .split(";")
+    .map((directive) => directive.trim())
+    .filter((directive) => directive.length > 0 && !META_UNSUPPORTED_CSP.test(directive))
+    .join("; ");
+  const indexPath = path.join(distRoot, "index.html");
+  const html = await readFile(indexPath, "utf8");
+  if (html.includes('http-equiv="Content-Security-Policy"')) {
+    return false;
+  }
+  const content = policy.replaceAll("&", "&amp;").replaceAll('"', "&quot;");
+  const meta = `<meta http-equiv="Content-Security-Policy" content="${content}" />`;
+  await writeFile(indexPath, html.replace(/<head>/i, `<head>\n    ${meta}`));
+  return true;
+}
+
+
+/**
+ * Vite copies `public/` to the dist root, and the release build copies the same
+ * tree into `releases/<buildId>/`. The app only ever loads the release copy, so
+ * the root duplicates are dead weight: 67 MiB on a 138 MiB deployment. Remove
+ * them, leaving the shell, the service worker and the hosting rules.
+ *
+ * Only names that exist in `public/` are touched, so a custom `--outDir` keeps
+ * anything else it may contain.
+ */
+async function pruneDuplicatePublicAssets(distRoot) {
+  const entries = await readdir(publicRoot, { withFileTypes: true });
+  const removed = [];
+  for (const entry of entries) {
+    if (DIST_ROOT_FILES.has(entry.name)) {
+      continue;
+    }
+    const target = path.join(distRoot, entry.name);
+    try {
+      await lstat(target);
+    } catch {
+      continue; // Vite did not copy this entry (missing or empty input).
+    }
+    await rm(target, { recursive: true, force: true });
+    removed.push(entry.name);
+  }
+  return removed;
+}
+
 async function patchReleaseManifest(releaseRoot, appBase, assetBase) {
   const manifestPath = path.join(releaseRoot, "manifest.webmanifest");
   const manifest = JSON.parse(await readFile(manifestPath, "utf8"));
@@ -271,6 +334,13 @@ async function main() {
   await moveViteAssetsToRelease(distRoot, releaseRoot);
   await copyReleaseAssets(releaseRoot);
   await patchReleaseManifest(releaseRoot, appBase, assetBase);
+  const pruned = await pruneDuplicatePublicAssets(distRoot);
+  if (pruned.length > 0) {
+    console.log(`Removed ${pruned.length} duplicate public entries from the dist root: ${pruned.join(", ")}`);
+  }
+  if (await injectCspMeta(distRoot)) {
+    console.log("Injected the Content-Security-Policy meta tag into index.html.");
+  }
   await embedBuildIdInWorker(distRoot, buildId);
   await generateOfflineManifest({ distRoot, buildId });
 }
