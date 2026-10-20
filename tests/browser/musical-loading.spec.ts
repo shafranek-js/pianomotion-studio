@@ -5,7 +5,7 @@ test("status bar and release details display the current application version", a
   await page.goto("/?empty=true");
   const release = page.locator(".studio-release-disclosure summary");
   await expect(release).toContainText("v0.1.0-dev.23");
-  await expect(release).toHaveAttribute("aria-label", /Release details, version 0\\.1\\.0-dev\\.23/);
+  await expect(release).toHaveAttribute("aria-label", /Release details, version 0\.1\.0-dev\.23/);
   await release.click();
   await expect(page.getByRole("region", {name: "Release details"})).toContainText("0.1.0-dev.23");
 });
