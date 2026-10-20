@@ -15,6 +15,14 @@ export const artifactChannel = browserChannel || "chromium";
 export const expectTimeout = 15_000;
 export const retries = isCI ? 1 : 0;
 
+/** Headless CI has no user gesture, so Chromium keeps AudioContext suspended and
+ * playback readiness never resolves. The suites do not test the autoplay gate. */
+export const browserLaunch = {
+  launchOptions: {
+    args: ["--autoplay-policy=no-user-gesture-required"],
+  },
+};
+
 export const failureArtifacts: {
   trace: "on-first-retry" | "off";
   screenshot: "only-on-failure" | "off";

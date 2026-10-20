@@ -77,10 +77,14 @@ export async function loadStudioSong(
 }
 
 export async function settledStudio(page: Page, minimumRevision: number) {
-  // The loading score covers the workspace until the selected output is ready
-  // and leaves the play button disabled; interacting earlier hits the overlay.
-  await expect(page.locator("#player-play-button")).toBeEnabled({ timeout: 120_000 });
+  // The loading score covers the workspace until the selected output is ready.
+  // Play along replaces the ordinary transport, so only wait for the play
+  // button when this view actually renders it.
   await waitForLoadingToClear(page);
+  const play = page.locator("#player-play-button");
+  if (await play.count() > 0) {
+    await expect(play).toBeEnabled({ timeout: 120_000 });
+  }
   try {
     await page.waitForFunction(revision => {
       const snapshot = window.__playerSnapshot;

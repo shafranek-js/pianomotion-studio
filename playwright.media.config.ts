@@ -2,6 +2,7 @@ import { defineConfig } from "@playwright/test";
 
 import {
   browserChannel,
+  browserLaunch,
   expectTimeout,
   failureArtifacts,
   reporters,
@@ -25,6 +26,7 @@ export default defineConfig({
     browserName: "chromium",
     channel: browserChannel,
     headless: true,
+    ...browserLaunch,
     ...failureArtifacts,
   },
   webServer: {

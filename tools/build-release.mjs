@@ -155,21 +155,26 @@ async function assertSafeOutputDirectory(requestedOutDir, resolvedOutDir) {
   }
 
   const tempRoot = await realpath(path.resolve(tmpdir()));
-  const relativeToTemp = path.relative(tempRoot, resolvedOutDir);
-  const tempJobDirectory = path.basename(path.dirname(resolvedOutDir));
-  const outputName = path.basename(resolvedOutDir);
+  // GitHub's Windows runners expose the temp directory through an 8.3 short
+  // name (RUNNER~1); path.resolve keeps it, realpath expands it. Canonicalise
+  // the parent so the containment and job-directory checks compare like paths.
+  const canonicalParent = await realpath(path.dirname(resolvedOutDir));
+  const canonicalOutDir = path.join(canonicalParent, path.basename(resolvedOutDir));
+  const relativeToTemp = path.relative(tempRoot, canonicalOutDir);
+  const tempJobDirectory = path.basename(canonicalParent);
+  const outputName = path.basename(canonicalOutDir);
   const isExplicitPwaTestOutput = process.env.PIANOMOTION_TEST_BUILD === "1" &&
-    isWithin(tempRoot, resolvedOutDir) &&
+    isWithin(tempRoot, canonicalOutDir) &&
     /^pianomotion-pwa-releases-[a-z0-9-]+$/i.test(tempJobDirectory) &&
     /^release-[a-z0-9-]+$/i.test(outputName);
   if (!isExplicitPwaTestOutput || relativeToTemp === "" || relativeToTemp.startsWith(`..${path.sep}`) || relativeToTemp === "..") {
     throw new Error("A custom --outDir is allowed only for apps/client/dist or an explicitly marked temporary PWA test output.");
   }
-  if (await realpath(path.dirname(resolvedOutDir)) !== path.resolve(tempRoot, tempJobDirectory)) {
+  if (canonicalParent !== path.resolve(tempRoot, tempJobDirectory)) {
     throw new Error("The temporary PWA output directory resolves outside its test job directory.");
   }
   try {
-    if ((await lstat(resolvedOutDir)).isSymbolicLink()) {
+    if ((await lstat(canonicalOutDir)).isSymbolicLink()) {
       throw new Error("A temporary PWA output directory cannot be a symbolic link.");
     }
   } catch (error) {

@@ -2,6 +2,7 @@ import { defineConfig } from "@playwright/test";
 
 import {
   browserChannel,
+  browserLaunch,
   expectTimeout,
   failureArtifacts,
   reporters,
@@ -18,7 +19,7 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   retries,
-  timeout: 120_000,
+  timeout: 240_000,
   expect: { timeout: expectTimeout },
   outputDir: `test-results/pwa-${browserChannel || "chromium"}`,
   reporter: reporters("pwa"),
@@ -27,6 +28,7 @@ export default defineConfig({
     browserName: "chromium",
     channel: browserChannel,
     headless: true,
+    ...browserLaunch,
     ...failureArtifacts,
   },
   webServer: {

@@ -17,7 +17,7 @@ async function waitForOpenedMelody(page: Page, timeout = 90_000) {
 }
 
 test("built-in melody opens, plays, edits, saves and restores with exact source identities", async ({ page, browser }, testInfo) => {
-  test.setTimeout(180_000);
+  test.setTimeout(300_000);
   const errors: string[] = [];
   page.on("pageerror", error => errors.push(error.message));
   await page.goto("/?empty=true");

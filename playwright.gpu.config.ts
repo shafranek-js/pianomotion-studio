@@ -1,6 +1,6 @@
 import { defineConfig } from "@playwright/test";
 import base from "./playwright.config";
-import { browserChannel, failureArtifacts, reporters } from "./playwright.shared";
+import { browserChannel, browserLaunch, failureArtifacts, reporters } from "./playwright.shared";
 
 /**
  * WebGL/GPU-heavy specs. They load the dev-only `/@fs/` harness and compare
@@ -23,6 +23,7 @@ export default defineConfig({
     browserName: "chromium",
     channel: browserChannel,
     headless: true,
+    ...browserLaunch,
     ...failureArtifacts,
   },
   webServer: {

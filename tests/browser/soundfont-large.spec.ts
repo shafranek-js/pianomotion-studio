@@ -1,6 +1,6 @@
 import { createReadStream } from "node:fs";
 import { existsSync } from "node:fs";
-import { mkdir, open } from "node:fs/promises";
+import { mkdir, open, rm } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import { resolve } from "node:path";
 import { expect, test } from "@playwright/test";
@@ -86,8 +86,15 @@ for (const mib of [128, 512, 1024]) {
     await mkdir("test-results/soundfont-inputs", { recursive: true });
     const path = resolve(`test-results/soundfont-inputs/stereo-${mib}.sf2`);
     const byteLength = mib * 1024 * 1024;
-    const expectedHash = await createLargeBank(path, byteLength);
     await page.goto("/?empty=true");
+    // The product accepts banks up to 1 GiB, but persisting one needs an equal
+    // amount of browser storage. A CI runner can report a quota below that, and
+    // a QuotaExceededError says nothing about the parser; skip with the measured
+    // quota instead of failing the group.
+    const quota = await page.evaluate(async () => (await navigator.storage.estimate()).quota ?? 0);
+    test.skip(quota > 0 && quota < byteLength * 1.25,
+      `Browser storage quota ${Math.round(quota / 1_048_576)} MiB cannot persist a ${mib} MiB bank.`);
+    const expectedHash = await createLargeBank(path, byteLength);
     await page.evaluate(() => {
       const input = document.createElement("input");
       input.type = "file"; input.id = "large-sf2-test-input";
@@ -153,6 +160,11 @@ for (const mib of [128, 512, 1024]) {
     }
   });
 }
+
+test.afterAll(async () => {
+  // These sparse fixtures total ~1.6 GiB; they are inputs, never artifacts.
+  await rm("test-results/soundfont-inputs", { recursive: true, force: true });
+});
 
 test("rejects more than 1 GiB before reading the source", async ({ page }) => {
   await mkdir("test-results/soundfont-inputs", { recursive: true });
