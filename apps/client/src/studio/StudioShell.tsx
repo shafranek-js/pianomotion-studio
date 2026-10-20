@@ -1,6 +1,8 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import { createPortal } from "react-dom";
 import clientPackage from "../../package.json";
+import { applicationBuildId } from "../pwa/urls";
+import { formatStudioReleaseVersion } from "./releaseVersion";
 import "./studio.css";
 import {
   Activity,
@@ -81,7 +83,8 @@ function getEditorShortcuts(dict: TranslationDictionary) {
   ];
 }
 
-const studioPackageVersion = clientPackage.version;
+const studioBuildId = applicationBuildId();
+const studioReleaseVersion = formatStudioReleaseVersion(clientPackage.version, studioBuildId);
 
 type PanelKind = "projects" | "inspector" | "practice";
 type ResizeSide = "left" | "right";
@@ -987,7 +990,7 @@ function AboutDialog({
             {dict.header.file === "File" ? "Browser-based piano performance and fingering workspace." : "Prohlížečové prostředí pro klavírní interpretaci a prstoklad."}
           </Dialog.Description>
           <div style={{ marginTop: "1rem", fontSize: "0.875rem", color: "#c2cbd5" }}>
-            <p><strong>{dict.common.version}:</strong> v{studioPackageVersion}</p>
+            <p><strong>{dict.common.version}:</strong> v{studioReleaseVersion}</p>
           </div>
         </Dialog.Content>
       </Dialog.Portal>
@@ -1054,7 +1057,7 @@ export interface StudioReleaseDetailsProps {
 
 /** Compact, nonmodal version disclosure for the fixed status bar. */
 export function StudioReleaseDetails({
-  version = studioPackageVersion,
+  version = studioReleaseVersion,
   description = "Browser-based piano performance and fingering workspace.",
   children,
 }: StudioReleaseDetailsProps) {
@@ -1088,7 +1091,8 @@ export function StudioReleaseDetails({
       </summary>
       <div className="studio-release-popover" role="region" aria-label="Release details">
         <h2>Release details</h2>
-        <strong>{version} · Audit remediation preview</strong>
+        <strong>{version} · PianoMotion Studio</strong>
+        {studioBuildId !== "development" && <p>Build ID: {studioBuildId}</p>}
         {description && <p>{description}</p>}
         {children}
       </div>

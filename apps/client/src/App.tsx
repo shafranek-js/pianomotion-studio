@@ -821,7 +821,7 @@ export default function App() {
           {dict.dialogs.updateReady}
         </button>
       )}
-      <StudioReleaseDetails description="0.1.0-dev.22 preview: Practice panel with A/B repeat across playback and PlayAlong, plus named time bookmarks saved, recoverable, and JSON-bound to the source SHA; menu/library fixes and the 3D stage are retained." />
+      <StudioReleaseDetails description="Browser-based piano studio with 3D hands, MIDI analysis, fingering tools, practice loops and bookmarks, and musical loading feedback. The release version and content build ID identify the exact published build." />
     </div>
   );
 
