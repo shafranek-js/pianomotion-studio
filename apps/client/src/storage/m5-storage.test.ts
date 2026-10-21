@@ -490,6 +490,34 @@ describe("Milestone M5 Storage & Persistence", () => {
     });
   });
 
+  describe("CLI-1 settled project reads", () => {
+    it("rejects a malformed stored record and reads the repaired record afterwards", async () => {
+      const document = createValidSongDocument("proj_cli1");
+      const project: SavedProject = {
+        projectId: document.projectId,
+        name: "CLI-1 project",
+        updatedAt: 1,
+        document,
+      };
+      await saveProject(project);
+
+      const store = mockFactory.databases.get(DB_NAME)!.stores.get(PROJECTS_STORE)!;
+      const validRecord = store.records.get(project.projectId);
+      expect(validRecord).toBeDefined();
+
+      store.records.set(project.projectId, { projectId: project.projectId, name: "Broken record" });
+      await expect(getProject(project.projectId)).rejects.toThrow();
+
+      // The rejected read must not poison the database: restoring the valid
+      // record lets the next read succeed.
+      store.records.set(project.projectId, validRecord);
+      await expect(getProject(project.projectId)).resolves.toMatchObject({
+        projectId: project.projectId,
+        name: "CLI-1 project",
+      });
+    });
+  });
+
   describe("Application persistence migration", () => {
     it("migrates legacy profiles and active ID to IndexedDB while retaining localStorage data", async () => {
       const legacyProfile = createValidProfile("legacy-pianist");

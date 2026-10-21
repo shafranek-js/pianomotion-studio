@@ -251,6 +251,9 @@ function getIdbFactory(): IDBFactory {
   throw new Error("IndexedDB is not available in the current runtime environment.");
 }
 
+/** How long an open request may stay blocked before it fails with a clear message. */
+export const IDB_OPEN_BLOCKED_TIMEOUT_MS = 5_000;
+
 /**
  * Opens or reuses the active `handthesia_db` IndexedDB connection at version 2.
  */
@@ -262,6 +265,21 @@ export function openProjectDb(): Promise<IDBDatabase> {
   const factory = getIdbFactory();
 
   return new Promise<IDBDatabase>((resolve, reject) => {
+    let settled = false;
+    let blockedTimer: ReturnType<typeof setTimeout> | null = null;
+    const clearBlockedTimer = () => {
+      if (blockedTimer !== null) {
+        clearTimeout(blockedTimer);
+        blockedTimer = null;
+      }
+    };
+    const fail = (error: unknown) => {
+      if (settled) return;
+      settled = true;
+      clearBlockedTimer();
+      reject(error instanceof Error ? error : new Error(String(error)));
+    };
+
     const request = factory.open(DB_NAME, DB_VERSION);
 
     request.onupgradeneeded = () => {
@@ -292,6 +310,18 @@ export function openProjectDb(): Promise<IDBDatabase> {
 
     request.onsuccess = () => {
       const db = request.result;
+      if (settled) {
+        // The timeout/error already rejected this attempt. Close the late
+        // connection so it cannot keep the database blocked, and do not cache it.
+        try {
+          db.close();
+        } catch {
+          // Ignore close errors on the abandoned connection.
+        }
+        return;
+      }
+      settled = true;
+      clearBlockedTimer();
       dbInstance = db;
 
       db.onversionchange = () => {
@@ -307,11 +337,17 @@ export function openProjectDb(): Promise<IDBDatabase> {
     };
 
     request.onerror = () => {
-      reject(request.error ?? new Error("Failed to open IndexedDB database."));
+      fail(request.error ?? new Error("Failed to open IndexedDB database."));
     };
 
     request.onblocked = () => {
-      console.warn("IndexedDB open blocked: close existing connections in other tabs.");
+      if (settled || blockedTimer !== null) return;
+      blockedTimer = setTimeout(() => {
+        blockedTimer = null;
+        fail(new Error(
+          "Opening IndexedDB is blocked by another tab or connection. Close other tabs and retry.",
+        ));
+      }, IDB_OPEN_BLOCKED_TIMEOUT_MS);
     };
   });
 }
@@ -401,21 +437,41 @@ export async function getProject(projectId: string): Promise<SavedProject | null
   const db = await openProjectDb();
 
   return new Promise<SavedProject | null>((resolve, reject) => {
+    let settled = false;
+    const fail = (error: unknown) => {
+      if (settled) return;
+      settled = true;
+      reject(error instanceof Error ? error : new Error(String(error)));
+    };
+
     const tx = db.transaction(PROJECTS_STORE, "readonly");
     const store = tx.objectStore(PROJECTS_STORE);
     const request = store.get(projectId);
 
     request.onsuccess = () => {
-      const result = request.result as SavedProject | undefined;
-      resolve(result ? validateSavedProject(result) : null);
+      if (settled) return;
+      try {
+        const result = request.result as SavedProject | undefined;
+        const validated = result ? validateSavedProject(result) : null;
+        settled = true;
+        resolve(validated);
+      } catch (error) {
+        // A malformed stored record must reject the promise instead of leaving
+        // it pending forever.
+        fail(error);
+      }
     };
 
     request.onerror = () => {
-      reject(request.error ?? new Error(`Failed to get project "${projectId}"`));
+      fail(request.error ?? new Error(`Failed to get project "${projectId}"`));
     };
 
     tx.onerror = () => {
-      reject(tx.error ?? new Error(`Transaction failed while getting project "${projectId}"`));
+      fail(tx.error ?? new Error(`Transaction failed while getting project "${projectId}"`));
+    };
+
+    tx.onabort = () => {
+      fail(tx.error ?? new Error(`Transaction aborted while getting project "${projectId}"`));
     };
   });
 }
