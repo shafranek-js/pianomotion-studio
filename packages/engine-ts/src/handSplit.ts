@@ -9,6 +9,7 @@ import * as progress from "./progress.ts";
 import { find_trills, type NoteLike, objId } from "./figures.ts";
 import { key_pos, travel_time, MOVE_SHARE } from "./fingering.ts";
 import type { Pianist } from "./pianist.ts";
+import { handSpanInches } from "./pianist.ts";
 
 export const LEFT = "L";
 export const RIGHT = "R";
@@ -377,10 +378,9 @@ const _BASE_SPANS = [SPAN_FREE, SPAN_MAX, SPAN_HELD_MAX] as const;
 export function _fit_spans(pianist?: Pianist | null): void {
   let k = 1.0;
   if (pianist != null && typeof pianist.anatomy === "object" && pianist.anatomy != null) {
-    const rawSpan = (pianist.anatomy as Record<string, number>)["hand_span"];
-    if (typeof rawSpan === "number" && rawSpan > 0) {
-      k = rawSpan / 8.5; // default hand_span is ~8.5 inches
-    }
+    // Match hand_split.py: scale by the hand's real span relative to the
+    // default model, not by a legacy "hand_span" anatomy key.
+    k = handSpanInches(pianist.anatomy) / handSpanInches(null);
   }
   SPAN_FREE = _BASE_SPANS[0] * k;
   SPAN_MAX = _BASE_SPANS[1] * k;

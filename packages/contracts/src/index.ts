@@ -31,7 +31,7 @@ const M1RawSourceNoteSchema = object({
   noteId: id,
   sourceInstrument: z.number().int().nonnegative(),
   sourceOrdinal: z.number().int().nonnegative(),
-  pitch: z.number().int().min(21).max(108),
+  pitch: z.number().int().min(0).max(127),
   velocity: z.number().int().min(1).max(127),
   start: sourceTime,
   end: sourceTime,
