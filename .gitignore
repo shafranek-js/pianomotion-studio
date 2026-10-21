@@ -22,3 +22,6 @@ __pycache__/
 scratch/
 # Local CI runner logs (tools/ci-local.mjs).
 /.ci-local/
+
+# Local code graph index.
+/.codegraph/
