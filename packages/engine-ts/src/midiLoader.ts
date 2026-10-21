@@ -501,11 +501,18 @@ export function _tempo_map(
   };
 }
 
+export type ExportMidiDiagnostic = {
+  code: "unmatched-document-note";
+  noteId: string;
+  message: string;
+};
+
 export function save_fingered_midi_bytes(
   sourceBytes: Uint8Array,
   notes: readonly (Note | Record<string, unknown>)[],
   fingers: ReadonlyMap<object | number, number | string | null> | Record<number, number | string | null>,
-): [Uint8Array, number] {
+  noteIds?: ReadonlyMap<object, string>,
+): [Uint8Array, number, ExportMidiDiagnostic[]] {
   const getFinger = (key: object | number): number | string | null => {
     if (fingers instanceof Map) {
       if (typeof key === "number") return fingers.get(key) ?? null;
@@ -575,7 +582,7 @@ export function save_fingered_midi_bytes(
     left: lh_ch,
   };
 
-  const marked = new Set<number>();
+  const marked = new Set<object>();
   const outChunks: Uint8Array[] = [];
   const headChunk = new Uint8Array(8 + header.length);
   headChunk.set([0x4d, 0x54, 0x68, 0x64], 0); // 'MThd'
@@ -633,7 +640,7 @@ export function save_fingered_midi_bytes(
 
             const textBytes = new Uint8Array(Array.from(text).map((c) => c.charCodeAt(0)));
             newEvents.push([t, "meta", [0x01, textBytes]]);
-            marked.add(index.get(`${m[1]!}:${Math.round(toSec(t) * 1000)}`)?.indexOf(n) ?? 0);
+            marked.add(n as object);
 
             const hc = hand_ch[hand] ?? ch;
             const sKey = `${ch}:${m[1]!}`;
@@ -684,7 +691,21 @@ export function save_fingered_midi_bytes(
     result.set(c, offset);
     offset += c.length;
   }
-  return [result, marked.size];
+  const diagnostics: ExportMidiDiagnostic[] = [];
+  const reported = new Set<string>();
+  for (const note of notes) {
+    if (marked.has(note as object)) continue;
+    const mappedNoteId = noteIds?.get(note as object);
+    const noteId = mappedNoteId ?? (note as { noteId?: unknown }).noteId;
+    if (typeof noteId !== "string" || noteId.length === 0 || reported.has(noteId)) continue;
+    reported.add(noteId);
+    diagnostics.push({
+      code: "unmatched-document-note",
+      noteId,
+      message: `Document note ${noteId} has no matching note-on in the source MIDI and was not marked.`,
+    });
+  }
+  return [result, marked.size, diagnostics];
 }
 
 const PIANO_PROGRAMS = new Set([0, 1, 2, 3, 4, 5, 6, 7]);

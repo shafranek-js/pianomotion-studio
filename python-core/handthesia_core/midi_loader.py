@@ -372,13 +372,19 @@ def _tempo_map(header, tracks):
     return to_sec
 
 
-def save_fingered_midi_bytes(source_bytes: bytes, notes: list, fingers: dict) -> tuple[bytes, int]:
+def save_fingered_midi_bytes(
+    source_bytes: bytes,
+    notes: list,
+    fingers: dict,
+    note_ids: dict | None = None,
+) -> tuple[bytes, int, list[dict]]:
     """
     Encode fingered MIDI bytes with every note's hand and finger stored as
     0x01 text meta-events ("R3", "L1", "Rg"), each hand's notes on its own
     channel (right hand on piano channel, left hand on first unused channel),
     note-offs redirected, and controls broadcast.
-    Returns (exported_bytes, marked_count).
+    Returns (exported_bytes, marked_count, diagnostics), where diagnostics
+    names the document notes that never matched a source note-on.
     """
     header, chunks, tracks = _smf_tracks(source_bytes)
     to_sec = _tempo_map(header, tracks)
@@ -464,7 +470,23 @@ def save_fingered_midi_bytes(source_bytes: bytes, notes: list, fingers: dict) ->
             new.append(ev)
         data = _encode(new)
         out += b'MTrk' + struct.pack('>I', len(data)) + data
-    return bytes(out), len(marked)
+    diagnostics = []
+    reported = set()
+    for n in notes:
+        if id(n) in marked:
+            continue
+        note_id = (note_ids or {}).get(id(n))
+        if not isinstance(note_id, str) or not note_id:
+            note_id = n.get("noteId") if isinstance(n, dict) else getattr(n, "noteId", None)
+        if not isinstance(note_id, str) or not note_id or note_id in reported:
+            continue
+        reported.add(note_id)
+        diagnostics.append({
+            "code": "unmatched-document-note",
+            "noteId": note_id,
+            "message": f"Document note {note_id} has no matching note-on in the source MIDI and was not marked.",
+        })
+    return bytes(out), len(marked), diagnostics
 
 
 # --------------------------------------------------------------------------- #

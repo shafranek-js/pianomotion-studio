@@ -1077,6 +1077,7 @@ def export_fingered_midi(data: bytes, document: dict, fingering_plan: dict) -> d
 
     notes = []
     fingers = {}
+    note_ids = {}
     for note_dto in notes_dto:
         nid = note_dto.get("noteId")
         assign = assignments.get(nid)
@@ -1107,11 +1108,14 @@ def export_fingered_midi(data: bytes, document: dict, fingering_plan: dict) -> d
         )
         notes.append(note_obj)
         fingers[id(note_obj)] = finger
+        if nid is not None:
+            note_ids[id(note_obj)] = nid
 
-    exported_bytes, marked_count = midi_loader.save_fingered_midi_bytes(bytes(data), notes, fingers)
+    exported_bytes, marked_count, diagnostics = midi_loader.save_fingered_midi_bytes(bytes(data), notes, fingers, note_ids)
     return {
         "exportedBytes": exported_bytes,
         "markedCount": marked_count,
+        "diagnostics": diagnostics,
     }
 
 

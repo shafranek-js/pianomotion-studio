@@ -119,10 +119,14 @@ with open(__export_input_path, "rb") as __f:
 __res = export_fingered_midi(__raw_bytes, json.loads(__export_doc_json), json.loads(__export_plan_json))
 __export_out_bytes = __res["exportedBytes"]
 __export_marked_count = __res["markedCount"]
+__export_diagnostics_json = json.dumps(__res.get("diagnostics", []))
 `);
         const pyBytes = runtime.pyodide.globals.get("__export_out_bytes") as { toJs(): Uint8Array };
         const exportedUint8 = pyBytes.toJs();
         const markedCount = Number(runtime.pyodide.globals.get("__export_marked_count"));
+        const diagnostics = JSON.parse(
+          String(runtime.pyodide.globals.get("__export_diagnostics_json") ?? "[]"),
+        ) as unknown[];
 
         const responseBuffer = exportedUint8.buffer.slice(
           exportedUint8.byteOffset,
@@ -137,6 +141,7 @@ __export_marked_count = __res["markedCount"]
           engineVersion: request.engineVersion,
           exportedBytes: responseBuffer,
           markedCount,
+          diagnostics,
         });
         workerScope.postMessage(result, [responseBuffer]);
       } finally {
@@ -145,7 +150,7 @@ __export_marked_count = __res["markedCount"]
         runtime.pyodide.globals.delete("__export_doc_json");
         runtime.pyodide.globals.delete("__export_plan_json");
         try {
-          runtime.pyodide.runPython("globals().pop('__raw_bytes', None); globals().pop('__res', None); globals().pop('__export_out_bytes', None); globals().pop('__export_marked_count', None)");
+          runtime.pyodide.runPython("globals().pop('__raw_bytes', None); globals().pop('__res', None); globals().pop('__export_out_bytes', None); globals().pop('__export_marked_count', None); globals().pop('__export_diagnostics_json', None)");
         } catch {
           // ignore
         }

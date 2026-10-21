@@ -115,6 +115,7 @@ def _verify_fixture_export(fixture_name: str):
     assert isinstance(exported_bytes, bytes)
     assert len(exported_bytes) > 0
     assert marked_count == len(doc["notes"])
+    assert export_result["diagnostics"] == []
 
     # Load back the exported MIDI via midi_loader.load_midi
     reloaded_song = midi_loader.load_midi(exported_bytes, fixture_id="reloaded")
@@ -240,12 +241,41 @@ def test_channel_separation_and_pedal_broadcast():
     assert rh_ch in cc_channels and lh_ch in cc_channels
 
 
+def test_export_reports_unmatched_document_note_by_id():
+    source_bytes = (FIXTURES / "midi" / "tracked-right-hand.mid").read_bytes()
+    analysis = api.analyze_midi(source_bytes, _options("tracked-right-hand"))
+    doc = analysis["document"]
+    plan = analysis["fingeringPlan"]
+    shifted = doc["notes"][0]
+    shifted_note_id = shifted["noteId"]
+    shifted["startSeconds"] += 0.02
+    shifted["endSeconds"] += 0.02
+
+    result = api.export_fingered_midi(source_bytes, doc, plan)
+    assert result["markedCount"] == len(doc["notes"]) - 1
+    assert result["diagnostics"] == [{
+        "code": "unmatched-document-note",
+        "noteId": shifted_note_id,
+        "message": f"Document note {shifted_note_id} has no matching note-on in the source MIDI and was not marked.",
+    }]
+
+    _, _, tracks = midi_loader._smf_tracks(result["exportedBytes"])
+    markers = sum(
+        1
+        for events in tracks.values()
+        for _t, kind, payload in events
+        if kind == "meta" and payload[0] == 0x01
+    )
+    assert markers == len(doc["notes"]) - 1
+
+
 if __name__ == "__main__":
     tests = [
         test_pig_helpers,
         test_pig_roundtrip,
         test_export_fingered_midi_and_reimport_100_percent_retention,
         test_channel_separation_and_pedal_broadcast,
+        test_export_reports_unmatched_document_note_by_id,
     ]
     failed = 0
     for test in tests:

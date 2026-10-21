@@ -107,6 +107,7 @@ async function handleMessage(message: unknown): Promise<void> {
         engineVersion: request.engineVersion,
         exportedBytes: responseBuffer,
         markedCount: Number(res.markedCount ?? 0),
+        diagnostics: Array.isArray(res.diagnostics) ? res.diagnostics : [],
       });
       workerScope.postMessage(result, [responseBuffer]);
     } catch (error) {

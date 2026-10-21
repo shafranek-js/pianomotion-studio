@@ -12,7 +12,7 @@ export function normalizeStudioView(value: unknown): StudioView {
 export type InspectorTab = "scene" | "pianist" | "audio" | "diagnostics";
 
 export interface StudioStatus {
-  kind: "idle" | "loading" | "calculating" | "saving" | "saved" | "modified" | "error";
+  kind: "idle" | "loading" | "calculating" | "saving" | "saved" | "modified" | "warning" | "error";
   message: string;
   progress?: number;
   details?: string;

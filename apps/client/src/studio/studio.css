@@ -337,6 +337,7 @@ body:has(.studio-shell) {
 }
 
 .studio-save-state[data-kind="saved"] { color: var(--studio-accent); }
+.studio-save-state[data-kind="warning"] { color: #e3bd7d; }
 .studio-save-state[data-kind="error"] { color: #f0a5a5; }
 .studio-save-state[data-kind="saving"], .studio-save-state[data-kind="calculating"], .studio-save-state[data-kind="loading"] { color: #e3bd7d; }
 .studio-spin { animation: studio-spin 1.2s linear infinite; }

@@ -1048,14 +1048,46 @@ export const M1ExportMidiRequestSchema = object({
   midiBytes: ArrayBufferSchema,
   document: SongDocumentSchema,
   fingeringPlan: FingeringPlanSchema,
+}).superRefine((request, ctx) => {
+  if (request.document.projectId !== request.projectId) {
+    ctx.addIssue({ code: "custom", path: ["document", "projectId"], message: "must match the request projectId" });
+  }
+  if (request.document.revision !== request.revision) {
+    ctx.addIssue({ code: "custom", path: ["document", "revision"], message: "must match the request revision" });
+  }
+  if (request.fingeringPlan.projectId !== request.projectId) {
+    ctx.addIssue({ code: "custom", path: ["fingeringPlan", "projectId"], message: "must match the request projectId" });
+  }
+  if (request.fingeringPlan.inputRevision !== request.revision) {
+    ctx.addIssue({ code: "custom", path: ["fingeringPlan", "inputRevision"], message: "must match the request revision" });
+  }
+  if (request.fingeringPlan.engineVersion !== request.engineVersion) {
+    ctx.addIssue({ code: "custom", path: ["fingeringPlan", "engineVersion"], message: "must match the request engineVersion" });
+  }
+  // Reuse the document-relative plan check: unknown/missing assignments,
+  // hand/disposition consistency and the explicit glissando runs.
+  const planCheck = fingeringPlanForSong(request.document).safeParse(request.fingeringPlan);
+  if (!planCheck.success) {
+    for (const issue of planCheck.error.issues) {
+      ctx.addIssue({ code: "custom", path: ["fingeringPlan", ...issue.path], message: issue.message });
+    }
+  }
 });
 export type M1ExportMidiRequest = z.infer<typeof M1ExportMidiRequestSchema>;
+
+export const M1ExportMidiDiagnosticSchema = object({
+  code: z.literal("unmatched-document-note"),
+  noteId: id,
+  message: z.string().min(1),
+});
+export type M1ExportMidiDiagnostic = z.infer<typeof M1ExportMidiDiagnosticSchema>;
 
 export const M1ExportMidiResultSchema = object({
   type: z.literal("export-midi-result"),
   ...M1IdentityShape,
   exportedBytes: ArrayBufferSchema,
   markedCount: z.number().int().nonnegative(),
+  diagnostics: z.array(M1ExportMidiDiagnosticSchema),
 });
 export type M1ExportMidiResult = z.infer<typeof M1ExportMidiResultSchema>;
 

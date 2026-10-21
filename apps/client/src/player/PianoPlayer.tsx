@@ -74,6 +74,7 @@ import { PlayAlongTransport } from "../studio/PlayAlongTransport";
 import { PracticePanel } from "../studio/PracticePanel";
 import type { KeyPressInfo } from "../render/keyboardView";
 import { buildRecoverySnapshot } from "./recoverySnapshot";
+import { fingeredMidiExportStatus } from "./exportStatus";
 import { playbackBlocker, type PlaybackBlocker } from "./playbackReadiness";
 
 export interface PianoPlayerProps {
@@ -1818,7 +1819,7 @@ export function PianoPlayer({
       anchor.download = `${projectName.replace(/\.mid(i)?$/i, "")}.fingered.mid`;
       anchor.click();
       URL.revokeObjectURL(url);
-      onStatusChange({ kind: dirtyRef.current ? "modified" : "saved", message: `Exported ${response.markedCount} fingered notes.` });
+      onStatusChange(fingeredMidiExportStatus(response.markedCount, response.diagnostics, dirtyRef.current));
     } catch (error) {
       onStatusChange({ kind: "error", message: `Fingered MIDI export failed: ${errorMessage(error)}` });
     }

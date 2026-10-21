@@ -706,10 +706,10 @@ export function StudioShell(props: StudioShellProps) {
 
         <div className="studio-save-state" data-kind={status.kind} aria-label={`Project status: ${status.message}`}>
           {status.kind === "saved" ? <CircleCheck size={15} />
-            : status.kind === "error" ? <CircleAlert size={15} />
+            : status.kind === "error" || status.kind === "warning" ? <CircleAlert size={15} />
               : status.kind === "loading" || status.kind === "calculating" || status.kind === "saving"
                 ? <LoaderCircle className="studio-spin" size={15} /> : <CircleDot size={15} />}
-          <span>{status.kind === "saved" ? (isEn ? "Saved" : "Uloženo") : status.kind === "modified" ? (isEn ? "Modified" : "Změněno") : status.kind === "saving" ? (isEn ? "Saving" : "Ukládání") : status.kind === "loading" ? (isEn ? "Loading" : "Načítání") : status.kind === "calculating" ? (isEn ? "Calculating" : "Počítání") : status.kind === "error" ? (isEn ? "Error" : "Chyba") : (isEn ? "Ready" : "Připraveno")}</span>
+          <span>{status.kind === "saved" ? (isEn ? "Saved" : "Uloženo") : status.kind === "modified" ? (isEn ? "Modified" : "Změněno") : status.kind === "saving" ? (isEn ? "Saving" : "Ukládání") : status.kind === "loading" ? (isEn ? "Loading" : "Načítání") : status.kind === "calculating" ? (isEn ? "Calculating" : "Počítání") : status.kind === "warning" ? (isEn ? "Warning" : "Varování") : status.kind === "error" ? (isEn ? "Error" : "Chyba") : (isEn ? "Ready" : "Připraveno")}</span>
         </div>
 
         <div className="studio-menu-group studio-export-menu" ref={menu === "export" ? activeMenuRef : undefined}>
@@ -1042,7 +1042,7 @@ function StudioPanel({
 
 function StatusIcon({ kind }: { kind: StudioShellProps["status"]["kind"] }) {
   if (kind === "saved") return <Check size={13} aria-hidden="true" />;
-  if (kind === "error") return <CircleAlert size={13} aria-hidden="true" />;
+  if (kind === "error" || kind === "warning") return <CircleAlert size={13} aria-hidden="true" />;
   if (kind === "loading" || kind === "calculating" || kind === "saving") return <LoaderCircle size={13} className="studio-spin" aria-hidden="true" />;
   return <CircleDot size={13} aria-hidden="true" />;
 }

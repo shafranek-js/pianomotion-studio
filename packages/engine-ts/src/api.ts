@@ -21,7 +21,7 @@ import { reset_context } from "./fingering.ts";
 
 const EMBEDDED_MANIFEST = {
   "schemaVersion": 1,
-  "engineVersion": "cfb68636b58b2dd2b28eb4cfb7190f4ad539023e3925ee14fb632cb56e59f961",
+  "engineVersion": "8aa119fee0e04cf199c2c031e5a8c4116d4006bf62e2de8f8939cf5f3d8152f3",
   "entrypoint": "handthesia_core.api:analyze_midi",
   "replanEntrypoint": "handthesia_core.api:replan_document",
   "pythonPackages": [
@@ -31,7 +31,7 @@ const EMBEDDED_MANIFEST = {
   ],
   "files": {
     "handthesia_core/__init__.py": "b717704c7b696ca09293395731d10d903b82772d691f5ef60028bcf4d4e67ac0",
-    "handthesia_core/api.py": "e50548bc59a9fb6fb1fb1ce27088c7713b74dd0ce5a88528c6356cc9589c3f5a",
+    "handthesia_core/api.py": "52d79f90006bfa932666fcf801078b6757cf98f478415722c41887463a31985e",
     "handthesia_core/figures.py": "0c89b85176c73f566528c692944e6c7192444f9c7134c13d5ec027063fb86fb9",
     "handthesia_core/fingering.py": "2140b2a5b81e4724fce03e99470edef9aff0c97f56fc6bff07c66aedf672c9ac",
     "handthesia_core/geometry.py": "df96013f715b51fb21ed95087259a1fe202dd7e828e6e09e4578172a43f3c5fd",
@@ -39,7 +39,7 @@ const EMBEDDED_MANIFEST = {
     "handthesia_core/hand_split.py": "0e2dc047343befe0fa8b0384f81a19fe9ab944736a46dda62d4280eb2f4f4243",
     "handthesia_core/hands.py": "065239356c3a63565edf4d684294cfe9bfcb740b6572ffe577e1e736d565d800",
     "handthesia_core/identity.py": "a2bf6d82f09e2bea6610b29ad0d494931e64ee43744bfcbc8e6b20cfab694906",
-    "handthesia_core/midi_loader.py": "883fe70d80f1af7baebddffafd78647947ebff6c810012ea798f6d3987b96359",
+    "handthesia_core/midi_loader.py": "9aea3ef37ea1c4dc54aed6daf4f07b6d1d04af8befba47821237c865bafa0fb7",
     "handthesia_core/pianist.py": "e80a4b4c4f2511e344d9b8ee8921f83442dac816ea53dfc8f5d2747e0f49cb19",
     "handthesia_core/progress.py": "e068d2edf6dbde6b51028259d6516594d86c277193e3bdca5b95f23e1c632d6a"
   },
@@ -806,7 +806,7 @@ export function source_ids_for(normalized_ids: any = null, document_notes: any =
   return Array.from(pyIter(wanted)).flatMap((note_id: any) => Array.from(pyIter(document_notes)).filter((note: any) => (pyEq(note['noteId'], note_id))).flatMap((note: any) => Array.from(pyIter(pyGet(note, 'sourceNoteIds', []))).map((note_id: any) => note_id)));
 }
 export function export_fingered_midi(data: any = null, document: any = null, fingering_plan: any = null): any {
-  let assign: any, assignments: any, disposition: any, exported_bytes: any, finger: any, fingers: any, hand: any, hand_val: any, is_gliss: any, marked_count: any, nid: any, note_dto: any, note_obj: any, notes: any, notes_dto: any, raw_finger: any;
+  let assign: any, assignments: any, diagnostics: any, disposition: any, exported_bytes: any, finger: any, fingers: any, hand: any, hand_val: any, is_gliss: any, marked_count: any, nid: any, note_dto: any, note_ids: any, note_obj: any, notes: any, notes_dto: any, raw_finger: any;
   // Takes original MIDI bytes, SongDocument DTO, and FingeringPlan DTO.
   //     Maps FingeringPlan.assignments to note objects.
   //     Calls save_fingered_midi_bytes.
@@ -822,6 +822,7 @@ export function export_fingered_midi(data: any = null, document: any = null, fin
   assignments = Object.fromEntries(Array.from(pyIter(pyGet(fingering_plan, 'assignments', []))).filter((a: any) => (pyIn('noteId', a))).map((a: any) => [a['noteId'], a]));
   notes = [];
   fingers = {  };
+  note_ids = new Map();
   for (note_dto of pyIter(notes_dto)) {
     nid = pyGet(note_dto, 'noteId', null);
     assign = pyGet(assignments, nid, null);
@@ -844,9 +845,10 @@ export function export_fingered_midi(data: any = null, document: any = null, fin
     note_obj = new Note(Math.trunc(note_dto['pitch']), Number(note_dto['startSeconds']), Number(note_dto['endSeconds']), Math.trunc(pyGet(note_dto, 'velocity', 64)), 0, hand, (bool((typeof finger === 'number' && Number.isInteger(finger))) ? finger : null), is_gliss);
     notes.push(note_obj);
     fingers[pyId(note_obj)] = finger;
+    if (nid !== null && nid !== undefined) note_ids.set(note_obj, String(nid));
   }
-  [exported_bytes, marked_count] = midi_loader.save_fingered_midi_bytes((data instanceof Uint8Array ? data : new Uint8Array(data)), notes, fingers);
-  return { ['exportedBytes']: exported_bytes, ['markedCount']: marked_count };
+  [exported_bytes, marked_count, diagnostics] = midi_loader.save_fingered_midi_bytes((data instanceof Uint8Array ? data : new Uint8Array(data)), notes, fingers, note_ids);
+  return { ['exportedBytes']: exported_bytes, ['markedCount']: marked_count, ['diagnostics']: diagnostics };
 }
 export function sample_motion_window(data: any = null, document: any = null, fingering_plan: any = null, start_time: any = null, end_time: any = null, options: any = null): any {
   let _lead: any, _n: any, _notes: any, _strength: any, _top: any, animator: any, animator_hand: any, animators: any, arranged: any, assign: any, assignments_by_id: any, c_end: any, c_start: any, ce: any, cleanup: any, continuation_time: any, continuous_end: any, coverage: any, coverage_hand: any, cs: any, curr_t: any, decoded: any, desktop_notes: any, disposition: any, doc_note: any, edited_note: any, effective_end_time: any, engine_version: any, entry_by_object: any, episodes: any, event: any, finger: any, fixture_id: any, gap: any, grid_step: any, h: any, h_poses: any, h_times: any, hand: any, hand_key: any, hand_name: any, hand_val: any, has_gap: any, idx: any, is_complete: any, is_gliss: any, key_style: any, keyboard: any, keyboard_rect: any, lowest_key_left: any, manifest: any, max_poses: any, mid: any, motion_poses: any, nid: any, note: any, note_id_by_object: any, notes_by_id: any, observed: any, p: any, paired: any, pf: any, planning_notes: any, planning_song: any, pose: any, poses_for_t: any, press: any, profile_context: any, profile_dto: any, profile_id: any, project_id: any, raw_finger: any, raw_hand: any, raw_max_poses: any, rect_values: any, release: any, request_id: any, res: any, revision: any, rf: any, sample_times: any, sampled: any, session: any, session_key: any, single_coverage: any, single_pose: any, song: any, sorted_times: any, source: any, source_bytes: any, source_event_map: any, source_notes: any, strike_dt: any, t: any, tf: any, truncated: any, unmapped_source_ids: any, unplayable_ids: any, updated_notes: any, window_end: any, window_start: any;
