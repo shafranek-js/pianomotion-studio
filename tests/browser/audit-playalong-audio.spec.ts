@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { configureStudioTestOutput, expectStudioCanvas, settledStudio } from "./studio-helpers";
+import { configureStudioTestOutput, expectStudioCanvas, settledStudio, waitForLoadingToClear } from "./studio-helpers";
 
 function variableLength(value: number): number[] {
   const bytes = [value & 0x7f];
@@ -48,6 +48,7 @@ test("companion notes keep their onsets and owned voices are released when leavi
     name: "Audit accompaniment.mid", mimeType: "audio/midi", buffer: accompanimentMidi(),
   });
   await expectStudioCanvas(page);
+  await waitForLoadingToClear(page);
   const snapshot = await settledStudio(page, 0);
   for (const [pitch, hand] of [[36, "left"], [40, "left"], [72, "right"], [74, "right"]] as const) {
     const note = snapshot.result.document!.notes.find(note => note.pitch === pitch)!;

@@ -1,24 +1,38 @@
 import { defineConfig } from "@playwright/test";
 
+import {
+  browserChannel,
+  browserLaunch,
+  expectTimeout,
+  failureArtifacts,
+  reporters,
+  retries,
+} from "./playwright.shared";
+
+const testPort = Number(process.env.PIANOMOTION_TEST_PORT ?? 4175);
+
 export default defineConfig({
   testDir: "./tests/browser",
   testMatch: ["**/video-export-m7.spec.ts", "**/media-export.spec.ts"],
   fullyParallel: false,
   workers: 1,
-  retries: 0,
+  retries,
   timeout: 180_000,
-  outputDir: `test-results/media-${process.env.PIANOMOTION_BROWSER_CHANNEL || "chromium"}`,
-  reporter: [["list"], ["json", { outputFile: `test-results/reports/media-${process.env.PIANOMOTION_BROWSER_CHANNEL || "chromium"}.json` }]],
+  expect: { timeout: expectTimeout },
+  outputDir: `test-results/media-${browserChannel || "chromium"}`,
+  reporter: reporters("media"),
   use: {
-    baseURL: "http://127.0.0.1:4175",
+    baseURL: `http://127.0.0.1:${testPort}`,
     browserName: "chromium",
-    channel: process.env.PIANOMOTION_BROWSER_CHANNEL,
+    channel: browserChannel,
     headless: true,
+    ...browserLaunch,
+    ...failureArtifacts,
   },
   webServer: {
-    command: "npm run preview -- --host 127.0.0.1 --port 4175 --strictPort",
-    url: "http://127.0.0.1:4175",
+    command: `npm run preview -- --host 127.0.0.1 --port ${testPort} --strictPort`,
+    url: `http://127.0.0.1:${testPort}`,
     reuseExistingServer: false,
-    timeout: 60_000,
+    timeout: 180_000,
   },
 });

@@ -251,6 +251,54 @@ BEHAVIOR = {b["id"]: b for b in BEHAVIORS}
 DEFAULT_BEHAVIOR = {b["id"]: b["default"] for b in BEHAVIORS}
 
 
+def normalize_behavior(values, strict=False):
+    """
+    A behavior mapping checked against BEHAVIORS.
+
+    Slider values are coerced to numbers and clamped to their spec range, so a
+    profile can never install an out-of-range speed, smoothing time or other
+    constant that the rest of the model divides by. Option values must be one
+    of the spec's options; anything else keeps the default. Unknown keys are
+    ignored, matching `Pianist.from_json`.
+
+    With strict=True a malformed value raises ValueError instead of falling
+    back to the default, so the API reports a bad profile rather than silently
+    repairing it.
+    """
+    behavior = dict(DEFAULT_BEHAVIOR)
+    if values is None:
+        return behavior
+    if not isinstance(values, dict):
+        raise ValueError("profile behavior must be an object")
+    for key, value in values.items():
+        spec = BEHAVIOR.get(key)
+        if spec is None:
+            continue
+        if spec["kind"] == "slider":
+            if isinstance(value, bool) or value is None:
+                if strict:
+                    raise ValueError(f"profile.behavior.{key} must be a finite number")
+                continue
+            try:
+                number = float(value)
+            except (TypeError, ValueError):
+                if strict:
+                    raise ValueError(f"profile.behavior.{key} must be a finite number")
+                continue
+            if not math.isfinite(number):
+                if strict:
+                    raise ValueError(f"profile.behavior.{key} must be a finite number")
+                continue
+            behavior[key] = max(spec["min"], min(spec["max"], number))
+        else:
+            allowed = [option[0] for option in spec["options"]]
+            if isinstance(value, str) and value in allowed:
+                behavior[key] = value
+            elif strict:
+                raise ValueError(f"profile.behavior.{key} must be one of: " + ", ".join(allowed))
+    return behavior
+
+
 # --------------------------------------------------------------------------- #
 # The pianist
 # --------------------------------------------------------------------------- #
@@ -383,7 +431,7 @@ def from_profile_dto(profile):
         str(profile.get("profileId") or DEFAULT_ID),
         tuple(profile.get("colorRgb") or (12, 12, 14)),
         dict(profile.get("anatomy") or DEFAULT_ANATOMY),
-        dict(profile.get("behavior") or DEFAULT_BEHAVIOR),
+        normalize_behavior(profile.get("behavior")),
         float(profile.get("createdAtUnixSeconds", 0.0)),
         float(profile.get("modifiedAtUnixSeconds", 0.0)),
         dict(profile.get("skin") or {"style": "cartoon"}),

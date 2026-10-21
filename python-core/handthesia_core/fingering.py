@@ -77,7 +77,13 @@ MOVE_SHARE = 0.75              # share of the time between two chords the hand c
 
 def travel_time(dist_wk, max_speed=None):
     """Seconds to travel dist_wk white keys without exceeding the top speed (m/s)."""
-    return PEAK_RATIO * abs(dist_wk) * WHITE_KEY_M / (max_speed or MAX_SPEED)
+    speed = max_speed or MAX_SPEED
+    if not math.isfinite(speed) or speed <= 0:
+        # A profile can only reach this through a hand-built Pianist; the API
+        # clamps behavior at its boundary. Never divide by zero or travel back
+        # in time if one does.
+        speed = DEFAULT_MAX_SPEED
+    return PEAK_RATIO * abs(dist_wk) * WHITE_KEY_M / speed
 
 
 _RANGE_CACHE = {}                # (ps, st) -> hand_range; cleared when the pianist's reach changes
@@ -408,7 +414,8 @@ def _apply_preferences(p, base):
     """Pianist p's anatomy and behaviour settings on the weights (apply_pianist)."""
     global MAX_SPEED
     from . import figures
-    MAX_SPEED = float(p.b("max_speed"))
+    speed = float(p.b("max_speed"))
+    MAX_SPEED = speed if math.isfinite(speed) and speed > 0 else DEFAULT_MAX_SPEED
     from .hands import reach_scale, hand_span_inches
     k = hand_span_inches(p.anatomy) / hand_span_inches(None)
     for f, v in BASE_RELAXED.items():

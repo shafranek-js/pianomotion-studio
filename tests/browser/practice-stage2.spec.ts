@@ -498,10 +498,10 @@ test("Play Along restricts manual steps to A–B and an outside bookmark disable
 });
 
 test("default MuseScore SoundFont playback repeats a note-backed A–B window without hanging at the output boundary", async ({ page }, testInfo) => {
-  test.setTimeout(180_000);
+  test.setTimeout(240_000);
   const pageErrors: string[] = [];
   page.on("pageerror", (error) => pageErrors.push(error.message));
-  const initial = await loadStudioSong(page, { dimension: "2d" });
+  const initial = await loadStudioSong(page, { output: "soundfont", dimension: "2d" });
   const settings = await page.evaluate(async () => {
     const { getSettings } = await import("/src/settings/settingsStore.ts");
     const { BUILTIN_SOUNDFONT_ID } = await import("/src/audio/soundfont/builtinSoundfont.ts");

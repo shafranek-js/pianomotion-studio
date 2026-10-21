@@ -9,6 +9,8 @@
 dist/
 /apps/client/dist/
 test-results/
+playwright-report/
+*.log
 *.zip
 node_modules/
 .venv*/
@@ -18,3 +20,8 @@ __pycache__/
 # Generated authorized built-in bank; source + notices live under assets/soundfonts.
 /apps/client/public/soundfonts/
 scratch/
+# Local CI runner logs (tools/ci-local.mjs).
+/.ci-local/
+
+# Local code graph index.
+/.codegraph/

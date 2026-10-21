@@ -1,24 +1,20 @@
+# Headers for hosts that honour this file (Netlify, Cloudflare Pages).
+# GitHub Pages ignores it, so tools/build-release.mjs injects the same policy
+# into dist/index.html as a <meta http-equiv="Content-Security-Policy"> tag.
+# Header-only directives (frame-ancestors) work only on the hosts above.
+
 /*
   X-Content-Type-Options: nosniff
   X-Frame-Options: DENY
   Referrer-Policy: strict-origin-when-cross-origin
-  Content-Security-Policy: default-src 'self'; script-src 'self' blob: 'wasm-unsafe-eval' 'unsafe-eval'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob: data:; connect-src 'self' blob:; object-src 'none'; base-uri 'self';
+  Content-Security-Policy: default-src 'self'; script-src 'self' blob: 'wasm-unsafe-eval' 'unsafe-eval'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob: data:; connect-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none';
 
-/assets/*
+# Release assets are content-addressed and never change under the same build id.
+/releases/*
   Cache-Control: public, max-age=31536000, immutable
-
-/pyodide/*
-  Cache-Control: public, max-age=31536000, immutable
-
-/python-core/*
-  Cache-Control: no-cache, must-revalidate
 
 /sw.js
   Cache-Control: no-cache, no-store, must-revalidate
 
 /index.html
   Cache-Control: no-cache, no-store, must-revalidate
-
-/manifest.webmanifest
-  Content-Type: application/manifest+json
-  Cache-Control: public, max-age=86400

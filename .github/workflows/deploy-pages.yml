@@ -1,15 +1,15 @@
 name: Deploy GitHub Pages
 
+# GitHub Actions no longer verifies the project: `npm run ci:local` is the
+# gate. This workflow only publishes a build that was already verified on the
+# machine, and it is always started manually.
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
 
 permissions: {}
 
 concurrency:
-  group: pages-${{ github.ref }}
+  group: pages-main
   cancel-in-progress: true
 
 jobs:
@@ -30,15 +30,6 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Check types
-        run: npm run typecheck
-
-      - name: Lint
-        run: npm run lint
-
-      - name: Run unit tests
-        run: npm run test:unit
-
       - name: Build the project site
         env:
           APP_BASE: /pianomotion-studio/
@@ -51,12 +42,12 @@ jobs:
           retention-days: 1
 
       - name: Report deployment gate
-        if: ${{ vars.PAGES_ENABLED != 'true' || github.ref != 'refs/heads/main' }}
+        if: ${{ vars.PAGES_ENABLED != 'true' }}
         run: |
-          echo "Pages deployment skipped: enable it with repository variable PAGES_ENABLED=true and run this workflow from main."
+          echo "Pages deployment skipped: enable it with repository variable PAGES_ENABLED=true."
 
   deploy:
-    if: ${{ github.ref == 'refs/heads/main' && vars.PAGES_ENABLED == 'true' }}
+    if: ${{ vars.PAGES_ENABLED == 'true' }}
     needs: build
     runs-on: ubuntu-latest
     permissions:

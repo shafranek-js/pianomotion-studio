@@ -127,6 +127,24 @@ test.describe.serial("M1 Pyodide browser verification suite", () => {
     durationMs: number;
     memoryBytes?: number;
   }> {
+    // A worker analysis can lose its fixture fetch when the runner is under
+    // load ("Failed to fetch", ERR_NO_BUFFER_SPACE). That is a transport
+    // failure rather than a parity result, so retry it once.
+    for (let attempt = 1; ; attempt += 1) {
+      try {
+        return await analyzeFixtureOnce(fixtureId);
+      } catch (error) {
+        if (attempt >= 2 || !/failed to fetch|err_no_buffer_space/i.test(String(error))) throw error;
+        await page.waitForTimeout(1_000);
+      }
+    }
+  }
+
+  async function analyzeFixtureOnce(fixtureId: string): Promise<{
+    result: M1AnalyzeMidiResult;
+    durationMs: number;
+    memoryBytes?: number;
+  }> {
     await openDeveloperTools();
     const fixtureSelect = page.locator("#fixture-select");
     await expect(fixtureSelect).toBeEnabled({ timeout: 15_000 });

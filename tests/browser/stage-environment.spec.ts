@@ -6,6 +6,7 @@ import {
   openStudioInspector,
   settledStudio,
   studioCanvas,
+  waitForLoadingToClear,
 } from "./studio-helpers";
 
 type StageAppearance = {
@@ -373,6 +374,7 @@ test("stage preferences persist through reload without restarting playback or th
   await page.screenshot({ path: info.outputPath("stage-room-live-ui.png") });
   await page.reload();
   await expect(page.getByTestId("studio-shell")).toHaveAttribute("data-layout-ready", "true", { timeout: 90_000 });
+  await waitForLoadingToClear(page);
   await expect(page.getByRole("button", { name: "File", exact: true })).toBeVisible();
   const restored = await settledStudio(page, initial.result.revision);
   await openStudioInspector(page, "Scene");

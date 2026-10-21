@@ -7,7 +7,7 @@ test("included SF3 piano plays without upload and exports audible WAV, MP4 and W
   const errors: string[] = [];
   page.on("pageerror", error => errors.push(error.message));
   await installOpfsSavePicker(page);
-  const studio = await loadStudioSong(page);
+  const studio = await loadStudioSong(page, { output: "soundfont" });
   await page.getByRole("button", { name: "Open preferences", exact: true }).click();
   await expect(page.locator("#settings-sound-output")).toHaveValue("soundfont");
   const selectedBank = page.locator("#settings-soundfont-select");

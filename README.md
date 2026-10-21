@@ -1,8 +1,7 @@
 # PianoMotion Studio
 
-[![Verify studio](https://github.com/shafranek-js/pianomotion-studio/actions/workflows/verify.yml/badge.svg)](https://github.com/shafranek-js/pianomotion-studio/actions/workflows/verify.yml)
 [![Deploy GitHub Pages](https://github.com/shafranek-js/pianomotion-studio/actions/workflows/deploy-pages.yml/badge.svg)](https://github.com/shafranek-js/pianomotion-studio/actions/workflows/deploy-pages.yml)
-[![version](https://img.shields.io/badge/version-0.1.0--dev.22-blue)](docs/RELEASE_NOTES.md)
+[![version](https://img.shields.io/badge/version-0.1.0--dev.23-blue)](docs/RELEASE_NOTES.md)
 [![license](https://img.shields.io/badge/license-MIT%20%2B%20attribution-green)](LICENSE)
 
 **MIDI in — fingering, hand kinematics and a concert stage out, in the browser.**
@@ -27,9 +26,9 @@ and the built site installs as an offline PWA.
 ![PianoMotion Studio: 3D concert stage with falling notes and animated hands](docs/images/concert-stage.png)
 
 *Concert camera on the 3D stage: falling notes coloured by hand, a lit floor and the procedural
-hands over an 88-key keyboard (v0.1.0-dev.22).*
+hands over an 88-key keyboard (v0.1.0-dev.23).*
 
-> **Status: preview.** The current build is `0.1.0-dev.22`. It is developed in public and verified
+> **Status: preview.** The current build is `0.1.0-dev.23`. It is developed in public and verified
 > by the suites below, but it is not a tagged release; see [Limitations](#limitations).
 
 ## Contents
@@ -105,12 +104,12 @@ hands over an 88-key keyboard (v0.1.0-dev.22).*
 ![Fingering mode showing hand and finger assignment controls](docs/images/fingering-mode.png)
 
 *Fingering mode on the shared scene: left/right hand, fingers 1–5, clear, unplayable, glissando and
-auto-advance (v0.1.0-dev.22).*
+auto-advance (v0.1.0-dev.23).*
 
 ![Practice panel with A–B repeat and named bookmarks](docs/images/practice-panel.png)
 
 *Practice panel over the 3D stage: A–B loop points, repeat toggle, named bookmarks and Play-along
-(v0.1.0-dev.22).*
+(v0.1.0-dev.23).*
 
 ## How the fingering engine works
 
@@ -200,14 +199,14 @@ pianomotion-studio/
 │   └── engine-ts/         TypeScript port of the Python engine
 ├── python-core/           handthesia_core — the reference engine (12 modules)
 ├── tests/
-│   ├── browser/           43 Playwright specs across 6 configurations
+│   ├── browser/           43 Playwright specs across 7 configurations
 │   ├── unit/              Vitest specs that do not live beside their source file
 │   └── fixtures/          13 MIDI inputs and 13 golden outputs from the desktop reference
 ├── tools/                 asset preparation, release build, CI driver, packaging
 ├── docs/                  implementation notes, verification evidence, licences
 ├── builtin_melodies/midi/ 163 MIDI files behind the built-in library
 ├── assets/soundfonts/     MuseScore General v0.2 (SF3, MIT)
-└── .github/workflows/     verify.yml (Chrome + Edge), deploy-pages.yml (GitHub Pages)
+└── .github/workflows/     deploy-pages.yml (manual Pages publish)
 ```
 
 The npm workspace namespace is still `@handthesia/*`; the product name is PianoMotion Studio.
@@ -252,12 +251,14 @@ publishable `dist`.
 | Command | What it does |
 |---|---|
 | `npm run dev` | Prepare assets and start the Vite dev server. |
+| `npm run dev:test` | Start Vite, staging Pyodide, melodies and the SoundFont only if missing; used by Playwright. |
 | `npm run build` | Content-addressed production build into `apps/client/dist`. |
 | `npm run preview` | Serve the production build. |
 | `npm run typecheck` | `tsc` for client, contracts, engine-ts and the tooling config. |
 | `npm run lint` | ESLint over configs, tools and sources. |
 | `npm run test:unit` | Vitest: contracts, engine, parsers, editor, storage, 3D. |
 | `npm run test:browser` | Playwright UI suite. |
+| `npm run test:gpu` | WebGL/3D harness specs with a longer timeout. |
 | `npm run test:worker` | Worker, streaming and native-parity specs. |
 | `npm run test:audio` | Audio, DSP and SoundFont suites. |
 | `npm run test:soundfont` | Large and user SoundFont banks. |
@@ -267,7 +268,8 @@ publishable `dist`.
 | `npm run test:python` | pytest for `python-core` in `.venv-test`. |
 | `npm run test:parity` | Golden parity between the Python engine and the desktop reference. |
 | `npm run test:native-parity` | The TypeScript engine against the same goldens. |
-| `npm run ci` | The full 8-step pipeline, stopping at the first failure. |
+| `npm run ci` | Local sequential sweep (the CI runs the same checks as parallel jobs). |
+| `npm run ci:local` | Local verification gate: profile `pr` (default) or `full`, groups, shards, logs in `.ci-local/`. |
 | `npm run archive` | Zip the sources without `node_modules` or test output. |
 
 Individual preparation steps are also available as `prepare:m1:assets`, `prepare:melodies` and
@@ -278,7 +280,7 @@ Individual preparation steps are also available as `prepare:m1:assets`, `prepare
 | Suite | Files | Scope |
 |---|---|---|
 | Vitest | 67 files, 639 tests | Contracts, engine, MIDI, SoundFont SF2/SF3, storage, editor, render3d, i18n |
-| Playwright | 43 specs, 6 configs | UI, worker/parity, audio, SoundFont, offline PWA, media |
+| Playwright | 43 specs, 7 configs | UI, GPU/3D, worker/parity, audio, SoundFont, offline PWA, media |
 | pytest | 4 files, 31 tests | Core API, export, motion window, replan |
 | Goldens | 13 MIDI + 13 JSON | Desktop reference: notes, fingering, performance, pedals, poses |
 
@@ -286,21 +288,40 @@ Goldens are observations of the desktop reference at a pinned commit, not an ind
 Tolerances are 0.001 s, 0.01 white-key and 0.001 rad. `tests/fixtures/README.md` records their
 provenance.
 
-`npm run test:python` needs a Python 3.14 virtual environment at `python-core/.venv-test` (or the path
-in `PIANOMOTION_TEST_PYTHON`). One geometry test additionally compares keyboard rectangles with the
-desktop `common.Keyboard`; without a sibling `../pygame-piano-animator` checkout that test skips
-itself rather than passing silently. CI checks that project out at commit
+`npm run test:python` runs in a virtual environment at `.venv-test` (or the path in
+`PIANOMOTION_TEST_PYTHON`). Create it once:
+
+```powershell
+py -3.12 -m venv .venv-test
+.venv-test\Scripts\python.exe -m pip install -r python-core/requirements-test.txt
+```
+
+One geometry test additionally compares keyboard rectangles with the desktop `common.Keyboard`; without
+a sibling `../pygame-piano-animator` checkout that test skips itself rather than passing silently. The
+`full` local profile compares against a sibling `../pygame-piano-animator` checkout at commit
 `f8189c021d9235005fb35faa2c8cfbc09a3768a0`.
 
 Browser suites use the Chromium channel named by `PIANOMOTION_BROWSER_CHANNEL` (`chrome` or `msedge`).
+Their `webServer` runs `dev:test`, so the generated assets are staged once and reused; a local
+`npm run test:browser` therefore works from a fresh checkout without a separate preparation step.
 `npm run test:browser:all` expects a production build first, because the offline group runs against the
 preview server. Golden fixtures are compared exactly; changing them is a deliberate parity decision,
 not a side effect of a fix.
 
-`.github/workflows/verify.yml` runs on Windows for both Chrome and Edge: it installs the dependencies
-and the pinned desktop reference, then runs `npm run ci` — Python and goldens, melody catalogue,
-typecheck, lint, Vitest, native parity, production build, and the browser groups. Failure artifacts
-(`test-results/`, `playwright-report/`) are uploaded for each browser channel.
+Verification is local. `npm run ci:local` runs the same jobs that used to live in GitHub Actions,
+against the real desktop session (GPU and audio included), without putting the repository's code on a
+hosted runner:
+
+- **profile `pr`** (default) — Python and goldens, the melody catalogue, typecheck, lint, Vitest,
+  native parity, the production build, and a deterministic browser smoke suite (~13 scenarios). This is
+  the gate before a push and takes roughly 12–15 minutes;
+- **profile `full`** — every browser group: the whole UI suite in three shards, worker, audio, SoundFont,
+  PWA/offline, media export and GPU. Use it before a release or overnight.
+
+Jobs run in parallel with separate ports and write their logs to `.ci-local/`. GitHub Actions keeps a
+single workflow, `deploy-pages.yml`, and it only publishes on a manual dispatch after the local gate is
+green.
+
 
 ## Deployment
 
@@ -308,10 +329,10 @@ The production site is published to GitHub Pages:
 
 **https://shafranek-js.github.io/pianomotion-studio/**
 
-`.github/workflows/deploy-pages.yml` runs typecheck, lint, unit tests and the production build on
-every push to `main` and on manual dispatch, then uploads `apps/client/dist`. The deploy job itself
-only runs for `main` and only when the repository variable **`PAGES_ENABLED`** is set to `true`; the
-build uses the base path `/pianomotion-studio/`.
+`.github/workflows/deploy-pages.yml` publishes only on a manual **workflow_dispatch** after
+`npm run ci:local` passed on the machine. It builds the site in the Pages base path and uploads
+`apps/client/dist`; the deploy job requires the repository variable **`PAGES_ENABLED=true`**. No
+hosted verification runs on push or pull request.
 
 Publishing is atomic by design. The service worker lives only in production, refuses a manifest whose
 `buildId` is not the running one, checks the SHA-256 of every file, and activates a new release only
@@ -321,10 +342,11 @@ project to be committed, and a reload restores the last autosaved session.
 
 ## Limitations
 
-- **Preview software.** `0.1.0-dev.22` has no release tag. Behaviour and UI still change between
+- **Preview software.** `0.1.0-dev.23` has no release tag. Behaviour and UI still change between
   development builds; see [release notes](docs/RELEASE_NOTES.md).
-- **Chromium-based browsers are what is verified.** CI exercises Chrome and Edge on Windows.
-  Firefox and Safari are untested, and mobile performance is not certified.
+- **Chromium-based browsers are what is verified.** The browser suites run locally on Windows against
+  Chrome (`PIANOMOTION_BROWSER_CHANNEL=msedge` selects Edge). Firefox and Safari are untested, and
+  mobile performance is not certified.
 - **Large scores are not supported yet.** Files with 10k and 50k notes exceeded the 120 s allowance
   used in testing and are not accepted as supported. The client timeout for one engine job is 180 s.
 - **Video export needs WebCodecs.** There is no MediaRecorder fallback: without `VideoEncoder` the
@@ -370,9 +392,9 @@ browser engine:
   weights became per-project pianist profiles; plans became deterministic, versioned and serialised
   through zod contracts; the engine was packaged for Pyodide and re-implemented in TypeScript; the
   editor, practice tools, renderers, audio and export around it are new.
-- **Still shared:** the desktop project is the frozen parity reference. `verify.yml` checks it out at
-  `f8189c02` to compare keyboard geometry, and the goldens in `tests/fixtures/` are its recorded
-  output.
+- **Still shared:** the desktop project is the frozen parity reference. The `full` local profile uses a
+  sibling checkout at `f8189c02` to compare keyboard geometry, and the goldens in `tests/fixtures/` are
+  its recorded output.
 
 `fingering.py` also notes one cost term as following the `pianoplayer` project's economy-of-motion
 cost.

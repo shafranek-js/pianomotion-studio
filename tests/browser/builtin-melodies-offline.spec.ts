@@ -6,7 +6,7 @@ test("an unvisited built-in melody opens offline from a coherent production rele
   await page.goto(previewBase.includes("?") ? `${previewBase}&empty=true` : `${previewBase}?empty=true`);
   await expect(page.getByRole("button", { name: "Play demo song", exact: true })).toBeEnabled({ timeout: 30_000 });
   await expect.poll(() => page.evaluate(() => Boolean(navigator.serviceWorker.controller)), { timeout: 45_000 }).toBe(true);
-  await page.getByRole("button", { name: "Browse built-in melodies", exact: true }).click();
+  await page.getByTestId("studio-welcome").getByRole("button", { name: "Browse built-in melodies", exact: true }).click();
   const dialog = page.getByRole("dialog", { name: "Built-in melodies", exact: true });
   await dialog.getByRole("searchbox", { name: "Search melodies" }).fill("Brahms");
   await dialog.getByRole("button", { name: "Open Brahms' Lullaby", exact: true }).click();
@@ -22,6 +22,9 @@ test("an unvisited built-in melody opens offline from a coherent production rele
     await reopened.getByRole("button", { name: "File", exact: true }).click();
     await reopened.getByRole("menuitem", { name: "Built-in melodies…", exact: true }).click();
     const offlineDialog = reopened.getByRole("dialog", { name: "Built-in melodies", exact: true });
+    // The previous search is persisted as a library preference, so clear it
+    // before asserting that the whole offline catalogue is available.
+    await offlineDialog.getByRole("searchbox", { name: "Search melodies" }).fill("");
     await expect(offlineDialog.getByRole("list").getByRole("listitem")).toHaveCount(163);
     await offlineDialog.getByRole("searchbox", { name: "Search melodies" }).fill("A Tisket");
     await offlineDialog.getByRole("button", { name: "Open A Tisket, A Tasket", exact: true }).click();
