@@ -1,6 +1,8 @@
 # Проверка стороннего аудита PianoMotion Studio
 
-Дата: 2026-10-21. Проверяемый аудит: `CODE_AUDIT_2026-10-19.md` (исходная ревизия `b7d8831`, плюс поздний resolution log). Текущий HEAD: `f7b61af91a0585f54bbeb2c7a7f96ac5bc5112fc`, версия dev.23. Проверка включает существовавшие до неё незакоммиченные изменения CI, README, package scripts и browser-теста. Это не чистый снимок HEAD и не подтверждение опубликованной версии.
+Дата: 2026-10-21. Проверяемый аудит: `CODE_AUDIT_2026-10-19.md` (исходная ревизия `b7d8831`, плюс поздний resolution log). HEAD в начале проверки: `f7b61af91a0585f54bbeb2c7a7f96ac5bc5112fc`, версия dev.23. Проверка включает существовавшие до неё незакоммиченные изменения CI, README, package scripts и browser-теста. Это не чистый снимок начального HEAD и не подтверждение опубликованной версии.
+
+Во время проверки HEAD внешним действием продвинулся до `97bf3c4` через `820bc75`: ранее прочитанные CI-изменения и промежуточный вариант этого отчёта попали в commit, `.codegraph` добавлена в ignore. Основной агент и исполнители этой проверки не запускали stage/commit/push/deploy. Список diff начального и нового HEAD сверён: код client/engine/contracts не менялся; оценки сделаны по рабочему содержимому, а не по прежнему dirty/clean статусу. Последние дополнения отчёта остаются отдельными рабочими изменениями.
 
 ## Вывод
 
@@ -99,6 +101,17 @@
 - Предложенный meta CSP не может восстановить HTTP-only `frame-ancestors`, X-Frame-Options или nosniff. Отметка «DEP-2 Fixed» в resolution log слишком широка.
 - Полный перенос UI tests на preview может требовать замены dev harnesses. Увеличение timeout/retries само по себе не исправляет продукт и не доказывает стабильность.
 
+## Рекомендуемый порядок работ после проверки
+
+1. **Функциональная корректность:** ENG-2/3/4 (export count, completeness diagnostics, semantic validation), ENG-5/6 (profile hand split и raw pitch contract), CLI-1/2/9 (settlement, busy ownership, cancel export). Для каждого — focused regression с реальным входом и проверкой результата, без полного refactor.
+2. **Исполнение и численная стабильность:** ENG-14d (rolled chord boundary), ENG-8 (cache cap), затем ENG-12 (index вместо repeated scans). ENG-9 сначала воспроизвести на одинаковом t при разных порядках window requests; ENG-10/11 проверить через реальный API lifecycle, а не helper-only примеры.
+3. **Релизный процесс:** явно связать проверенный SHA/dirty snapshot/build artifact/APP_BASE с публикацией; не утверждать, что remote rebuild и локально проверенный artifact тождественны. Проверить required runtime assets. Различать исправление source, новый dist и live publication. Обновление live не выполнялось и этой задачей не запрашивалось.
+4. **Сохранение/восстановление:** уменьшить окно CLI-3 с честной гарантией durability, восстановить retry startup; отдельно решить product semantics transient audio и удаления active project. Не добавлять сохранение больших audio blobs только на основании предположения аудита.
+5. **Release requirements:** записать обязательную browser/codec/device matrix и явно показывать skips. Подтвердить права на engine/media документами происхождения или разрешением, не объявляя их автоматически покрытыми собственным LICENSE.
+6. **После измерений:** CLI-5/6/13 и дальнейшие hardening/refactor. Не начинать масштабный zip/streaming/external-store/LRU rewrite только потому, что он предложен в аудите.
+
+Не возвращать в backlog как открытые исходные дефекты: ENG-1, DEP-7, CI-8; DEP-3 — отдельно только проверка публикации. Не исправлять SMPTE off-by-one из ENG-14e: заявленной ошибки нет. Не повторять отсутствующий SoundFont budget: он уже реализован. Не считать «no kill switch», хранение evidence PNG или single active animator автоматически дефектами.
+
 ## Независимые проверки основного агента
 
 - CodeGraph context/explore/files и чтение конкретных участков; исходный аудит сохранён.
@@ -106,6 +119,9 @@
 - `Invoke-WebRequest -Method Get https://shafranek-js.github.io/pianomotion-studio/`: HTTP 200; header/meta результаты выше.
 - HEAD root `/pyodide/pyodide.asm.wasm` и `/textures/skin-realistic.png`: оба HTTP 200. Точное сегодняшнее удвоение размера не измерялось; наличие двух root URLs само по себе не доказывает полное удвоение всех assets.
 - Safe SoundFont probe через Node `--experimental-transform-types --input-type=module`: rejected 457.8 MiB against 256.0 MiB, createBufferCalls=0, reads=0, decodes=0. Первоначальный запуск без TS transform завершился ERR_UNKNOWN_FILE_EXTENSION; исправленный запуск успешен. Большой буфер не выделялся.
+- Read-only engine probe исполнителя через `node --experimental-strip-types --input-type=module` на существующем tracked-right-hand.mid и 22 assignments: actual marker events=22, markedCount=1; после сдвига одной note start/end на 0.02s: actual=21, markedCount=1, export success. Исходные fixtures и музыка не изменялись.
+- Проверка archive enumeration: `.git` Hidden+Directory, отсутствие -Force; старый архив не удаляли и новый не создавали.
+- Исполнители проверили все DEP/CI, ENG (включая a–h), CLI: CodeGraph context/explore и targeted чтение/сравнение ревизий. Окончательные оценки выше скорректированы основным агентом; повторно прочитаны ключевые export/schema/profile/roll/tempo/DB/lifecycle/build/archive участки. Заявленные тяжёлые numerical/performance effects без probes явно оставлены неподтверждёнными.
 - Полные browser/Python/unit/build suites не повторялись; исторические результаты 639 tests и CI timings не выдаются за новые результаты. Это проверка аудита, не release acceptance.
 
 ## Внешние первичные источники
