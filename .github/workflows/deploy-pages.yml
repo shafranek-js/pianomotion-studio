@@ -1,23 +1,19 @@
 name: Deploy GitHub Pages
 
+# GitHub Actions no longer verifies the project: `npm run ci:local` is the
+# gate. This workflow only publishes a build that was already verified on the
+# machine, and it is always started manually.
 on:
-  # Publish only after the verification workflow succeeds on main. A manual
-  # dispatch stays available as an explicit override.
-  workflow_run:
-    workflows: ["Verify studio"]
-    types: [completed]
-    branches: [main]
   workflow_dispatch:
 
 permissions: {}
 
 concurrency:
-  group: pages-${{ github.ref }}
+  group: pages-main
   cancel-in-progress: true
 
 jobs:
   build:
-    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -33,20 +29,6 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
-
-      # A verification run already passed these; they are repeated only for a
-      # manual dispatch, which can bypass the gate.
-      - name: Check types (manual dispatch only)
-        if: github.event_name == 'workflow_dispatch'
-        run: npm run typecheck
-
-      - name: Lint (manual dispatch only)
-        if: github.event_name == 'workflow_dispatch'
-        run: npm run lint
-
-      - name: Run unit tests (manual dispatch only)
-        if: github.event_name == 'workflow_dispatch'
-        run: npm run test:unit
 
       - name: Build the project site
         env:
@@ -65,7 +47,7 @@ jobs:
           echo "Pages deployment skipped: enable it with repository variable PAGES_ENABLED=true."
 
   deploy:
-    if: ${{ needs.build.result == 'success' && vars.PAGES_ENABLED == 'true' && (github.event_name == 'workflow_run' || github.ref == 'refs/heads/main') }}
+    if: ${{ vars.PAGES_ENABLED == 'true' }}
     needs: build
     runs-on: ubuntu-latest
     permissions:

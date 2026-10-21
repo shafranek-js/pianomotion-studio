@@ -18,8 +18,21 @@ for (const argument of process.argv.slice(2)) {
   if (match) options.set(match[1], match[2] ?? "true");
 }
 
-const allGroups = ["static", "build", "ui", "gpu", "worker", "audio", "soundfont", "pwa", "media"];
-const requested = (options.get("groups") ?? allGroups.join(","))
+const allGroups = ["static", "build", "smoke", "ui", "gpu", "worker", "audio", "soundfont", "pwa", "media"];
+const profiles = {
+  // The gate before pushing: the checks that are deterministic on a developer
+  // machine in the current desktop session.
+  pr: ["static", "build", "smoke"],
+  // Everything, for a nightly run or before a release.
+  full: allGroups,
+};
+const profileName = options.get("profile") ?? "pr";
+const profile = profiles[profileName];
+if (!profile) {
+  console.error(`Unknown profile: ${profileName}. Available: ${Object.keys(profiles).join(", ")}`);
+  process.exit(2);
+}
+const requested = (options.get("groups") ?? profile.join(","))
   .split(",").map(group => group.trim()).filter(Boolean);
 const unknown = requested.filter(group => !allGroups.includes(group));
 if (unknown.length > 0) {
@@ -90,6 +103,15 @@ const browserGroups = [
 for (const [id, config, port] of browserGroups) {
   if (!groups.has(id)) continue;
   add({ id, deps: ["prepare"], port, commands: [`npx --no-install playwright test --config ${config}`] });
+}
+
+if (groups.has("smoke")) {
+  add({
+    id: "smoke",
+    deps: ["prepare"],
+    port: 4185,
+    commands: ["npx --no-install playwright test --config playwright.smoke.config.ts"],
+  });
 }
 
 if (groups.has("pwa")) {

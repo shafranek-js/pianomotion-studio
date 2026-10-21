@@ -23,6 +23,7 @@
     "playwright.preview.config.ts",
     "playwright.media.config.ts",
     "playwright.soundfont.config.ts",
-    "playwright.gpu.config.ts"
+    "playwright.gpu.config.ts",
+    "playwright.smoke.config.ts"
   ]
 }
