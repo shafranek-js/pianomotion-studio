@@ -35,6 +35,9 @@ jobs:
           APP_BASE: /pianomotion-studio/
         run: npm run build
 
+      - name: Verify the exact production artifact
+        run: npm run verify:release
+
       - name: Upload the production site
         uses: actions/upload-pages-artifact@v5
         with:

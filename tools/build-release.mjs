@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import { generateOfflineManifest } from "./generate-offline-manifest.mjs";
 import { prepareBuiltinSoundfont } from "./prepare-builtin-soundfont.mjs";
 import { prepareBuiltinMelodies } from "./prepare-builtin-melodies.mjs";
+import { assertReleaseAssets } from "./release-assets.mjs";
 
 const webRoot = fileURLToPath(new URL("../", import.meta.url));
 const clientRoot = path.join(webRoot, "apps", "client");
@@ -325,6 +326,7 @@ async function embedBuildIdInWorker(distRoot, buildId) {
 async function main() {
   await prepareBuiltinMelodies();
   await prepareBuiltinSoundfont();
+  await assertReleaseAssets(publicRoot);
   const appBase = normalizeAppBase(process.env.APP_BASE ?? process.env.VITE_APP_BASE_PATH ?? process.env.VITE_BASE ?? "/");
   const buildId = await computeBuildId(appBase);
   const assetBase = `${appBase}releases/${buildId}/`;
