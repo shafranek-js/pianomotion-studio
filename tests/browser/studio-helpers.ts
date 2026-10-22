@@ -147,8 +147,3 @@ export async function focusStudioScene(page: Page) {
   await canvas.focus();
   return canvas;
 }
-
-export async function openStudioEditMenu(page: Page) {
-  const trigger = page.getByRole("button", {name: "Edit", exact: true});
-  if (await trigger.getAttribute("aria-expanded") !== "true") await trigger.click();
-}

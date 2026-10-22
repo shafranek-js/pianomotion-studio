@@ -25,10 +25,8 @@ import {
   Pin,
   PinOff,
   Piano,
-  Redo2,
   Save,
   Settings2,
-  Undo2,
   UserRound,
   X,
 } from "lucide-react";
@@ -121,7 +119,6 @@ export function StudioShell(props: StudioShellProps) {
     footerAddon,
     dialogs,
     headerAddon,
-    editActions,
   } = props;
   const { dict } = useI18n();
   const [preferences, setPreferences] = useState<StudioLayoutPreferences>({
@@ -132,7 +129,7 @@ export function StudioShell(props: StudioShellProps) {
   const [viewportWidth, setViewportWidth] = useState(() =>
     typeof window === "undefined" ? 1280 : window.innerWidth,
   );
-  const [menu, setMenu] = useState<"file" | "edit" | "export" | "help" | null>(null);
+  const [menu, setMenu] = useState<"file" | "export" | "help" | null>(null);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
   const [preferenceSaveError, setPreferenceSaveError] = useState(false);
@@ -141,7 +138,6 @@ export function StudioShell(props: StudioShellProps) {
   const menuPopoverRef = useRef<HTMLDivElement | null>(null);
   const [menuPosition, setMenuPosition] = useState({ left: 8, top: 8, maxHeight: 200, ready: false });
   const fileMenuTriggerRef = useRef<HTMLButtonElement | null>(null);
-  const editMenuTriggerRef = useRef<HTMLButtonElement | null>(null);
   const exportMenuTriggerRef = useRef<HTMLButtonElement | null>(null);
   const helpMenuTriggerRef = useRef<HTMLButtonElement | null>(null);
   const panelReturnFocusRef = useRef<HTMLElement | null>(null);
@@ -151,7 +147,6 @@ export function StudioShell(props: StudioShellProps) {
 
   const menuTriggerRef = useCallback((target: NonNullable<typeof menu>) => {
     if (target === "file") return fileMenuTriggerRef;
-    if (target === "edit") return editMenuTriggerRef;
     if (target === "export") return exportMenuTriggerRef;
     return helpMenuTriggerRef;
   }, []);
@@ -524,8 +519,6 @@ export function StudioShell(props: StudioShellProps) {
   const progressPercent = typeof status.progress === "number" && Number.isFinite(status.progress)
     ? Math.round(Math.min(1, Math.max(0, status.progress)) * 100)
     : 0;
-  const canUndo = effectiveView === "editor" && Boolean(editActions?.canUndo);
-  const canRedo = effectiveView === "editor" && Boolean(editActions?.canRedo);
   const isEn = dict.header.file === "File";
 
   return (
@@ -556,30 +549,6 @@ export function StudioShell(props: StudioShellProps) {
               <MenuItem icon={<FolderOpen />} onClick={() => chooseFromMenu(() => openPanel("projects", fileMenuTriggerRef.current ?? undefined))}>{isEn ? "Open saved project…" : "Otevřít uložený projekt…"}</MenuItem>
               <span className="studio-menu-divider" />
               <MenuItem icon={<Save />} disabled={!canSaveProject} onClick={() => onSave && chooseFromMenu(onSave)}>{dict.header.saveProject}</MenuItem>
-            </>)
-          )}
-        </div>
-
-        <div className="studio-menu-group studio-edit-menu" ref={menu === "edit" ? activeMenuRef : undefined}>
-          <button
-            type="button"
-            className={`studio-header-button studio-menu-trigger ${menu === "edit" ? "is-open" : ""}`}
-            aria-label={dict.header.edit}
-            aria-haspopup="menu"
-            aria-expanded={menu === "edit"}
-            ref={editMenuTriggerRef}
-            onClick={() => toggleMenu("edit")}
-          ><span>{dict.header.edit}</span><ChevronDown size={14} />
-          </button>
-          {menu === "edit" && (
-            renderMenuPopover("", dict.header.edit, <>
-              <span className="studio-menu-label">{isEn ? "History" : "Historie"}</span>
-              <MenuItem icon={<Undo2 />} disabled={!canUndo} onClick={() => chooseFromMenu(() => editActions?.undo())}>
-                {dict.header.undo} <kbd className="studio-menu-shortcut">Ctrl+Z</kbd>
-              </MenuItem>
-              <MenuItem icon={<Redo2 />} disabled={!canRedo} onClick={() => chooseFromMenu(() => editActions?.redo())}>
-                {dict.header.redo} <kbd className="studio-menu-shortcut">Ctrl+Y</kbd>
-              </MenuItem>
             </>)
           )}
         </div>

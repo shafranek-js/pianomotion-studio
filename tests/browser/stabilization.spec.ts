@@ -2,7 +2,7 @@ import {expect,test} from "@playwright/test";
 import {readFile} from "node:fs/promises";
 import {createHash} from "node:crypto";
 import {ProjectPackageSchema} from "@handthesia/contracts";
-import {exportStudioPackage,loadStudioSong,openStudioEditMenu,openStudioInspector,saveStudioProject,settledStudio,studioCanvas} from "./studio-helpers";
+import {exportStudioPackage,loadStudioSong,openStudioInspector,saveStudioProject,settledStudio,studioCanvas} from "./studio-helpers";
 
 test("selection does not calculate; edits preserve IDs/history and exported MIDI markers",async({page})=>{
   test.setTimeout(240_000);
@@ -29,8 +29,7 @@ test("selection does not calculate; edits preserve IDs/history and exported MIDI
   expect(second.result.document!.notes.find(n=>n.noteId===pin.noteId)?.finger).toBe(3);
   await page.locator("#player-play-button").click();
   const paused=Number(await page.locator("#player-seek-slider").inputValue());
-  await openStudioEditMenu(page);
-  await page.getByRole("menuitem",{name:/^Undo/}).click();
+  await page.keyboard.press("Control+z");
   const undone=await settledStudio(page,second.result.revision+1);
   expect(undone.result.document!.notes.find(n=>n.noteId===pin.noteId)?.finger).toBe(4);
   expect(Math.abs(Number(await page.locator("#player-seek-slider").inputValue())-paused)).toBeLessThan(.1);
@@ -110,7 +109,7 @@ test("autosaved pending intent is recovered and replanned after reload",async({p
     finally{db.close();}
   }),{timeout:10_000}).toEqual({state:"recompute-required",revision:initial.result.revision+1});
   const pending=await page.evaluate(()=>window.__playerSnapshot!.draftPlan);
-  const pin=pending.assignments.find(a=>a.fingerMode==="manual" && a.finger===4)!;expect(pin).toBeDefined();
+  const pin=pending.assignments.find((a: {fingerMode:string;finger:number})=>a.fingerMode==="manual" && a.finger===4)!;expect(pin).toBeDefined();
   await page.reload();
   const restored=await settledStudio(page,pending.inputRevision);
   const assignment=restored.result.fingeringPlan!.assignments.find(a=>a.noteId===pin.noteId)!;

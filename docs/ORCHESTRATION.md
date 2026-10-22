@@ -1,5 +1,14 @@
 # PianoMotion Studio: журнал оркестрации
 
+## Удаление выпадающей кнопки Edit / History (Undo/Redo) — 2026-10-22
+
+По прямому указанию пользователя удалена выпадающая кнопка меню Edit / History из верхней панели StudioShell: шорткаты Ctrl+Z и Ctrl+Y являются общеизвестными стандартами и полностью поддерживаются нативно на уровне клавиатурных обработчиков редактора аппликатуры.
+- apps/client/src/studio/StudioShell.tsx: удалены неиспользуемые импорты Undo2 и Redo2, вариант edit из состояния menu, ссылки editMenuTriggerRef, canUndo/canRedo и блок разметки кнопки меню studio-edit-menu.
+- apps/client/src/studio/studio.css: очищены селекторы .studio-edit-menu и скорректирована разметка сетки колонок хедера на мобильных/узких брейкпоинтах (@media (max-width: 1199px), 560px, 380px).
+- tests/browser/: тесты переведены с кликов по кнопке меню на прямые проверки через клавиатурные сочетания Control+z и Control+y.
+- Верификация: typecheck PASS, lint PASS, test:unit PASS, browser test 2/2 PASS в Chrome. Git stage/commit/push/deploy не выполнялись.
+
+
 ## Glow активных 3D-нот — dev.21, 2026-10-18
 
 `active_note_glow` (GPT-6 Luna Extra High) владел fallingNotes3dView.ts, новым helper и focused tests. Root: shared versions/release description, browser-привязка к музыкальному времени, визуальная приёмка, совместимость с сатиновым deck и документация. Root вернул на исправление ось масштаба, повторное объявление shader attribute и слишком тонкий ореол; исправления проверены. Эффект только у активных блоков, с цветом руки, ограниченными заранее выделенными instance-буферами и сохранением контура; без общего bloom сцены, изменений звука, транспорта или музыкальных данных. Chrome/Edge по 2/2 PASS, render3d 29/29, scoped lint/harness tsc/build PASS. Общий typecheck прошёл на финальном повторе после параллельных правок practice-тестов; первоначальные ошибки отражены в протоколе. [Протокол](evidence/active-note-glow-2026-10-18/VERIFICATION.md). Принята только область glow; commit/push/deploy не выполнялись. Существующие пользовательские изменения сохранены.
@@ -341,3 +350,14 @@ W006: actual lock inventory содержит 243 package records, 19 direct name
 - Кнопки компактно масштабированы до высоты 22–24px, кнопки пальцев — до 20px, без нарушения кликабельности и доступности.
 - Исправлен `handAssignment` в `en.ts` ("Hand selection") и `FingeringToolbar.tsx` для сохранения полной совместимости с локализацией и тестами.
 - Проведено полное тестирование: 54 тестовых файла (573 теста) успешно пройдены, typecheck — 0 ошибок, lint — 0 предупреждений, production build собран успешно.
+
+## 2026-10-22 — playback startup freeze
+
+- Request: reproduce and fix notes stopping at the keyboard before the music starts.
+- Implementation owner: `/root/fix_startup_freeze`, GPT-6 Luna, xhigh; no nested agents.
+- Write scope: player motion policy/PianoPlayer, transport/render only if needed, focused playback regression tests. Existing audio recording/locale edits belong to another task and must be preserved.
+- Acceptance: reproduce before fix, retain audio/visual clock synchronization and buffering safety, check preparation cancellation, focused regression and browser evidence; root reviews integration.
+- Outcome: no confirmed production fix. On 2026-10-22 the user reported the pause no longer occurs after restarting the app. Confirmed actual Chrome settings: included MuseScore General, native TS engine, 3D Pianist POV, 60 FPS, -2 s lead-in.
+- Evidence: cold Chrome/SoundFont/3D capture showed main-thread long tasks up to 1.869 s but no motion-buffer or transport pause during playback. CPU profiles show expensive cold WebGL program setup; subsequent playback and a cold/warm audio-clock comparison did not reproduce the prolonged onset freeze. These observations do not establish the exact cause of the original symptom.
+- Artifacts (ignored QA output): `test-results/cold-root.json`, `cold-root-startup.cpuprofile`, `cold-root-playback.cpuprofile`, `cold-clock.json`. Temporary diagnostic-only browser test was removed; original motion tests are unchanged. No playback source changes; unrelated concurrent work preserved. Root-owned test server on port 4292 stopped; user's app tabs and settings preserved.
+- Follow-up if it recurs: capture the application's diagnostics immediately after the first affected Play before reloading, then correlate transport/motion events with frame/audio timing. No commit/push/deploy performed.

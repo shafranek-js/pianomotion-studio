@@ -1,7 +1,7 @@
 import { expect, test, type Page } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 import { ProjectPackageSchema } from "@handthesia/contracts";
-import { expectStudioCanvas, exportStudioPackage, loadStudioSong, openStudioEditMenu, openStudioInspector, saveStudioProject, settledStudio, studioCanvas, studioMidiPath } from "./studio-helpers";
+import { expectStudioCanvas, exportStudioPackage, loadStudioSong, openStudioInspector, saveStudioProject, settledStudio, studioCanvas, studioMidiPath } from "./studio-helpers";
 
 const sizes = [
   {width:1920,height:1080}, {width:1440,height:900}, {width:1366,height:768},
@@ -75,7 +75,7 @@ test("six responsive sizes preserve one scene, all keys, contextual tools and pa
       const sceneBounds=await page.getByTestId("studio-scene-pane").boundingBox();
       expect(Math.abs(sceneBounds!.y-workspaceBounds!.y)).toBeLessThanOrEqual(1);
       const header = page.getByTestId("studio-header");
-      for (const name of ["Edit", "Help"]) {
+      for (const name of ["Help"]) {
         const trigger=header.getByRole("button", {name, exact:true});
         await expect(trigger).toBeInViewport();
         const bounds=await trigger.boundingBox();
@@ -249,9 +249,12 @@ test("2D and 3D canvases survive the dimension, Fingering, and Performance trans
   await expect(canvas2d).toHaveAttribute("data-identity-probe","persistent-2d");
   await expect(canvas3d).toHaveAttribute("data-identity-probe","persistent-3d");
   await page.getByRole("button",{name:"Fingering",exact:true}).click();
-  await openStudioEditMenu(page);
-  await expect(page.getByRole("menuitem",{name:/^Undo/})).toBeEnabled();
-  await page.keyboard.press("Escape");
+  await page.keyboard.press("Control+z");
+  const undoneAgain=await settledStudio(page,redone.result.revision+1);
+  expect(undoneAgain.result.fingeringPlan!.assignments.find(item=>item.noteId===selectedId)?.fingerMode).not.toBe("manual");
+  await page.keyboard.press("Control+y");
+  const redoneAgain=await settledStudio(page,undoneAgain.result.revision+1);
+  expect(redoneAgain.result.fingeringPlan!.assignments.find(item=>item.noteId===selectedId)).toMatchObject({finger,fingerMode:"manual"});
   await page.getByRole("button",{name:"Performance",exact:true}).click();
   await expect(canvas2d).toBeVisible();
   await expect(canvas3d).toBeHidden();

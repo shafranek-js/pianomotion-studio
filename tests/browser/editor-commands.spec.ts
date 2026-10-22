@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { loadStudioSong, openStudioEditMenu, settledStudio, studioCanvas } from "./studio-helpers";
+import { loadStudioSong, settledStudio, studioCanvas } from "./studio-helpers";
 
 test("Help works before opening a project and restores focus after shortcuts", async ({page}) => {
   await page.goto("/?empty=true");
@@ -13,11 +13,6 @@ test("Help works before opening a project and restores focus after shortcuts", a
   await page.keyboard.press("Escape");
   await expect(dialog).toBeHidden();
   await expect(help).toBeFocused();
-  await page.getByRole("button", {name:"Edit", exact:true}).click();
-  await expect(page.getByRole("menuitem", {name:/^Undo/})).toBeDisabled();
-  await expect(page.getByRole("menuitem", {name:/^Redo/})).toBeDisabled();
-  await page.keyboard.press("Escape");
-  await expect(page.getByRole("button", {name:"Edit", exact:true})).toBeFocused();
 });
 
 test("Auto-advance confirms fingers without fictitious edits and menus share the editor history", async ({page}) => {
@@ -63,9 +58,7 @@ test("Auto-advance confirms fingers without fictitious edits and menus share the
   await page.keyboard.press("Control+z"); // Finger button still has focus.
   const undone=await settledStudio(page, second.result.revision+1);
   expect(undone.result.fingeringPlan!.assignments.find(a=>a.noteId===notes[1]!.noteId)?.fingerMode).not.toBe("manual");
-  await openStudioEditMenu(page);
-  await expect(page.getByRole("menuitem", {name:/^Redo/})).toBeEnabled();
-  await page.getByRole("menuitem", {name:/^Redo/}).click();
+  await page.keyboard.press("Control+y");
   const redone=await settledStudio(page, undone.result.revision+1);
   expect(redone.result.fingeringPlan!.assignments.find(a=>a.noteId===notes[1]!.noteId)?.finger).toBe(3);
   await page.getByRole("button", {name:"Projects", exact:true}).click();
@@ -89,9 +82,9 @@ test("Auto-advance confirms fingers without fictitious edits and menus share the
   await page.getByRole("button", {name:"Close panel", exact:true}).click();
   await page.getByRole("button", {name:"Performance", exact:true}).click();
   await expect(auto).toBeHidden();
-  await openStudioEditMenu(page);
-  await expect(page.getByRole("menuitem", {name:/^Undo/})).toBeDisabled();
-  await page.keyboard.press("Escape");
+  await page.keyboard.press("Control+z");
+  await page.waitForTimeout(650);
+  expect((await settledStudio(page, redone.result.revision)).result.revision).toBe(redone.result.revision);
   await page.getByRole("button", {name:"Fingering", exact:true}).click();
   await expect(auto).toHaveAttribute("aria-pressed", "true");
   await expect(canvas).toHaveAttribute("data-commands-probe", "same-canvas");

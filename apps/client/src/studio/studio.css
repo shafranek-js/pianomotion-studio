@@ -868,7 +868,6 @@ body:has(.studio-shell) {
   .studio-header { gap: 4px; padding: 0 8px; }
   .studio-brand-name,
   .studio-file-label,
-  .studio-edit-menu span,
   .studio-save-state span,
   .studio-export-button > span { display: none; }
   .studio-save-state { gap: 0; }
@@ -881,7 +880,7 @@ body:has(.studio-shell) {
 @media (max-width: 1199px) {
   .studio-header {
     display: grid;
-    grid-template-columns: 34px 44px max-content minmax(24px, 1fr) 44px 44px 44px;
+    grid-template-columns: 34px 44px minmax(24px, 1fr) 44px 44px 44px;
     grid-template-rows: 56px 44px auto;
     gap: 3px;
     padding-right: 8px;
@@ -890,13 +889,12 @@ body:has(.studio-shell) {
   .studio-header .studio-brand-name { display: none; }
   .studio-header > .studio-brand { grid-column: 1; grid-row: 1; }
   .studio-header > .studio-file-menu { grid-column: 2; grid-row: 1; }
-  .studio-header > .studio-edit-menu { grid-column: 3; grid-row: 1; }
-  .studio-header > .studio-project-name { grid-column: 4; grid-row: 1; }
+  .studio-header > .studio-project-name { grid-column: 3; grid-row: 1; }
   .studio-header > .studio-view-switch { grid-column: 1 / -1; grid-row: 2; justify-self: center; }
   .studio-header > .studio-header-spacer { display: none; }
-  .studio-header > .studio-export-menu { grid-column: 5; grid-row: 1; }
-  .studio-header > .studio-help-menu { grid-column: 6; grid-row: 1; }
-  .studio-header > .studio-preferences-button { grid-column: 7; grid-row: 1; }
+  .studio-header > .studio-export-menu { grid-column: 4; grid-row: 1; }
+  .studio-header > .studio-help-menu { grid-column: 5; grid-row: 1; }
+  .studio-header > .studio-preferences-button { grid-column: 6; grid-row: 1; }
   .studio-header > .studio-save-state,
   .studio-header > .studio-pianist-button { display: none; }
   .studio-header > .studio-header-camera-hud {
@@ -976,7 +974,7 @@ body:has(.studio-shell) {
 
 @media (max-width: 560px) {
   .studio-header {
-    grid-template-columns: 34px 44px max-content minmax(24px, 1fr) 44px 44px 44px;
+    grid-template-columns: 34px 44px minmax(24px, 1fr) 44px 44px 44px;
     grid-template-rows: 56px 44px auto;
     gap: 3px;
     padding: 0 6px;
@@ -985,13 +983,12 @@ body:has(.studio-shell) {
   .studio-brand-name, .studio-pianist-button, .studio-save-state { display: none; }
   .studio-header > .studio-brand { grid-column: 1; grid-row: 1; }
   .studio-header > .studio-file-menu { grid-column: 2; grid-row: 1; }
-  .studio-header > .studio-edit-menu { grid-column: 3; grid-row: 1; }
-  .studio-header > .studio-project-name { grid-column: 4; grid-row: 1; }
+  .studio-header > .studio-project-name { grid-column: 3; grid-row: 1; }
   .studio-header > .studio-view-switch { grid-column: 1 / -1; grid-row: 2; justify-self: center; }
   .studio-header > .studio-header-spacer { display: none; }
-  .studio-header > .studio-export-menu { grid-column: 5; grid-row: 1; }
-  .studio-header > .studio-help-menu { grid-column: 6; grid-row: 1; }
-  .studio-header > .studio-preferences-button { grid-column: 7; grid-row: 1; }
+  .studio-header > .studio-export-menu { grid-column: 4; grid-row: 1; }
+  .studio-header > .studio-help-menu { grid-column: 5; grid-row: 1; }
+  .studio-header > .studio-preferences-button { grid-column: 6; grid-row: 1; }
   .studio-header > .studio-header-addon { grid-column: 1 / -1; grid-row: 3; padding-bottom: 6px; }
   .studio-header-button { min-width: 44px; padding: 0 5px; }
   .studio-icon-button { width: 44px; min-width: 44px; }
@@ -1004,7 +1001,7 @@ body:has(.studio-shell) {
 
 @media (max-width: 380px) {
   .studio-header {
-    grid-template-columns: 30px 44px max-content minmax(16px, 1fr) 44px 44px 44px;
+    grid-template-columns: 30px 44px minmax(16px, 1fr) 44px 44px 44px;
     gap: 2px;
     padding-right: 4px;
     padding-left: 4px;

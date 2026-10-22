@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { loadStudioSong, openStudioEditMenu, openStudioInspector, settledStudio, studioCanvas } from "./studio-helpers";
+import { loadStudioSong, openStudioInspector, settledStudio, studioCanvas } from "./studio-helpers";
 
 test("unified fingering scene retains history, contextual tools and live playback", async ({page}) => {
   test.setTimeout(180_000);
@@ -17,12 +17,8 @@ test("unified fingering scene retains history, contextual tools and live playbac
   await expect(canvasHost.locator("canvas")).toHaveCount(2);
   await expect(canvasHost.locator("canvas:visible")).toHaveCount(1);
   await expect(page.getByTestId("studio-editor-toolbar")).toHaveCount(0);
-  await openStudioEditMenu(page);
-  const undo = page.getByRole("menuitem", {name: /^Undo/});
-  const redo = page.getByRole("menuitem", {name: /^Redo/});
-  await expect(undo).toBeDisabled();
-  await expect(redo).toBeDisabled();
-  await page.keyboard.press("Escape");
+  await page.keyboard.press("Control+z");
+  await page.keyboard.press("Control+y");
   await canvas.focus();
   await page.keyboard.press("ArrowRight");
   await page.getByTestId("studio-header").getByRole("button", {name: "Finger 4", exact: true}).click();
@@ -32,27 +28,22 @@ test("unified fingering scene retains history, contextual tools and live playbac
   await page.keyboard.press("Control+z"); // Assignment button still has focus.
   const undone = await settledStudio(page, edited.result.revision + 1);
   expect(undone.result.fingeringPlan!.assignments.find(a => a.noteId === pin!.noteId)?.fingerMode).not.toBe("manual");
-  await openStudioEditMenu(page);
-  await expect(redo).toBeEnabled();
-  await page.keyboard.press("Escape");
   await canvas.focus();
   await page.keyboard.press("Control+Shift+z");
   const redone = await settledStudio(page, undone.result.revision + 1);
   expect(redone.result.fingeringPlan!.assignments.find(a => a.noteId === pin!.noteId)?.finger).toBe(4);
   await page.getByRole("button", {name: "Performance", exact: true}).click();
   await expect(page.getByTestId("studio-editor-toolbar")).toHaveCount(0);
-  await openStudioEditMenu(page);
-  await expect(undo).toBeDisabled();
-  await page.keyboard.press("Escape");
+  await page.keyboard.press("Control+z");
   await expect(canvas).toHaveAttribute("data-identity-probe", "original-scene");
   await page.locator("#player-play-button").click();
   await expect(page.locator("#player-play-button")).toContainText("Pause");
   await expect.poll(async () => Number(await page.locator("#player-seek-slider").inputValue())).toBeGreaterThan(-1.5);
   await page.getByRole("button", {name: "Fingering", exact: true}).click();
   await expect(page.locator("#player-play-button")).toContainText("Pause");
-  await openStudioEditMenu(page);
-  await expect(undo).toBeEnabled();
-  await page.keyboard.press("Escape");
+  await page.keyboard.press("Control+z");
+  const undoneAgain = await settledStudio(page, redone.result.revision + 1);
+  expect(undoneAgain.result.fingeringPlan!.assignments.find(a => a.noteId === pin!.noteId)?.fingerMode).not.toBe("manual");
   await expect(canvas).toHaveAttribute("data-identity-probe", "original-scene");
   await page.locator("#player-play-button").click();
   await openStudioInspector(page, "Diagnostics");
