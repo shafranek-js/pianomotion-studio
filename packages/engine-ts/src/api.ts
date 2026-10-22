@@ -21,7 +21,7 @@ import { reset_context } from "./fingering.ts";
 
 const EMBEDDED_MANIFEST = {
   "schemaVersion": 1,
-  "engineVersion": "8aa119fee0e04cf199c2c031e5a8c4116d4006bf62e2de8f8939cf5f3d8152f3",
+  "engineVersion": "b54581cb07a377d24fdb762198c76d0c40b3e8be018ff2db5f022c1f5e00c23e",
   "entrypoint": "handthesia_core.api:analyze_midi",
   "replanEntrypoint": "handthesia_core.api:replan_document",
   "pythonPackages": [
@@ -31,13 +31,13 @@ const EMBEDDED_MANIFEST = {
   ],
   "files": {
     "handthesia_core/__init__.py": "b717704c7b696ca09293395731d10d903b82772d691f5ef60028bcf4d4e67ac0",
-    "handthesia_core/api.py": "52d79f90006bfa932666fcf801078b6757cf98f478415722c41887463a31985e",
+    "handthesia_core/api.py": "c24146f15c17486553dbe1473abd2e5d83f54f8660aa20d13eb4a2f769e5faf2",
     "handthesia_core/figures.py": "0c89b85176c73f566528c692944e6c7192444f9c7134c13d5ec027063fb86fb9",
     "handthesia_core/fingering.py": "2140b2a5b81e4724fce03e99470edef9aff0c97f56fc6bff07c66aedf672c9ac",
     "handthesia_core/geometry.py": "df96013f715b51fb21ed95087259a1fe202dd7e828e6e09e4578172a43f3c5fd",
     "handthesia_core/glissando.py": "7c1a472b3edb380d222a06ca41def651bb84078ecaddcb6180ee4b0a2b772923",
-    "handthesia_core/hand_split.py": "0e2dc047343befe0fa8b0384f81a19fe9ab944736a46dda62d4280eb2f4f4243",
-    "handthesia_core/hands.py": "065239356c3a63565edf4d684294cfe9bfcb740b6572ffe577e1e736d565d800",
+    "handthesia_core/hand_split.py": "73eb529c1cb91ca21cae5a50660025aa258a7c2a69a2677f7ede79166cc71d3a",
+    "handthesia_core/hands.py": "6cf80ac7204696741e61c48935f93ede1816a856d5e3536371a1d603ce2eff43",
     "handthesia_core/identity.py": "a2bf6d82f09e2bea6610b29ad0d494931e64ee43744bfcbc8e6b20cfab694906",
     "handthesia_core/midi_loader.py": "9aea3ef37ea1c4dc54aed6daf4f07b6d1d04af8befba47821237c865bafa0fb7",
     "handthesia_core/pianist.py": "e80a4b4c4f2511e344d9b8ee8921f83442dac816ea53dfc8f5d2747e0f49cb19",
@@ -128,6 +128,16 @@ export function _empty_raw_baseline(fixture_id: any = null, input_hash: any = nu
   }
   return result;
 }
+export function _compare_desktop_candidates(a: any, b: any): number {
+  const ka = [a['end'], -a['sourceInstrument'], -a['sourceOrdinal']];
+  const kb = [b['end'], -b['sourceInstrument'], -b['sourceOrdinal']];
+  for (let index = 0; index < ka.length; index += 1) {
+    if (ka[index] === kb[index]) continue;
+    // Python uses candidates.sort(..., reverse=True) on this tuple.
+    return ka[index] < kb[index] ? 1 : -1;
+  }
+  return 0;
+}
 export function _map_desktop_notes(source_notes: any = null, song_notes: any = null, fixture_id: any = null): any {
   let by_object: any, by_pitch_start: any, by_track_key: any, candidates: any, entry: any, key: any, matching: any, missing: any, note: any, note_index: any, output: any, primary: any, signature: any, source: any, source_id: any, source_ids: any, stable_id: any, used: any, used_decoded: any;
   // Mirror the baseline join while preserving decoded IDs as stable aliases.
@@ -143,12 +153,12 @@ export function _map_desktop_notes(source_notes: any = null, song_notes: any = n
     signature = [note.track, note.pitch, pyRound(note.start, 5), note.velocity];
     candidates = Array.from(pyIter(pyGet(by_track_key, signature, []))).filter((item: any) => ((!pyIn(item['noteId'], used)))).map((item: any) => item);
     if (bool((!bool(candidates)))) {
-      candidates = Array.from(pyIter(source_notes)).filter((item: any) => (((pyEq(item['sourceInstrument'], note.track))) && ((Math.abs((item['start'] - note.start)) <= 0.005)) && (((!pyIn(item['noteId'], used)))))).map((item: any) => item);
+      candidates = Array.from(pyIter(source_notes)).filter((item: any) => (((pyEq(item['sourceInstrument'], note.track))) && ((pyEq(item['pitch'], note.pitch))) && ((Math.abs((item['start'] - note.start)) <= 0.005)) && (((!pyIn(item['noteId'], used)))))).map((item: any) => item);
     }
     if (bool((!bool(candidates)))) {
-      candidates = Array.from(pyIter(source_notes)).filter((item: any) => (((Math.abs((item['start'] - note.start)) <= 0.005)) && (((!pyIn(item['noteId'], used)))))).map((item: any) => item);
+      candidates = Array.from(pyIter(source_notes)).filter((item: any) => (((pyEq(item['pitch'], note.pitch))) && ((Math.abs((item['start'] - note.start)) <= 0.005)) && (((!pyIn(item['noteId'], used)))))).map((item: any) => item);
     }
-    candidates.sort((a: any, b: any) => { const ka = ((item) => [item['end'], (-item['sourceInstrument']), (-item['sourceOrdinal'])]) ? (((item) => [item['end'], (-item['sourceInstrument']), (-item['sourceOrdinal'])]))(a) : a; const kb = ((item) => [item['end'], (-item['sourceInstrument']), (-item['sourceOrdinal'])]) ? (((item) => [item['end'], (-item['sourceInstrument']), (-item['sourceOrdinal'])]))(b) : b; return ka < kb ? (true ? 1 : -1) : (ka > kb ? (true ? -1 : 1) : 0); });
+    candidates.sort(_compare_desktop_candidates);
     primary = (bool(candidates) ? candidates[0] : null);
     if (bool(primary)) {
       used.add(primary['noteId']);
@@ -227,8 +237,9 @@ export function _same_json(left: any = null, right: any = null): any {
   if (left === right) return true;
   if (left === null || left === undefined || right === null || right === undefined) return left === right;
   if (typeof left === "number" && typeof right === "number") {
-    if (Number.isNaN(left) && Number.isNaN(right)) return true;
-    return Math.abs(left - right) < 1e-7;
+    // Python's _same_json uses exact equality for scalar values; a tolerance
+    // here would accept edits the Python engine rejects.
+    return left === right;
   }
   // Compare JSON DTOs without relying on insertion order.
   if (typeof left === 'object' && !Array.isArray(left) && typeof right === 'object' && !Array.isArray(right)) {
@@ -340,7 +351,7 @@ export function _profile_diagnostics(diagnostics: any = null): any {
   return Array.from(pyIter(diagnostics)).map((item: any) => ({ ...item }));
 }
 export function analyze_midi(data: any = null, options: any = null): any {
-  let _lead: any, _strength: any, _top: any, aliases_by_note: any, ambiguous_alias_ids: any, ambiguous_normalized_ids: any, ambiguous_source_identity_diagnostic: any, ambiguous_source_ids: any, animator: any, animators: any, arranged: any, assignment_by_identity: any, assignment_dto: any, assignment_dtos: any, assignments: any, bpm: any, cleanup: any, common_plan: any, common_result: any, common_sample_times: any, controller: any, crossing_episodes: any, decoded: any, desktop_notes: any, diagnostics: any, disposition: any, document: any, document_notes: any, dto: any, edited_assignments: any, edited_assignments_by_id: any, edited_document: any, edited_intent: any, edited_note: any, edited_notes: any, edited_plan: any, end: any, engine_version: any, entry: any, entry_by_id: any, entry_by_object: any, error: any, event: any, event_by_source_id: any, finger: any, fingering_plan: any, fixture_id: any, frac: any, gliss_ids: any, hand_name: any, hands_summary: any, identity_losses: any, identity_mappings: any, index: any, initial_end: any, initial_motion_window: any, input_hash: any, intent_key: any, key_style: any, keyboard: any, keyboard_rect: any, locators: any, manifest: any, missing: any, motion_plan: any, motion_poses: any, normalized: any, normalized_id: any, note: any, note_id: any, note_id_by_object: any, observed: any, ordinal: any, original_song: any, paired: any, parse_errors: any, parser_cleanup: any, pedal_controls: any, pedals: any, performance_events: any, performance_plan: any, performance_plan_events: any, planning_song: any, pose: any, press: any, profile_context: any, profile_dto: any, profile_id: any, profile_revision: any, project_id: any, raw: any, raw_baseline: any, raw_channels: any, raw_events: any, raw_observation: any, raw_pedals: any, raw_poses: any, raw_status: any, raw_tracks: any, rect_values: any, release: any, replan_context: any, report_step: any, request_id: any, requested_times: any, required: any, resource: any, resource_id: any, revision: any, sample_time: any, sample_times_by_hand: any, sampled: any, sampled_window: any, shared: any, solved_count: any, song: any, source: any, source_bytes: any, source_decode_error: any, source_event_map: any, source_id: any, source_ids: any, source_items: any, source_note: any, source_notes: any, source_notes_by_id: any, source_parse_errors: any, source_pm: any, start: any, status: any, tempi: any, tempo_map: any, tempo_times: any, time_seconds: any, total_samples: any, track: any, track_dto: any, track_dtos: any, tracks_by_index: any, unmapped_source_ids: any, unplayable_ids: any, updated_entries: any, updated_note_ids: any, updated_notes: any, value: any;
+  let _lead: any, _strength: any, _top: any, aliases_by_note: any, ambiguous_alias_ids: any, ambiguous_normalized_ids: any, ambiguous_source_identity_diagnostic: any, ambiguous_source_ids: any, animator: any, animators: any, arranged: any, assignment_by_identity: any, assignment_dto: any, assignment_dtos: any, assignments: any, bpm: any, cleanup: any, common_plan: any, common_result: any, common_sample_times: any, controller: any, crossing_episodes: any, decoded: any, desktop_notes: any, diagnostics: any, disposition: any, document: any, document_notes: any, dto: any, edited_assignments: any, edited_assignments_by_id: any, edited_document: any, edited_intent: any, edited_note: any, edited_notes: any, edited_plan: any, end: any, engine_version: any, entry: any, entry_by_id: any, entry_by_object: any, error: any, event: any, event_by_source_id: any, finger: any, fingering_plan: any, fixture_id: any, frac: any, gliss_ids: any, hand_name: any, hands_summary: any, identity_losses: any, identity_mappings: any, index: any, initial_end: any, initial_motion_window: any, input_hash: any, intent_key: any, key_style: any, keyboard: any, keyboard_rect: any, locators: any, manifest: any, missing: any, motion_plan: any, motion_poses: any, normalized: any, normalized_id: any, note: any, note_id: any, note_id_by_object: any, observed: any, ordinal: any, original_song: any, paired: any, parse_errors: any, parser_cleanup: any, pedal_controls: any, pedals: any, performance_events: any, performance_plan: any, performance_plan_events: any, planning_song: any, pose: any, press: any, profile_context: any, profile_dto: any, profile_id: any, profile_revision: any, project_id: any, raw: any, raw_baseline: any, raw_channels: any, raw_events: any, raw_observation: any, raw_pedals: any, raw_poses: any, raw_status: any, raw_tracks: any, rect_values: any, release: any, replan_context: any, report_step: any, request_id: any, requested_times: any, required: any, resource: any, resource_id: any, revision: any, sample_time: any, sample_times_by_hand: any, sampled: any, sampled_window: any, shared: any, solved_count: any, song: any, source: any, source_bytes: any, source_decode_error: any, source_event_map: any, source_id: any, source_ids: any, source_ids_by_note_id: any, source_items: any, source_note: any, source_notes: any, source_notes_by_id: any, source_parse_errors: any, source_pm: any, start: any, status: any, tempi: any, tempo_map: any, tempo_times: any, time_seconds: any, total_samples: any, track: any, track_dto: any, track_dtos: any, tracks_by_index: any, unmapped_source_ids: any, unplayable_ids: any, updated_entries: any, updated_note_ids: any, updated_notes: any, value: any;
   // Import, normalize, finger, schedule, and sample a MIDI in one job.
   //
   //     ``data`` remains in memory and its SHA-256 is returned as a resource
@@ -690,6 +701,12 @@ export function analyze_midi(data: any = null, options: any = null): any {
   raw_pedals = Array.from(pyIter(song.raw_controls)).map(([t, c, v]: any) => ({ ['time']: _rounded(t), ['controller']: Math.trunc(c), ['value']: Math.trunc(v) }));
   pedals = Array.from(pyIter(song.controls)).map(([t, c, v]: any) => ({ ['time']: _rounded(t), ['controller']: Math.trunc(c), ['value']: Math.trunc(v) }));
   identity_mappings = [];
+  // Index normalized notes once; scanning document_notes per source note made
+  // identity mapping quadratic on large scores.
+  source_ids_by_note_id = {  };
+  for (note of pyIter(document_notes)) {
+    source_ids_by_note_id[note['noteId']] = pyGet(note, 'sourceNoteIds', []);
+  }
   for (source of pyIter(source_notes)) {
     source_id = source['noteId'];
     normalized = pySorted(new Set(pyGet(aliases_by_note, source_id, [])), null, false);
@@ -703,7 +720,7 @@ export function analyze_midi(data: any = null, options: any = null): any {
         if (bool((!bool(raw)))) {
           status = 'decoded-only';
         } else {
-          if (bool(Array.from(Array.from(pyIter(normalized)).map((note_id: any) => ((source_ids_for([note_id], document_notes)).length > 1))).some(Boolean))) {
+          if (bool(Array.from(Array.from(pyIter(normalized)).map((note_id: any) => (pyLen(source_ids_by_note_id[note_id] ?? []) > 1))).some(Boolean))) {
             status = 'merged';
           } else {
             status = 'exact';

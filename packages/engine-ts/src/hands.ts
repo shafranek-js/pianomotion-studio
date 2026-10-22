@@ -21,6 +21,19 @@ const pianists = pianist_module;
 const glissando = glissando_module;
 const fg = fingering_module;
 
+/** Keep a cache lookup table below the given entry threshold. */
+export function _cap_cache(cache: any, limit = 20000): void {
+  if (pyLen(cache) > limit) pyClear(cache);
+}
+
+/** Delay an upward roll without crossing the next chord's onset. */
+export function _roll_onsets(order: readonly any[], rollDt: number, ceiling: number | null = null): number[] {
+  return order.map((note, index) => {
+    const target = note.start + index * rollDt;
+    return ceiling === null ? target : Math.min(target, Math.max(note.start, ceiling));
+  });
+}
+
 // Share the same object identity space as MIDI parsing and fingering. The
 // planner's HybridNoteMap is keyed by figures.objId(note), so a private map
 // here silently loses its assignments when its allocation order differs.
@@ -1435,9 +1448,7 @@ export class HandAnimator {
     cache = this._smooth_hand_cache;
     q = pyGet(cache, k, null);
     if ((q === null)) {
-      if (((cache).length > 20000)) {
-        pyClear(cache);
-      }
+      _cap_cache(cache);
       const avg = (n: any = null): any => {
         let acc: any, d: any, v: any, w: any, ws: any;
         [acc, ws] = [[0.0, 0.0, 0.0], 0.0];
@@ -1616,9 +1627,7 @@ export class HandAnimator {
     cache = this._smooth_tip_cache;
     q = pyGet(cache, k, null);
     if ((q === null)) {
-      if (((cache).length > 20000)) {
-        pyClear(cache);
-      }
+      _cap_cache(cache);
       n = LIMIT_SMOOTH_TIPS;
       grids = Array.from(pyIter(pyRange((-n), pyAdd(n, 1)))).map((d: any) => [(pyAdd(n, 1) - Math.abs(d)), this._limited_tip_grid(pyAdd(k, d))]);
       ws = (Array.from(pyIter(grids)).map(([w, _0]: any) => w)).reduce((a: any, b: any) => a + b, 0);
@@ -1641,9 +1650,7 @@ export class HandAnimator {
     if ((pyIn(k, cache))) {
       return cache[k];
     }
-    if (((cache).length > 20000)) {
-      pyClear(cache);
-    }
+    _cap_cache(cache);
     g = LIMIT_GRID_T;
     step = pyMult(pyMult((this.max_speed / 0.0254), this.ppi), g);
     [j, todo] = [k, []];
@@ -1676,9 +1683,7 @@ export class HandAnimator {
     if ((pyIn(k, cache))) {
       return cache[k];
     }
-    if (((cache).length > 20000)) {
-      pyClear(cache);
-    }
+    _cap_cache(cache);
     g = LIMIT_GRID_T;
     step = pyMult(pyMult((this.max_speed / 0.0254), this.ppi), g);
     arm = pyMult(TIP_ARM_IN, this.ppi);
@@ -2000,7 +2005,7 @@ export class HandAnimator {
     }
   }
   _roll_wide_chords(): any {
-    let _: any, drawn: any, eo: any, f: any, fs: any, ft: any, gi: any, groups: any, k: any, latest: any, n: any, need: any, ns: any, order: any, over: any, pairs: any, pt: any, scale: any, so: any, too_wide: any, top: any;
+    let _: any, ceiling: any, drawn: any, eo: any, f: any, fs: any, ft: any, gi: any, groups: any, k: any, latest: any, n: any, need: any, ns: any, order: any, over: any, pairs: any, pt: any, rollOnsets: any, scale: any, so: any, too_wide: any, top: any;
     // 
     //         A chord this hand can't span is rolled from the bottom up, and the
     //         lower notes are let go as the hand moves on to the top ones (the pedal,
@@ -2056,12 +2061,14 @@ export class HandAnimator {
       }
       this.rolled = pyAugAdd(this.rolled, 1);
       order = pySorted(ns, ((n) => n.pitch), false);
+      ceiling = ((pyAdd(gi, 1) < (groups).length) ? (groups[pyAdd(gi, 1)][0] - 0.03) : null);
+      rollOnsets = _roll_onsets(order, this.roll_dt, ceiling);
       for ([k, n] of pyIter(enumerate(order))) {
-        so[pyId(n)] = pyAdd(n.start, pyMult(k, this.roll_dt));
+        so[pyId(n)] = rollOnsets[k];
       }
       top = order[order.length - 1];
       [ft, pt] = [this.fingering[pyId(top)], pos(top)];
-      latest = pyMax(so[pyId(top)], ((pyAdd(gi, 1) < (groups).length) ? (groups[pyAdd(gi, 1)][0] - 0.03) : Infinity));
+      latest = (ceiling !== null ? ceiling : Infinity);
       for (n of pyIter(order.slice(0, (-1)))) {
         f = this.fingering[pyId(n)];
         if ((pyEq(f, ft))) {
@@ -2071,7 +2078,7 @@ export class HandAnimator {
         if ((over > 0)) {
           need = fg.travel_time(over, this.max_speed);
           eo[pyId(n)] = pyMin(eo[pyId(n)], pyMax(pyAdd(so[pyId(n)], 0.03), (so[pyId(top)] - need)));
-          so[pyId(top)] = pyMin(latest, pyMax(so[pyId(top)], pyAdd(eo[pyId(n)], need)));
+          so[pyId(top)] = pyMax(so[pyId(top)], pyMin(latest, pyMax(so[pyId(top)], pyAdd(eo[pyId(n)], need))));
         }
       }
       for (n of pyIter(order)) {
@@ -2724,14 +2731,7 @@ export class HandAnimator {
     for (k = k0; k < pyAdd(k1, 1); k += 1) {
       w = (1.0 - (Math.abs((pyMult(k, g) - t)) / span));
       if ((w > 0)) {
-        d = pyGet(this._idle_cache, k, null);
-        if ((d === null)) {
-          if (((this._idle_cache).length > 4000)) {
-            pyClear(this._idle_cache);
-          }
-          d = this._idle_shift_parts(pyMult(k, g));
-          this._idle_cache[k] = d;
-        }
+        d = this._idle_cached(pyMult(k, g));
         [sd, sf, sw] = [pyAdd(sd, pyMult(w, d[0])), pyAdd(sf, pyMult(w, d[1])), pyAdd(sw, w)];
       }
     }
@@ -2748,6 +2748,16 @@ export class HandAnimator {
     }
     dx = this._short_of_next(t, wx, dx);
     return [pyAdd(wx, dx), wy, (pyAdd(psi, this._yaw(pyAdd(wx, dx))) - this._yaw(wx))];
+  }
+  _idle_cached(k: any = null): any {
+    let d: any;
+    d = pyGet(this._idle_cache, k, null);
+    if ((d === null)) {
+      _cap_cache(this._idle_cache, 4000);
+      d = this._idle_shift_parts(k);
+      this._idle_cache[k] = d;
+    }
+    return d;
   }
   _idle_shift_parts(t: any = null): any {
     let edge: any, hi: any, i1: any, lo: any, mine: any, nxt: any, p: any, p_idle: any, raw: any, rise: any, span: any, target: any, theirs: any, ticks: any, trail: any, w: any, xn: any;
@@ -2827,9 +2837,7 @@ export class HandAnimator {
     // The other hand's wrist x at tick i (IDLE_TICK_T), in this hand's frame.
     x = pyGet(this._path_cache, i, null);
     if ((x === null)) {
-      if (((this._path_cache).length > 20000)) {
-        pyClear(this._path_cache);
-      }
+      _cap_cache(this._path_cache);
       p = this.partner;
       x = this._mx(p._mx(p._grid_pose(pyRound((pyMult(i, IDLE_TICK_T) / HAND_GRID_T)))[0]));
       this._path_cache[i] = x;
@@ -2849,9 +2857,7 @@ export class HandAnimator {
     if ((pyIn(k, cache))) {
       return cache[k];
     }
-    if (((cache).length > 20000)) {
-      pyClear(cache);
-    }
+    _cap_cache(cache);
     [at, tick] = [this._partner_x.bind(this), IDLE_TICK_T];
     const ahead = (j: any = null): any => {
       let i0: any;
@@ -2877,9 +2883,7 @@ export class HandAnimator {
     cache = this._cache;
     pose = pyGet(cache, k, null);
     if ((pose === null)) {
-      if (((cache).length > 4000)) {
-        pyClear(cache);
-      }
+      _cap_cache(cache, 4000);
       t = pyMult(k, HAND_GRID_T);
       pose = this._solve_hand(this._items_at(t), this._run_w(t), this._low(t));
       cache[k] = pose;

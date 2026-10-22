@@ -159,9 +159,11 @@ def _map_desktop_notes(source_notes, song_notes, fixture_id):
         candidates = [item for item in by_track_key.get(signature, []) if item["noteId"] not in used]
         if not candidates:
             candidates = [item for item in source_notes if item["sourceInstrument"] == note.track
+                          and item["pitch"] == note.pitch
                           and abs(item["start"] - note.start) <= 0.005 and item["noteId"] not in used]
         if not candidates:
-            candidates = [item for item in source_notes if abs(item["start"] - note.start) <= 0.005
+            candidates = [item for item in source_notes if item["pitch"] == note.pitch
+                          and abs(item["start"] - note.start) <= 0.005
                           and item["noteId"] not in used]
         candidates.sort(key=lambda item: (item["end"], -item["sourceInstrument"], -item["sourceOrdinal"]),
                         reverse=True)
@@ -859,6 +861,12 @@ def analyze_midi(data: bytes, options: dict) -> dict:
     pedals = [{"time": _rounded(t), "controller": int(c), "value": int(v)}
               for t, c, v in song.controls]
     identity_mappings = []
+    # Index the normalized notes once instead of scanning document_notes for
+    # every source note and every normalized id.
+    source_ids_by_note_id = {
+        note["noteId"]: note.get("sourceNoteIds", [])
+        for note in document_notes
+    }
     for source in source_notes:
         source_id = source["noteId"]
         normalized = sorted(set(aliases_by_note.get(source_id, [])))
@@ -869,7 +877,7 @@ def analyze_midi(data: bytes, options: dict) -> dict:
             status = "unmapped"
         elif not raw:
             status = "decoded-only"
-        elif any(len(source_ids_for([note_id], document_notes)) > 1 for note_id in normalized):
+        elif any(len(source_ids_by_note_id.get(note_id, [])) > 1 for note_id in normalized):
             status = "merged"
         else:
             status = "exact"

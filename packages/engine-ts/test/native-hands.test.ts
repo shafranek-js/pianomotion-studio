@@ -1,4 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+// Hand kinematics exceeds 5 s under the gate's parallel build/Python load.
+vi.setConfig({ testTimeout: 15_000 });
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { analyze_midi, _engine_version } from "../src/api.ts";

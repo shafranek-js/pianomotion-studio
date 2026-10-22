@@ -319,11 +319,8 @@ def _fit_spans(pianist):
     global SPAN_FREE, SPAN_MAX, SPAN_HELD_MAX
     k = 1.0
     if pianist is not None:
-        try:
-            from .hands import hand_span_inches
-            k = hand_span_inches(pianist.anatomy) / hand_span_inches(None)
-        except Exception:
-            k = 1.0
+        from .hands import hand_span_inches
+        k = hand_span_inches(pianist.anatomy) / hand_span_inches(None)
     SPAN_FREE, SPAN_MAX, SPAN_HELD_MAX = (v * k for v in _BASE_SPANS)
 
 

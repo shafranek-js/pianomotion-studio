@@ -50,6 +50,22 @@ from .geometry import KEY_LEN_WW, KeyboardGeometry, NumericRect
 from .fingering import group_notes, is_crossing, key_pos, mirror_pitch, plan_fingering
 from .midi_loader import LEFT, RIGHT, is_black_key
 
+
+def _roll_onsets(order, roll_dt, ceiling=None):
+    """Delay each note of an upward roll, but never past the next chord's onset.
+
+    A note that originally starts after the ceiling keeps its original time;
+    moving it earlier would reorder already-overlapping music.
+    """
+    onsets = []
+    for k, note in enumerate(order):
+        target = note.start + k * roll_dt
+        if ceiling is not None:
+            target = min(target, max(note.start, ceiling))
+        onsets.append(target)
+    return onsets
+
+
 # --------------------------------------------------------------------------- #
 # Real-world sizes
 # --------------------------------------------------------------------------- #
@@ -1931,11 +1947,12 @@ class HandAnimator:
                 continue
             self.rolled += 1
             order = sorted(ns, key=lambda n: n.pitch)            # bottom to top, both hands
-            for k, n in enumerate(order):
-                so[id(n)] = n.start + k * self.roll_dt
+            ceiling = (groups[gi + 1][0] - 0.03) if gi + 1 < len(groups) else None
+            for n, onset in zip(order, _roll_onsets(order, self.roll_dt, ceiling)):
+                so[id(n)] = onset
             top = order[-1]
             ft, pt = self.fingering[id(top)], pos(top)
-            latest = max(so[id(top)], (groups[gi + 1][0] - 0.03) if gi + 1 < len(groups) else math.inf)
+            latest = ceiling if ceiling is not None else math.inf
             for n in order[:-1]:
                 f = self.fingering[id(n)]
                 if f == ft:                     # (one finger on two keys, a thumb on a pair: no stretch between them)
@@ -1944,7 +1961,7 @@ class HandAnimator:
                 if over > 0:
                     need = fg.travel_time(over, self.max_speed)
                     eo[id(n)] = min(eo[id(n)], max(so[id(n)] + 0.03, so[id(top)] - need))
-                    so[id(top)] = min(latest, max(so[id(top)], eo[id(n)] + need))
+                    so[id(top)] = max(so[id(top)], min(latest, max(so[id(top)], eo[id(n)] + need)))
             for n in order:
                 eo[id(n)] = max(eo[id(n)], so[id(n)] + 0.03)
 

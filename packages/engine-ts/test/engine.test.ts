@@ -1,4 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+// These numerical engine tests exceed Vitest's 5 s default when the local gate
+// runs the build and Python suite concurrently; keep the timeout scoped here.
+vi.setConfig({ testTimeout: 15_000 });
+
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import {

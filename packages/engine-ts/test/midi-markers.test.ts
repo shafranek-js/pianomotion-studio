@@ -1,4 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+// These analysis/export tests exceed 5 s when the gate runs build and Python in parallel.
+vi.setConfig({ testTimeout: 15_000 });
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";

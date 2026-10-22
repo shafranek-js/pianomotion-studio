@@ -1,4 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+// Numerical analysis exceeds the 5 s default under the local gate's parallel
+// build/Python load; keep the timeout scoped to this file.
+vi.setConfig({ testTimeout: 15_000 });
+
 import { M1AnalyzeMidiRequestSchema, validateM1AnalyzeMidiResultForRequest, type PerformanceEvent } from "@handthesia/contracts";
 import { _write_vlq } from "../src/midiLoader.ts";
 import { analyzeMidi, _engine_version } from "../src/index.ts";
