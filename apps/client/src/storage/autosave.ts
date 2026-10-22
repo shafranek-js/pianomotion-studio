@@ -124,6 +124,9 @@ async function writeSessionSnapshot(snapshot: SessionSnapshot): Promise<void> {
     throw new Error("Session profile.profileId must match activeProfileId.");
   }
   const workingPlan = validated.draftFingeringPlan ?? validated.fingeringPlan ?? result?.fingeringPlan ?? null;
+  const resultDocumentJson = result?.document ? JSON.stringify(result.document) : null;
+  const documentJson = document ? JSON.stringify(document) : null;
+  const documentsDiffer = resultDocumentJson !== null && documentJson !== null && resultDocumentJson !== documentJson;
   if (workingPlan) {
     validateFingeringPlanReferences(workingPlan, document);
     if (workingPlan.projectId !== validated.projectId || workingPlan.inputRevision !== document.revision) {
@@ -133,7 +136,7 @@ async function writeSessionSnapshot(snapshot: SessionSnapshot): Promise<void> {
   if (result && (result.projectId !== validated.projectId || result.document?.projectId !== validated.projectId)) {
     throw new Error("Session analysis result must match the session project ID.");
   }
-  if (result?.document && document && JSON.stringify(result.document) !== JSON.stringify(document) &&
+  if (result?.document && document && documentsDiffer &&
       validated.plansState === "valid") {
     throw new Error("An edited session document must mark plansState as recompute-required.");
   }
@@ -154,7 +157,7 @@ async function writeSessionSnapshot(snapshot: SessionSnapshot): Promise<void> {
     validatePracticeStateForProject(validated.practiceState, document, sourceResource);
   }
   let requiresRecompute = !result || !validated.rawMidiBytes || validated.rawMidiBytes.byteLength === 0;
-  if (result?.document && document && JSON.stringify(result.document) !== JSON.stringify(document)) requiresRecompute = true;
+  if (result?.document && document && documentsDiffer) requiresRecompute = true;
   if (result && workingPlan && JSON.stringify(workingPlan) !== JSON.stringify(result.fingeringPlan)) {
     requiresRecompute = true;
   }
@@ -162,15 +165,17 @@ async function writeSessionSnapshot(snapshot: SessionSnapshot): Promise<void> {
       validated.profile.revision !== result.profile.revision)) {
     requiresRecompute = true;
   }
+  let rawMidiHash: string | null = null;
   if (result && validated.rawMidiBytes) {
+    rawMidiHash = await computeSha256Hex(validated.rawMidiBytes);
     if (result.resource.byteLength !== validated.rawMidiBytes.byteLength ||
-        await computeSha256Hex(validated.rawMidiBytes) !== result.resource.sha256) {
+        rawMidiHash !== result.resource.sha256) {
       throw new Error("Session source bytes do not match the analyzed source resource.");
     }
   }
   if (validated.sourceDescriptor && validated.rawMidiBytes &&
       (validated.sourceDescriptor.byteLength !== validated.rawMidiBytes.byteLength ||
-       await computeSha256Hex(validated.rawMidiBytes) !== validated.sourceDescriptor.sha256)) {
+       (rawMidiHash ?? await computeSha256Hex(validated.rawMidiBytes)) !== validated.sourceDescriptor.sha256)) {
     throw new Error("Session source bytes do not match the saved source descriptor.");
   }
   if (validated.plansState === "valid" && requiresRecompute) {
@@ -409,6 +414,49 @@ export async function clearSessionSnapshot(): Promise<void> {
   });
 }
 
+/**
+ * Deletes the recovery snapshot only when its projectId still matches. The
+ * read and delete run in one readwrite transaction, so a snapshot for another
+ * project written between an earlier read and this call is preserved.
+ */
+export async function clearSessionSnapshotIfProject(projectId: string): Promise<boolean> {
+  const db = await openProjectDb();
+
+  return new Promise<boolean>((resolve, reject) => {
+    let deleted = false;
+    let settled = false;
+    const finish = (value: boolean) => {
+      if (!settled) {
+        settled = true;
+        resolve(value);
+      }
+    };
+    const fail = (error: unknown) => {
+      if (!settled) {
+        settled = true;
+        reject(error);
+      }
+    };
+
+    const tx = db.transaction(SESSION_STORE, "readwrite");
+    const store = tx.objectStore(SESSION_STORE);
+    const read = store.get(AUTOSAVE_SESSION_ID);
+
+    read.onsuccess = () => {
+      const raw = read.result as PersistedSessionRecord | undefined;
+      if (!raw || raw.projectId !== projectId) return;
+      const deletion = store.delete(AUTOSAVE_SESSION_ID);
+      deletion.onsuccess = () => { deleted = true; };
+      deletion.onerror = () => fail(deletion.error ?? new Error("Failed to clear session snapshot"));
+    };
+    read.onerror = () => fail(read.error ?? new Error("Failed to read session snapshot"));
+
+    tx.onerror = () => fail(tx.error ?? new Error("Transaction failed while clearing session snapshot"));
+    tx.onabort = () => fail(tx.error ?? new Error("Transaction aborted while clearing session snapshot"));
+    tx.oncomplete = () => finish(deleted);
+  });
+}
+
 export interface StorageQuotaInfo {
   usageBytes: number;
   quotaBytes: number;
@@ -458,6 +506,7 @@ export class AutosaveService {
   private isSaving = false;
   private savingPromise: Promise<void> | null = null;
   private lastSaveError: Error | null = null;
+  private readonly blockedProjects = new Set<string>();
   private readonly delayMs: number;
   private readonly onError?: (error: Error) => void;
   private readonly onSaved?: (snapshot: SessionSnapshot) => void;
@@ -472,6 +521,7 @@ export class AutosaveService {
    * Schedules a snapshot to be saved after the configured debounce interval.
    */
   schedule(snapshot: SessionSnapshot): void {
+    if (this.blockedProjects.has(snapshot.projectId)) return;
     this.pendingSnapshot = snapshot;
     if (this.timer !== null) {
       clearTimeout(this.timer);
@@ -498,6 +548,7 @@ export class AutosaveService {
       if (this.pendingSnapshot && !this.savingPromise) {
         const snapshotToSave = this.pendingSnapshot;
         this.pendingSnapshot = null;
+        if (this.blockedProjects.has(snapshotToSave.projectId)) continue;
         this.isSaving = true;
         this.savingPromise = this.saveAndNotify(snapshotToSave);
       }
@@ -556,10 +607,39 @@ export class AutosaveService {
   }
 
   /**
+   * Blocks future autosaves for a deleted project and removes its recovery
+   * snapshot atomically. An in-flight save for the same project is allowed to
+   * finish first so the conditional delete definitely sees it; snapshots for
+   * other projects remain untouched.
+   */
+  async clearProjectRecovery(projectId: string): Promise<boolean> {
+    this.blockedProjects.add(projectId);
+    if (this.pendingSnapshot?.projectId === projectId) {
+      this.pendingSnapshot = null;
+      if (this.timer !== null) {
+        clearTimeout(this.timer);
+        this.timer = null;
+      }
+    }
+    while (this.savingPromise) {
+      const inFlight = this.savingPromise;
+      await inFlight;
+      if (this.savingPromise === inFlight) this.savingPromise = null;
+    }
+    return clearSessionSnapshotIfProject(projectId);
+  }
+
+  /** Allows autosave again after a deleted project is explicitly saved anew. */
+  allowProject(projectId: string): void {
+    this.blockedProjects.delete(projectId);
+  }
+
+  /**
    * Cancels pending operations and clears the persisted session snapshot.
    */
   clear(): Promise<void> {
     this.cancel();
+    this.blockedProjects.clear();
     return clearSessionSnapshot();
   }
 }
@@ -569,4 +649,30 @@ export class AutosaveService {
  */
 export function createAutosaveService(options?: AutosaveServiceOptions): AutosaveService {
   return new AutosaveService(options);
+}
+
+/**
+ * Flush a pending autosave when the page is hidden or unloaded. The async
+ * IndexedDB commit cannot be guaranteed during teardown, but this closes the
+ * normal debounce window; errors are reported by the service's onError.
+ */
+export function registerAutosaveFlush(
+  service: Pick<AutosaveService, "flush">,
+  windowTarget: EventTarget,
+  documentTarget: EventTarget & { visibilityState: DocumentVisibilityState },
+): () => void {
+  const flush = () => {
+    void service.flush().catch(() => {
+      // onError reports persistence failures; teardown cannot surface them.
+    });
+  };
+  const onVisibilityChange = () => {
+    if (documentTarget.visibilityState === "hidden") flush();
+  };
+  windowTarget.addEventListener("pagehide", flush);
+  documentTarget.addEventListener("visibilitychange", onVisibilityChange);
+  return () => {
+    windowTarget.removeEventListener("pagehide", flush);
+    documentTarget.removeEventListener("visibilitychange", onVisibilityChange);
+  };
 }

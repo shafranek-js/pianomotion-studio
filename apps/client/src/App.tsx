@@ -1,6 +1,7 @@
 import { inferProjectFixtureId, type M1AnalyzeMidiResult, type M1KeyStyle, type ProjectSourceContext, type PianistProfile } from "@handthesia/contracts";
 import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { PianoPlayer } from "./player";
+import { debugGlobalsEnabled } from "./debugGlobals";
 import { analyzeSavedProjectCandidate, prepareSourceCandidate } from "./player/controller";
 import { StudioShell, StudioReleaseDetails } from "./studio/StudioShell";
 import { StudioDialog } from "./studio/StudioDialog";
@@ -20,11 +21,13 @@ import {
   initializeAppPersistence,
   loadSessionSnapshot,
   projectPackageToSavedProject,
+  registerAutosaveFlush,
   validateMidiFile,
   type SavedProject,
   type SessionSnapshot,
 } from "./storage";
 import { getSettings } from "./settings";
+import { ProjectDeletionRegistry } from "./storage/projectDeletionRegistry";
 import { skipWaiting, releaseAssetUrl, getCurrentServiceWorkerRegistration } from "./pwa";
 import type { SaveSession } from "./player/saveResult";
 import { isCommittedSaveCurrent } from "./player/saveResult";
@@ -66,6 +69,14 @@ declare global {
     __m1LastResult?: M1AnalyzeMidiResult | null;
     __m1LastError?: string | null;
   }
+}
+
+function setDebugResult(result: M1AnalyzeMidiResult | null): void {
+  if (debugGlobalsEnabled()) window.__m1LastResult = result;
+}
+
+function setDebugError(error: string | null): void {
+  if (debugGlobalsEnabled()) window.__m1LastError = error;
 }
 
 export default function App() {
@@ -111,6 +122,7 @@ export default function App() {
   const updateApplyingRef = useRef(false);
   const dirtyRef = useRef(false);
   const activeRef = useRef<ActiveSession | null>(null);
+  const deletionRegistryRef = useRef(new ProjectDeletionRegistry());
   const preparedRef = useRef<ActiveSession | null>(null);
   const preparedGenerationRef = useRef<number | null>(null);
   const operationLifecycleRef = useRef(new SessionOperationLifecycle());
@@ -125,6 +137,36 @@ export default function App() {
     delayMs: 400,
     onError: (error) => setStatus({ kind: "error", message: `Session recovery could not be saved: ${error.message}` }),
   }), []);
+
+  useEffect(() => registerAutosaveFlush(autosaveService, window, document), [autosaveService]);
+
+  const beginProjectSave = useCallback((projectId: string) => deletionRegistryRef.current.beginSave(projectId), []);
+
+  const handleProjectSaved = useCallback((projectId: string, saveEpoch: number) => {
+    if (deletionRegistryRef.current.canReenable(projectId, saveEpoch)) {
+      autosaveService.allowProject(projectId);
+    }
+    addRecentProjectId(projectId);
+    window.dispatchEvent(new Event("studio-projects-changed"));
+    dirtyRef.current = false;
+    setDirty(false);
+    setStatus({ kind: "saved", message: "Project saved to this browser." });
+  }, [autosaveService]);
+
+  const handleDeleteProject = useCallback((projectId: string) => {
+    deletionRegistryRef.current.markDeleted(projectId);
+    void autosaveService.clearProjectRecovery(projectId).then(() => {
+      if (activeRef.current?.result.projectId === projectId) {
+        setStatus({
+          kind: "warning",
+          message: "Project deleted. Autosave recovery is disabled for this open session; save it again to recreate the project.",
+        });
+      }
+    }).catch((error) => setStatus({
+      kind: "error",
+      message: `Deleted project recovery could not be cleared: ${errorMessage(error)}`,
+    }));
+  }, [autosaveService]);
 
   const [swUpdateRegistration, setSwUpdateRegistration] = useState<ServiceWorkerRegistration | null>(null);
 
@@ -287,8 +329,8 @@ export default function App() {
               setViewMode("performance");
               dirtyRef.current = false;
               setDirty(false);
-              window.__m1LastResult = result;
-              window.__m1LastError = null;
+              setDebugResult(result);
+              setDebugError(null);
               setStatus({ kind: "saved", message: `Loaded ${defaultEntry.title}.` });
               return;
             }
@@ -334,8 +376,8 @@ export default function App() {
         setSessionProfile(rebuilt.result.profile);
         dirtyRef.current = false;
         setDirty(false);
-        window.__m1LastResult = rebuilt.result;
-        window.__m1LastError = null;
+        setDebugResult(rebuilt.result);
+        setDebugError(null);
         setStatus({ kind: "saved", message: assessed.status === "compatible" ? "Previous project restored and checked against its original MIDI." : "Previous edits restored; rebuilding plans with the current engine." });
       } catch (error) {
         if (isCurrent()) {
@@ -385,14 +427,29 @@ export default function App() {
       addRecentProjectId(candidate.savedProject.projectId);
       window.dispatchEvent(new Event("studio-projects-changed"));
     }
-    window.__m1LastResult = candidate.result;
-    window.__m1LastError = null;
+    setDebugResult(candidate.result);
+    setDebugError(null);
   }, [markDirty]);
+
+  const beginOpenOperation = useCallback(() => {
+    const operation = operationLifecycleRef.current.begin("open");
+    setBusy(operationLifecycleRef.current.isBusy());
+    return operation;
+  }, []);
+
+  const finishOpenOperation = useCallback((operation: SessionOperation) => {
+    const lifecycle = operationLifecycleRef.current;
+    if (!lifecycle.isCurrent(operation)) return false;
+    lifecycle.finish(operation);
+    setBusy(lifecycle.isBusy());
+    setLoadingExperience(null);
+    return true;
+  }, []);
 
   const runCandidate = useCallback(async (
     description: string,
     prepare: (signal: AbortSignal, progress: (message: string, progress?: number) => void, engineVersion: string) => Promise<ActiveSession>,
-    operation: SessionOperation = operationLifecycleRef.current.begin("open"),
+    operation: SessionOperation = beginOpenOperation(),
   ) => {
     const lifecycle = operationLifecycleRef.current;
     if (!lifecycle.isCurrent(operation)) return;
@@ -400,14 +457,13 @@ export default function App() {
     preparedRef.current = null;
     preparedGenerationRef.current = null;
     const { signal } = operation;
-    setBusy(true);
     setLoadingExperience({ generation: operation.generation,
       phase: description === "saved project" ? "restoring" : "reading",
       detail: `Opening ${description}…` });
     setPendingCandidate(null);
     setConfirmReplace(false);
     setStatus({ kind: "calculating", message: `Validating ${description}…` });
-    window.__m1LastError = null;
+    setDebugError(null);
     try {
       const runtimePromise = startupRuntimePromiseRef.current;
       if (!runtimePromise) throw new Error("The studio startup manifest is not ready.");
@@ -430,26 +486,24 @@ export default function App() {
     } catch (error) {
       if (!lifecycle.isCurrent(operation)) return;
       if (error instanceof InvalidFixtureCandidateError) {
-        window.__m1LastResult = error.result;
-        window.__m1LastError = null;
+        setDebugResult(error.result);
+        setDebugError(null);
         setPendingCandidate(null);
         setConfirmReplace(false);
         setStatus({ kind: "error", message: "Fixture analysis returned an invalid MIDI result. The open project was left unchanged." });
         return;
       }
       const message = errorMessage(error);
-      window.__m1LastError = message;
+      setDebugError(message);
       setPendingCandidate(null);
       setConfirmReplace(false);
       setStatus({ kind: "error", message: `${description} was not opened: ${message}` });
     } finally {
       if (lifecycle.isCurrent(operation)) {
-        setLoadingExperience(null);
-        lifecycle.finish(operation);
-        setBusy(false);
+        finishOpenOperation(operation);
       }
     }
-  }, [commitCandidate, reportLoading]);
+  }, [commitCandidate, reportLoading, beginOpenOperation, finishOpenOperation]);
 
   const openMidiFile = useCallback(async (file: File) => {
     await runCandidate(file.name, async (signal, progress, runtimeEngineVersion) => {
@@ -498,11 +552,11 @@ export default function App() {
   }, [runCandidate]);
 
   const openFixture = useCallback(async (fixtureId: string) => {
-    const operation = operationLifecycleRef.current.begin("open");
+    const operation = beginOpenOperation();
     const fixture = fixtureManifest?.fixtureSources[fixtureId];
     if (!fixture || !engineVersion) {
       setStatus({ kind: "error", message: "The selected demo fixture is not available." });
-      operationLifecycleRef.current.finish(operation);
+      finishOpenOperation(operation);
       return;
     }
     await runCandidate(fixtureId, async (signal, progress, runtimeEngineVersion) => {
@@ -525,18 +579,18 @@ export default function App() {
       if (result.status === "invalid") {analysisWorker.terminate(); throw new InvalidFixtureCandidateError(result);}
       return { result, rawMidiBytes: midiBytes, sourceContext, session: null, projectName: fixtureId, unsaved: true, analysisWorker };
     }, operation);
-  }, [engineVersion, fixtureManifest, runCandidate]);
+  }, [engineVersion, fixtureManifest, runCandidate, beginOpenOperation, finishOpenOperation]);
 
   const cancelCandidate = useCallback(() => {
     operationLifecycleRef.current.cancel();
     preparedRef.current?.analysisWorker.terminate();
     preparedRef.current = null;
     preparedGenerationRef.current = null;
-    setBusy(false);
+    setBusy(operationLifecycleRef.current.isBusy());
     setLoadingExperience(null);
     setPendingCandidate(null);
     setConfirmReplace(false);
-    window.__m1LastError = null;
+    setDebugError(null);
     setStatus({ kind: dirtyRef.current ? "modified" : activeRef.current ? "saved" : "idle", message: activeRef.current ? "Open operation canceled. The current project remains available." : "Open operation canceled." });
   }, []);
 
@@ -562,7 +616,7 @@ export default function App() {
   }, [runCandidate]);
 
   const openSavedProject = useCallback(async (projectId: string) => {
-    const operation = operationLifecycleRef.current.begin("open");
+    const operation = beginOpenOperation();
     try {
       const project = await getProject(projectId);
       if (!operationLifecycleRef.current.isCurrent(operation)) return;
@@ -573,17 +627,17 @@ export default function App() {
         setLegacyResolution({ kind: "saved", project, fixtureId });
         setLegacyKeyStyle(null);
         setStatus({ kind: "modified", message: "This older project does not record keyboard geometry. Choose its original geometry to continue." });
-        operationLifecycleRef.current.finish(operation);
+        finishOpenOperation(operation);
         return;
       }
       await runSavedProject(project, undefined, operation);
     } catch (error) {
       if (operationLifecycleRef.current.isCurrent(operation)) {
         setStatus({ kind: "error", message: "Saved project was not opened: " + errorMessage(error) });
-        operationLifecycleRef.current.finish(operation);
+        finishOpenOperation(operation);
       }
     }
-  }, [runSavedProject]);
+  }, [runSavedProject, beginOpenOperation, finishOpenOperation]);
 
   const runOpenPackageFile = useCallback(async (
     file: File,
@@ -621,7 +675,7 @@ export default function App() {
   }, [runCandidate]);
 
   const openPackageFile = useCallback(async (file: File) => {
-    const operation = operationLifecycleRef.current.begin("open");
+    const operation = beginOpenOperation();
     try {
       const fixtureId = await inspectLegacyProjectPackageFile(file);
       if (!operationLifecycleRef.current.isCurrent(operation)) return;
@@ -630,17 +684,17 @@ export default function App() {
         setLegacyResolution({ kind: "package", file, fixtureId });
         setLegacyKeyStyle(null);
         setStatus({ kind: "modified", message: "This older package does not record keyboard geometry. Choose its original geometry before opening it." });
-        operationLifecycleRef.current.finish(operation);
+        finishOpenOperation(operation);
         return;
       }
       await runOpenPackageFile(file, undefined, operation);
     } catch (error) {
       if (operationLifecycleRef.current.isCurrent(operation)) {
         setStatus({ kind: "error", message: "Project package was not opened: " + errorMessage(error) });
-        operationLifecycleRef.current.finish(operation);
+        finishOpenOperation(operation);
       }
     }
-  }, [runOpenPackageFile]);
+  }, [runOpenPackageFile, beginOpenOperation, finishOpenOperation]);
 
   const continueLegacyOpen = useCallback(() => {
     const legacy = legacyResolution;
@@ -851,18 +905,15 @@ export default function App() {
       onOpenPreferences={() => setFullScreenDialog("preferences")}
       onOpenPianist={() => setFullScreenDialog("pianist")}
       onOpenProject={openSavedProject}
+      onDeleteProject={handleDeleteProject}
       onRegisterSaveHandler={registerSaveHandler}
       onDirtyChange={markDirty}
       onProfileStateChange={setSessionProfile}
       developerTools={developerTools}
       dialogs={dialogs}
       footerAddon={studioFooterAddon}
-        onProjectSaved={(projectId: string) => {
-          addRecentProjectId(projectId);
-          window.dispatchEvent(new Event("studio-projects-changed"));
-          markDirty(false);
-          setStatus({ kind: "saved", message: "Project saved to this browser." });
-        }}
+        onProjectSaved={handleProjectSaved}
+      onBeginProjectSave={beginProjectSave}
     /> : <StudioShell
       projectName="Untitled project"
       hasProject={false}
@@ -875,7 +926,11 @@ export default function App() {
       onOpenPackage={() => projectInputRef.current?.click()}
       onOpenPreferences={() => setFullScreenDialog("preferences")}
       onOpenPianist={() => setFullScreenDialog("pianist")}
-      projectsPanel={<ProjectsPanel onOpenProject={(id) => void openSavedProject(id)} onOpenBuiltinMelodies={openBuiltinMelodies} />}
+      projectsPanel={<ProjectsPanel
+        onOpenProject={(id) => void openSavedProject(id)}
+        onOpenBuiltinMelodies={openBuiltinMelodies}
+        onDeleteProject={handleDeleteProject}
+      />}
       inspector={inspector}
       workspace={emptyWorkspace}
       footerAddon={studioFooterAddon}

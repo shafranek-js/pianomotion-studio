@@ -1,5 +1,6 @@
 import { Pause, Play, Square } from "lucide-react";
 import type { ChangeEvent } from "react";
+import { useI18n } from "../i18n";
 import "./workspace.css";
 
 export interface StudioTransportProps {
@@ -42,6 +43,7 @@ export function StudioTransport({
   disabled = false,
   playDisabled = false,
 }: StudioTransportProps) {
+  const { dict } = useI18n();
   const seekMin = Number.isFinite(leadInSeconds) ? leadInSeconds : 0;
   const seekMax = Math.max(Number.isFinite(duration) ? duration : 0, seekMin + 0.01);
   const seekValue = Math.max(seekMin, Math.min(seekMax, Number.isFinite(currentTime) ? currentTime : seekMin));
@@ -52,7 +54,7 @@ export function StudioTransport({
   const selectedVolume = Number.isFinite(volume) ? Math.max(0, Math.min(1, volume)) : 0.8;
 
   return (
-    <section className="studio-transport-controls" aria-label="Playback controls">
+    <section className="studio-transport-controls" aria-label={dict.playback.controls}>
       <div className="studio-transport-controls__buttons">
         <button
           id="player-play-button"
@@ -60,11 +62,11 @@ export function StudioTransport({
           type="button"
           onClick={onTogglePlay}
           disabled={disabled || playDisabled}
-          aria-label={playing ? "Pause" : "Play"}
-          title={playing ? "Pause playback" : "Start playback"}
+          aria-label={playing ? dict.playback.pause : dict.playback.play}
+          title={playing ? dict.playback.pause : dict.playback.play}
         >
           {playing ? <Pause aria-hidden="true" /> : <Play aria-hidden="true" />}
-          <span>{playing ? "Pause" : "Play"}</span>
+          <span>{playing ? dict.playback.pause : dict.playback.play}</span>
         </button>
         <button
           id="player-stop-button"
@@ -72,16 +74,16 @@ export function StudioTransport({
           type="button"
           onClick={onStop}
           disabled={disabled}
-          aria-label="Stop"
-          title="Stop playback and return to the start"
+          aria-label={dict.playback.stop}
+          title={dict.playback.stop}
         >
           <Square aria-hidden="true" />
-          <span>Stop</span>
+          <span>{dict.playback.stop}</span>
         </button>
       </div>
 
       <div className="studio-transport-controls__seek">
-        <span className="studio-transport-controls__time" aria-label={`Current time ${formatTime(currentTime)}`}>
+        <span className="studio-transport-controls__time" aria-label={`${dict.playback.currentTime} ${formatTime(currentTime)}`}>
           {formatTime(currentTime)}
         </span>
         <input
@@ -93,22 +95,22 @@ export function StudioTransport({
           value={seekValue}
           onChange={(event: ChangeEvent<HTMLInputElement>) => onSeek(Number(event.currentTarget.value))}
           disabled={disabled}
-          aria-label="Seek position"
+          aria-label={dict.playback.seekPosition}
         />
-        <span className="studio-transport-controls__time" aria-label={`Duration ${formatTime(duration)}`}>
+        <span className="studio-transport-controls__time" aria-label={`${dict.playback.duration} ${formatTime(duration)}`}>
           {formatTime(duration)}
         </span>
       </div>
 
       <div className="studio-transport-controls__options">
         <label className="studio-transport-controls__field">
-          <span>Speed</span>
+          <span>{dict.playback.speed}</span>
           <select
             id="player-speed-select"
             value={selectedSpeed}
             onChange={(event) => onSpeedChange(Number(event.currentTarget.value))}
             disabled={disabled}
-            aria-label="Speed"
+            aria-label={dict.playback.speed}
           >
             {speedOptions.map((option) => (
               <option value={option} key={option}>{option.toFixed(2).replace(/0+$/, "").replace(/\.$/, "")}×</option>
@@ -116,7 +118,7 @@ export function StudioTransport({
           </select>
         </label>
         <label className="studio-transport-controls__volume">
-          <span>Volume</span>
+          <span>{dict.playback.volume}</span>
           <input
             id="player-volume-slider"
             type="range"
@@ -126,7 +128,7 @@ export function StudioTransport({
             value={selectedVolume}
             onChange={(event) => onVolumeChange(Number(event.currentTarget.value))}
             disabled={disabled}
-            aria-label="Volume"
+            aria-label={dict.playback.volume}
           />
         </label>
       </div>

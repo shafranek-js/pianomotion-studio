@@ -266,6 +266,31 @@ export class PlayAlongEngine {
     this.seekToStep(eligible[0]!);
   }
 
+  /**
+   * Seeks to the eligible step nearest to a musical time. Used when a replan
+   * rebuilds the engine so the current play-along position is preserved.
+   */
+  public seekToTime(timeSeconds: number): void {
+    const eligible = this.getEligibleStepIndices();
+    if (eligible.length === 0) {
+      this.currentStepIndex = -1;
+      this.cancelCompanionAudio();
+      this.setState("completed");
+      this.options.onStepChange?.(null, this.state);
+      return;
+    }
+    let bestIndex = eligible[0]!;
+    let bestDiff = Infinity;
+    for (const index of eligible) {
+      const diff = Math.abs(this.steps[index]!.timeSeconds - timeSeconds);
+      if (diff < bestDiff) {
+        bestDiff = diff;
+        bestIndex = index;
+      }
+    }
+    this.seekToStep(bestIndex);
+  }
+
   public stop(): void {
     this.cancelCompanionAudio();
     this.cancelTransition();

@@ -30,7 +30,17 @@ export interface ExportProjectPackageOptions {
 
 const base64Alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
-function encodeBase64(bytes: Uint8Array): string {
+export function encodeBase64(bytes: Uint8Array): string {
+  // Native btoa over 32 KiB chunks is substantially cheaper than building the
+  // alphabet string byte by byte for large resource payloads.
+  if (typeof btoa === "function") {
+    const chunkSize = 0x8000;
+    let binary = "";
+    for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+      binary += String.fromCharCode(...bytes.subarray(offset, offset + chunkSize));
+    }
+    return btoa(binary);
+  }
   let output = "";
   for (let offset = 0; offset < bytes.length; offset += 3) {
     const a = bytes[offset]!;
@@ -217,6 +227,7 @@ export async function buildProjectPackage(
 ): Promise<ProjectPackage> {
   const validated = validateSavedProject(project);
   const { profiles, resources, resourcePayloads } = buildPackageFields(validated, options);
+  const payloadHashes = new Map<string, string>();
   const sourceBytes = validated.rawMidiBytes ?? null;
   if (sourceBytes) {
     let source = validated.document.sourceMidiResourceId
@@ -233,6 +244,7 @@ export async function buildProjectPackage(
       };
       addResource(resources, source);
     }
+    payloadHashes.set(source.path, source.sha256);
     resourcePayloads.set(source.path, sourceBytes);
   }
   for (const [path, bytes] of resourcePayloads) {
@@ -240,7 +252,8 @@ export async function buildProjectPackage(
     const descriptor = resources.find((resource) => resource.path === path);
     if (!descriptor) throw new Error(`Resource payload '${path}' has no descriptor.`);
     if (descriptor.byteLength !== bytes.byteLength) throw new Error(`Resource payload '${path}' has an invalid byte length.`);
-    if (await computeSha256Hex(bytes) !== descriptor.sha256) throw new Error(`Resource payload '${path}' checksum does not match its descriptor.`);
+    const digest = payloadHashes.get(path) ?? await computeSha256Hex(bytes);
+    if (digest !== descriptor.sha256) throw new Error(`Resource payload '${path}' checksum does not match its descriptor.`);
   }
   const encodedPayloads = Object.fromEntries(
     Array.from(resourcePayloads, ([path, bytes]) => [path, encodeBase64(new Uint8Array(bytes))]),

@@ -16,6 +16,7 @@ import {
   type PracticeState,
 } from "@handthesia/contracts";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ChangeEvent, type ReactNode } from "react";
+import { debugGlobalsEnabled } from "../debugGlobals";
 import {
   Transport,
   decodeAudioRecording,
@@ -43,7 +44,8 @@ import { recordDiagnostic } from "../diagnostics/eventLog";
 import { getActiveProfile, subscribeProfiles } from "../profiles/profileStore";
 import { PianoScene, MotionBuffer, type Camera3DPreset } from "../render";
 import {
-  downloadProjectPackage,
+  downloadFile,
+  exportProjectPackageJson,
   saveProject,
   type AutosaveService,
   type SavedProject,
@@ -75,6 +77,7 @@ import { PracticePanel } from "../studio/PracticePanel";
 import type { KeyPressInfo } from "../render/keyboardView";
 import { buildRecoverySnapshot } from "./recoverySnapshot";
 import { fingeredMidiExportStatus } from "./exportStatus";
+import { ExportOperationScope, runScopedExport } from "./exportScope";
 import { playbackBlocker, type PlaybackBlocker } from "./playbackReadiness";
 
 export interface PianoPlayerProps {
@@ -100,10 +103,12 @@ export interface PianoPlayerProps {
   onOpenPreferences(): void;
   onOpenPianist(): void;
   onOpenProject(projectId: string): void;
+  onDeleteProject?(projectId: string): void;
   onRegisterSaveHandler(handler: SaveSession | null): void;
   /** Reports when transport can actually start playback, after audio and plan preparation. */
   onPlaybackReadinessChange?(requestId: string, blocker: PlaybackBlocker | null): void;
-  onProjectSaved?(projectId: string): void;
+  onProjectSaved?(projectId: string, saveEpoch: number): void;
+  onBeginProjectSave?(projectId: string): number;
   onProfileStateChange?(profile: PianistProfile): void;
   analysisWorker?: Worker;
   footerAddon?: ReactNode;
@@ -215,9 +220,11 @@ export function PianoPlayer({
   onOpenPreferences,
   onOpenPianist,
   onOpenProject,
+  onDeleteProject,
   onRegisterSaveHandler,
   onPlaybackReadinessChange,
   onProjectSaved,
+  onBeginProjectSave,
   footerAddon,
 }: PianoPlayerProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -244,6 +251,7 @@ export function PianoPlayer({
   const motionLastPauseRef = useRef<MotionBufferPauseSnapshot | null>(null);
   const motionRequestCountRef = useRef(0);
   const playIntentRef = useRef(false);
+  const exportScopeRef = useRef(new ExportOperationScope());
   const [initialPractice] = useState(() => restorePracticeState(initialSession, result));
   const [practiceState, setPracticeState] = useState<PracticeState>(initialPractice.practiceState);
   const practiceStateRef = useRef(practiceState);
@@ -322,6 +330,7 @@ export function PianoPlayer({
   const currentTimeRef = useRef(currentTime);
   useEffect(() => { currentTimeRef.current = currentTime; }, [currentTime]);
   const playAlongTimeRef = useRef(0);
+  const playAlongProjectIdRef = useRef<string | null>(null);
   const [workerEpoch, setWorkerEpoch] = useState(0);
   const [rebuildMessage, setRebuildMessage] = useState("");
   const [isVideoExportOpen, setIsVideoExportOpen] = useState(false);
@@ -1164,6 +1173,9 @@ export function PianoPlayer({
 
   useEffect(() => {
     if (!document) return;
+    const sameProject = playAlongProjectIdRef.current === analysis.projectId;
+    const resumeTime = sameProject ? playAlongTimeRef.current : 0;
+    if (!sameProject) playAlongTimeRef.current = 0;
 
     const buildStepTargetMap = (step: PlayAlongStep | null, eng: PlayAlongEngine): Map<number, KeyPressInfo> => {
       const targetMap = new Map<number, KeyPressInfo>();
@@ -1273,7 +1285,11 @@ export function PianoPlayer({
     setPlayAlongLoopAvailable(engine.hasEligibleLoopSteps());
     if (viewModeRef.current === "play_along") {
       engine.start();
+      // A replan recreates the engine; keep the play-along position instead of
+      // snapping back to the first eligible step.
+      if (resumeTime > 0) engine.seekToTime(resumeTime);
     }
+    playAlongProjectIdRef.current = analysis.projectId;
     return () => {
       engine.dispose();
       playAlongEngineRef.current = null;
@@ -1295,7 +1311,6 @@ export function PianoPlayer({
         transportRef.current.pause();
       }
       playAlongEngineRef.current?.start();
-      void getSharedWebMidiInputManager().init();
     } else {
       playAlongEngineRef.current?.stop();
       wrongPitchesRef.current.clear();
@@ -1306,7 +1321,8 @@ export function PianoPlayer({
 
   useEffect(() => {
     const inputManager = getSharedWebMidiInputManager();
-    void inputManager.init();
+    // Do not request MIDI access on mount: browsers may prompt immediately and
+    // again after a refusal. The explicit "Connect MIDI" action requests it.
     const unsubStatus = inputManager.subscribeStatus(setMidiInputStatus);
     const unsubInput = inputManager.subscribeInput((event) => {
       const isDown = event.type === "noteOn";
@@ -1483,6 +1499,7 @@ export function PianoPlayer({
   }, [analysis, draftPlan, settings.leadInSeconds]);
 
   useEffect(() => {
+    if (!debugGlobalsEnabled()) return;
     window.__playerSnapshot = {
       result: analysis,
       draftPlan,
@@ -1706,6 +1723,7 @@ export function PianoPlayer({
       return { status: "blocked", reason: "Wait for the current calculation before saving the project.", identity };
     }
     let projectCommitted = false;
+    const saveEpoch = onBeginProjectSave?.(analysis.projectId) ?? 0;
     onStatusChange({ kind: "saving", message: dict.header.file === "File" ? "Saving project to this browser…" : "Ukládání projektu do prohlížeče…" });
     try {
       const project = savedProject();
@@ -1745,7 +1763,7 @@ export function PianoPlayer({
       }
       dirtyRef.current = false;
       onDirtyChange(false);
-      onProjectSaved?.(project.projectId);
+      onProjectSaved?.(project.projectId, saveEpoch);
       onStatusChange({ kind: "saved", message: dict.header.file === "File" ? "Project saved to this browser." : "Projekt byl uložen do prohlížeče." });
       return { status: "committed", identity };
     } catch (error) {
@@ -1753,7 +1771,7 @@ export function PianoPlayer({
       onStatusChange({ kind: "error", message: reason });
       return { status: "failed", reason, identity };
     }
-  }, [rawMidiBytes, savedProject, onDirtyChange, onProjectSaved, onStatusChange, analysis, draftPlan,
+  }, [rawMidiBytes, savedProject, onDirtyChange, onProjectSaved, onBeginProjectSave, onStatusChange, analysis, draftPlan,
     autosaveService, dict]);
 
   const saveToDatabaseRef = useRef(saveToDatabase);
@@ -1772,15 +1790,26 @@ export function PianoPlayer({
     return () => onRegisterSaveHandler(null);
   }, [onRegisterSaveHandler]);
 
+  // A project/document change or unmount makes an in-flight export stale; its
+  // result must not download or overwrite the current status.
+  useEffect(() => () => {
+    exportScopeRef.current.cancel();
+  }, [analysis.projectId, analysis.revision, document?.revision, draftPlan.planId]);
+
   const handleExportPackage = useCallback(async () => {
     if (needsReplan || !rawMidiBytes) return;
     try {
-      await downloadProjectPackage(savedProject(), {
-        profiles: [activeProfile],
-        resources: [analysis.resource],
-        sourceContext,
-        filename: `${projectName.replace(/\.mid(i)?$/i, "")}.pianomotion.json`,
-      });
+      const committed = await runScopedExport(exportScopeRef.current, async () => {
+        const json = await exportProjectPackageJson(savedProject(), {
+          profiles: [activeProfile],
+          resources: [analysis.resource],
+          sourceContext,
+          filename: `${projectName.replace(/\.mid(i)?$/i, "")}.pianomotion.json`,
+        });
+        const safeName = `${projectName.replace(/\.mid(i)?$/i, "")}.pianomotion.json`.replace(/[\\/:*?"<>|]/g, "_");
+        return { json, safeName };
+      }, ({ json, safeName }) => downloadFile(safeName, json, "application/json"));
+      if (!committed) return;
       onStatusChange({ kind: dirtyRef.current ? "modified" : "saved", message: dict.header.file === "File" ? "Project package exported." : "Balíček projektu byl exportován." });
     } catch (error) {
       onStatusChange({ kind: "error", message: `Project package export failed: ${errorMessage(error)}` });
@@ -1791,7 +1820,8 @@ export function PianoPlayer({
     if (needsReplan || !rawMidiBytes || !document || !workerReadyRef.current) return;
     const worker = workerRef.current;
     if (!worker) return;
-    const abort = new AbortController();
+    const scope = exportScopeRef.current;
+    const { controller, isCurrent } = scope.begin();
     onStatusChange({ kind: "loading", message: dict.header.file === "File" ? "Exporting fingered MIDI…" : "Exportování MIDI s prstokladem…" });
     try {
       const request = M1ExportMidiRequestSchema.parse({
@@ -1808,10 +1838,11 @@ export function PianoPlayer({
         request,
         currentWorker => postM1ExportMidiRequest(currentWorker, request),
         message => message.type === "export-midi-result" ? M1ExportMidiResultSchema.parse(message) : undefined,
-        abort.signal,
+        controller.signal,
         undefined,
         { worker, terminateOnComplete: false },
       );
+      if (!isCurrent()) return;
       const blob = new Blob([response.exportedBytes], { type: "audio/midi" });
       const url = URL.createObjectURL(blob);
       const anchor = window.document.createElement("a");
@@ -1821,7 +1852,10 @@ export function PianoPlayer({
       URL.revokeObjectURL(url);
       onStatusChange(fingeredMidiExportStatus(response.markedCount, response.diagnostics, dirtyRef.current));
     } catch (error) {
+      if (!isCurrent()) return;
       onStatusChange({ kind: "error", message: `Fingered MIDI export failed: ${errorMessage(error)}` });
+    } finally {
+      scope.finish(controller);
     }
   }, [needsReplan, rawMidiBytes, document, analysis.projectId, engineVersion, draftPlan, projectName, onStatusChange, dict]);
 
@@ -2077,7 +2111,7 @@ export function PianoPlayer({
     onOpenPreferences={onOpenPreferences}
     onOpenPianist={onOpenPianist}
     editActions={editActions}
-    projectsPanel={<ProjectsPanel onOpenProject={onOpenProject} activeProjectId={analysis.projectId} onOpenBuiltinMelodies={onOpenBuiltinMelodies} />}
+    projectsPanel={<ProjectsPanel onOpenProject={onOpenProject} onDeleteProject={onDeleteProject} activeProjectId={analysis.projectId} onOpenBuiltinMelodies={onOpenBuiltinMelodies} />}
     inspector={inspector}
     practicePanel={practicePanel}
     workspace={workspace}

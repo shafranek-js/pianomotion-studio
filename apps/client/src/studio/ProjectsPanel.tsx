@@ -8,10 +8,11 @@ export interface ProjectsPanelProps {
   onOpenProject(projectId: string): void;
   onOpenBuiltinMelodies?(): void;
   onExportProject?(projectId: string): void;
+  onDeleteProject?(projectId: string): void;
   activeProjectId?: string | null;
 }
 
-export function ProjectsPanel({ onOpenProject, onOpenBuiltinMelodies, onExportProject, activeProjectId }: ProjectsPanelProps) {
+export function ProjectsPanel({ onOpenProject, onOpenBuiltinMelodies, onExportProject, onDeleteProject, activeProjectId }: ProjectsPanelProps) {
   const { dict, t } = useI18n();
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
   const [recent, setRecent] = useState<SavedProject[]>([]);
@@ -57,6 +58,7 @@ export function ProjectsPanel({ onOpenProject, onOpenBuiltinMelodies, onExportPr
     setError("");
     try {
       await deleteProject(project.projectId);
+      onDeleteProject?.(project.projectId);
       setLoading(true);
       await refresh();
     } catch (cause) {

@@ -31,6 +31,7 @@ import {
   saveSessionSnapshot,
   loadSessionSnapshot,
   clearSessionSnapshot,
+  clearSessionSnapshotIfProject,
   assessSessionSnapshot,
   getStorageQuota,
   AutosaveService,
@@ -963,6 +964,55 @@ describe("Milestone M5 Storage & Persistence", () => {
       await expect(saveSessionSnapshot(corrupted)).rejects.toThrow(/source bytes do not match/i);
       expect((await assessSessionSnapshot(corrupted, engineVersion)).status).toBe("corrupt");
       expect(Array.from(new Uint8Array((await loadSessionSnapshot())!.rawMidiBytes!))).toEqual(Array.from(new Uint8Array(rawMidiBytes)));
+    });
+
+    it("does not clear a recovery snapshot that belongs to another project", async () => {
+      const projectB = createValidSongDocument("proj_recovery_b");
+      await saveSessionSnapshot({ projectId: "proj_recovery_b", updatedAt: 1, document: projectB, viewMode: "performance" });
+
+      await expect(clearSessionSnapshotIfProject("proj_recovery_a")).resolves.toBe(false);
+      expect((await loadSessionSnapshot())?.projectId).toBe("proj_recovery_b");
+
+      const projectA = createValidSongDocument("proj_recovery_a");
+      await saveSessionSnapshot({ projectId: "proj_recovery_a", updatedAt: 2, document: projectA, viewMode: "performance" });
+      await expect(clearSessionSnapshotIfProject("proj_recovery_a")).resolves.toBe(true);
+      expect(await loadSessionSnapshot()).toBeNull();
+    });
+
+    it("blocks a deleted project and does not let an in-flight save resurrect it", async () => {
+      const document = createValidSongDocument("proj_deleted_inflight");
+      const snapshot: SessionSnapshot = {
+        projectId: "proj_deleted_inflight",
+        updatedAt: 3,
+        document,
+        viewMode: "performance",
+      };
+      const service = new AutosaveService({ delayMs: 1000 });
+      service.schedule(snapshot);
+      const inFlight = service.flush();
+
+      await expect(service.clearProjectRecovery(snapshot.projectId)).resolves.toBe(true);
+      await inFlight;
+      expect(await loadSessionSnapshot()).toBeNull();
+
+      service.schedule(snapshot);
+      await service.flush();
+      expect(await loadSessionSnapshot()).toBeNull();
+
+      service.allowProject(snapshot.projectId);
+      service.schedule(snapshot);
+      await service.flush();
+      expect((await loadSessionSnapshot())?.projectId).toBe(snapshot.projectId);
+    });
+
+    it("does not discard a pending snapshot for another project when clearing A", async () => {
+      const projectB = createValidSongDocument("proj_recovery_pending_b");
+      const service = new AutosaveService({ delayMs: 1000 });
+      service.schedule({ projectId: "proj_recovery_pending_b", updatedAt: 4, document: projectB, viewMode: "performance" });
+
+      await expect(service.clearProjectRecovery("proj_recovery_pending_a")).resolves.toBe(false);
+      await service.flush();
+      expect((await loadSessionSnapshot())?.projectId).toBe("proj_recovery_pending_b");
     });
   });
 

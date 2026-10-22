@@ -111,6 +111,10 @@ export interface PlaybackTranslations {
   tempo: string;
   mute: string;
   unmute: string;
+  controls: string;
+  currentTime: string;
+  duration: string;
+  seekPosition: string;
 }
 
 export interface EditorTranslations {
@@ -348,6 +352,54 @@ export interface PracticeTranslations {
   unsavedChanges: string;
 }
 
+export interface InspectorTranslations {
+  sceneSettings: string;
+  sceneTitle: string;
+  keyboardGeometry: string;
+  realisticWidths: string;
+  equalWidths: string;
+  handStyle: string;
+  realistic: string;
+  cartoon: string;
+  gloves: string;
+  robot: string;
+  skeleton: string;
+  sceneHint: string;
+  pianistProfile: string;
+  pianistTitle: string;
+  revision: string;
+  calculationEngine: string;
+  typescriptNativeDefault: string;
+  pythonPyodide: string;
+  typescriptNative: string;
+  pianistHint: string;
+  editPianist: string;
+  audioSettings: string;
+  audioTitle: string;
+  replaceRecording: string;
+  importRecording: string;
+  audioFormats: string;
+  audioRecording: string;
+  audioOffset: string;
+  removeRecording: string;
+  audioHint: string;
+  audioSessionOnly: string;
+  diagnosticsTitle: string;
+  source: string;
+  notes: string;
+  tracks: string;
+  analysisState: string;
+  activeEngine: string;
+  requestedEngine: string;
+  noProject: string;
+  idle: string;
+  noComputedProject: string;
+  calculationError: string;
+  retryCalculation: string;
+  noEngineDiagnostics: string;
+  developerTools: string;
+}
+
 export interface TranslationDictionary {
   common: CommonTranslations;
   welcome: WelcomeTranslations;
@@ -365,6 +417,7 @@ export interface TranslationDictionary {
   stageAppearance: StageAppearanceTranslations;
   rail: RailTranslations;
   practice: PracticeTranslations;
+  inspector: InspectorTranslations;
 }
 
 export type TranslationKey = {

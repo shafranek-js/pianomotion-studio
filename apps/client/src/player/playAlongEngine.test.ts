@@ -761,4 +761,29 @@ describe("PlayAlongEngine", () => {
     expect(companionPitches).not.toContain(52);
     engine.dispose();
   });
+
+  it("seeks to the nearest step so a rebuilt engine keeps the play-along position", () => {
+    const notes: Note[] = [
+      createMockNote("n1", 60, 1.0, 1.5, "right", 1),
+      createMockNote("n2", 64, 2.5, 3.0, "right", 2),
+      createMockNote("n3", 67, 4.0, 4.5, "right", 3),
+    ];
+    const engine = new PlayAlongEngine({ notes, transitionDurationMs: 0 });
+    engine.start();
+    expect(engine.getCurrentStep()?.timeSeconds).toBe(1.0);
+
+    engine.seekToTime(2.45);
+    expect(engine.getCurrentStep()?.timeSeconds).toBe(2.5);
+
+    engine.seekToTime(100);
+    expect(engine.getCurrentStep()?.timeSeconds).toBe(4.0);
+
+    // A replan creates a fresh engine; start() alone would snap to 1.0.
+    const rebuilt = new PlayAlongEngine({ notes, transitionDurationMs: 0 });
+    rebuilt.start();
+    rebuilt.seekToTime(2.45);
+    expect(rebuilt.getCurrentStep()?.timeSeconds).toBe(2.5);
+    engine.dispose();
+    rebuilt.dispose();
+  });
 });

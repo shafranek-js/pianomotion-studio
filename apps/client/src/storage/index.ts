@@ -57,6 +57,7 @@ export {
   getStorageQuota,
   AutosaveService,
   createAutosaveService,
+  registerAutosaveFlush,
   type SessionSnapshot,
   type StorageQuotaInfo,
   type AutosaveServiceOptions,

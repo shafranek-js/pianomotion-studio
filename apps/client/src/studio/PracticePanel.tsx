@@ -1,4 +1,4 @@
-import { useId, useMemo, useState, type FormEvent, type KeyboardEvent } from "react";
+import { useId, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { Bookmark, Check, Pencil, Play, RotateCcw, Trash2, X } from "lucide-react";
 import { PRACTICE_MIN_LOOP_SECONDS, type PracticeLoop, type PracticeState } from "@handthesia/contracts";
 import { useI18n } from "../i18n";
@@ -105,6 +105,7 @@ export function PracticePanel({
   const [editingBookmarkId, setEditingBookmarkId] = useState<string | null>(null);
   const [renameDraft, setRenameDraft] = useState("");
   const [renameError, setRenameError] = useState(false);
+  const renameTriggerRefs = useRef(new Map<string, HTMLButtonElement>());
 
   const sortedBookmarks = useMemo(() => bookmarks
     .map((bookmark, index) => ({ bookmark, index }))
@@ -208,10 +209,19 @@ export function PracticePanel({
     setRenameError(false);
   };
 
-  const cancelRename = () => {
+  const restoreRenameFocus = (id: string | null) => {
+    if (!id) return;
+    requestAnimationFrame(() => {
+      const trigger = renameTriggerRefs.current.get(id);
+      if (trigger?.isConnected) trigger.focus();
+    });
+  };
+
+  const cancelRename = (id: string | null = editingBookmarkId) => {
     setEditingBookmarkId(null);
     setRenameDraft("");
     setRenameError(false);
+    restoreRenameFocus(id);
   };
 
   const saveRename = (id: string) => {
@@ -221,7 +231,7 @@ export function PracticePanel({
       return;
     }
     onRenameBookmark(id, name.slice(0, MAX_BOOKMARK_NAME_LENGTH));
-    cancelRename();
+    cancelRename(id);
   };
 
   const renameKeyDown = (id: string, event: KeyboardEvent<HTMLInputElement>) => {
@@ -230,7 +240,7 @@ export function PracticePanel({
       saveRename(id);
     } else if (event.key === "Escape") {
       event.preventDefault();
-      cancelRename();
+      cancelRename(id);
     }
   };
 
@@ -356,7 +366,7 @@ export function PracticePanel({
                       onKeyDown={(event) => renameKeyDown(bookmark.id, event)}
                     />
                     <button type="button" className={styles.iconButton} disabled={disabled} aria-label={dict.practice.saveBookmarkName} title={dict.practice.saveBookmarkName} onClick={() => saveRename(bookmark.id)}><Check size={16} aria-hidden="true" /></button>
-                    <button type="button" className={styles.iconButton} aria-label={dict.practice.cancelRename} title={dict.practice.cancelRename} onClick={cancelRename}><X size={16} aria-hidden="true" /></button>
+                    <button type="button" className={styles.iconButton} aria-label={dict.practice.cancelRename} title={dict.practice.cancelRename} onClick={() => cancelRename(bookmark.id)}><X size={16} aria-hidden="true" /></button>
                     {renameError && <p id={`${practiceId}-rename-error-${index}`} className={styles.message} role="alert">{dict.practice.bookmarkNameRequired}</p>}
                   </div>
                 ) : (
@@ -366,7 +376,18 @@ export function PracticePanel({
                       <span className={styles.timestamp}>{timeText(bookmark.timeSeconds)} {dict.practice.secondsUnit}</span>
                     </button>
                     <div className={styles.bookmarkActions}>
-                      <button type="button" className={styles.iconButton} disabled={disabled} aria-label={`${dict.practice.renameBookmark}: ${bookmark.name}`} title={dict.practice.renameBookmark} onClick={() => startRename(bookmark)}><Pencil size={15} aria-hidden="true" /></button>
+                      <button
+                        ref={(element) => {
+                          if (element) renameTriggerRefs.current.set(bookmark.id, element);
+                          else renameTriggerRefs.current.delete(bookmark.id);
+                        }}
+                        type="button"
+                        className={styles.iconButton}
+                        disabled={disabled}
+                        aria-label={`${dict.practice.renameBookmark}: ${bookmark.name}`}
+                        title={dict.practice.renameBookmark}
+                        onClick={() => startRename(bookmark)}
+                      ><Pencil size={15} aria-hidden="true" /></button>
                       <button type="button" className={styles.iconButton} disabled={disabled} aria-label={`${dict.practice.deleteBookmark}: ${bookmark.name}`} title={dict.practice.deleteBookmark} onClick={() => onDeleteBookmark(bookmark.id)}><Trash2 size={15} aria-hidden="true" /></button>
                     </div>
                   </>
