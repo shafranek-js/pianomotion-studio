@@ -1,0 +1,9 @@
+{
+  "name": "pianomotion-studio",
+  "compatibility_date": "2026-10-23",
+  "main": "./cloudflare/worker.mjs",
+  "assets": {
+    "directory": "./apps/client/dist",
+    "binding": "ASSETS"
+  }
+}
