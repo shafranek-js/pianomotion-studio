@@ -31,6 +31,8 @@ export interface PianoSceneOptions {
   displaySettings?: PianoSceneDisplaySettings;
   backgroundColor?: number;
   motionBuffer?: MotionBuffer | null;
+  onContextLost?: (error: Error) => void;
+  onContextRestored?: () => void;
 }
 
 /**
@@ -121,6 +123,29 @@ export function computeBottomLayout(
   };
 }
 
+/**
+ * Releases a partially initialized Pixi application or scene after startup
+ * failure without masking the original initialization error.
+ */
+export function disposeFailedScene(
+  app: Pick<Application, "destroy">,
+  scene: Pick<PianoScene, "destroy"> | null,
+): void {
+  if (scene) {
+    try {
+      scene.destroy();
+    } catch {
+      // Preserve the original initialization error.
+    }
+    return;
+  }
+  try {
+    app.destroy(true, { children: true });
+  } catch {
+    // Preserve the original initialization error.
+  }
+}
+
 export class PianoScene {
   private readonly app: Application;
   private readonly target: HTMLElement;
@@ -131,6 +156,15 @@ export class PianoScene {
   private readonly backgroundGraphics = new Graphics();
   private readonly fallingNotesMask = new Graphics();
   private readonly sceneContainer = new Container();
+  private readonly onContextLost?: (error: Error) => void;
+  private readonly onContextRestored?: () => void;
+  private readonly handleContextLost = (event: Event) => {
+    event.preventDefault();
+    this.onContextLost?.(new Error("WebGL context lost"));
+  };
+  private readonly handleContextRestored = () => {
+    this.onContextRestored?.();
+  };
 
   private keyStyle: M1KeyStyle = "realistic";
   private pixelsPerSecond = 200;
@@ -179,6 +213,8 @@ export class PianoScene {
     this.app = app;
     this.target = options.target;
     this.fixedViewport = options.fixedViewport;
+    this.onContextLost = options.onContextLost;
+    this.onContextRestored = options.onContextRestored;
     this.keyStyle = options.keyStyle ?? "realistic";
     this.pixelsPerSecond = options.pixelsPerSecond ?? 200;
     this.keyboardHeight = options.keyboardHeight;
@@ -207,6 +243,8 @@ export class PianoScene {
     this.app.canvas.addEventListener("pointerup", this.handleEditorPointerUp);
     this.app.canvas.addEventListener("pointercancel", this.handleEditorPointerUp);
     this.app.canvas.addEventListener("wheel", this.handleEditorWheel, { passive: false });
+    this.app.canvas.addEventListener("webglcontextlost", this.handleContextLost);
+    this.app.canvas.addEventListener("webglcontextrestored", this.handleContextRestored);
 
     if (options.song) {
       this.setSong(options.song);
@@ -229,33 +267,39 @@ export class PianoScene {
 
   public static async create(options: PianoSceneOptions): Promise<PianoScene> {
     const app = new Application();
-    const isCanvas = options.target instanceof HTMLCanvasElement;
-    const fixed = options.fixedViewport;
-    if (fixed && (!Number.isInteger(fixed.width) || !Number.isInteger(fixed.height) ||
-        fixed.width < 2 || fixed.height < 2 || fixed.resolution !== 1)) {
-      throw new Error("Export viewport requires integer width/height of at least two pixels and resolution=1.");
+    let scene: PianoScene | null = null;
+    try {
+      const isCanvas = options.target instanceof HTMLCanvasElement;
+      const fixed = options.fixedViewport;
+      if (fixed && (!Number.isInteger(fixed.width) || !Number.isInteger(fixed.height) ||
+          fixed.width < 2 || fixed.height < 2 || fixed.resolution !== 1)) {
+        throw new Error("Export viewport requires integer width/height of at least two pixels and resolution=1.");
+      }
+
+      await app.init({
+        ...(isCanvas ? { canvas: options.target as HTMLCanvasElement } : fixed ? {} : { resizeTo: options.target }),
+        ...(fixed ? { width: fixed.width, height: fixed.height, autoStart: false, sharedTicker: false } : {}),
+        autoDensity: !fixed,
+        // Native DPR plus MSAA smooths vector edges without extra full-scene supersampling.
+        antialias: true,
+        resolution: fixed?.resolution ?? getRendererResolution(),
+        backgroundColor: options.backgroundColor ?? 0x121216,
+      });
+
+      if (!isCanvas) {
+        options.target.appendChild(app.canvas);
+      }
+
+      preloadAllPhotoAssets().catch(() => {});
+
+      scene = new PianoScene(app, options);
+      scene.setupResizeObserver();
+      scene.resize();
+      return scene;
+    } catch (error) {
+      disposeFailedScene(app, scene);
+      throw error;
     }
-
-    await app.init({
-      ...(isCanvas ? { canvas: options.target as HTMLCanvasElement } : fixed ? {} : { resizeTo: options.target }),
-      ...(fixed ? { width: fixed.width, height: fixed.height, autoStart: false, sharedTicker: false } : {}),
-      autoDensity: !fixed,
-      // Native DPR plus MSAA smooths vector edges without extra full-scene supersampling.
-      antialias: true,
-      resolution: fixed?.resolution ?? getRendererResolution(),
-      backgroundColor: options.backgroundColor ?? 0x121216,
-    });
-
-    if (!isCanvas) {
-      options.target.appendChild(app.canvas);
-    }
-
-    preloadAllPhotoAssets().catch(() => {});
-
-    const scene = new PianoScene(app, options);
-    scene.setupResizeObserver();
-    scene.resize();
-    return scene;
   }
 
   private setupResizeObserver(): void {
@@ -448,7 +492,10 @@ export class PianoScene {
     if (enabled && !this.scene3D) {
       let candidate: PianoScene3D | null = null;
       try {
-        candidate = new PianoScene3D(this.target);
+        candidate = new PianoScene3D(this.target, {
+          onContextLost: this.onContextLost,
+          onContextRestored: this.onContextRestored,
+        });
         candidate.setNotes(this.notes);
         candidate.setMotionPlan(this.motionPlan);
         candidate.setMotionBuffer(this.handsView.getMotionBuffer());
@@ -900,6 +947,8 @@ export class PianoScene {
     this.app.canvas.removeEventListener("pointerup", this.handleEditorPointerUp);
     this.app.canvas.removeEventListener("pointercancel", this.handleEditorPointerUp);
     this.app.canvas.removeEventListener("wheel", this.handleEditorWheel);
+    this.app.canvas.removeEventListener("webglcontextlost", this.handleContextLost);
+    this.app.canvas.removeEventListener("webglcontextrestored", this.handleContextRestored);
 
     this.sceneContainer.destroy({ children: true });
     this.app.destroy(true, { children: true });

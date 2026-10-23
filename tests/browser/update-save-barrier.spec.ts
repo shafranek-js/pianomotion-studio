@@ -63,6 +63,6 @@ test("edits made during worker activation prevent the final reload", async ({ pa
   await expect(page.getByRole("button", { name: "Update ready", exact: true })).toHaveCount(0);
   const retained = await page.evaluate(() => window.__playerSnapshot!);
   expect(retained.result.projectId).toBe(original.result.projectId);
-  expect(retained.draftPlan.assignments.some(item => item.fingerMode === "manual" && item.finger === 4)).toBe(true);
+  expect(retained.draftPlan.assignments.some((item) => item.fingerMode === "manual" && item.finger === 4)).toBe(true);
   await expectStudioCanvas(page);
 });

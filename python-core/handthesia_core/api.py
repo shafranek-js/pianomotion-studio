@@ -5,6 +5,8 @@ import hashlib
 import io
 import json
 import math
+import time
+from collections import OrderedDict
 from dataclasses import replace
 from pathlib import Path
 
@@ -12,14 +14,43 @@ from . import fingering, hands, identity, midi_loader, pianist
 from .geometry import KeyboardGeometry, NumericRect
 
 SCHEMA_VERSION = 1
+SESSION_LIMIT = 8
+SESSION_TTL_SECONDS = 30 * 60
 
-_active_animator_sessions: dict[tuple[str, int, str], dict] = {}
+_active_animator_sessions: OrderedDict[tuple, dict] = OrderedDict()
+_session_last_used: dict[tuple, float] = {}
 
 
-def _store_active_session(key: tuple[str, int, str], session_data: dict) -> None:
-    """Store active animator session, evicting previous sessions (A12)."""
-    _active_animator_sessions.clear()
+def _session_key(project_id, revision, profile_id, profile_revision, key_style, keyboard_rect):
+    return (
+        str(project_id), int(revision), str(profile_id), int(profile_revision), str(key_style),
+        int(keyboard_rect.x), int(keyboard_rect.y), int(keyboard_rect.w), int(keyboard_rect.h),
+    )
+
+
+def _store_active_session(key: tuple, session_data: dict) -> None:
+    """Store a bounded LRU session; old entries are evicted, never the whole cache."""
     _active_animator_sessions[key] = session_data
+    _session_last_used[key] = time.monotonic()
+    _active_animator_sessions.move_to_end(key)
+    while len(_active_animator_sessions) > SESSION_LIMIT:
+        oldest, _ = _active_animator_sessions.popitem(last=False)
+        _session_last_used.pop(oldest, None)
+
+
+def _get_active_session(key: tuple):
+    session = _active_animator_sessions.get(key)
+    if session is None:
+        return None
+    now = time.monotonic()
+    last_used = _session_last_used.get(key)
+    if last_used is not None and now - last_used > SESSION_TTL_SECONDS:
+        _active_animator_sessions.pop(key, None)
+        _session_last_used.pop(key, None)
+        return None
+    _active_animator_sessions.move_to_end(key)
+    _session_last_used[key] = now
+    return session
 
 
 def _manifest():
@@ -486,6 +517,8 @@ def analyze_midi(data: bytes, options: dict) -> dict:
     song = midi_loader.load_midi(source_bytes, fixture_id=fixture_id,
                                  source_event_map=source_event_map,
                                  pianist_context=profile_context, decoded=(decoded, list(cleanup)))
+    if getattr(song, "marker_parse_error", None):
+        source_parse_errors.append(song.marker_parse_error)
     _report_progress(0.15, f"Loaded {len(song.notes)} notes; planning fingering...")
 
     desktop_notes, unmapped_source_ids, entry_by_object = _map_desktop_notes(source_notes, song.notes, fixture_id)
@@ -643,7 +676,9 @@ def analyze_midi(data: bytes, options: dict) -> dict:
     animators = hands.build_hands(planning_song, pianist=profile_context, key_style=key_style)
     _report_progress(0.28, "Solving kinematics and scheduling rolled chords...")
     keyboard = KeyboardGeometry(keyboard_rect, style=key_style)
-    _store_active_session((project_id, revision, profile_dto["profileId"]), {
+    _store_active_session(_session_key(
+        project_id, revision, profile_dto["profileId"], profile_dto["revision"], key_style, keyboard_rect,
+    ), {
         "animators": animators,
         "planning_song": planning_song,
         "keyboard": keyboard,
@@ -849,7 +884,9 @@ def analyze_midi(data: bytes, options: dict) -> dict:
             "coordinateFrame": "keyboard-local-inches-v1",
             "poses": motion_poses,
         }
-    _store_active_session((project_id, revision, profile_dto["profileId"]), {
+    _store_active_session(_session_key(
+        project_id, revision, profile_dto["profileId"], profile_dto["revision"], key_style, keyboard_rect,
+    ), {
         "animators": animators,
         "planning_song": planning_song,
         "keyboard": keyboard,
@@ -1167,7 +1204,6 @@ def sample_motion_window(
     profile_id = profile_dto["profileId"]
     project_id = str(options.get("projectId") or (document and document.get("projectId")) or (fingering_plan and fingering_plan.get("projectId")) or "default-project").strip()
     revision = int(options.get("revision") if options.get("revision") is not None else (document and document.get("revision")) if (document and document.get("revision") is not None) else (fingering_plan and fingering_plan.get("inputRevision")) if (fingering_plan and fingering_plan.get("inputRevision") is not None) else 0)
-    session_key = (project_id, revision, profile_id)
 
     key_style = options.get("keyStyle", "realistic")
     if key_style not in ("realistic", "equal"):
@@ -1177,9 +1213,10 @@ def sample_motion_window(
     if not isinstance(rect_values, (list, tuple)) or len(rect_values) != 4:
         raise ValueError("keyboardRect must be [x,y,w,h]")
     keyboard_rect = NumericRect(*[int(v) for v in rect_values])
+    session_key = _session_key(project_id, revision, profile_id, profile_dto["revision"], key_style, keyboard_rect)
 
-    if session_key in _active_animator_sessions:
-        session = _active_animator_sessions[session_key]
+    session = _get_active_session(session_key)
+    if session is not None:
         animators = session["animators"]
         planning_song = session["planning_song"]
         keyboard = KeyboardGeometry(keyboard_rect, style=key_style)

@@ -2,12 +2,10 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import {
-  FingeringPlanSchema,
   MotionPlanSchema,
   PerformancePlanSchema,
   SongDocumentSchema,
   fingeringPlanForSong,
-  performancePlanForSong,
   type MotionPose,
   type PerformanceEvent,
   type SongDocument,
@@ -683,7 +681,7 @@ describe("Milestone M3 Logic Parity & Kinematic Invariants", () => {
 
       // Verify pose sampling determinism:
       // Construct a MotionPlan from selectedPoses
-      const poses: MotionPose[] = fixture.selectedPoses!.map((p) => ({
+      const poses = fixture.selectedPoses!.map((p) => ({
         transportTimeSeconds: p.time,
         hand: p.hand === "L" ? ("left" as const) : ("right" as const),
         layerOrder: p.layer,
@@ -696,7 +694,7 @@ describe("Milestone M3 Logic Parity & Kinematic Invariants", () => {
           point: j.position,
           kind: j.type,
         })),
-      }));
+      })) as MotionPose[];
 
       const leftPoses = poses.filter((p) => p.hand === "left").sort((a, b) => a.transportTimeSeconds - b.transportTimeSeconds);
       const rightPoses = poses.filter((p) => p.hand === "right").sort((a, b) => a.transportTimeSeconds - b.transportTimeSeconds);

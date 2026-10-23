@@ -17,6 +17,12 @@ import * as pianist_module from "./pianist.ts";
 import * as glissando_module from "./glissando.ts";
 import * as fingering_module from "./fingering.ts";
 
+/** Python's time.perf_counter() returns seconds; performance.now() is ms. */
+const time = {
+  perf_counter: (): number =>
+    typeof performance === "undefined" ? Date.now() / 1000 : performance.now() / 1000,
+};
+
 const pianists = pianist_module;
 const glissando = glissando_module;
 const fg = fingering_module;

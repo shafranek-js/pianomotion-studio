@@ -361,7 +361,7 @@ export const uk: TranslationDictionary = {
     audioTitle: "Звук",
     replaceRecording: "Замінити запис",
     importRecording: "Імпортувати аудіозапис",
-    audioFormats: "WAV, MP3, OGG або FLAC · до 100 MiB",
+    audioFormats: "WAV, MP3, OGG або FLAC · до 100 MiB / 20 min",
     audioRecording: "Аудіозапис",
     audioOffset: "Зсув звуку (секунди)",
     removeRecording: "Видалити запис",

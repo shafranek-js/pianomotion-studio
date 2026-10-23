@@ -1,6 +1,6 @@
 # PianoMotion Studio — recovery and rollback
 
-Current local implementation: 2026-10-16, dev.6. Built-in MIDI sources are read-only inputs in `builtin_melodies/midi`; rebuild their generated catalog with `npm run prepare:melodies`. Opening a melody creates a separate project: repairing/rebuilding the library must never delete project data. See `evidence/builtin-melodies-2026-10-16/VERIFICATION.md`, SOUNDFONT_STEREO_IMPLEMENTATION.md and AUDIT_REPAIR_PROGRESS.md for acceptance; historical milestone reports are not current release evidence.
+Current local implementation: 2026-10-22, dev.23. Built-in MIDI sources are read-only inputs in `builtin_melodies/midi`; rebuild their generated catalog with `npm run prepare:melodies`. Opening a melody creates a separate project: repairing/rebuilding the library must never delete project data. See `evidence/builtin-melodies-2026-10-16/VERIFICATION.md`, SOUNDFONT_STEREO_IMPLEMENTATION.md and AUDIT_REPAIR_PROGRESS.md for acceptance; historical milestone reports are not current release evidence. References to dev.5/dev.6 below describe the soundfont/storage migration and remain historical context; the current rollback baseline is dev.23.
 
 ## Protect data first
 
@@ -20,6 +20,10 @@ The service worker stages and SHA-256 verifies every mandatory file, then publis
 
 An update is offered through the status bar, including an update already waiting when the tab opened. The save barrier runs before activation. If it reports quota, abort, pending replan or intervening changes, fix that condition and retry; a failed save is not permission to refresh.
 
+## Revoking a bad release
+
+The root `release-policy.json` is the kill switch. To revoke a build, add its build ID to `revokedBuildIds` and redeploy that file at the application root; do not delete project data or IndexedDB. On the next navigation, a service worker that owns the revoked build deletes only that build's cache, notifies its clients, and returns a 410 withdrawal response. Existing open tabs keep their in-memory state until reload; a reload must go online to obtain the current release. The policy is checked on navigation and fails open when unavailable, so offline use of a non-revoked build is preserved.
+
 ## Inspect storage without modifying it
 
 The project database is handthesia_db, schema version 2, with projects, profiles, settings and session stores. SF2 source bytes live in the separate asset database implemented by audio/soundfont/soundfontAssetStore.ts; musical packages do not embed them automatically. Layout preferences live separately from musical documents.
@@ -32,4 +36,4 @@ Record origin, build ID, engine hash, project ID/revision, error text and whethe
 
 ## Source rollback in this checkout
 
-Working directory: C:\Projects\pianomotion-studio. Preserve dirty/untracked user work. No commit, reset, clean, push or publication is part of remediation. If a later authorized rollback uses Git, review and preserve current changes first; use an explicit scoped revert or a separate checkout instead of destructive reset/clean.
+Working directory: C:\Projects\pianomotion. Preserve dirty/untracked user work. No commit, reset, clean, push or publication is part of remediation. If a later authorized rollback uses Git, review and preserve current changes first; use an explicit scoped revert or a separate checkout instead of destructive reset/clean.

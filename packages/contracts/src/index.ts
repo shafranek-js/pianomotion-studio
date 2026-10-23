@@ -294,6 +294,12 @@ export const ResourceDescriptorSchema = object({
 });
 export type ResourceDescriptor = z.infer<typeof ResourceDescriptorSchema>;
 
+export const MAX_SONG_TITLE_LENGTH = 255;
+export const MAX_SONG_TRACKS = 256;
+export const MAX_SONG_NOTES = 100_000;
+export const MAX_SONG_TEMPO_EVENTS = 100_000;
+export const MAX_SONG_PEDAL_EVENTS = 500_000;
+
 export const MidiTrackSchema = object({
   trackId: id,
   // Matches MidiSong.Note.track / TrackInfo.index: the decoded instrument index.
@@ -301,7 +307,7 @@ export const MidiTrackSchema = object({
   // Raw SMF track/channel are optional because the current desktop loader loses this mapping.
   sourceMidiTrackIndex: z.number().int().nonnegative().optional(),
   channel: z.number().int().min(0).max(15).optional(),
-  name: z.string(),
+  name: z.string().max(MAX_SONG_TITLE_LENGTH),
   program: z.number().int().min(0).max(127),
   hand: z.enum(["left", "right"]).nullable(),
 });
@@ -319,7 +325,7 @@ export const NoteSchema = object({
   glissando: z.boolean(),
   // Opaque importer IDs; multiple source notes may normalize to this one note.
   // They are not claims about raw MIDI track/event ordinals.
-  sourceNoteIds: z.array(id).min(1).optional(),
+  sourceNoteIds: z.array(id).min(1).max(64).optional(),
   sourceEvent: object({
     midiTrackIndex: z.number().int().nonnegative(),
     channel: z.number().int().min(0).max(15),
@@ -357,13 +363,13 @@ export const SongDocumentSchema = object({
   schemaVersion: z.literal(SCHEMA_VERSION),
   projectId: id,
   revision: z.number().int().nonnegative(),
-  title: z.string(),
+  title: z.string().max(MAX_SONG_TITLE_LENGTH),
   durationSeconds: sourceTime,
   sourceMidiResourceId: id.optional(),
-  tracks: z.array(MidiTrackSchema),
-  notes: z.array(NoteSchema),
-  tempoMap: z.array(TempoChangeSchema),
-  pedalControls: z.array(PedalControlSchema),
+  tracks: z.array(MidiTrackSchema).max(MAX_SONG_TRACKS),
+  notes: z.array(NoteSchema).max(MAX_SONG_NOTES),
+  tempoMap: z.array(TempoChangeSchema).max(MAX_SONG_TEMPO_EVENTS),
+  pedalControls: z.array(PedalControlSchema).max(MAX_SONG_PEDAL_EVENTS),
 }).superRefine((song, ctx) => {
   const trackIds = new Set<string>();
   const instrumentIndexes = new Set<number>();

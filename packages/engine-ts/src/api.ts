@@ -21,7 +21,7 @@ import { reset_context } from "./fingering.ts";
 
 const EMBEDDED_MANIFEST = {
   "schemaVersion": 1,
-  "engineVersion": "b54581cb07a377d24fdb762198c76d0c40b3e8be018ff2db5f022c1f5e00c23e",
+  "engineVersion": "bcfc085b5aed5259c13f496cadf4e7be8597b1dbf5880138dfe7c42b59ddb297",
   "entrypoint": "handthesia_core.api:analyze_midi",
   "replanEntrypoint": "handthesia_core.api:replan_document",
   "pythonPackages": [
@@ -31,20 +31,20 @@ const EMBEDDED_MANIFEST = {
   ],
   "files": {
     "handthesia_core/__init__.py": "b717704c7b696ca09293395731d10d903b82772d691f5ef60028bcf4d4e67ac0",
-    "handthesia_core/api.py": "c24146f15c17486553dbe1473abd2e5d83f54f8660aa20d13eb4a2f769e5faf2",
+    "handthesia_core/api.py": "d7cd70688655fa851c7d49430d6c5e9669e2e20e216a4002d2b30a17b0ac24b5",
     "handthesia_core/figures.py": "0c89b85176c73f566528c692944e6c7192444f9c7134c13d5ec027063fb86fb9",
-    "handthesia_core/fingering.py": "2140b2a5b81e4724fce03e99470edef9aff0c97f56fc6bff07c66aedf672c9ac",
+    "handthesia_core/fingering.py": "c24d1d202e18aa4d0d19d865624e4742ce4f2bbc447acc7a94a1e8c686a20223",
     "handthesia_core/geometry.py": "df96013f715b51fb21ed95087259a1fe202dd7e828e6e09e4578172a43f3c5fd",
     "handthesia_core/glissando.py": "7c1a472b3edb380d222a06ca41def651bb84078ecaddcb6180ee4b0a2b772923",
     "handthesia_core/hand_split.py": "73eb529c1cb91ca21cae5a50660025aa258a7c2a69a2677f7ede79166cc71d3a",
-    "handthesia_core/hands.py": "6cf80ac7204696741e61c48935f93ede1816a856d5e3536371a1d603ce2eff43",
+    "handthesia_core/hands.py": "1ace95c077df6e95b73bc16f8a0e7280280552328705cb45d4282ffd83d64132",
     "handthesia_core/identity.py": "a2bf6d82f09e2bea6610b29ad0d494931e64ee43744bfcbc8e6b20cfab694906",
-    "handthesia_core/midi_loader.py": "9aea3ef37ea1c4dc54aed6daf4f07b6d1d04af8befba47821237c865bafa0fb7",
+    "handthesia_core/midi_loader.py": "da466882276af60be25aa0a5927cbfc4e1926451e9e9b58604a1ed37efd5f3a9",
     "handthesia_core/pianist.py": "e80a4b4c4f2511e344d9b8ee8921f83442dac816ea53dfc8f5d2747e0f49cb19",
     "handthesia_core/progress.py": "e068d2edf6dbde6b51028259d6516594d86c277193e3bdca5b95f23e1c632d6a"
   },
   "desktopSourceCommit": "f8189c021d9235005fb35faa2c8cfbc09a3768a0",
-  "desktopVersion": "v1.0.0"
+  "desktopVersion": "v26.1.20"
 }
 ;
 
@@ -52,9 +52,16 @@ const EMBEDDED_MANIFEST = {
 export let SCHEMA_VERSION: any = 1;
 export let _active_animator_sessions: any = {  };
 export function _store_active_session(key: any = null, session_data: any = null): any {
-  // Store active animator session, evicting previous sessions (A12).
-  pyClear(_active_animator_sessions);
-  _active_animator_sessions[key] = session_data;
+  // Bounded LRU: composite keys and oldest-entry eviction, never a wholesale clear.
+  const serialized = JSON.stringify(key);
+  _active_animator_sessions[serialized] = session_data;
+  const keys = Object.keys(_active_animator_sessions);
+  while (keys.length > 8) {
+    delete _active_animator_sessions[keys.shift()!];
+  }
+}
+function _get_active_session(key: any): any {
+  return _active_animator_sessions[JSON.stringify(key)] ?? null;
 }
 export function _manifest(): any {
   return EMBEDDED_MANIFEST;
@@ -439,6 +446,7 @@ export function analyze_midi(data: any = null, options: any = null): any {
   }
   fingering.reset_context(profile_context);
   song = midi_loader.load_midi(source_bytes, { fixture_id: fixture_id, source_event_map: source_event_map, pianist_context: profile_context, decoded: [decoded, [...cleanup]] });
+  if (song.markerParseError) source_parse_errors.push(song.markerParseError);
   _report_progress(0.15, `Loaded ${(song.notes).length} notes; planning fingering...`);
   [desktop_notes, unmapped_source_ids, entry_by_object] = _map_desktop_notes(source_notes, song.notes, fixture_id);
   aliases_by_note = {  };
@@ -545,7 +553,7 @@ export function analyze_midi(data: any = null, options: any = null): any {
   animators = hands.build_hands(planning_song, { pianist: profile_context, key_style: key_style });
   _report_progress(0.28, 'Solving kinematics and scheduling rolled chords...');
   keyboard = new KeyboardGeometry(keyboard_rect, key_style);
-  _store_active_session([project_id, revision, profile_dto['profileId']], { ['animators']: animators, ['planning_song']: planning_song, ['keyboard']: keyboard, ['song']: song });
+  _store_active_session([project_id, revision, profile_dto['profileId'], profile_dto['revision'], key_style, keyboard_rect.x, keyboard_rect.y, keyboard_rect.w, keyboard_rect.h], { ['animators']: animators, ['planning_song']: planning_song, ['keyboard']: keyboard, ['song']: song });
   assignments = [];
   assignment_by_identity = {  };
   gliss_ids = new Set();
@@ -697,7 +705,7 @@ export function analyze_midi(data: any = null, options: any = null): any {
   if (bool(motion_poses)) {
     motion_plan = { ...common_plan, ['planId']: _plan_id('motion', request_id), ['kind']: 'motion', ['performancePlanId']: performance_plan['planId'], ['coordinateFrame']: 'keyboard-local-inches-v1', ['poses']: motion_poses };
   }
-  _store_active_session([project_id, revision, profile_dto['profileId']], { ['animators']: animators, ['planning_song']: planning_song, ['keyboard']: keyboard, ['song']: song });
+  _store_active_session([project_id, revision, profile_dto['profileId'], profile_dto['revision'], key_style, keyboard_rect.x, keyboard_rect.y, keyboard_rect.w, keyboard_rect.h], { ['animators']: animators, ['planning_song']: planning_song, ['keyboard']: keyboard, ['song']: song });
   raw_pedals = Array.from(pyIter(song.raw_controls)).map(([t, c, v]: any) => ({ ['time']: _rounded(t), ['controller']: Math.trunc(c), ['value']: Math.trunc(v) }));
   pedals = Array.from(pyIter(song.controls)).map(([t, c, v]: any) => ({ ['time']: _rounded(t), ['controller']: Math.trunc(c), ['value']: Math.trunc(v) }));
   identity_mappings = [];
@@ -904,7 +912,6 @@ export function sample_motion_window(data: any = null, document: any = null, fin
   profile_id = profile_dto['profileId'];
   project_id = String((bool(pyGet(options, 'projectId', null)) ? pyGet(options, 'projectId', null) : null) || (bool(document) ? pyGet(document, 'projectId', null) : null) || (bool(fingering_plan) ? pyGet(fingering_plan, 'projectId', null) : null) || 'default-project').trim();
   revision = Math.trunc(pyGet(options, 'revision', null) !== null ? pyGet(options, 'revision', null) : pyGet(document, 'revision', null) !== null ? pyGet(document, 'revision', null) : pyGet(fingering_plan, 'inputRevision', null) !== null ? pyGet(fingering_plan, 'inputRevision', null) : 0);
-  session_key = [project_id, revision, profile_id];
   key_style = pyGet(options, 'keyStyle', 'realistic');
   if (((!pyIn(key_style, ['realistic', 'equal'])))) {
     throw ValueError('keyStyle must be realistic or equal');
@@ -914,8 +921,10 @@ export function sample_motion_window(data: any = null, document: any = null, fin
     throw ValueError('keyboardRect must be [x,y,w,h]');
   }
   keyboard_rect = new NumericRect(...Array.from(pyIter(rect_values)).map((v: any) => Math.trunc(v)));
-  if ((pyIn(session_key, _active_animator_sessions))) {
-    session = _active_animator_sessions[session_key];
+  session_key = [project_id, revision, profile_id, profile_dto['revision'], key_style, keyboard_rect.x, keyboard_rect.y, keyboard_rect.w, keyboard_rect.h];
+  const activeSession = _get_active_session(session_key);
+  if (activeSession !== null) {
+    session = activeSession;
     animators = session['animators'];
     planning_song = session['planning_song'];
     keyboard = new KeyboardGeometry(keyboard_rect, key_style);

@@ -88,7 +88,10 @@ def test_motion_window_basic_and_cache():
     assert times_and_hands == sorted(times_and_hands), "Poses must be sorted chronologically"
 
     # Verify session is cached in _active_animator_sessions
-    cache_key = (project_id, revision, "default")
+    profile_revision = api._resolve_profile(None)[0]["revision"]
+    cache_key = api._session_key(
+        project_id, revision, "default", profile_revision, "realistic", api.NumericRect(0, 0, 1400, 150),
+    )
     assert cache_key in api._active_animator_sessions, "Active session should be cached"
 
     # 2. Sliding window call: [2.0, 6.0] with empty bytes (must succeed via cache)
@@ -251,12 +254,14 @@ def test_motion_window_caps_1_to_5_and_no_zero_division():
 
 
 def test_single_active_animator_session_eviction():
-    """A12: Worker must hold exactly one active animator session across multiple revisions."""
+    """A12/ENG-11: the Worker holds a bounded LRU of animator sessions."""
     midi_bytes = DEMO_MIDI_PATH.read_bytes()
     manifest = api._manifest()
     engine_ver = api._engine_version(manifest)
+    profile_revision = api._resolve_profile(None)[0]["revision"]
 
     api._active_animator_sessions.clear()
+    last_key = None
     for rev in range(1, 21):
         api.sample_motion_window(
             data=midi_bytes,
@@ -271,9 +276,15 @@ def test_single_active_animator_session_eviction():
                 "maxPoses": 100,
             },
         )
-        assert len(api._active_animator_sessions) == 1, (
-            f"Expected exactly 1 cached session at revision {rev}, found {len(api._active_animator_sessions)}"
+        assert len(api._active_animator_sessions) <= api.SESSION_LIMIT, (
+            f"Expected at most {api.SESSION_LIMIT} cached sessions at revision {rev}, "
+            f"found {len(api._active_animator_sessions)}"
         )
+        last_key = api._session_key(
+            "session-eviction-test", rev, "default", profile_revision, "realistic",
+            api.NumericRect(0, 0, 1400, 150),
+        )
+    assert last_key in api._active_animator_sessions
 
     print("PASS: test_single_active_animator_session_eviction")
 
@@ -407,10 +418,13 @@ def test_motion_window_rejects_capacity_smaller_than_a_complete_pose_group(monke
             }
 
     profile_id = api._resolve_profile(None)[0]["profileId"]
+    profile_revision = api._resolve_profile(None)[0]["revision"]
     project_id = "pose-group-capacity"
     revision = 1
     api._active_animator_sessions.clear()
-    api._active_animator_sessions[(project_id, revision, profile_id)] = {
+    api._active_animator_sessions[api._session_key(
+        project_id, revision, profile_id, profile_revision, "realistic", api.NumericRect(0, 0, 1400, 150),
+    )] = {
         "animators": {"L": FakeAnimator(), "R": FakeAnimator(), "third": FakeAnimator()},
         "planning_song": object(),
         "keyboard": None,

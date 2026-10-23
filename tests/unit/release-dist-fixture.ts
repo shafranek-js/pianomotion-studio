@@ -2,7 +2,6 @@ import { createHash } from "node:crypto";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-// @ts-expect-error - release tools are plain ESM scripts without declarations.
 import { PINNED_CORE_MODULES, PINNED_PYODIDE_FILES, PINNED_PYODIDE_VERSION } from "../../tools/release-inventory.mjs";
 
 const buildId = "a".repeat(24);
@@ -48,7 +47,7 @@ export async function makeValidReleaseDist(): Promise<{ root: string; removeFrom
   await write(`${prefix}manifest.webmanifest`, "{}");
   await write(`${prefix}assets/app.js`, "console.log('app');");
   await write(`${prefix}soundfonts/musescore-general/test.sf3`, "sf3-bytes");
-  await write("index.html", `<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'">${prefix}`);
+  await write("index.html", `<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-src 'none'">${prefix}`);
   await writeFile(path.join(root, "sw.js"), `const BUILD_ID = "${buildId}";`);
 
   const manifest = {

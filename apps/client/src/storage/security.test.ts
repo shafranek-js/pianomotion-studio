@@ -161,11 +161,11 @@ describe("Security: File Size and Extension Validation", () => {
       );
     });
 
-    it("rejects oversized JSON text exceeding 64 MiB in parseProjectPackageJson", () => {
-      expect(MAX_PACKAGE_JSON_LENGTH_CHARS).toBe(64 * 1024 * 1024);
-      const hugeJson = { length: 65 * 1024 * 1024 } as unknown as string;
+    it("rejects oversized JSON text exceeding 32 MiB in parseProjectPackageJson", () => {
+      expect(MAX_PACKAGE_JSON_LENGTH_CHARS).toBe(32 * 1024 * 1024);
+      const hugeJson = { length: 33 * 1024 * 1024 } as unknown as string;
       expect(() => parseProjectPackageJson(hugeJson)).toThrow(
-        /exceeds the maximum allowed length of 64 MiB/,
+        /exceeds the maximum allowed length of 32 MiB/,
       );
     });
 

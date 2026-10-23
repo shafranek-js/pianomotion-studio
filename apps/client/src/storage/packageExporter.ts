@@ -416,7 +416,7 @@ export function safeValidateProjectPackage(data: unknown, legacySourceContext?: 
   }
 }
 
-export const MAX_PACKAGE_JSON_LENGTH_CHARS = 64 * 1024 * 1024; // 64 MiB
+export const MAX_PACKAGE_JSON_LENGTH_CHARS = MAX_PACKAGE_FILE_SIZE_BYTES; // 32 MiB, aligned with the validated file limit
 
 /**
  * Parses and validates a JSON string as a `ProjectPackage`.
@@ -424,7 +424,7 @@ export const MAX_PACKAGE_JSON_LENGTH_CHARS = 64 * 1024 * 1024; // 64 MiB
 export function parseProjectPackageJson(jsonText: string, legacySourceContext?: ProjectSourceContext): ProjectPackage {
   if (jsonText.length > MAX_PACKAGE_JSON_LENGTH_CHARS) {
     throw new Error(
-      `Package JSON text length (${jsonText.length} characters) exceeds the maximum allowed length of 64 MiB.`,
+      `Package JSON text length (${jsonText.length} characters) exceeds the maximum allowed length of ${MAX_PACKAGE_JSON_LENGTH_CHARS / (1024 * 1024)} MiB.`,
     );
   }
   let data: unknown;

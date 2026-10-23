@@ -2,7 +2,11 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import {
   decodeAudioRecording,
   isAudioFormatSupported,
+  assertDecodedAudioBudget,
+  decodedPcmBytes,
   MAX_AUDIO_FILE_SIZE_BYTES,
+  MAX_AUDIO_DURATION_SECONDS,
+  MAX_DECODED_PCM_BYTES,
   generateWaveformPeaks,
   extractViewportPeaks,
   calculateDragOffset,
@@ -242,7 +246,7 @@ describe("audioDecoder.ts", () => {
       ).rejects.toThrow(/empty/i);
     });
 
-    it("rejects file larger than 100 MiB", async () => {
+    it("rejects an audio file larger than 100 MiB", async () => {
       // Fake a large buffer or File-like object exceeding 100 MiB
       const oversizedObject = {
         name: "huge_recording.wav",
@@ -253,6 +257,32 @@ describe("audioDecoder.ts", () => {
       await expect(
         decodeAudioRecording(oversizedObject, mockContext as unknown as AudioContext),
       ).rejects.toThrow(/exceeds maximum size of 100 MiB/i);
+    });
+
+    it("rejects decoded PCM above the duration or size budget", () => {
+      const tooLong = { duration: MAX_AUDIO_DURATION_SECONDS + 1, length: 1, numberOfChannels: 2 };
+      expect(() => assertDecodedAudioBudget(tooLong)).toThrow(/maximum duration/i);
+
+      const tooLarge = {
+        duration: 1,
+        length: Math.floor(MAX_DECODED_PCM_BYTES / (2 * Float32Array.BYTES_PER_ELEMENT)) + 1,
+        numberOfChannels: 2,
+      };
+      expect(decodedPcmBytes(tooLarge)).toBeGreaterThan(MAX_DECODED_PCM_BYTES);
+      expect(() => assertDecodedAudioBudget(tooLarge)).toThrow(/Decoded audio PCM exceeds/i);
+    });
+
+    it("enforces the budget before generating peaks", async () => {
+      const context = new MockAudioContext();
+      context.decodeAudioData = async () => ({
+        duration: MAX_AUDIO_DURATION_SECONDS + 1,
+        length: 1,
+        numberOfChannels: 2,
+      }) as unknown as AudioBuffer;
+
+      await expect(
+        decodeAudioRecording(new ArrayBuffer(16), context as unknown as AudioContext),
+      ).rejects.toThrow(/maximum duration/i);
     });
 
     it("propagates decodeAudioData errors cleanly", async () => {

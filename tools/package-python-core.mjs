@@ -40,7 +40,7 @@ const manifest = {
   pythonPackages: ['pretty_midi', 'mido', 'numpy'],
   files: moduleHashes,
   desktopSourceCommit: 'f8189c021d9235005fb35faa2c8cfbc09a3768a0',
-  desktopVersion: 'v1.0.0'
+  desktopVersion: 'v26.1.20'
 };
 
 const manifestBytes = `${JSON.stringify(manifest, null, 2)}\n`;

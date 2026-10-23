@@ -225,7 +225,8 @@ W.update(BASE_W)
 BASE_MAX_SPAN = dict(MAX_SPAN)
 BASE_STRENGTH = dict(FINGER_STRENGTH)
 BASE_BLACK_EASE = dict(BLACK_EASE)
-_applied = None
+_NOT_APPLIED = object()
+_applied = _NOT_APPLIED
 
 # --------------------------------------------------------------------------- #
 # Fine-tuning: every weight of the model, adjustable per pianist
@@ -378,6 +379,7 @@ def apply_pianist(p):
     W.update(base)
     MAX_SPAN.update(BASE_MAX_SPAN)
     REACH_SCALE.clear()
+    figures.PREFS.clear()
     figures.PREFS.update(figures.DEFAULT_PREFS)
     for name, v in _fig_defaults().items():
         setattr(figures, name, v)
@@ -399,7 +401,7 @@ def apply_pianist(p):
 def reset_context(p):
     """Clear mutable model state, then install the profile for one batch job."""
     global _applied, MAX_SPEED
-    _applied = None
+    _applied = _NOT_APPLIED
     _RANGE_CACHE.clear()
     W.clear()
     W.update(BASE_W)

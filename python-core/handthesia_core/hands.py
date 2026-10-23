@@ -51,6 +51,12 @@ from .fingering import group_notes, is_crossing, key_pos, mirror_pitch, plan_fin
 from .midi_loader import LEFT, RIGHT, is_black_key
 
 
+def _trim_cache(cache: dict, limit: int = 20000) -> None:
+    """Drop the oldest inserted entries instead of discarding the whole cache."""
+    while len(cache) > limit:
+        del cache[next(iter(cache))]
+
+
 def _roll_onsets(order, roll_dt, ceiling=None):
     """Delay each note of an upward roll, but never past the next chord's onset.
 
@@ -1405,7 +1411,7 @@ class HandAnimator:
         q = cache.get(k)
         if q is None:
             if len(cache) > 20000:
-                cache.clear()
+                _trim_cache(cache)
             def avg(n):
                 acc, ws = [0.0, 0.0, 0.0], 0.0
                 for d in range(-n, n + 1):
@@ -1563,7 +1569,7 @@ class HandAnimator:
         q = cache.get(k)
         if q is None:
             if len(cache) > 20000:
-                cache.clear()
+                _trim_cache(cache)
             n = LIMIT_SMOOTH_TIPS
             grids = [(n + 1 - abs(d), self._limited_tip_grid(k + d)) for d in range(-n, n + 1)]
             ws = sum(w for w, _ in grids)
@@ -1582,7 +1588,7 @@ class HandAnimator:
         if k in cache:
             return cache[k]
         if len(cache) > 20000:
-            cache.clear()
+            _trim_cache(cache)
         g = LIMIT_GRID_T
         step = self.max_speed / 0.0254 * self.ppi * g
         j, todo = k, []
@@ -1608,7 +1614,7 @@ class HandAnimator:
         if k in cache:
             return cache[k]
         if len(cache) > 20000:
-            cache.clear()
+            _trim_cache(cache)
         g = LIMIT_GRID_T
         step = self.max_speed / 0.0254 * self.ppi * g           # pixels per grid step
         arm = TIP_ARM_IN * self.ppi
@@ -2538,7 +2544,7 @@ class HandAnimator:
                 d = self._idle_cache.get(k)
                 if d is None:
                     if len(self._idle_cache) > 4000:
-                        self._idle_cache.clear()
+                        _trim_cache(self._idle_cache, 4000)
                     d = self._idle_cache[k] = self._idle_shift_parts(k * g)
                 sd, sf, sw = sd + w * d[0], sf + w * d[1], sw + w
         dx = sd / sw if sw else 0.0
@@ -2624,7 +2630,7 @@ class HandAnimator:
         x = self._path_cache.get(i)
         if x is None:
             if len(self._path_cache) > 20000:
-                self._path_cache.clear()
+                _trim_cache(self._path_cache)
             p = self.partner
             x = self._path_cache[i] = self._mx(p._mx(p._grid_pose(int(round(i * IDLE_TICK_T / HAND_GRID_T)))[0]))
         return x
@@ -2641,7 +2647,7 @@ class HandAnimator:
         if k in cache:
             return cache[k]
         if len(cache) > 20000:
-            cache.clear()
+            _trim_cache(cache)
         at, tick = self._partner_x, IDLE_TICK_T
 
         def ahead(j):
@@ -2664,7 +2670,7 @@ class HandAnimator:
         pose = cache.get(k)
         if pose is None:
             if len(cache) > 4000:
-                cache.clear()
+                _trim_cache(cache, 4000)
             t = k * HAND_GRID_T
             pose = cache[k] = self._solve_hand(self._items_at(t), self._run_w(t), self._low(t))
         return pose
@@ -3985,7 +3991,7 @@ def contact_overlap(right, left, k):
     v = cache.get(k)
     if v is None:
         if len(cache) > 20000:
-            cache.clear()
+            _trim_cache(cache)
         t = k * CONTACT_GRID
         fr, fl = right.footprint(t), left.footprint(t)
         v = cache[k] = -1.0 if fr is None or fl is None else min(fr[1], fl[1]) - max(fr[0], fl[0])

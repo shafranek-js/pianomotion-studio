@@ -206,6 +206,12 @@ export async function verifyReleaseDist(distRoot) {
     problems.push("index.html has no non-empty CSP meta tag");
   } else if (!/\bdefault-src\b/.test(cspContent) || !/\bscript-src\b/.test(cspContent)) {
     problems.push("index.html CSP is missing default-src/script-src");
+  } else {
+    for (const directive of ["object-src", "base-uri", "form-action", "frame-src"]) {
+      if (!new RegExp(`\\b${directive}\\b`).test(cspContent)) {
+        problems.push(`index.html CSP is missing ${directive}`);
+      }
+    }
   }
   if (!index.includes(releasePrefix)) {
     problems.push(`index.html does not reference ${releasePrefix}`);

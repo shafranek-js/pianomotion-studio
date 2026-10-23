@@ -1,8 +1,7 @@
-import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-// @ts-expect-error - release tools are plain ESM scripts without declarations.
 import { verifyReleaseDist } from "../../tools/verify-release-dist.mjs";
 import { makeValidReleaseDist } from "./release-dist-fixture";
 
@@ -18,7 +17,7 @@ async function makeRoot(): Promise<string> {
 async function writeBase(root: string, manifest: unknown): Promise<void> {
   await mkdir(root, { recursive: true });
   await writeFile(path.join(root, "offline-manifest.json"), JSON.stringify(manifest));
-  await writeFile(path.join(root, "index.html"), `<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'">releases/${buildId}/`);
+  await writeFile(path.join(root, "index.html"), `<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-src 'none'">releases/${buildId}/`);
   await writeFile(path.join(root, "sw.js"), `const BUILD_ID = "${buildId}";`);
 }
 
@@ -72,5 +71,15 @@ describe("DEP-1 release dist verifier", () => {
 
     await dist.removeFromManifest(`releases/${buildId}/pyodide/pyodide.mjs`);
     await expect(verifyReleaseDist(dist.root)).rejects.toThrow(/absent from the offline manifest: pyodide\/pyodide\.mjs/);
+  });
+
+  it("rejects a CSP without the required framing/form directives", async () => {
+    const dist = await makeValidReleaseDist();
+    roots.push(dist.root);
+    const indexPath = path.join(dist.root, "index.html");
+    const index = await readFile(indexPath, "utf8");
+    await writeFile(indexPath, index.replace(" frame-src 'none'", ""));
+
+    await expect(verifyReleaseDist(dist.root)).rejects.toThrow(/CSP is missing frame-src/);
   });
 });

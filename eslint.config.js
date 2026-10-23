@@ -57,4 +57,10 @@ export default tseslint.config(
       "@typescript-eslint/ban-ts-comment": "off",
     },
   },
+  {
+    files: ["tests/**/*.{ts,tsx}"],
+    languageOptions: {
+      globals: { ...globals.node, ...globals.browser },
+    },
+  },
 );

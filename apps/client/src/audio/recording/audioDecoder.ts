@@ -4,6 +4,8 @@ import {
 } from "./waveformGenerator.ts";
 
 export const MAX_AUDIO_FILE_SIZE_BYTES = 100 * 1024 * 1024; // 100 MiB
+export const MAX_AUDIO_DURATION_SECONDS = 20 * 60; // 20 minutes
+export const MAX_DECODED_PCM_BYTES = 256 * 1024 * 1024; // 256 MiB of Float32 samples
 
 export const SUPPORTED_AUDIO_EXTENSIONS = [".wav", ".mp3", ".ogg", ".flac"] as const;
 
@@ -67,8 +69,34 @@ export function isAudioFormatSupported(filenameOrMime: string): boolean {
 }
 
 /**
+ * Bytes held by the decoded Float32 PCM channels.
+ */
+export function decodedPcmBytes(buffer: Pick<AudioBuffer, "length" | "numberOfChannels">): number {
+  return buffer.length * buffer.numberOfChannels * Float32Array.BYTES_PER_ELEMENT;
+}
+
+/**
+ * Rejects decoded recordings that exceed the duration or decoded-PCM budget.
+ * The compressed file size cap alone cannot bound the decoded allocation.
+ */
+export function assertDecodedAudioBudget(buffer: Pick<AudioBuffer, "duration" | "length" | "numberOfChannels">): void {
+  if (!Number.isFinite(buffer.duration) || buffer.duration > MAX_AUDIO_DURATION_SECONDS) {
+    throw new Error(
+      `Audio recording exceeds maximum duration of ${MAX_AUDIO_DURATION_SECONDS / 60} minutes`,
+    );
+  }
+  const bytes = decodedPcmBytes(buffer);
+  if (!Number.isSafeInteger(bytes) || bytes > MAX_DECODED_PCM_BYTES) {
+    throw new Error(
+      `Decoded audio PCM exceeds maximum size of ${MAX_DECODED_PCM_BYTES / (1024 * 1024)} MiB`,
+    );
+  }
+}
+
+/**
  * Decodes an external audio recording (WAV, MP3, OGG, FLAC) using the Web Audio API.
- * Rejects files larger than 100 MiB or empty buffers. Precomputes 5ms peaks.
+ * Rejects files larger than 100 MiB, empty buffers, and decoded PCM above the
+ * duration/size budget. Precomputes 5ms peaks.
  */
 export async function decodeAudioRecording(
   data: ArrayBuffer | File,
@@ -144,6 +172,8 @@ export async function decodeAudioRecording(
   if (!buffer || buffer.length === 0 || buffer.duration === 0 || buffer.numberOfChannels === 0) {
     throw new Error("Decoded audio buffer is empty");
   }
+
+  assertDecodedAudioBudget(buffer);
 
   const peaks = generateWaveformPeaks(buffer, PEAK_SLICE_SECONDS);
 

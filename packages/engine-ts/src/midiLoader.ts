@@ -144,6 +144,7 @@ export class MidiSong {
   readonly path: string | null;
   readonly title: string;
   cleanup: string[];
+  markerParseError: { phase: string; type: string; message: string } | null = null;
   private readonly _starts: number[];
   private readonly _max_duration: number;
 
@@ -422,7 +423,10 @@ export function _smf_tracks(
   }
 }
 
-export function read_markers(source: Uint8Array): Map<string, [string | null, number | "g"] | [string, null]> {
+export function read_markers(
+  source: Uint8Array,
+  diagnostics?: Array<{ phase: string; type: string; message: string }>,
+): Map<string, [string | null, number | "g"] | [string, null]> {
   const out = new Map<string, [string | null, number | "g"] | [string, null]>();
   try {
     const [, , tracks] = _smf_tracks(source);
@@ -447,7 +451,12 @@ export function read_markers(source: Uint8Array): Map<string, [string | null, nu
         }
       }
     }
-  } catch {
+  } catch (error) {
+    diagnostics?.push({
+      phase: "fingering markers",
+      type: error instanceof Error ? error.name : "Error",
+      message: error instanceof Error ? error.message : String(error),
+    });
     return new Map();
   }
   return out;
@@ -1447,16 +1456,24 @@ export function load_midi(
   }
 
   let marks = new Map<string, [string | null, number | "g"] | [string, null]>();
+  const markerDiagnostics: Array<{ phase: string; type: string; message: string }> = [];
+  let markerParseError: { phase: string; type: string; message: string } | null = null;
   try {
-    for (const [key, hf] of read_markers(path)) {
+    for (const [key, hf] of read_markers(path, markerDiagnostics)) {
       const [tStr, pStr] = key.split(":");
       const t = parseFloat(tStr!);
       const p = parseInt(pStr!, 10);
       marks.set(`${rounded(pm.tick_to_time(t), 4)}:${p}`, hf);
     }
-  } catch {
+  } catch (error) {
+    markerParseError = {
+      phase: "fingering markers",
+      type: error instanceof Error ? error.name : "Error",
+      message: error instanceof Error ? error.message : String(error),
+    };
     marks = new Map();
   }
+  markerParseError ??= markerDiagnostics[0] ?? null;
 
   let rawNotes: Note[] = [];
   const tracks: TrackInfo[] = [];
@@ -1546,6 +1563,7 @@ export function load_midi(
   const duration = rawNotes.reduce((max, n) => Math.max(max, n.end), 0.0);
   const song = new MidiSong(rawNotes, tracks, duration, [], [], fixture_id, controls);
   song.cleanup = report;
+  song.markerParseError = markerParseError;
   return song;
 }
 

@@ -176,8 +176,6 @@ test("native TypeScript Worker loads, replans, streams real hand poses, and reta
   test.setTimeout(300_000);
   const pageErrors: string[] = [];
   const networkFailures: { url: string; error: string | null }[] = [];
-  let startupGeometry = { poseCount: 0, issueCount: 0, examples: [] as string[] };
-  let sampledGeometry = { poseCount: 0, issueCount: 0, examples: [] as string[] };
   page.on("pageerror", error => pageErrors.push(error.message));
   page.on("requestfailed", request => {
     const failure = { url: request.url(), error: request.failure()?.errorText ?? null };
@@ -267,7 +265,7 @@ test("native TypeScript Worker loads, replans, streams real hand poses, and reta
   const nativeAnalysis = await waitForWorkerJob(page, nativeWorkerName, "analyze-midi", nativeAnalyzeOffset);
   expect(nativeAnalysis.status).toBe("loaded");
   expect(nativeAnalysis.poses?.length).toBeGreaterThan(0);
-  startupGeometry = inspectAnatomicalPoses(nativeAnalysis.poses!);
+  const startupGeometry = inspectAnatomicalPoses(nativeAnalysis.poses!);
   await expectStudioCanvas(page, 90_000);
   const chopsticks = await settledStudio(page, 0);
   await testInfo.attach("native-chopsticks-startup", { contentType: "image/png", body: await page.screenshot({ fullPage: true }) });
@@ -315,7 +313,7 @@ test("native TypeScript Worker loads, replans, streams real hand poses, and reta
   await page.keyboard.press("Control+z");
   await waitForWorkerJob(page, nativeWorkerName, "replan-document", undoOffset);
   const undone = await settledStudio(page, edited.edited.result.revision + 1);
-  expect(undone.result.fingeringPlan!.assignments.find((item: { noteId: string; fingerMode: string }) => item.noteId === edited.selectedNoteId)?.fingerMode).not.toBe("manual");
+  expect(undone.result.fingeringPlan!.assignments.find((item: { noteId: string; fingerMode?: string }) => item.noteId === edited.selectedNoteId)?.fingerMode).not.toBe("manual");
 
   const redoOffset = (await workerTrace(page)).length;
   await expect(studioCanvas(page, "2d")).toBeVisible();
@@ -360,7 +358,7 @@ test("native TypeScript Worker loads, replans, streams real hand poses, and reta
   const sampleResponse = await waitForWorkerJob(page, nativeWorkerName, "sample-motion", sampleOffset);
   expect(sampleResponse.projectId).toBe(chopsticksIdentity.projectId);
   expect(sampleResponse.poses?.length).toBeGreaterThan(0);
-  sampledGeometry = inspectAnatomicalPoses(sampleResponse.poses!);
+  const sampledGeometry = inspectAnatomicalPoses(sampleResponse.poses!);
   await testInfo.attach("native-chopsticks-after-seek", { contentType: "image/png", body: await page.screenshot({ fullPage: true }) });
 
   // Open the real MIDI file fixture after native replan/seek and verify source bytes and IDs survive another replan.

@@ -27,7 +27,11 @@ export {
 export {
   decodeAudioRecording,
   isAudioFormatSupported,
+  assertDecodedAudioBudget,
+  decodedPcmBytes,
   MAX_AUDIO_FILE_SIZE_BYTES,
+  MAX_AUDIO_DURATION_SECONDS,
+  MAX_DECODED_PCM_BYTES,
   SUPPORTED_AUDIO_EXTENSIONS,
   SUPPORTED_AUDIO_MIME_TYPES,
   type DecodedAudioRecording,

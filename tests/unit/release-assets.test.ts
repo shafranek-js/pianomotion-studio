@@ -2,10 +2,12 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
-// @ts-expect-error - release tools are plain ESM scripts without declarations.
+import { describe, expect, it, vi } from "vitest";
 import { assertReleaseAssets } from "../../tools/release-assets.mjs";
 import { makeValidStagedTree } from "./release-assets-fixture";
+
+// The prepared-tree check hashes the real 60+ MiB runtime/SoundFont assets.
+vi.setConfig({ testTimeout: 30_000 });
 
 const publicRoot = fileURLToPath(new URL("../../apps/client/public/", import.meta.url));
 

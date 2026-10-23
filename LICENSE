@@ -42,7 +42,8 @@ from elsewhere:
   in `packages/engine-ts` are derived from V9011N's Hand-thesia
   (https://github.com/V9011N/pygame-piano-animator), which is published without
   a license. That part remains under its author's terms; obtain V9011N's
-  permission before redistributing it. See "Credits" in README.md.
+  permission before redistributing it. See "Credits" in README.md and
+  docs/PROVENANCE.md.
 
 - Third-party components keep their own licenses: MuseScore General v0.2 (MIT),
   Pyodide (MPL-2.0), NumPy (BSD-3-Clause), pretty-midi and mido (MIT), PixiJS

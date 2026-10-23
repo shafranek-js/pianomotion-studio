@@ -361,7 +361,7 @@ export const de: TranslationDictionary = {
     audioTitle: "Audio",
     replaceRecording: "Aufnahme ersetzen",
     importRecording: "Audioaufnahme importieren",
-    audioFormats: "WAV, MP3, OGG oder FLAC · bis 100 MiB",
+    audioFormats: "WAV, MP3, OGG oder FLAC · bis 100 MiB / 20 min",
     audioRecording: "Audioaufnahme",
     audioOffset: "Audioversatz (Sekunden)",
     removeRecording: "Aufnahme entfernen",

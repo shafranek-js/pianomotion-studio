@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 test("real Signalsmith recording playback repeats future A–B segments at the requested output times", async ({ page }, testInfo) => {
   test.setTimeout(120_000);
-  const productionCsp = "default-src 'self'; script-src 'self' blob: 'wasm-unsafe-eval' 'unsafe-eval'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob: data:; connect-src 'self' blob:; object-src 'none'; base-uri 'self';";
+  const productionCsp = "default-src 'self'; script-src 'self' blob: 'wasm-unsafe-eval' 'unsafe-eval'; worker-src 'self' blob:; child-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob: data:; font-src 'self' data:; connect-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-src 'none';";
   let cspWasInjected = false;
   await page.route((url) => url.pathname === "/", async (route) => {
     const response = await route.fetch();

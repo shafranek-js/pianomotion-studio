@@ -106,6 +106,8 @@
 
 Adds 162 built-in MIDI melodies, searchable by title from the empty workspace, File menu and Projects panel. Opening creates an independent editable project through the existing validated import/unsaved-changes flow. Source MIDI bytes remain unchanged; content hashes verify downloaded assets. The release builder generates the catalog and includes every melody in the coherent production offline set. Only the requested MIDI directory is embedded; other source formats and private SoundFonts remain excluded. [Implementation evidence and acceptance limits](evidence/builtin-melodies-2026-10-16/VERIFICATION.md).
 
+*Historical count: dev.6 shipped 162 melodies; the current built-in catalogue contains 163.*
+
 The complete catalog exposed and repaired source-only identity diagnostics leaking into normalized plans, missing diagnostics for ambiguous dropped percussion, and identical motion poses colliding after timestamp rounding. Numerical golden fields remain unchanged.
 
 The subsequent user-bank check repairs supported SF2 global/local generator inheritance, preset/instrument offsets, tuning/attenuation units, hold/decay/sustain volume envelopes and cancellation continuity. Missing sampleModes now means one-shot playback; arbitrary loop bounds alone no longer enable looping. Strict malformed-stereo and unsupported-SF3 errors remain. Private banks are ignored by Git and excluded from the release. [Bank-specific results](evidence/user-soundfonts-2026-10-16/VERIFICATION.md).

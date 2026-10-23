@@ -63,11 +63,11 @@ test("companion notes keep their onsets and owned voices are released when leavi
     const on = SynthPerformanceOutput.prototype.noteOn;
     const off = SynthPerformanceOutput.prototype.noteOff;
     SynthPerformanceOutput.prototype.noteOn = function (...args: Parameters<typeof on>) {
-      window.__auditPlayAlongAudio!.push({ kind: "on", voiceId: args[0], pitch: args[1], at: performance.now() });
+      window.__auditPlayAlongAudio!.push({ kind: "on", voiceId: String(args[0]), pitch: Number(args[1]), at: performance.now() });
       return Reflect.apply(on, this, args);
     };
     SynthPerformanceOutput.prototype.noteOff = function (...args: Parameters<typeof off>) {
-      window.__auditPlayAlongAudio!.push({ kind: "off", voiceId: args[0], pitch: args[1], at: performance.now() });
+      window.__auditPlayAlongAudio!.push({ kind: "off", voiceId: String(args[0]), pitch: Number(args[1]), at: performance.now() });
       return Reflect.apply(off, this, args);
     };
   });

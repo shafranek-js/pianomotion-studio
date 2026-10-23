@@ -240,7 +240,7 @@ async function moveViteAssetsToRelease(distRoot, releaseRoot) {
 }
 
 /** Files that must stay at the site root: the shell, the worker and hosting rules. */
-const DIST_ROOT_FILES = new Set(["sw.js", "_headers"]);
+const DIST_ROOT_FILES = new Set(["sw.js", "_headers", "release-policy.json"]);
 
 const CSP_LINE = /^[ \t]*Content-Security-Policy:[ \t]*(.+)$/im;
 /** Directives a <meta> CSP cannot deliver; they stay in `_headers` for hosts that honour it. */

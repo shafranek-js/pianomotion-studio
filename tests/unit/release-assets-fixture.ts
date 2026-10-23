@@ -2,7 +2,6 @@ import { createHash } from "node:crypto";
 import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-// @ts-expect-error - release tools are plain ESM scripts without declarations.
 import {
   PINNED_ABI_VERSION,
   PINNED_CORE_MODULES,
@@ -26,7 +25,7 @@ export async function makeValidStagedTree(): Promise<{ root: string; writeManife
     return { sizeBytes: Buffer.byteLength(content), sha256: digest(content) };
   };
 
-  const pyodideFiles = [];
+  const pyodideFiles: Array<{ path: string; sizeBytes: number; sha256: string }> = [];
   for (const relative of PINNED_PYODIDE_FILES) {
     const content = `pyodide:${relative}`;
     await write(relative, content);

@@ -189,7 +189,7 @@ for (const path of [...bankPaths.filter((path) => !invalidSf2Paths.includes(path
         }
 
         const preset = sf.presets[0];
-        const usesStereoPair = Boolean(preset?.zones.some((zone) => {
+        const usesStereoPair = Boolean(preset?.zones.some((zone: { keyRange: [number, number]; velRange: [number, number]; sampleIndex: number }) => {
           if (!probes.some((probe) => probe.pitch >= zone.keyRange[0] && probe.pitch <= zone.keyRange[1] &&
             probe.velocity >= zone.velRange[0] && probe.velocity <= zone.velRange[1])) return false;
           const sampleType = sf.samples[zone.sampleIndex]?.sampleType;
@@ -202,7 +202,7 @@ for (const path of [...bankPaths.filter((path) => !invalidSf2Paths.includes(path
           header: sf.header,
           preset: preset ? { name: preset.name, bankNumber: preset.bankNumber, presetNumber: preset.presetNumber } : null,
           sampleCount: sf.samples.length,
-          monoSampleCount: sf.samples.filter((sample) => (sample.sampleType & 0x7fef) === 1).length,
+          monoSampleCount: sf.samples.filter((sample: { sampleType: number }) => (sample.sampleType & 0x7fef) === 1).length,
           leftSampleCount: sf.samples.filter((sample) => (sample.sampleType & 0x7fef) === 4).length,
           rightSampleCount: sf.samples.filter((sample) => (sample.sampleType & 0x7fef) === 2).length,
           usesStereoPair,
@@ -290,7 +290,7 @@ for (const path of invalidSf2Paths) {
       const { listSoundFontAssets } = await import("/src/audio/soundfont/soundfontAssetStore.ts");
       return listSoundFontAssets();
     });
-    expect(imports.some((asset) => asset.name === bankName)).toBe(false);
+    expect(imports.some((asset: { name: string }) => asset.name === bankName)).toBe(false);
     await page.getByRole("button", { name: "Close", exact: true }).click();
     await openStudioInspector(page, "Audio");
     await expect(page.getByText("Active output: MuseScore General v0.2", { exact: true })).toBeVisible({ timeout: 45_000 });

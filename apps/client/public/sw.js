@@ -15,8 +15,10 @@ const BUILD_CACHE_PREFIX = `${CACHE_PREFIX}build-`;
 const META_CACHE_NAME = `${CACHE_PREFIX}meta-v1`;
 const MANIFEST_NAME = "offline-manifest.json";
 const CLIENT_PINS_PATH = "__pwa-meta__/client-pins/";
+const RELEASE_POLICY_PATH = "release-policy.json";
 const HEX_HASH = /^[a-f0-9]{64}$/i;
 let maintenanceTail = Promise.resolve();
+let revokedBuild = false;
 
 function resolveUrl(relativePath) {
   return new URL(relativePath, SCOPE_URL).href;
@@ -286,8 +288,51 @@ self.addEventListener("install", (event) => {
   })());
 });
 
+function isTrustedClient(source) {
+  if (!source || typeof source.url !== "string") return false;
+  try {
+    const scope = new URL(self.registration.scope);
+    const client = new URL(source.url);
+    return client.origin === scope.origin && client.href.startsWith(scope.href);
+  } catch {
+    return false;
+  }
+}
+
+async function refreshRevocation() {
+  if (revokedBuild) return true;
+  try {
+    const response = await fetch(resolveUrl(RELEASE_POLICY_PATH), { cache: "no-store" });
+    if (!response.ok) return false;
+    const policy = await response.json();
+    if (policy?.schemaVersion !== 1 || !Array.isArray(policy.revokedBuildIds) ||
+        !policy.revokedBuildIds.every((buildId) => typeof buildId === "string" && /^[a-f0-9]{16,64}$/i.test(buildId))) {
+      return false;
+    }
+    if (!policy.revokedBuildIds.includes(BUILD_ID)) return false;
+    revokedBuild = true;
+    await caches.delete(buildCacheName(BUILD_ID));
+    const clients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+    for (const client of clients) {
+      client.postMessage({ type: "PWA_BUILD_REVOKED", buildId: BUILD_ID });
+    }
+    return true;
+  } catch {
+    // An offline or unreachable policy endpoint must not make an otherwise healthy build unusable.
+    return false;
+  }
+}
+
+function revokedResponse() {
+  return new Response("This PianoMotion Studio build has been withdrawn. Reload online to receive the current release.", {
+    status: 410,
+    headers: { "Content-Type": "text/plain", "Cache-Control": "no-store" },
+  });
+}
+
 self.addEventListener("message", (event) => {
   if (!IS_RELEASE_BUILD) return;
+  if (!isTrustedClient(event.source)) return;
   const message = event.data;
   if (message?.type === "SKIP_WAITING") {
     self.skipWaiting();
@@ -298,7 +343,9 @@ self.addEventListener("message", (event) => {
     return;
   }
   if (message?.type === "PIN_BUILD") {
-    const clientId = event.source && "id" in event.source ? event.source.id : "";
+    if (typeof message.buildId !== "string" || !/^[a-f0-9]{24}$/.test(message.buildId)) return;
+    const clientId = "id" in event.source && typeof event.source.id === "string" ? event.source.id : "";
+    if (!clientId) return;
     event.waitUntil(serializeMaintenance(() => pinBuildForClient(clientId, message.buildId)));
   }
 });
@@ -395,6 +442,7 @@ self.addEventListener("fetch", (event) => {
 
   if (request.mode === "navigate") {
     event.respondWith((async () => {
+      if (await refreshRevocation()) return revokedResponse();
       // Navigation must stay on the worker's committed release. A deployment may
       // already serve a newer index.html while its worker is still waiting.
       const currentCache = await exactBuildCache(BUILD_ID);
@@ -420,6 +468,7 @@ self.addEventListener("fetch", (event) => {
   }
 
   event.respondWith((async () => {
+    if (revokedBuild) return revokedResponse();
     const urlBuildId = buildIdFromReleaseUrl(url);
     const clientBuildId = urlBuildId || (await getPinnedBuild(event.clientId)) || BUILD_ID;
     const cache = await exactBuildCache(clientBuildId);

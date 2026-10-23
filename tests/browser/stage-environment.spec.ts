@@ -188,7 +188,7 @@ test("concert atmosphere renders a scattered shaft and soft perimeter without ch
   await page.evaluate(() => window.__stageEnvironment!.setView("concert"));
   await page.evaluate(() => window.__stageEnvironment!.capture("concert-atmosphere", 0.4));
   await canvas.screenshot({ path: info.outputPath("atmosphere-concert-camera.png") });
-  await page.evaluate(value => window.__stageEnvironment!.setAppearance(value), { ...appearance, preset: "studio" });
+  await page.evaluate(value => window.__stageEnvironment!.setAppearance(value), { ...appearance, preset: "studio" } as StageAppearance);
   await page.evaluate(() => window.__stageEnvironment!.setView("room"));
   await page.evaluate(() => window.__stageEnvironment!.capture("studio-atmosphere", 0.4));
   await canvas.screenshot({ path: info.outputPath("atmosphere-studio.png") });
@@ -282,9 +282,9 @@ test("real 3D stage renders presets, reflection, a soft radial edge, and capped 
   expect(movementPixels.changedSamples, "moving notes should alter their narrow exposed reflections").toBeGreaterThan(0);
   expect(movementPixels.totalChannelDelta).toBeGreaterThan(100);
 
-  const enabled = await page.evaluate(value => window.__stageEnvironment!.setAppearance(value), { ...base, quality: "high" });
+  const enabled = await page.evaluate(value => window.__stageEnvironment!.setAppearance(value), { ...base, quality: "high" } as StageAppearance);
   await page.evaluate(() => window.__stageEnvironment!.capture("reflection-enabled", 0.4));
-  const disabled = await page.evaluate(value => window.__stageEnvironment!.setAppearance(value), { ...base, reflection: 0, quality: "high" });
+  const disabled = await page.evaluate(value => window.__stageEnvironment!.setAppearance(value), { ...base, reflection: 0, quality: "high" } as StageAppearance);
   await page.evaluate(() => window.__stageEnvironment!.capture("reflection-disabled", 0.4));
   await page.locator("#stage-scene-host").screenshot({ path: info.outputPath("stage-reflection-disabled.png") });
   const reflectionPixels = await page.evaluate(() => window.__stageEnvironment!.compareFloor("reflection-enabled", "reflection-disabled"));
@@ -302,7 +302,7 @@ test("real 3D stage renders presets, reflection, a soft radial edge, and capped 
     contentType: "application/json",
   });
 
-  await page.evaluate(value => window.__stageEnvironment!.setAppearance(value), { ...base, reflection: 0.28, quality: "high" });
+  await page.evaluate(value => window.__stageEnvironment!.setAppearance(value), { ...base, reflection: 0.28, quality: "high" } as StageAppearance);
   await page.evaluate(() => window.__stageEnvironment!.setView("room"));
   await page.evaluate(() => window.__stageEnvironment!.capture("room", 0.4));
   await canvas.screenshot({ path: info.outputPath("stage-room-concert.png") });

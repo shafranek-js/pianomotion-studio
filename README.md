@@ -362,8 +362,9 @@ project to be committed, and a reload restores the last autosaved session.
 - **Weak devices are not measured.** The runtime assets are ~21 MiB and the main chunk is large;
   cold start, memory pressure on low-end hardware and code splitting are open work.
 - **Bundled data needs a licence review.** MuseScore General is MIT and its text ships in
-  [`docs/licenses`](docs/licenses/MuseScore_General_License.md); the 163 built-in MIDI files have no
-  assigned licence, so treat them as not cleared for redistribution.
+  [`docs/licenses`](docs/licenses/MuseScore_General_License.md); the 163 built-in MIDI files, hand
+  textures, and `.glb` models have no recorded provenance and are not cleared for redistribution.
+  See [provenance and redistribution status](docs/PROVENANCE.md).
 
 ## Documentation
 
@@ -376,6 +377,7 @@ project to be committed, and a reload restores the last autosaved session.
 | [Release notes](docs/RELEASE_NOTES.md) | Changes in every development build |
 | [Audit progress](docs/AUDIT_REPAIR_PROGRESS.md) | Findings, repairs and still-open items |
 | [Evidence](docs/evidence/) | Verification records, screenshots and raw test output |
+| [Provenance](docs/PROVENANCE.md) | Upstream engine and bundled-media rights status |
 | [Licences](docs/licenses/) | Third-party licence texts |
 
 ## Credits

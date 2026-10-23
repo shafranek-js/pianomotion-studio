@@ -751,6 +751,16 @@ export function PianoPlayer({
           renderCapFps: settings.renderCapFps,
           stageAppearance: settings.stageAppearance,
         },
+        onContextLost: (error) => {
+          if (live) onStatusChangeRef.current({
+            kind: "error",
+            message: "Graphics context was lost. Reload the page if the workspace does not recover.",
+            details: errorMessage(error),
+          });
+        },
+        onContextRestored: () => {
+          if (live) onStatusChangeRef.current({ kind: "warning", message: "Graphics context restored." });
+        },
       }).then(scene => {
         if (!live) { scene.destroy(); return; }
         sceneRef.current = scene;

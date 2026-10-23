@@ -221,7 +221,7 @@ test("aborting parse and hash workers leaves no partial asset and keeps the sele
     try {
       await store.saveSoundFontAsset("cancel-parse.sf2", new Blob([Uint8Array.from(candidateInput).buffer]), {
         signal: parserController.signal,
-        onProgress: (progress) => {
+        onProgress: (progress: { phase: string; loadedBytes: number }) => {
           if (progress.phase === "reading" && progress.loadedBytes > 0 && !parserController.signal.aborted) {
             parserWorkerStarted = true;
             parserController.abort();
@@ -289,7 +289,7 @@ test("aborting parse and hash workers leaves no partial asset and keeps the sele
     try {
       await store.saveSoundFontAsset("cancel-hash.sf2", new Blob([largeBank.buffer]), {
         signal: hashController.signal,
-        onProgress: (progress) => {
+        onProgress: (progress: { phase: string; loadedBytes: number }) => {
           if (progress.phase === "hashing" && progress.loadedBytes > 0 && !hashController.signal.aborted) {
             hashWorkerStarted = true;
             hashController.abort();
@@ -313,7 +313,7 @@ test("aborting parse and hash workers leaves no partial asset and keeps the sele
       hashRejectedAsAbort,
       candidateId,
       retainedId: retained.id,
-      listedIds: assets.map((asset) => asset.id),
+      listedIds: assets.map((asset: { id: string }) => asset.id),
       selectedId,
       retainedHash,
       retainedBlob: loaded?.data instanceof Blob,

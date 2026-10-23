@@ -115,6 +115,12 @@ export default function App() {
   const [developerFixtureId, setDeveloperFixtureId] = useState(DEMO_FIXTURE_ID);
   const [viewMode, setViewMode] = useState<StudioView>("performance");
   const [manifestError, setManifestError] = useState("");
+  const [startupAttempt, setStartupAttempt] = useState(0);
+  const retryStartup = useCallback(() => {
+    setManifestError("");
+    setStatus({ kind: "loading", message: "Retrying studio startup…" });
+    setStartupAttempt(attempt => attempt + 1);
+  }, []);
   const [fullScreenDialog, setFullScreenDialog] = useState<"preferences" | "pianist" | null>(null);
   const midiInputRef = useRef<HTMLInputElement>(null);
   const projectInputRef = useRef<HTMLInputElement>(null);
@@ -398,7 +404,7 @@ export default function App() {
       preparedRef.current = null;
       preparedGenerationRef.current = null;
     };
-  }, [reportLoading]);
+  }, [reportLoading, startupAttempt]);
 
   const fixtureIds = useMemo(() => Object.keys(fixtureManifest?.fixtureSources ?? {}).sort(), [fixtureManifest]);
 
@@ -818,11 +824,13 @@ export default function App() {
     <p className="studio-welcome__eyebrow">{dict.welcome.eyebrow}</p>
     <h1>{dict.welcome.title}</h1>
     <p>{dict.welcome.subtitle}</p>
+    {manifestError && <p role="alert">{manifestError}</p>}
     <div className="studio-welcome__actions">
       <button type="button" onClick={() => midiInputRef.current?.click()}>{dict.welcome.openMidi}</button>
       <button type="button" onClick={openBuiltinMelodies}>{dict.welcome.browseMelodies}</button>
       <button type="button" onClick={() => projectInputRef.current?.click()}>{dict.welcome.openProject}</button>
       <button type="button" disabled={!fixtureManifest || busy} onClick={() => void openFixture(DEMO_FIXTURE_ID)}>{dict.welcome.playDemo}</button>
+      {manifestError && <button type="button" onClick={retryStartup}>{dict.common.retry}</button>}
     </div>
   </div>;
 

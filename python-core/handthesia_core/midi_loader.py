@@ -123,6 +123,7 @@ class MidiSong:
         self.path = path
         self.title = str(path) if path else "Untitled"
         self.cleanup: List[str] = []           # what load_midi's sanitizing changed
+        self.marker_parse_error: Optional[dict] = None
 
         self._starts = [n.start for n in self.notes]
         # Longest note lets us bound how far back an overlapping note can start.
@@ -315,8 +316,8 @@ def _smf_tracks(source):
         return decode(repair_smf(data)[0])
 
 
-def read_markers(source) -> dict:
-    """{(tick, pitch): (hand or None, finger or None)} for every marked note-on."""
+def read_markers_with_diagnostics(source):
+    """Markers plus the first parse error instead of silently returning {}."""
     out = {}
     try:
         _, _, tracks = _smf_tracks(source)
@@ -331,9 +332,19 @@ def read_markers(source) -> dict:
                     if pending:
                         out[(t, p[1])] = pending
                     pending = None
-    except Exception:           # unreadable/odd file: just no fingering
-        return {}
-    return out
+    except Exception as exc:
+        return {}, {
+            "phase": "fingering markers",
+            "type": type(exc).__name__,
+            "message": str(exc) or type(exc).__name__,
+        }
+    return out, None
+
+
+def read_markers(source) -> dict:
+    """{(tick, pitch): (hand or None, finger or None)} for every marked note-on."""
+    markers, _error = read_markers_with_diagnostics(source)
+    return markers
 
 
 def read_fingering(source: bytes) -> dict:
@@ -766,9 +777,16 @@ def load_midi(path, include_drums: bool = False, split_pitch: int = MIDDLE_C,
 
     # fingering keyed by (start time, pitch) so it lines up with pretty_midi's notes
     # (hand, finger) marks keyed by (start time, pitch) so they line up with pretty_midi's notes
+    marker_parse_error = None
     try:
-        marks = {(round(float(pm.tick_to_time(t)), 4), p): hf for (t, p), hf in read_markers(path).items()}
-    except Exception:                          # a damaged file: no fingering marks then
+        marker_map, marker_parse_error = read_markers_with_diagnostics(path)
+        marks = {(round(float(pm.tick_to_time(t)), 4), p): hf for (t, p), hf in marker_map.items()}
+    except Exception as exc:                   # e.g. tick_to_time failed on an odd tempo map
+        marker_parse_error = {
+            "phase": "fingering markers",
+            "type": type(exc).__name__,
+            "message": str(exc) or type(exc).__name__,
+        }
         marks = {}
 
     notes: List[Note] = []
@@ -825,6 +843,7 @@ def load_midi(path, include_drums: bool = False, split_pitch: int = MIDDLE_C,
     duration = max((n.end for n in notes), default=0.0)
     song = MidiSong(notes, tracks, duration, bar_times, beat_times, source_label, controls)
     song.cleanup = report                      # what sanitizing changed, for the curious
+    song.marker_parse_error = marker_parse_error
     return song
 
 

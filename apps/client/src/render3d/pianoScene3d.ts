@@ -30,6 +30,8 @@ interface CameraPose {
 export interface PianoScene3DOptions {
   canvas?: HTMLCanvasElement;
   fixedViewport?: { width: number; height: number; resolution: 1 };
+  onContextLost?: (error: Error) => void;
+  onContextRestored?: () => void;
 }
 
 export interface PianoCameraFit {
@@ -204,6 +206,15 @@ export class PianoScene3D {
   private isDestroyed = false;
   private isUpdatingControlsInternally = false;
   private deferStageAppearanceRender = false;
+  private readonly onContextLost?: (error: Error) => void;
+  private readonly onContextRestored?: () => void;
+  private readonly handleContextLost = (event: Event) => {
+    event.preventDefault();
+    this.onContextLost?.(new Error("WebGL context lost"));
+  };
+  private readonly handleContextRestored = () => {
+    this.onContextRestored?.();
+  };
 
   public constructor(
     private readonly target: HTMLElement,
@@ -211,6 +222,8 @@ export class PianoScene3D {
   ) {
     this.fixedViewport = options.fixedViewport;
     this.ownsCanvas = options.canvas === undefined;
+    this.onContextLost = options.onContextLost;
+    this.onContextRestored = options.onContextRestored;
     if (this.fixedViewport && (
       !Number.isInteger(this.fixedViewport.width) || this.fixedViewport.width <= 0 ||
       !Number.isInteger(this.fixedViewport.height) || this.fixedViewport.height <= 0
@@ -267,6 +280,10 @@ export class PianoScene3D {
       this.canvas.tabIndex = 0;
       this.canvas.setAttribute("aria-label", "3D piano keyboard");
       this.canvas.setAttribute("data-testid", "piano-canvas-3d");
+      if (!this.fixedViewport) {
+        this.canvas.addEventListener("webglcontextlost", this.handleContextLost);
+        this.canvas.addEventListener("webglcontextrestored", this.handleContextRestored);
+      }
       if (this.ownsCanvas && !this.fixedViewport) this.target.appendChild(this.canvas);
 
       if (!this.fixedViewport) {
@@ -710,6 +727,8 @@ export class PianoScene3D {
   public destroy(): void {
     if (this.isDestroyed) return;
     this.isDestroyed = true;
+    this.canvas.removeEventListener("webglcontextlost", this.handleContextLost);
+    this.canvas.removeEventListener("webglcontextrestored", this.handleContextRestored);
     this.resizeObserver?.disconnect();
     this.pointerListenerCleanup?.();
     this.controls?.dispose();

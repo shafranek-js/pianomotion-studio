@@ -139,7 +139,7 @@ describe("built-in melody assets", () => {
 
     const changedBytes = midiBytes();
     changedBytes[changedBytes.length - 1] ^= 0x01;
-    fetchMock.mockResolvedValueOnce(new Response(changedBytes));
+    fetchMock.mockResolvedValueOnce(new Response(new Uint8Array(changedBytes)));
     await expect(loadBuiltinMelodyBytes(entry)).rejects.toThrow(/SHA-256 checksum does not match/i);
     const assetUrl = fetchMock.mock.calls[2][0];
     expect(String(assetUrl)).toMatch(new RegExp(`/builtin-melodies/${entry.assetPath.replaceAll("/", "\\/")}$`));

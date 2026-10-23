@@ -361,7 +361,7 @@ export const cs: TranslationDictionary = {
     audioTitle: "Zvuk",
     replaceRecording: "Nahradit nahrávku",
     importRecording: "Importovat zvukovou nahrávku",
-    audioFormats: "WAV, MP3, OGG nebo FLAC · do 100 MiB",
+    audioFormats: "WAV, MP3, OGG nebo FLAC · do 100 MiB / 20 min",
     audioRecording: "Zvuková nahrávka",
     audioOffset: "Posun zvuku (sekundy)",
     removeRecording: "Odstranit nahrávku",

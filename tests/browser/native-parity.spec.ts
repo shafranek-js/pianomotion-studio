@@ -524,6 +524,7 @@ async function browserHarness(page: Page): Promise<BrowserHarness> {
       if (!harness) throw new Error("Native parity browser harness was not installed.");
       return harness.analyze(request);
     }, args) as M1AnalyzeMidiResult,
+    // @ts-expect-error -- Playwright's serialized evaluate generic is too deep for this harness type.
     replan: async (args) => await page.evaluate(async (request: Parameters<BrowserHarness["replan"]>[0]) => {
       const harness = (window as unknown as { __nativeParityHarness?: BrowserHarness }).__nativeParityHarness;
       if (!harness) throw new Error("Native parity browser harness was not installed.");

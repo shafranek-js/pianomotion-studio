@@ -29,7 +29,7 @@ async function inspect(blob: Blob, format: string) {
     const audio = await input.getPrimaryAudioTrack();
     assert(video && audio, "Video/audio tracks are required");
     assert(video.displayWidth === 1280 && video.displayHeight === 720, "Wrong output size");
-    const packets = [];
+    const packets: Array<{ byteLength: number; timestamp: number }> = [];
     for await (const packet of new EncodedPacketSink(video).packets()) packets.push(packet);
     assert(packets.length > 30 && packets.every(p => p.byteLength > 0), "Empty video packets");
     const ordered = [...packets].sort((a,b) => a.timestamp-b.timestamp);

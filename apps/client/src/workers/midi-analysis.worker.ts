@@ -15,6 +15,7 @@ import {
 } from "@handthesia/contracts";
 import pyodidePins from "../../../../tools/pyodide-runtime-manifest.json";
 import { releaseAssetUrl } from "../pwa/urls";
+import { RuntimeIntegrityError, verifyRuntimeAssets } from "./runtimeIntegrity";
 
 type PyodideInstance = {
   FS: {
@@ -516,7 +517,25 @@ async function initializeRuntime(
 
   const wheelManifestByName = new Map((assetManifest.purePythonWheels ?? []).map((wheel) => [wheel.name, wheel]));
   const wheelPaths: string[] = [];
-  const pyodideModule = await loadPyodideModule(new URL("pyodide.mjs", runtimeBaseUrl));
+  const runtimeFiles = assetManifest.files ?? [];
+  if (runtimeFiles.length === 0) {
+    throw new WorkerStageError("load", "RUNTIME_MANIFEST_MISMATCH", "The Pyodide asset manifest has no runtime files.");
+  }
+  report(identity, "init", `Verifying ${runtimeFiles.length} Pyodide runtime files.`);
+  let verifiedRuntime: Map<string, ArrayBuffer>;
+  try {
+    verifiedRuntime = await verifyRuntimeAssets(runtimeFiles, runtimeBaseUrl, fetchBytes, sha256);
+  } catch (error) {
+    if (error instanceof RuntimeIntegrityError) {
+      throw new WorkerStageError("load", error.code, error.message);
+    }
+    throw error;
+  }
+  const pyodideModuleBytes = verifiedRuntime.get("pyodide/pyodide.mjs");
+  if (!pyodideModuleBytes) {
+    throw new WorkerStageError("load", "RUNTIME_MANIFEST_MISMATCH", "The Pyodide asset manifest does not include pyodide.mjs.");
+  }
+  const pyodideModule = await loadPyodideModuleFromBytes(pyodideModuleBytes);
   if (pyodideModule.version !== pyodidePins.runtime.version) {
     throw new WorkerStageError("load", "RUNTIME_VERSION_MISMATCH", "The loaded Pyodide module does not match the pinned runtime version.");
   }
@@ -630,6 +649,15 @@ function validateCoreManifest(manifest: CoreManifest): Array<[string, string]> {
 
 async function loadPyodideModule(url: URL): Promise<{ version: string; loadPyodide(options: { indexURL: string }): Promise<PyodideInstance> }> {
   return import(/* @vite-ignore */ url.href) as Promise<{ version: string; loadPyodide(options: { indexURL: string }): Promise<PyodideInstance> }>;
+}
+
+async function loadPyodideModuleFromBytes(bytes: ArrayBuffer): Promise<{ version: string; loadPyodide(options: { indexURL: string }): Promise<PyodideInstance> }> {
+  const url = URL.createObjectURL(new Blob([bytes], { type: "text/javascript" }));
+  try {
+    return await loadPyodideModule(new URL(url));
+  } finally {
+    URL.revokeObjectURL(url);
+  }
 }
 
 async function fetchJson(url: URL): Promise<unknown> {

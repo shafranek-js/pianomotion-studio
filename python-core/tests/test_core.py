@@ -330,6 +330,30 @@ def test_profile_a_b_a_runs_are_observationally_isolated():
     assert run_b["motionPlan"] != default["motionPlan"]
 
 
+def test_hands_cache_trim_evicts_oldest_without_wholesale_clear():
+    from handthesia_core.hands import _trim_cache
+
+    cache = {index: index for index in range(6)}
+    _trim_cache(cache, 3)
+    assert list(cache) == [3, 4, 5]
+
+
+def test_reset_context_restores_defaults_after_mutation():
+    from handthesia_core import figures, fingering
+
+    fingering.reset_context(None)
+    expected_w = dict(fingering.W)
+    expected_strength = dict(fingering.FINGER_STRENGTH)
+    figures.PREFS["__eng10_probe__"] = 0.5
+    fingering.FINGER_STRENGTH[1] = 0.0
+
+    fingering.reset_context(None)
+
+    assert dict(fingering.W) == expected_w
+    assert dict(fingering.FINGER_STRENGTH) == expected_strength
+    assert "__eng10_probe__" not in figures.PREFS
+
+
 def test_profile_behavior_is_clamped_and_validated():
     from handthesia_core import fingering, pianist
     from handthesia_core.api import _resolve_profile
