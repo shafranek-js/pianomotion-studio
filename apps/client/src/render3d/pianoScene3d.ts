@@ -19,7 +19,7 @@ import {
   Hand3DMeshGroup,
   KEYBOARD_WIDTH_IN,
 } from "./handRigBuilder";
-import { chooseImprovedHandExportLod, chooseImprovedHandLod, IMPROVED_HAND_MODEL_ID, type HandModelDiagnosticsSnapshot, type HandModelId } from "./improvedHandRuntime";
+import { chooseImprovedHandExportLod, chooseImprovedHandLod, IMPROVED_HAND_MODEL_ID, isDetailedHandModel, type HandModelDiagnosticsSnapshot, type HandModelId } from "./improvedHandRuntime";
 import { populateHandContactTargets, type ImprovedHandContactTarget } from "./improvedHandContact";
 import { Keyboard3DView } from "./keyboard3dView";
 import { PianoStage3D, type PianoStageDiagnostics } from "./pianoStage3d";
@@ -363,7 +363,7 @@ export class PianoScene3D {
       this.scene.add(this.rightHand3D.group);
 
       this.setCameraPreset("concert");
-      if (this.requestedHandModel === IMPROVED_HAND_MODEL_ID) this.applyHandModelSelection();
+      if (isDetailedHandModel(this.requestedHandModel)) this.applyHandModelSelection();
       if (!this.fixedViewport) {
         this.setupPointerEvents();
         this.setupResizeObserver();
@@ -617,17 +617,17 @@ export class PianoScene3D {
   }
 
   private applyHandModelSelection(): void {
-    if (this.requestedHandModel !== IMPROVED_HAND_MODEL_ID) {
+    if (!isDetailedHandModel(this.requestedHandModel)) {
       this.leftHand3D.setHandModel(this.requestedHandModel);
       this.rightHand3D.setHandModel(this.requestedHandModel);
       return;
     }
     this.leftHand3D.setHandModel(
-      IMPROVED_HAND_MODEL_ID,
+      this.requestedHandModel,
       this.selectImprovedLod(this.leftHand3D),
     );
     this.rightHand3D.setHandModel(
-      IMPROVED_HAND_MODEL_ID,
+      this.requestedHandModel,
       this.selectImprovedLod(this.rightHand3D),
     );
   }
@@ -911,7 +911,7 @@ export class PianoScene3D {
 
   private renderFrame(): void {
     if (this.isDestroyed || !this.isVisible()) return;
-    if (this.requestedHandModel === IMPROVED_HAND_MODEL_ID) {
+    if (isDetailedHandModel(this.requestedHandModel)) {
       this.applyHandModelSelection();
     }
     this.renderer.render(this.scene, this.camera);
