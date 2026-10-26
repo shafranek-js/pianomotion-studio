@@ -2797,6 +2797,10 @@ function buildTestingHandRig(
       anatomical.skinnedMesh.geometry,
       driver.skinnedMesh.geometry,
       driver.skinnedMesh.skeleton.bones.length,
+      {
+        anatomicalBoneNames: anatomical.skinnedMesh.skeleton.bones.map(bone => bone.name),
+        webxrBoneNames: driver.skinnedMesh.skeleton.bones.map(bone => bone.name),
+      },
     );
     const mesh = new THREE.SkinnedMesh(surface, material);
     mesh.castShadow = true;
