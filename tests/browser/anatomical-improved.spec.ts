@@ -2586,14 +2586,21 @@ test("Testing hand: matched WebGL model and camera evidence / " + comparedModel,
   expect(originalEvents.length, "A/B fixture must contain real playable events").toBeGreaterThan(1);
   const assigned = new Map((initial.result.fingeringPlan?.assignments ?? [])
     .map(note => [note.noteId, note] as const));
+  const pitchForNote = new Map(originalEvents
+    .filter(event => event.type === "press")
+    .map(event => [event.noteId, event.pitch] as const));
   const canonicalEvents = originalEvents.map(event => {
-    const fingering = event.noteId ? assigned.get(event.noteId) : undefined;
+    const noteId = "noteId" in event ? event.noteId : null;
+    const fingering = noteId ? assigned.get(noteId) : undefined;
     return {
       type: event.type,
       timeMillis: Math.round(event.timeSeconds * 1000),
-      pitch: event.pitch ?? null,
+      pitch: event.type === "press" ? event.pitch :
+        (noteId ? pitchForNote.get(noteId) ?? null : null),
       hand: fingering?.hand ?? null,
       finger: fingering?.finger ?? null,
+      controller: event.type === "pedal" ? event.controller : null,
+      pedalValue: event.type === "pedal" ? event.value : null,
     };
   }).sort((a, b) => a.timeMillis - b.timeMillis || a.type.localeCompare(b.type) ||
     (a.pitch ?? -1) - (b.pitch ?? -1) || (a.hand ?? "").localeCompare(b.hand ?? "") ||
