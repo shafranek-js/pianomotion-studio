@@ -74,6 +74,41 @@ jobs:
                   assert m['meanVertexDisplacementDifference'] >= 0
               print(side, 'real Blender DQS/LBS comparison measured; NOT anatomical validation')
           PY
+      - name: Bake index and middle MCP prototype morphs — left
+        run: >-
+          blender -b -t 2 --python-exit-code 2
+          --python tools/testing-hand-blender/prototype_mcp_corrective.py --
+          --input scratch/blender-correctives/left-lod0.blend
+          --output scratch/blender-correctives/left-mcp-candidate.blend
+          --report scratch/blender-correctives/left-mcp-candidate.json
+      - name: Bake index and middle MCP prototype morphs — right
+        run: >-
+          blender -b -t 2 --python-exit-code 2
+          --python tools/testing-hand-blender/prototype_mcp_corrective.py --
+          --input scratch/blender-correctives/right-lod0.blend
+          --output scratch/blender-correctives/right-mcp-candidate.blend
+          --report scratch/blender-correctives/right-mcp-candidate.json
+      - name: Validate nonzero prototypes and DQS target improvements
+        run: |
+          python - <<'PY'
+          import json, math
+          from pathlib import Path
+          root = Path("scratch/blender-correctives")
+          for hand in ("left", "right"):
+              data = json.loads((root / f"{hand}-mcp-candidate.json").read_text("utf8"))
+              assert data['anatomicalAxesCalibrated'] is False
+              assert data['exportApproved'] is False
+              assert len(data['targets']) == 2
+              for item in data['targets']:
+                  assert item['nonzeroCorrectiveVertices'] >= 10
+                  assert item['candidateToDqsRmsMeters'] < item['baselineLbsToDqsRmsMeters']
+                  assert 0 < item['maxRestDeltaMeters'] <= 0.004001
+                  assert all(math.isfinite(item[x]) for x in
+                      ('candidateToDqsRmsMeters','rmsImprovementPercent','maxRestDeltaMeters'))
+                  print(hand, item['targetName'], round(item['rmsImprovementPercent'], 2),
+                        '% closer to Blender preserve-volume reference')
+              assert (root / f"{hand}-mcp-candidate.blend").stat().st_size > 10000
+          PY
       - name: Verify results and fail on missing masks
         run: |
           python - <<'PY'
