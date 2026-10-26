@@ -58,7 +58,7 @@ jobs:
         run: npx vitest run apps/client/src/render3d/testingHandSkin.test.ts apps/client/src/render3d/testingHandIntegration.actual.test.ts apps/client/src/render3d/testingHandRegistration.actual.test.ts apps/client/src/settings/handModel.test.ts
 
   browser-comparison:
-    name: Testing hand / headless WebGL A-B
+    name: Testing hand / WebGL single-model smoke
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
@@ -80,7 +80,7 @@ jobs:
         run: >-
           npx playwright test
           --config tests/browser/anatomical-improved.playwright.config.ts
-          --grep 'Testing hand: WebXR-driven anatomical surface'
+          --grep 'Testing hand: single-model WebGL screenshot and diagnostics'
       - name: Save WebGL screenshots and diagnostic traces
         if: always()
         uses: actions/upload-artifact@v4
