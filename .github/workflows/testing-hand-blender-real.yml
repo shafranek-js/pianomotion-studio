@@ -218,36 +218,41 @@ jobs:
           root = Path("scratch/blender-correctives/render-review")
           for side in ("left", "right"):
               report = json.loads((root / f"{side}-bounded-joint-review.json").read_text())
-              assert report["schema"] == "testing-joint-material-pose-blender-v2"
+              assert report["schema"] == "testing-joint-material-pose-blender-v3"
               assert report["exportApproved"] is False
               assert report["humanVisualReviewAccepted"] is False
               assert report["axisAnatomicallyCalibrated"] is False
               assert report["physiologicalFlexionSignCalibrated"] is False
               assert report["syntheticAxisBendOnly"] is True
               assert report["geometrySourceUnchanged"] is True
+              graph = report["sourceMaterialGraph"]
+              assert graph and all(g["principledCount"] > 0 for g in graph)
+              assert all(isinstance(g["sourceNormalConnected"], bool) for g in graph)
               images = report["images"]
-              assert len(images) == len({row["image"] for row in images}) == 24
+              assert len(images) == len({row["image"] for row in images}) == 28
               assert len({row["bone"] for row in images}) == 2
-              assert {row["materialMode"] for row in images} == {"textured", "clay"}
+              assert {row["materialMode"] for row in images} == {
+                  "textured", "clay", "albedo-only", "normal-only"}
               assert {row["jointBendDegrees"] for row in images} == {0, 30, 60, 90}
               assert {row["variant"] for row in images} == {
                   "lbs", "preserve-volume", "bounded-corrective"}
               for bone in {row["bone"] for row in images}:
                   for angle in (0, 30, 60, 90):
-                      for material in ("textured", "clay"):
-                          variants = {row["variant"] for row in images
-                                      if row["bone"] == bone
-                                      and row["jointBendDegrees"] == angle
-                                      and row["materialMode"] == material}
-                          assert variants == (
-                              {"lbs", "preserve-volume", "bounded-corrective"}
-                              if angle == 60 else {"lbs"}
-                          ), (bone, angle, material, variants)
+                      variants = {"lbs", "preserve-volume", "bounded-corrective"} if angle == 60 else {"lbs"}
+                      for variant in variants:
+                          materials = {row["materialMode"] for row in images
+                                       if row["bone"] == bone
+                                       and row["jointBendDegrees"] == angle
+                                       and row["variant"] == variant}
+                          expected = {"textured", "clay"}
+                          if angle == 60 and variant == "lbs":
+                              expected |= {"albedo-only", "normal-only"}
+                          assert materials == expected, (bone, angle, variant, materials)
               for row in images:
                   assert row["jointAxisSignedAndCalibrated"] is False
                   assert row["anatomicallyApproved"] is False
                   assert (root / row["image"]).stat().st_size > 15000
-              print(side, "24 real pose/material joint renders; NOT visually accepted")
+              print(side, "28 real pose/material joint renders; NOT visually accepted")
           PY
       - name: Assemble visual Blender A/B gallery for human inspection
         run: |
@@ -259,10 +264,10 @@ jobs:
           page = Path("scratch/blender-correctives/render-review/index.html")
           content = page.read_text(encoding="utf8")
           assert page.stat().st_size > 5000
-          assert content.count("<img ") == 48
+          assert content.count("<img ") == 56
           assert "NOT visually approved" in content
           assert "60° bounded corrective is never extrapolated" in content
-          print("Validated 48 real Blender comparison frames in offline HTML gallery")
+          print("Validated 56 real Blender comparison frames in offline HTML gallery")
           PY
       - name: Render three comparable MCP poses — left
         run: >-
