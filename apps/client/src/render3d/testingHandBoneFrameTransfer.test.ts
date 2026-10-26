@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { describe, expect, it } from "vitest";
 import {
   mapAnatomicalSurfaceToWebxrBindFrames,
+  restrictTestingBoneFrameQueryToThumb,
   transferTestingWeightsInBoneFrames,
 } from "./testingHandBoneFrameTransfer";
 
@@ -119,6 +120,25 @@ describe("Testing hand bone-frame anatomical registration", () => {
     half.geometry.dispose();
     calibrated.geometry.dispose();
     anatomy.dispose();
+  });
+
+  it("preserves non-thumb sampling positions in the live Testing A/B option", () => {
+    const geometry = sourceMesh(1);
+    geometry.setAttribute("skinIndex", new THREE.Uint16BufferAttribute([
+      0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0,
+    ], 4));
+    const native = [makeBone("thumb-metacarpal", 0), makeBone("index-finger-metacarpal", 0)];
+    const webxr = [makeBone("thumb-metacarpal", 0.5), makeBone("index-finger-metacarpal", 2)];
+    const mapped = mapAnatomicalSurfaceToWebxrBindFrames(geometry, native, webxr);
+    expect(mapped.geometry.getAttribute("position").getX(2)).toBeCloseTo(3, 6);
+    const mask = restrictTestingBoneFrameQueryToThumb(geometry, mapped.geometry, native);
+    const query = mapped.geometry.getAttribute("position");
+    expect(query.getX(0)).toBeCloseTo(1.5, 6);
+    expect(query.getX(1)).toBeCloseTo(1.62, 6);
+    expect(query.getX(2)).toBeCloseTo(1, 6);
+    expect(mask).toEqual({ affectedVertices: 2, preservedVertices: 1 });
+    mapped.geometry.dispose();
+    geometry.dispose();
   });
 
   it("refuses degenerate anatomical thumb reference segments", () => {

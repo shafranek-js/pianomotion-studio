@@ -147,6 +147,7 @@ describe("Testing hand: real anatomical shell on original WebXR skeleton", () =>
         let thumbCalibratedCandidate: THREE.BufferGeometry | null = null;
         let thumbAnatomySource: THREE.BufferGeometry | null = null;
         let thumbAnatomyNames: string[] = [];
+        let untouchedNonThumb: Uint8Array | null = null;
         const partialThumbCandidates: Array<{ strength: number; geometry: THREE.BufferGeometry }> = [];
         try {
           const independentSurface = transferWebxrSkinToAnatomicalSurface(
@@ -185,6 +186,19 @@ describe("Testing hand: real anatomical shell on original WebXR skeleton", () =>
           );
           thumbAnatomySource = independentAnatomy.skinnedMesh.geometry.clone();
           thumbAnatomyNames = independentAnatomy.skinnedMesh.skeleton.bones.map(bone => bone.name);
+          const nativeIndex = thumbAnatomySource.getAttribute("skinIndex");
+          const nativeWeight = thumbAnatomySource.getAttribute("skinWeight");
+          untouchedNonThumb = new Uint8Array(nativeWeight.count);
+          for (let vertex = 0; vertex < nativeWeight.count; vertex++) {
+            let thumb = 0;
+            for (let slot = 0; slot < 4; slot++) {
+              const bone = nativeIndex.getComponent(vertex, slot);
+              if (thumbAnatomyNames[bone]?.startsWith("thumb-")) {
+                thumb += nativeWeight.getComponent(vertex, slot);
+              }
+            }
+            untouchedNonThumb[vertex] = thumb <= 0.10 ? 1 : 0;
+          }
           thumbCalibratedCandidate = transferTestingWeightsInBoneFrames(
             independentAnatomy.skinnedMesh.geometry,
             independentWebxr.skinnedMesh.geometry,
@@ -464,6 +478,22 @@ describe("Testing hand: real anatomical shell on original WebXR skeleton", () =>
         expect(partialWeights.some((value, index) =>
           Math.abs(value - baseWeights[index]!) > 1e-5 ||
           partialIndices[index] !== baseIndices[index])).toBe(true);
+        expect(partial.geometry.userData.testingBoneFrameMapping)
+          .toHaveProperty("thumbOnlyAffectedVertices");
+        expect(untouchedNonThumb).not.toBeNull();
+        let verified = 0;
+        for (let vertex = 0; vertex < untouchedNonThumb!.length; vertex++) {
+          if (!untouchedNonThumb![vertex]) continue;
+          verified++;
+          for (let slot = 0; slot < 4; slot++) {
+            const offset = vertex * 4 + slot;
+            expect(partialIndices[offset], side + " non-thumb skinIndex " + vertex)
+              .toBe(baseIndices[offset]);
+            expect(partialWeights[offset], side + " non-thumb skinWeight " + vertex)
+              .toBe(baseWeights[offset]);
+          }
+        }
+        expect(verified).toBeGreaterThan(1000);
 
         model.setTestingThumbStrength(0);
         await model.waitForHandModelReady();

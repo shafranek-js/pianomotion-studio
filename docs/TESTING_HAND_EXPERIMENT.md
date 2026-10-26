@@ -166,3 +166,18 @@ unreviewed visual experiments. Do not publish an app with a nonzero value as
 the approved/standard model, claim anatomical quality, or export the
 candidate as a fixed source GLB based on this UI. Run real piano passages
 and compare thumb/index webbing in both hands at identical positions.
+
+## Fixed live thumb-only A/B (26 October 2026)
+
+The first live 25–100% implementation unintentionally used **whole-hand**
+anatomical-to-WebXR bone-frame queries. Thus it changed other fingers while
+being labeled a thumb experiment. Prior deformation sweep results do **not**
+validate this revised runtime option. The live Testing path now supplies
+`thumbOnly: true`, restricting mapped query positions to an original native
+thumb-influence mask with a smooth 0.10–0.60 web transition; all remaining
+vertices are queried at their exact original positions, preserving baseline
+weights and source surface. The research helper retains its original whole-hand
+mode for offline comparison. A real-GLB regression asserts identical weights
+on every original non-thumb vertex for **both hands**, and the existing
+0% → 25% → 0% round-trip contract remains required. This is still experimental;
+no variant is yet approved as the anatomically correct solution.
