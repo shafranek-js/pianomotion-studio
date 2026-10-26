@@ -4,6 +4,7 @@ import { transferWebxrSkinToAnatomicalSurface } from "./testingHandSkin";
 import { measureTestingHandDeformation } from "./testingHandDeformationQA";
 import { regularizeTestingSkinWeights } from "./testingHandWeightRegularizer";
 import { transferAnatomicalWeightsToWebxrSkeleton } from "./testingHandSemanticWeights";
+import { transferTestingWeightsInBoneFrames } from "./testingHandBoneFrameTransfer";
 import { locateTestingHandDeformationHotspots } from "./testingHandDeformationHotspots";
 import * as THREE from "three";
 import { describe, expect, it } from "vitest";
@@ -142,6 +143,7 @@ describe("Testing hand: real anatomical shell on original WebXR skeleton", () =>
         );
         let smootherCandidate: THREE.BufferGeometry | null = null;
         let semanticCandidate: THREE.BufferGeometry | null = null;
+        let thumbCalibratedCandidate: THREE.BufferGeometry | null = null;
         try {
           const independentSurface = transferWebxrSkinToAnatomicalSurface(
             independentAnatomy.skinnedMesh.geometry,
@@ -176,6 +178,17 @@ describe("Testing hand: real anatomical shell on original WebXR skeleton", () =>
             independentAnatomy.skinnedMesh.geometry,
             independentAnatomy.skinnedMesh.skeleton.bones,
             independentWebxr.skinnedMesh.skeleton.bones,
+          );
+          thumbCalibratedCandidate = transferTestingWeightsInBoneFrames(
+            independentAnatomy.skinnedMesh.geometry,
+            independentWebxr.skinnedMesh.geometry,
+            independentAnatomy.skinnedMesh.skeleton.bones,
+            independentWebxr.skinnedMesh.skeleton.bones,
+            {
+              anatomicalBoneNames: independentAnatomy.skinnedMesh.skeleton.bones.map(bone => bone.name),
+              webxrBoneNames: independentWebxr.skinnedMesh.skeleton.bones.map(bone => bone.name),
+            },
+            { thumbAxialScale: true },
           );
           const semanticIndices = semanticCandidate.getAttribute("skinIndex");
           const semanticWeights = semanticCandidate.getAttribute("skinWeight");
@@ -215,6 +228,8 @@ describe("Testing hand: real anatomical shell on original WebXR skeleton", () =>
         experimentalSurface.bind(mesh!.skeleton, mesh!.bindMatrix);
         const semanticSurface = new THREE.SkinnedMesh(semanticCandidate!, model.skinMaterial);
         semanticSurface.bind(mesh!.skeleton, mesh!.bindMatrix);
+        const thumbCalibratedSurface = new THREE.SkinnedMesh(thumbCalibratedCandidate!, model.skinMaterial);
+        thumbCalibratedSurface.bind(mesh!.skeleton, mesh!.bindMatrix);
         try {
           const pose = makeWebxrComparisonPose(side);
           for (const hover of [0, 0.65]) {
@@ -241,9 +256,30 @@ describe("Testing hand: real anatomical shell on original WebXR skeleton", () =>
             const webxrDeformation = measureTestingHandDeformation(webxrMesh!);
             const smoothedDeformation = measureTestingHandDeformation(experimentalSurface);
             const semanticDeformation = measureTestingHandDeformation(semanticSurface);
+            const thumbCalibratedDeformation = measureTestingHandDeformation(thumbCalibratedSurface);
+            const thumbBones = (surface: THREE.SkinnedMesh) => {
+              const report = locateTestingHandDeformationHotspots(surface, side, 20);
+              const thumb = report.bones.filter(bone => bone.bone.startsWith("thumb-"));
+              return {
+                inspectedThumbTriangles: thumb.reduce((total, bone) => total + bone.triangles, 0),
+                collapsedThumbTriangles: thumb.reduce((total, bone) => total + bone.flattenedBelowQuarterArea, 0),
+                overstretchedThumbTriangles: thumb.reduce((total, bone) => total + bone.stretchedAboveDoubleArea, 0),
+                maxThumbSeverity: Math.max(0, ...thumb.map(bone => bone.worstSeverity)),
+              };
+            };
+            console.info("[Testing thumb calibration A/B posed geometry]", side, "hover=" + hover,
+              JSON.stringify({
+                baseline: thumbBones(mesh!),
+                calibrated: thumbBones(thumbCalibratedSurface),
+                baselineGlobal: { edgeStretchP95: deformation.edgeStretchP95,
+                  areaRatioP95: deformation.areaRatioP95 },
+                calibratedGlobal: { edgeStretchP95: thumbCalibratedDeformation.edgeStretchP95,
+                  areaRatioP95: thumbCalibratedDeformation.areaRatioP95 },
+              }));
             console.info("[Testing vs WebXR skinned triangle deformation]", side, "hover=" + hover,
               JSON.stringify({ testing: deformation, smoothed: smoothedDeformation,
-                semantic: semanticDeformation, webxr: webxrDeformation }));
+                semantic: semanticDeformation, thumbCalibrated: thumbCalibratedDeformation,
+                webxr: webxrDeformation }));
             if (hover === 0) {
               const location = locateTestingHandDeformationHotspots(mesh!, side, 12);
               const severeBones = location.bones.filter(row =>
@@ -274,6 +310,7 @@ describe("Testing hand: real anatomical shell on original WebXR skeleton", () =>
           referenceMotion.dispose();
           experimentalSurface.geometry.dispose();
           semanticSurface.geometry.dispose();
+          thumbCalibratedSurface.geometry.dispose();
         }
 
         const weights = mesh!.geometry.getAttribute("skinWeight");
