@@ -22,6 +22,7 @@ export interface TestingBoneFrameMappingStats {
   maxDisplacementInches: number;
   /** Only present in experimental thumb-axial sampling mode. */
   thumbAxialRatios?: Readonly<Record<string, number>>;
+  thumbAxialStrength?: number;
 }
 
 /** Distal joint anchors for the thumb. The reference and native GLBs are
@@ -35,6 +36,8 @@ const THUMB_CHILDREN: Readonly<Record<string, string>> = {
 export interface TestingBoneFrameTransferOptions {
   /** Experimental only. Never deform the original source mesh with this scale. */
   thumbAxialScale?: boolean;
+  /** 0..1 partial segment correction for measured A/B research. Overrides boolean. */
+  thumbAxialStrength?: number;
 }
 
 export function mapAnatomicalSurfaceToWebxrBindFrames(
@@ -62,6 +65,10 @@ export function mapAnatomicalSurfaceToWebxrBindFrames(
     throw new Error("Native anatomical bone names must be unique.");
   }
   const thumbAxialRatios: Record<string, number> = {};
+  const thumbAxialStrength = options.thumbAxialStrength ?? (options.thumbAxialScale ? 1 : 0);
+  if (!Number.isFinite(thumbAxialStrength) || thumbAxialStrength < 0 || thumbAxialStrength > 1) {
+    throw new Error("Thumb axial calibration strength must be between 0 and 1.");
+  }
   const transforms = nativeBones.map(bone => {
     const counterpart = references.get(bone.name);
     if (!counterpart) throw new Error(`No matching WebXR bone for anatomical ${bone.name}.`);
@@ -71,7 +78,7 @@ export function mapAnatomicalSurfaceToWebxrBindFrames(
     counterpart.updateWorldMatrix(true, false);
     const inverseNative = bone.matrixWorld.clone().invert();
     const axial = new THREE.Matrix4();
-    const childName = options.thumbAxialScale ? THUMB_CHILDREN[bone.name] : undefined;
+    const childName = thumbAxialStrength > 0 ? THUMB_CHILDREN[bone.name] : undefined;
     if (childName) {
       const nativeChild = nativeByName.get(childName);
       const referenceChild = references.get(childName);
@@ -93,10 +100,11 @@ export function mapAnatomicalSurfaceToWebxrBindFrames(
       if (ratio < 0.45 || ratio > 1.8) {
         throw new Error(`Implausible thumb axial ratio for ${bone.name}: ${ratio}.`);
       }
-      thumbAxialRatios[bone.name] = ratio;
+      const appliedRatio = 1 + thumbAxialStrength * (ratio - 1);
+      thumbAxialRatios[bone.name] = appliedRatio;
       // Bone-local -Z points along the native segment. Scale the location
       // used to SAMPLE weights, never the output POSITION/normal/UV attributes.
-      axial.makeScale(1, 1, ratio);
+      axial.makeScale(1, 1, appliedRatio);
     }
     return counterpart.matrixWorld.clone().multiply(axial).multiply(inverseNative);
   });
@@ -142,7 +150,7 @@ export function mapAnatomicalSurfaceToWebxrBindFrames(
     meanDisplacementInches: movement.reduce((s, n) => s + n, 0) / movement.length,
     p95DisplacementInches: movement[Math.floor(0.95 * (movement.length - 1))]!,
     maxDisplacementInches: movement[movement.length - 1]!,
-    ...(options.thumbAxialScale ? { thumbAxialRatios } : {}),
+    ...(thumbAxialStrength > 0 ? { thumbAxialRatios, thumbAxialStrength } : {}),
   };
   geometry.userData.testingBoneFrameMapping = stats;
   return { geometry, stats };
