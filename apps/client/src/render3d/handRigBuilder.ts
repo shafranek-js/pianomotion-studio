@@ -36,6 +36,7 @@ import {
 } from "./improvedHandContact";
 import { solveFixedLengthFingerChain } from "./anatomicalHandContact";
 import { transferWebxrSkinToAnatomicalSurface } from "./testingHandSkin";
+import { attachTestingHandMorphTargets } from "./testingHandMorphTargets";
 
 export const WHITE_KEY_WIDTH_IN = 6.5 / 7.0;
 export const KEYBOARD_WHITE_KEYS = 52;
@@ -649,6 +650,7 @@ interface GlbJsonHeader {
     children?: number[];
   }>;
   meshes: Array<{
+    extras?: { targetNames?: string[] };
     primitives: Array<{
       attributes: {
         POSITION: number;
@@ -659,6 +661,7 @@ interface GlbJsonHeader {
         WEIGHTS_0: number;
       };
       indices: number;
+      targets?: Array<{ POSITION?: number; NORMAL?: number }>;
     }>;
   }>;
   skins: Array<{
@@ -674,6 +677,7 @@ interface GlbJsonHeader {
     count: number;
     type: string;
     normalized?: boolean;
+    sparse?: unknown;
   }>;
   bufferViews: Array<{
     byteOffset?: number;
@@ -2337,6 +2341,40 @@ export function buildImprovedHandGlbRig(
     geometry.setAttribute("skinIndex", new THREE.BufferAttribute(skinIndices, 4));
     geometry.setAttribute("skinWeight", new THREE.BufferAttribute(skinWeights, 4));
     geometry.setIndex(new THREE.BufferAttribute(rawIndices, 1));
+    // Blender-authored pose correctives are exported as glTF POSITION/NORMAL
+    // relative deltas. The current release assets contain no morph targets.
+    // Reject unsculpted/sparse/misnamed targets instead of silently rendering
+    // an apparently correct, but geometrically unchanged, realistic hand.
+    const gltfMorphTargets = prim.targets ?? [];
+    if (gltfMorphTargets.length > 0) {
+      const targetNames = json.meshes[0]?.extras?.targetNames;
+      if (!targetNames || targetNames.length !== gltfMorphTargets.length) {
+        throw new Error("Testing hand GLB morph target names are required.");
+      }
+      const morphs = gltfMorphTargets.map((target, idx) => {
+        if (target.POSITION === undefined) {
+          throw new Error("Testing hand morph target is missing POSITION deltas.");
+        }
+        const positionDefinition = json.accessors[target.POSITION];
+        const normalDefinition = target.NORMAL !== undefined ? json.accessors[target.NORMAL] : undefined;
+        if (!positionDefinition || positionDefinition.sparse ||
+            (normalDefinition && normalDefinition.sparse)) {
+          throw new Error("Testing hand sparse morph accessors need offline expansion.");
+        }
+        const morphPosition = readAccessor(target.POSITION, 3);
+        const morphNormal = target.NORMAL === undefined ? null : readAccessor(target.NORMAL, 3);
+        if (morphPosition.componentType !== 5126 || morphPosition.normalized ||
+            (morphNormal && (morphNormal.componentType !== 5126 || morphNormal.normalized))) {
+          throw new Error("Testing hand morph deltas must be non-normalized float32.");
+        }
+        return {
+          name: targetNames[idx]!,
+          positionDeltaMeters: morphPosition.values as Float32Array,
+          normalDelta: morphNormal?.values as Float32Array | undefined,
+        };
+      });
+      attachTestingHandMorphTargets(geometry, morphs);
+    }
     geometry.computeBoundingBox();
     geometry.computeBoundingSphere();
     geometry.userData.wristBoundaryVertexIndices = [...boundary];
@@ -2358,6 +2396,7 @@ export function buildImprovedHandGlbRig(
     skinnedMesh.frustumCulled = false;
     const skeleton = new THREE.Skeleton(bones, boneInverses);
     skinnedMesh.bind(skeleton, new THREE.Matrix4());
+    if (gltfMorphTargets.length > 0) skinnedMesh.updateMorphTargets();
     parentGroup.add(skinnedMesh);
 
     return {
