@@ -100,6 +100,12 @@ describe("Testing hand bone-frame anatomical registration", () => {
     const calibrated = mapAnatomicalSurfaceToWebxrBindFrames(
       anatomy, native, driver, { thumbAxialScale: true },
     );
+    const half = mapAnatomicalSurfaceToWebxrBindFrames(
+      anatomy, native, driver, { thumbAxialStrength: 0.5 },
+    );
+    expect(half.geometry.getAttribute("position").getZ(0)).toBeCloseTo(-0.4, 6);
+    expect(half.stats.thumbAxialStrength).toBe(0.5);
+    expect(half.stats.thumbAxialRatios?.["thumb-metacarpal"]).toBeCloseTo(0.8, 6);
     const c = calibrated.geometry.getAttribute("position");
     expect(c.getZ(0)).toBeCloseTo(-0.3, 6);
     expect(c.getZ(1)).toBeCloseTo(-1.78, 6);
@@ -110,6 +116,7 @@ describe("Testing hand bone-frame anatomical registration", () => {
     expect(calibrated.stats.thumbAxialRatios?.["thumb-phalanx-proximal"]).toBeCloseTo(1.18, 6);
     expect(calibrated.stats.thumbAxialRatios?.["thumb-phalanx-distal"]).toBeCloseTo(1.33, 6);
     baseline.geometry.dispose();
+    half.geometry.dispose();
     calibrated.geometry.dispose();
     anatomy.dispose();
   });
@@ -123,6 +130,12 @@ describe("Testing hand bone-frame anatomical registration", () => {
     expect(() => mapAnatomicalSurfaceToWebxrBindFrames(
       anatomical, [first, second], [webxrRoot, webxrNext], { thumbAxialScale: true },
     )).toThrow("Invalid thumb bind-segment length");
+    expect(() => mapAnatomicalSurfaceToWebxrBindFrames(
+      anatomical, [first, second], [webxrRoot, webxrNext], { thumbAxialStrength: 1.1 },
+    )).toThrow("strength must be between 0 and 1");
+    expect(() => mapAnatomicalSurfaceToWebxrBindFrames(
+      anatomical, [first, second], [webxrRoot, webxrNext], { thumbAxialStrength: Number.NaN },
+    )).toThrow("strength must be between 0 and 1");
     anatomical.dispose();
   });
 
