@@ -9,6 +9,7 @@ on:
       - "apps/client/src/export/**"
       - "apps/client/src/render/pianoScene.ts"
       - ".github/workflows/testing-hand-pr.yml"
+      - "tests/browser/anatomical-improved.spec.ts"
   workflow_dispatch:
 
 permissions:
@@ -58,7 +59,7 @@ jobs:
         run: npx vitest run apps/client/src/render3d/testingHandSkin.test.ts apps/client/src/render3d/testingHandIntegration.actual.test.ts apps/client/src/render3d/testingHandRegistration.actual.test.ts apps/client/src/settings/handModel.test.ts
 
   browser-comparison:
-    name: Testing hand / WebGL single-model smoke
+    name: Testing hand / matched four-model WebGL evidence
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
@@ -76,11 +77,11 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Prepare local-only test resources
         run: node tools/ensure-test-assets.mjs
-      - name: Capture real WebGL hand A-B
+      - name: Capture matched WebGL models at common notes and views
         run: >-
           npx playwright test
           --config tests/browser/anatomical-improved.playwright.config.ts
-          --grep 'Testing hand: single-model WebGL screenshot and diagnostics'
+          --grep 'Testing hand: matched WebGL model and camera evidence'
       - name: Save WebGL screenshots and diagnostic traces
         if: always()
         uses: actions/upload-artifact@v4
