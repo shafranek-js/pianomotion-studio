@@ -88,6 +88,20 @@ jobs:
           --input scratch/blender-correctives/right-lod0.blend
           --output scratch/blender-correctives/right-mcp-candidate.blend
           --report scratch/blender-correctives/right-mcp-candidate.json
+      - name: Render three comparable MCP poses — left
+        run: >-
+          blender -b -t 2 --python-exit-code 2
+          --python tools/testing-hand-blender/render_mcp_comparison.py --
+          --side left
+          --input scratch/blender-correctives/left-mcp-candidate.blend
+          --output-dir scratch/blender-correctives/render-review
+      - name: Render three comparable MCP poses — right
+        run: >-
+          blender -b -t 2 --python-exit-code 2
+          --python tools/testing-hand-blender/render_mcp_comparison.py --
+          --side right
+          --input scratch/blender-correctives/right-mcp-candidate.blend
+          --output-dir scratch/blender-correctives/render-review
       - name: Validate nonzero prototypes and DQS target improvements
         run: |
           python - <<'PY'
