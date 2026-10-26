@@ -20,12 +20,28 @@ export interface TestingBoneFrameMappingStats {
   meanDisplacementInches: number;
   p95DisplacementInches: number;
   maxDisplacementInches: number;
+  /** Only present in experimental thumb-axial sampling mode. */
+  thumbAxialRatios?: Readonly<Record<string, number>>;
+}
+
+/** Distal joint anchors for the thumb. The reference and native GLBs are
+ * independent bind rigs; ratios apply ONLY to temporary weight queries. */
+const THUMB_CHILDREN: Readonly<Record<string, string>> = {
+  "thumb-metacarpal": "thumb-phalanx-proximal",
+  "thumb-phalanx-proximal": "thumb-phalanx-distal",
+  "thumb-phalanx-distal": "thumb-tip",
+};
+
+export interface TestingBoneFrameTransferOptions {
+  /** Experimental only. Never deform the original source mesh with this scale. */
+  thumbAxialScale?: boolean;
 }
 
 export function mapAnatomicalSurfaceToWebxrBindFrames(
   anatomical: THREE.BufferGeometry,
   nativeBones: readonly THREE.Bone[],
   referenceBones: readonly THREE.Bone[],
+  options: TestingBoneFrameTransferOptions = {},
 ): { geometry: THREE.BufferGeometry; stats: TestingBoneFrameMappingStats } {
   const position = anatomical.getAttribute("position");
   const skinIndex = anatomical.getAttribute("skinIndex");
@@ -41,6 +57,11 @@ export function mapAnatomicalSurfaceToWebxrBindFrames(
     if (!bone.name || references.has(bone.name)) throw new Error("WebXR bone names must be unique.");
     references.set(bone.name, bone);
   }
+  const nativeByName = new Map(nativeBones.map(bone => [bone.name, bone]));
+  if (nativeByName.size !== nativeBones.length) {
+    throw new Error("Native anatomical bone names must be unique.");
+  }
+  const thumbAxialRatios: Record<string, number> = {};
   const transforms = nativeBones.map(bone => {
     const counterpart = references.get(bone.name);
     if (!counterpart) throw new Error(`No matching WebXR bone for anatomical ${bone.name}.`);
@@ -49,7 +70,35 @@ export function mapAnatomicalSurfaceToWebxrBindFrames(
     bone.updateWorldMatrix(true, false);
     counterpart.updateWorldMatrix(true, false);
     const inverseNative = bone.matrixWorld.clone().invert();
-    return counterpart.matrixWorld.clone().multiply(inverseNative);
+    const axial = new THREE.Matrix4();
+    const childName = options.thumbAxialScale ? THUMB_CHILDREN[bone.name] : undefined;
+    if (childName) {
+      const nativeChild = nativeByName.get(childName);
+      const referenceChild = references.get(childName);
+      if (!nativeChild || !referenceChild) {
+        throw new Error(`Missing thumb bind-segment endpoint for ${bone.name}.`);
+      }
+      nativeChild.updateWorldMatrix(true, false);
+      referenceChild.updateWorldMatrix(true, false);
+      const nativeLength = bone.getWorldPosition(new THREE.Vector3())
+        .distanceTo(nativeChild.getWorldPosition(new THREE.Vector3()));
+      const referenceLength = counterpart.getWorldPosition(new THREE.Vector3())
+        .distanceTo(referenceChild.getWorldPosition(new THREE.Vector3()));
+      if (!Number.isFinite(nativeLength) || !Number.isFinite(referenceLength) ||
+          nativeLength < 1e-6 || referenceLength < 1e-6) {
+        throw new Error(`Invalid thumb bind-segment length for ${bone.name}.`);
+      }
+      const ratio = referenceLength / nativeLength;
+      // Do NOT silently clamp a bad registration: report and reject it.
+      if (ratio < 0.45 || ratio > 1.8) {
+        throw new Error(`Implausible thumb axial ratio for ${bone.name}: ${ratio}.`);
+      }
+      thumbAxialRatios[bone.name] = ratio;
+      // Bone-local -Z points along the native segment. Scale the location
+      // used to SAMPLE weights, never the output POSITION/normal/UV attributes.
+      axial.makeScale(1, 1, ratio);
+    }
+    return counterpart.matrixWorld.clone().multiply(axial).multiply(inverseNative);
   });
 
   const original = new THREE.Vector3();
@@ -93,6 +142,7 @@ export function mapAnatomicalSurfaceToWebxrBindFrames(
     meanDisplacementInches: movement.reduce((s, n) => s + n, 0) / movement.length,
     p95DisplacementInches: movement[Math.floor(0.95 * (movement.length - 1))]!,
     maxDisplacementInches: movement[movement.length - 1]!,
+    ...(options.thumbAxialScale ? { thumbAxialRatios } : {}),
   };
   geometry.userData.testingBoneFrameMapping = stats;
   return { geometry, stats };
@@ -109,8 +159,11 @@ export function transferTestingWeightsInBoneFrames(
   nativeBones: readonly THREE.Bone[],
   referenceBones: readonly THREE.Bone[],
   options: TestingAnatomicalTransferOptions,
+  registrationOptions: TestingBoneFrameTransferOptions = {},
 ): THREE.BufferGeometry {
-  const mapped = mapAnatomicalSurfaceToWebxrBindFrames(anatomical, nativeBones, referenceBones);
+  const mapped = mapAnatomicalSurfaceToWebxrBindFrames(
+    anatomical, nativeBones, referenceBones, registrationOptions,
+  );
   try {
     const skinnedQuery = transferWebxrSkinToAnatomicalSurface(
       mapped.geometry, reference, referenceBones.length, options,
