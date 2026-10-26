@@ -153,6 +153,14 @@ textures, shader normal maps or material setup, but is *not proof* of
 a single root cause. Unsigned 0–90° rotations are merely controlled
 diagnostic probes, **not confirmed physiological flexion**.
 
+The Blender CI packs a standalone `render-review/index.html` gallery
+alongside the 48 actual PNG frames. Download and extract the complete
+`testing-hand-blender-lod0-authoring-*` workflow artifact, then open
+`render-review/index.html` locally. Each synthetic bend has a directly
+paired original-skin and clay view; 60° also displays the three deformation
+variants. The gallery generator refuses to build if either hand, angle,
+material or source render is missing. It does not synthesize or retouch images.
+
 These frames do not replace visual motion acceptance on both hands with
 real MIDI, multi-joint/thumb opposition poses, full LOD checks, key
 contact or export. **Do not merge PR #9 or ship corrected GLBs.**
