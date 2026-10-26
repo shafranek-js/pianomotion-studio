@@ -29,7 +29,7 @@ rendered with the **same two-hand MIDI, performance plan, viewport (1280 × 800)
 transport positions (0.75, 3.00, 6.00 s)** and all four camera presets
 (`concert`, `overhead`, `pov`, `side_arch`).
 
-- 48 full-page PNG reference frames are stored as `testing-ab-<model>-<camera>-<time>s.png` in the CI artifact. A machine-readable JSON attachment records loaded left/right model, LOD, errors, scene/transport time, retained plan ID and screenshot filenames.
+- 48 full-page PNG reference frames are stored as `testing-ab-<model>-<camera>-<time>s.png` in the CI artifact. Open **`testing-hand-review.html`** from the extracted artifact for a four-column offline contact sheet; click any frame for full resolution. **`testing-hand-evidence.json`** records loaded left/right model, LOD, errors, scene/transport time, retained plan ID and screenshot filenames.
 - The automation **asserts real WebGL model readiness and no fallback** for both hands, and asserts that the original performance-plan ID and requested transport time survive every model/camera switch.
 - Headless frames are **inspection evidence, not a pass criterion for natural movement**. They cannot verify between-frame interpolation, realistic thumb opposition, a real user's device/GPU performance, or exporter parity.
 - After inspecting comparable frames, perform interactive playback with alternating chords, octaves/tenths, white/black keys, thumb-under, continuous seeking, and export. Reject visible finger folding/collapse, unnatural nail motion, adjacent-digit penetration, wrist seams or skin shading discontinuities before merging.
