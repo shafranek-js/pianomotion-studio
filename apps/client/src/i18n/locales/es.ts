@@ -159,6 +159,7 @@ export const es: TranslationDictionary = {
     handModel: "Modelo 3D de manos",
     handModelAnatomical: "Anatómico (realista)",
     handModelAnatomicalImproved: "Anatomical (improved)",
+    handModelTesting: "Testing (movimiento WebXR + piel realista)",
     handModelWebxr: "WebXR estándar",
     showShadow: "Sombra de las manos",
     showFingerLabels: "Mostrar números de dedos en las notas",
