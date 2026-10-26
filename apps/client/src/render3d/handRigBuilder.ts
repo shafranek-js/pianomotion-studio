@@ -2854,7 +2854,7 @@ function buildTestingHandRig(
         anatomical.skinnedMesh.skeleton.bones,
         driver.skinnedMesh.skeleton.bones,
         weightTransferOptions,
-        { thumbAxialStrength: thumbStrength },
+        { thumbAxialStrength: thumbStrength, thumbOnly: true },
       );
     const mesh = new THREE.SkinnedMesh(surface, material);
     mesh.castShadow = true;

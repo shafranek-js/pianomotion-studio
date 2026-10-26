@@ -38,6 +38,8 @@ export interface TestingBoneFrameTransferOptions {
   thumbAxialScale?: boolean;
   /** 0..1 partial segment correction for measured A/B research. Overrides boolean. */
   thumbAxialStrength?: number;
+  /** Limit the live A/B query to native thumb + web, leaving non-thumb untouched. */
+  thumbOnly?: boolean;
 }
 
 export function mapAnatomicalSurfaceToWebxrBindFrames(
@@ -157,6 +159,51 @@ export function mapAnatomicalSurfaceToWebxrBindFrames(
 }
 
 /**
+ * True thumb-only scope. Full bone-frame registration moves all five digits;
+ * live A/B must preserve original query positions (and skin weights) for
+ * non-thumb vertices. Mask is derived exclusively from immutable native
+ * anatomical bone weights, with a smooth thumb-web transition.
+ */
+export function restrictTestingBoneFrameQueryToThumb(
+  anatomical: THREE.BufferGeometry, queryGeometry: THREE.BufferGeometry,
+  nativeBones: readonly THREE.Bone[],
+): { affectedVertices: number; preservedVertices: number } {
+  const original = anatomical.getAttribute("position");
+  const query = queryGeometry.getAttribute("position");
+  const skinIndex = anatomical.getAttribute("skinIndex");
+  const skinWeight = anatomical.getAttribute("skinWeight");
+  if (!original || !query || !skinIndex || !skinWeight ||
+      original.itemSize !== 3 || query.itemSize !== 3 ||
+      skinIndex.itemSize !== 4 || skinWeight.itemSize !== 4 ||
+      original.count !== query.count || skinIndex.count !== original.count ||
+      skinWeight.count !== original.count) {
+    throw new Error("Thumb-only frame sampling requires matching native skin attributes.");
+  }
+  const from = new THREE.Vector3(), mapped = new THREE.Vector3();
+  let affectedVertices = 0, preservedVertices = 0;
+  for (let i = 0; i < original.count; i++) {
+    let thumb = 0;
+    for (let slot = 0; slot < 4; slot++) {
+      const joint = skinIndex.getComponent(i, slot);
+      const weight = skinWeight.getComponent(i, slot);
+      if (!Number.isInteger(joint) || joint < 0 || joint >= nativeBones.length ||
+          !Number.isFinite(weight) || weight < 0) {
+        throw new Error("Thumb-only frame sampling requires valid native influences.");
+      }
+      if (nativeBones[joint]!.name.startsWith("thumb-")) thumb += weight;
+    }
+    const alpha = Math.max(0, Math.min(1, (thumb - 0.10) / 0.50));
+    from.fromBufferAttribute(original, i);
+    mapped.fromBufferAttribute(query, i).lerp(from, 1 - alpha);
+    query.setXYZ(i, mapped.x, mapped.y, mapped.z);
+    if (from.distanceTo(mapped) > 1e-6) affectedVertices++;
+    else preservedVertices++;
+  }
+  query.needsUpdate = true;
+  return { affectedVertices, preservedVertices };
+}
+
+/**
  * Returns the ORIGINAL realistic surface with *only* transferred WebXR weights.
  * Query points are mapped into WebXR rest-bone coordinates temporarily.
  * This guarantees the source geometry/UVs/normals/index are not overwritten.
@@ -173,6 +220,9 @@ export function transferTestingWeightsInBoneFrames(
     anatomical, nativeBones, referenceBones, registrationOptions,
   );
   try {
+    const thumbMask = registrationOptions.thumbOnly
+      ? restrictTestingBoneFrameQueryToThumb(anatomical, mapped.geometry, nativeBones)
+      : null;
     const skinnedQuery = transferWebxrSkinToAnatomicalSurface(
       mapped.geometry, reference, referenceBones.length, options,
     );
@@ -183,7 +233,10 @@ export function transferTestingWeightsInBoneFrames(
       output.userData.testingWebxrSkinTransfer = true;
       output.userData.testingBoneFrameTransfer = true;
       output.userData.testingTransferStats = skinnedQuery.userData.testingTransferStats;
-      output.userData.testingBoneFrameMapping = mapped.stats;
+      output.userData.testingBoneFrameMapping = thumbMask
+        ? { ...mapped.stats, thumbOnlyAffectedVertices: thumbMask.affectedVertices,
+            thumbOnlyPreservedVertices: thumbMask.preservedVertices }
+        : mapped.stats;
       return output;
     } finally {
       skinnedQuery.dispose();
