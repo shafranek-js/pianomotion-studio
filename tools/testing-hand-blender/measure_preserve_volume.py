@@ -111,12 +111,12 @@ def main():
     bpy.ops.wm.open_mainfile(filepath=str(args_.input.resolve()))
     arm, mesh, modifier = locate()
     basis = [v.co.copy() for v in mesh.data.vertices]
-    triangles = [
-        tuple(loop.vertices) for poly in mesh.data.polygons
-        for loop in poly.loop_triangles
-    ] if False else []
-    mesh.data.calc_loop_triangles()
-    triangles = [tuple(t.vertices) for t in mesh.data.loop_triangles]
+    triangles = []
+    for polygon in mesh.data.polygons:
+        indices = tuple(polygon.vertices)
+        if len(indices) != 3:
+            raise ValueError("Expected triangulated native LOD mesh")
+        triangles.append(indices)
     results = []
 
     for bone_name in BONES:
