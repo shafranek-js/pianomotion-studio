@@ -164,3 +164,37 @@ material or source render is missing. It does not synthesize or retouch images.
 These frames do not replace visual motion acceptance on both hands with
 real MIDI, multi-joint/thumb opposition poses, full LOD checks, key
 contact or export. **Do not merge PR #9 or ship corrected GLBs.**
+
+
+## Material source isolation — real Blender evidence (26 October 2026)
+
+The finished real-LOD0 job [40391388316](https://github.com/shafranek-js/pianomotion-studio/actions/runs/40391388316)
+produced **48/48** frame references (two hands, ring MCP and pinky DIP,
+0/30/60/90° baseline LBS, 60° LBS/DQS/bounded-corrective). The gallery
+is `render-review/index.html` inside the workflow artifact. A direct
+visual review showed the irregular dark hairline cracks scattered over the
+finger and hand surface almost disappear under neutral clay, including
+in the baseline. This **implicates the source PBR material stack, but does
+not yet distinguish albedo, normal/bump, roughness or mixed shading**.
+The prominent folded, pinched membrane at the **left ring MCP** persists
+under clay across LBS/DQS/bounded-corrective. That problem is geometric;
+the current bounded corrective is **not an accepted fix**.
+
+The next offline run splits the diagnostic materials at **60° LBS only**:
+
+- `textured`: untouched original PBR material.
+- `clay`: neutral, rough material without any shader texture normals.
+- `albedo-only`: source material copies keeping original color/roughness,
+  disconnecting Principled BSDF Normal input.
+- `normal-only`: source material copies retaining the original shader
+  Normal chain while replacing Base Color, roughness and metallic inputs
+  with neutral values.
+
+Temporary material copies are assigned only in the Blender rendering
+session; the original `.blend`, GLBs and runtime models are not modified.
+Original material graph metadata records which slots had Base Color and
+Normal links. For each hand, the review expands from 24 to **28 frames**
+(**56 total**), and CI checks each exact material/pose/variant combination.
+Do not attribute the defect to normal maps or color texture until the new
+comparison has been rendered and inspected; other shader graph inputs may
+remain. No uncalibrated pose is treated as physiological flexion.
