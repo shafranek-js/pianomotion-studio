@@ -48,3 +48,35 @@ jobs:
           apps/client/src/i18n
       - name: Focused unit tests
         run: npx vitest run apps/client/src/render3d/testingHandSkin.test.ts apps/client/src/render3d/testingHandIntegration.actual.test.ts apps/client/src/settings/handModel.test.ts
+
+  browser-comparison:
+    name: Testing hand / headless WebGL A-B
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      PIANOMOTION_BROWSER_CHANNEL: chromium
+      PIANOMOTION_EVIDENCE_DIR: ${{ github.workspace }}/scratch/testing-hand-browser
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Install Playwright Chromium and Linux dependencies
+        run: npx playwright install --with-deps chromium
+      - name: Prepare local-only test resources
+        run: node tools/ensure-test-assets.mjs
+      - name: Capture real WebGL hand A-B
+        run: npx playwright test --config tests/browser/anatomical-improved.playwright.config.ts --grep "Testing hand: WebXR-driven anatomical surface"
+      - name: Save WebGL screenshots and diagnostic traces
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: testing-hand-webgl-${{ github.run_number }}
+          path: |
+            scratch/testing-hand-browser/playwright-results/
+            scratch/testing-hand-browser/playwright-report.json
+          if-no-files-found: warn
+          retention-days: 14
