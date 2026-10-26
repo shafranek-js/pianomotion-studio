@@ -103,7 +103,42 @@ def rms(vector):
     return math.sqrt(float(np.mean(np.sum(vector * vector, axis=1))))
 
 
-def generate_one(arm, mesh, modifier, bone_name, shape_name, rest_positions):
+def surface_distortion(reference, displaced, triangles):
+    """Whole-hand face-area diagnostics, measured at equal triangles/pose."""
+    bad_quarter = 0
+    bad_half = 0
+    above_double = 0
+    ratios = []
+    for triangle in triangles:
+        a, b, c = triangle
+        base = np.linalg.norm(np.cross(
+            reference[b] - reference[a], reference[c] - reference[a]
+        )) / 2
+        if base <= 1e-12:
+            continue
+        current = np.linalg.norm(np.cross(
+            displaced[b] - displaced[a], displaced[c] - displaced[a]
+        )) / 2
+        ratio = float(current / base)
+        if not math.isfinite(ratio):
+            raise ValueError("Corrective skin has non-finite triangle area")
+        ratios.append(ratio)
+        bad_quarter += ratio < 0.25
+        bad_half += ratio < 0.5
+        above_double += ratio > 2
+    if not ratios:
+        raise ValueError("No valid skin triangles for corrective QA")
+    return {
+        "faces": len(ratios),
+        "belowQuarter": bad_quarter,
+        "belowHalf": bad_half,
+        "aboveDouble": above_double,
+        "minimumRatio": min(ratios),
+        "maximumRatio": max(ratios),
+    }
+
+
+def generate_one(arm, mesh, modifier, bone_name, shape_name, rest_positions, triangles):
     shape = mesh.data.shape_keys.key_blocks.get(shape_name)
     if shape is None:
         raise ValueError(f"Missing prepared shape key: {shape_name}")
@@ -196,6 +231,10 @@ def generate_one(arm, mesh, modifier, bone_name, shape_name, rest_positions):
         corrected = rms(desired[candidates] - candidate_mesh[candidates])
         shape.value = 0.0
 
+        before_areas = surface_distortion(rest_positions, linear, triangles)
+        target_areas = surface_distortion(rest_positions, desired, triangles)
+        candidate_areas = surface_distortion(rest_positions, candidate_mesh, triangles)
+
         if not math.isfinite(corrected) or corrected >= baseline:
             raise ValueError(
                 f"{shape_name} did not improve DQS-targeted RMS: "
@@ -213,6 +252,9 @@ def generate_one(arm, mesh, modifier, bone_name, shape_name, rest_positions):
             "rmsImprovementPercent": (1 - corrected / baseline) * 100,
             "maxLbsReconstructionErrorMeters": max_error,
             "maxRestDeltaMeters": float(np.max(np.linalg.norm(correction, axis=1))),
+            "lbsDistortion": before_areas,
+            "dqsDistortion": target_areas,
+            "candidateDistortion": candidate_areas,
             "glTFExportApproved": False,
         }
     finally:
@@ -230,9 +272,15 @@ def main():
     bpy.ops.wm.open_mainfile(filepath=str(args.input.resolve()))
     arm, mesh, modifier = resolve_rig()
     rest = np.array([v.co[:] for v in mesh.data.vertices], dtype=np.float64)
+    triangles = [
+        tuple(face.vertices) for face in mesh.data.polygons
+        if len(face.vertices) == 3
+    ]
+    if len(triangles) != len(mesh.data.polygons):
+        raise ValueError("Non-triangulated surface prevents quantitative skin checks")
     targets = []
     for bone, name in TARGET_JOINTS.items():
-        results = generate_one(arm, mesh, modifier, bone, name, rest)
+        results = generate_one(arm, mesh, modifier, bone, name, rest, triangles)
         print("[Testing DQS-derived prototype]", json.dumps(results))
         targets.append(results)
 
