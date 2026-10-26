@@ -18,6 +18,7 @@ JOINTS = (
 )
 ANGLES = (0, 30, 60, 90)
 MATERIALS = ("textured", "clay")
+MATERIAL_ISOLATION = ("albedo-only", "normal-only")
 BASE_VARIANTS = ("lbs",)
 SIXTY_VARIANTS = ("lbs", "preserve-volume", "bounded-corrective")
 SIDES = ("left", "right")
@@ -26,7 +27,7 @@ SIDES = ("left", "right")
 def load_and_check(directory: Path, side: str) -> dict:
     path = directory / f"{side}-bounded-joint-review.json"
     report = json.loads(path.read_text(encoding="utf8"))
-    if (report.get("schema") != "testing-joint-material-pose-blender-v2"
+    if (report.get("schema") != "testing-joint-material-pose-blender-v3"
             or report.get("side") != side
             or report.get("exportApproved") is not False
             or report.get("humanVisualReviewAccepted") is not False
@@ -52,9 +53,10 @@ def load_and_check(directory: Path, side: str) -> dict:
         for bone, _ in JOINTS
         for angle in ANGLES
         for variant in (SIXTY_VARIANTS if angle == 60 else BASE_VARIANTS)
-        for material in MATERIALS
+        for material in (MATERIALS + MATERIAL_ISOLATION
+                         if angle == 60 and variant == "lbs" else MATERIALS)
     }
-    if set(mapping) != expected or len(mapping) != 24:
+    if set(mapping) != expected or len(mapping) != 28:
         raise ValueError(f"Incomplete pose/material coverage for {side}: "
                          f"missing {expected - set(mapping)}, extra {set(mapping) - expected}")
     return mapping
@@ -75,7 +77,9 @@ def build(directory: Path) -> str:
                 for variant in variants:
                     blocks.append(f'<div class="comparison"><h5>{html.escape(variant)}</h5>'
                                   '<div class="images">')
-                    for material in MATERIALS:
+                    materials = (MATERIALS + MATERIAL_ISOLATION
+                                 if angle == 60 and variant == "lbs" else MATERIALS)
+                    for material in materials:
                         filename = maps[side][(bone, angle, variant, material)]
                         blocks.append(
                             f'<figure><a href="{quote(filename)}">'
@@ -119,7 +123,8 @@ figcaption { text-align: center; font-size: .85rem; padding: .2rem; }
         f'<style>{css}</style></head><body>'
         '<header><h1>Testing hand: real Blender joint evidence</h1>'
         '<p>Original textured material versus neutral clay without shader '
-        'normal maps. Identical mesh, light and camera per joint.</p>'
+        'normal maps; at 60° LBS additionally isolate original albedo and '
+        'normal-map shading. Identical mesh, light and camera per joint.</p>'
         '<p><a href="#left">Left hand</a> · '
         '<a href="#right">Right hand</a></p></header>'
         '<p class="note"><strong>Research only — NOT visually approved.</strong> '
@@ -142,7 +147,7 @@ def main() -> None:
     page = build(directory)
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(page, encoding="utf8")
-    print("[Testing hand gallery]", args.output, "48 verified real PNGs")
+    print("[Testing hand gallery]", args.output, "56 verified real PNGs")
 
 
 if __name__ == "__main__":
