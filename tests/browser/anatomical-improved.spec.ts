@@ -2613,6 +2613,18 @@ test("Testing hand: matched WebGL model and camera evidence", async ({ page }, t
     }
   }
 
+  // Still-image comparison is insufficient: the Testing hand must actually
+  // advance its Three.js render loop and hand motion while the MIDI plays.
+  // Software-rendered CI frame times are diagnostic, not hardware FPS targets.
+  await seekToTime(page, 0.75);
+  const playbackProbe = await sampleAnimatedRender(page, 80);
+  expect(playbackProbe.renderedFrames).toBeGreaterThan(0);
+  expect(playbackProbe.handUpdateFrames).toBeGreaterThan(0);
+  await writeFile(
+    testInfo.outputPath("testing-hand-playback-diagnostics.json"),
+    JSON.stringify(playbackProbe, null, 2),
+    "utf8",
+  );
   const summary = {
     originalPerformancePlanId: originalPlanId,
     cameraPresets: cameras,
