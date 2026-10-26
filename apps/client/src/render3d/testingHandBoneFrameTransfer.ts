@@ -180,6 +180,7 @@ export function transferTestingWeightsInBoneFrames(
       const output = anatomical.clone();
       output.setAttribute("skinIndex", skinnedQuery.getAttribute("skinIndex").clone());
       output.setAttribute("skinWeight", skinnedQuery.getAttribute("skinWeight").clone());
+      output.userData.testingWebxrSkinTransfer = true;
       output.userData.testingBoneFrameTransfer = true;
       output.userData.testingTransferStats = skinnedQuery.userData.testingTransferStats;
       output.userData.testingBoneFrameMapping = mapped.stats;

@@ -409,13 +409,57 @@ describe("Testing hand: real anatomical shell on original WebXR skeleton", () =>
             expect(total).toBeCloseTo(1, 4);
           }
         }
+
+        // Live A/B contract: original Testing -> partial thumb calibration ->
+        // exactly the same original. Real LOD2 assets, both hands. Never alter
+        // source mesh positions, webxr bone bind pose, or saved GLB.
+        const loadedTestingMesh = () => {
+          let found: THREE.SkinnedMesh | null = null;
+          model.group.traverse(node => {
+            if (node instanceof THREE.SkinnedMesh && node.geometry.userData.testingWebxrSkinTransfer) {
+              found = node;
+            }
+          });
+          expect(found).not.toBeNull();
+          return found! as THREE.SkinnedMesh;
+        };
+        const original = loadedTestingMesh();
+        const basePosition = Array.from(original.geometry.getAttribute("position").array);
+        const baseIndices = Array.from(original.geometry.getAttribute("skinIndex").array);
+        const baseWeights = Array.from(original.geometry.getAttribute("skinWeight").array);
+
+        model.setTestingThumbStrength(0.25);
+        await model.waitForHandModelReady();
+        const partial = loadedTestingMesh();
+        expect(partial.geometry.userData.testingBoneFrameTransfer).toBe(true);
+        expect(partial.geometry.userData.testingBoneFrameMapping).toMatchObject({
+          thumbAxialStrength: 0.25,
+        });
+        expect(Array.from(partial.geometry.getAttribute("position").array)).toEqual(basePosition);
+        expect(partial.skeleton.bones).toHaveLength(25);
+        const partialWeights = Array.from(partial.geometry.getAttribute("skinWeight").array);
+        const partialIndices = Array.from(partial.geometry.getAttribute("skinIndex").array);
+        expect(partialWeights.some((value, index) =>
+          Math.abs(value - baseWeights[index]!) > 1e-5 ||
+          partialIndices[index] !== baseIndices[index])).toBe(true);
+
+        model.setTestingThumbStrength(0);
+        await model.waitForHandModelReady();
+        const restored = loadedTestingMesh();
+        expect(restored.geometry.userData.testingBoneFrameTransfer).not.toBe(true);
+        expect(Array.from(restored.geometry.getAttribute("position").array)).toEqual(basePosition);
+        expect(Array.from(restored.geometry.getAttribute("skinIndex").array)).toEqual(baseIndices);
+        expect(Array.from(restored.geometry.getAttribute("skinWeight").array)).toEqual(baseWeights);
+        for (const [name, position] of sourceBones) {
+          expect(model.getBone(name)!.position.distanceTo(position)).toBeLessThan(1e-5);
+        }
       } finally {
         model.dispose();
         textures.baseColor.dispose();
         textures.normal.dispose();
         textures.roughness.dispose();
       }
-      expect(leaseReleases).toBe(4);
+      expect(leaseReleases).toBe(6);
     }
   });
 });
