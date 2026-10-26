@@ -100,7 +100,8 @@ export function transferWebxrSkinToAnatomicalSurface(
     const cx = cell(x);
     const cy = cell(y);
     const cz = cell(z);
-    let anatomicalFinger = 0;
+    let guidedFinger = 0;
+    let fingerFade = 0;
     if (options && targetJoints && targetWeights) {
       const scores = new Float64Array(6);
       for (let slot = 0; slot < 4; slot++) {
@@ -114,7 +115,11 @@ export function transferWebxrSkinToAnatomicalSurface(
       for (let digit = 1; digit <= 5; digit++) {
         if (scores[digit]! > scores[best]!) best = digit;
       }
-      anatomicalFinger = best > 0 && scores[best]! >= 0.82 ? best : 0;
+      const confidence = best > 0 ? scores[best]! : 0;
+      guidedFinger = confidence >= 0.55 ? best : 0;
+      // Cubic fade makes the webbing/palm-to-finger boundary continuous:
+      // no abrupt skin-weight cutoff at the 0.82 classification threshold.
+      fingerFade = guidedFinger > 0 ? THREE.MathUtils.smoothstep(confidence, 0.55, 0.82) : 0;
     }
     const candidates: number[] = [];
     // Include all neighbouring bind-surface samples in at least one full shell,
@@ -137,11 +142,11 @@ export function transferWebxrSkinToAnatomicalSurface(
     // Dense anatomy and coarse WebXR do not always share nearest samples
     // for a digit. Guarantee at least one matching digit reference, rather
     // than allowing the neighbouring finger to claim 100% of this vertex.
-    if (anatomicalFinger > 0 && referenceFinger &&
-        !candidates.some(index => referenceFinger[index] === anatomicalFinger)) {
-      const matching = sourceByFinger[anatomicalFinger]!;
+    if (guidedFinger > 0 && referenceFinger &&
+        !candidates.some(index => referenceFinger[index] === guidedFinger)) {
+      const matching = sourceByFinger[guidedFinger]!;
       if (matching.length === 0) {
-        throw new Error(`Testing WebXR reference lacks digit ${anatomicalFinger} samples.`);
+        throw new Error(`Testing WebXR reference lacks digit ${guidedFinger} samples.`);
       }
       const nearestMatching = matching.map(index => {
         const dx = x - source.getX(index);
@@ -159,13 +164,20 @@ export function transferWebxrSkinToAnatomicalSurface(
         const dz = z - source.getZ(index);
         const distanceSquared = dx * dx + dy * dy + dz * dz;
         const sourceFinger = referenceFinger?.[index] ?? 0;
-        const mismatch = anatomicalFinger > 0 && sourceFinger !== anatomicalFinger;
-        const penalty = mismatch ? (sourceFinger === 0 ? 0.18 : 0.81) : 0;
+        const mismatch = guidedFinger > 0 && sourceFinger !== guidedFinger;
+        const penalty = mismatch ? (sourceFinger === 0 ? 0.18 : 0.81) * fingerFade : 0;
         return { index, distanceSquared, score: distanceSquared + penalty };
       });
     const physicalNearest = Math.min(...nearest.map(candidate => candidate.distanceSquared));
     nearest.sort((a, b) => a.score - b.score || a.index - b.index);
+    const strongestMatchingSample = guidedFinger > 0 && referenceFinger
+      ? nearest.find(candidate => referenceFinger[candidate.index] === guidedFinger)
+      : undefined;
     nearest.length = Math.min(nearest.length, 12);
+    if (strongestMatchingSample && fingerFade > 0.5 &&
+        !nearest.some(candidate => candidate.index === strongestMatchingSample.index)) {
+      nearest[nearest.length - 1] = strongestMatchingSample;
+    }
     nearestDistancesInches[vertex] = Math.sqrt(physicalNearest);
 
     // Interpolate WebXR vertex weights rather than nearest-neighbour copying:
@@ -183,13 +195,18 @@ export function transferWebxrSkinToAnatomicalSurface(
         if (weight > 0) influence.set(joint, (influence.get(joint) ?? 0) + spatialWeight * weight);
       }
     }
-    // For strongly labelled anatomical digit regions, no other finger
-    // should ever articulate the skin. Keep wrist/carpal influences and
-    // proper same-digit blends; unclassified palm/webbing remains smooth.
-    if (anatomicalFinger > 0 && options) {
-      for (const [joint] of influence) {
+    // Fade foreign-digit influences to zero rather than creating a hard
+    // deformation seam at the anatomical webbing boundary. Past the high-
+    // confidence threshold, only the correct finger and neutral wrist can
+    // influence this vertex.
+    if (guidedFinger > 0 && options) {
+      for (const [joint, value] of influence) {
         const sourceDigit = fingerId(options.webxrBoneNames[joint]!);
-        if (sourceDigit > 0 && sourceDigit !== anatomicalFinger) influence.delete(joint);
+        if (sourceDigit > 0 && sourceDigit !== guidedFinger) {
+          const corrected = value * (1 - fingerFade);
+          if (corrected <= 1e-12) influence.delete(joint);
+          else influence.set(joint, corrected);
+        }
       }
     }
     const strongest = [...influence.entries()]
