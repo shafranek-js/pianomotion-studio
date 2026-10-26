@@ -40,7 +40,7 @@ export type SoundOutputSetting = z.infer<typeof SoundOutputSchema>;
 export const CalculationEngineSchema = z.enum(["python", "typescript"]);
 export type CalculationEngine = z.infer<typeof CalculationEngineSchema>;
 
-export const HandModelSchema = z.enum(["anatomical", "anatomical-improved", "webxr"]);
+export const HandModelSchema = z.enum(["anatomical", "anatomical-improved", "webxr", "testing"]);
 export type HandModel = z.infer<typeof HandModelSchema>;
 
 export interface Settings {
@@ -211,7 +211,7 @@ export function sanitizeSettings(input: Partial<Settings> | unknown): Settings {
     ? "realistic" : storedSkinStyle;
 
   const handModel: HandModel =
-    raw.handModel === "webxr" || raw.handModel === "anatomical" || raw.handModel === "anatomical-improved"
+    raw.handModel === "webxr" || raw.handModel === "anatomical" || raw.handModel === "anatomical-improved" || raw.handModel === "testing"
       ? raw.handModel
       : DEFAULT_SETTINGS.handModel;
 
