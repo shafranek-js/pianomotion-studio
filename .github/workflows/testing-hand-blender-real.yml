@@ -140,6 +140,53 @@ jobs:
           --input scratch/blender-correctives/right-lod0.blend
           --output scratch/blender-correctives/right-mcp-candidate.blend
           --report scratch/blender-correctives/right-mcp-candidate.json
+      - name: Bake measured-axis MCP and pinky DIP candidates — left
+        run: >-
+          blender -b -t 2 --python-exit-code 2
+          --python tools/testing-hand-blender/prototype_joint_correctives.py --
+          --input scratch/blender-correctives/left-lod0.blend
+          --axes scratch/blender-correctives/left-unsigned-hinge-axes.json
+          --side left
+          --output scratch/blender-correctives/left-measured-joint-candidates.blend
+          --report scratch/blender-correctives/left-measured-joint-candidates.json
+      - name: Bake measured-axis MCP and pinky DIP candidates — right
+        run: >-
+          blender -b -t 2 --python-exit-code 2
+          --python tools/testing-hand-blender/prototype_joint_correctives.py --
+          --input scratch/blender-correctives/right-lod0.blend
+          --axes scratch/blender-correctives/right-unsigned-hinge-axes.json
+          --side right
+          --output scratch/blender-correctives/right-measured-joint-candidates.blend
+          --report scratch/blender-correctives/right-measured-joint-candidates.json
+      - name: Validate measured-axis candidates but prohibit release
+        run: |
+          python - <<'PY'
+          import json, math
+          from pathlib import Path
+          folder = Path("scratch/blender-correctives")
+          for hand in ("left","right"):
+              report = json.loads((folder / f"{hand}-measured-joint-candidates.json").read_text())
+              assert report["schema"] == "testing-measured-axis-joint-corrective-candidate-v1"
+              assert len(report["targets"]) == 4
+              assert {t["targetName"] for t in report["targets"]} == {
+                  "pmcorr_ring_mcp_060","pmcorr_index_mcp_060",
+                  "pmcorr_middle_mcp_060","pmcorr_pinky_dip_060",
+              }
+              assert report["exportApproved"] is False
+              assert report["axisAnatomicallyCalibrated"] is False
+              assert report["physiologicalFlexionSignCalibrated"] is False
+              assert report["keyContactValidated"] is False
+              assert report["allThreeLodsVerified"] is False
+              for target in report["targets"]:
+                  assert target["nonzeroCorrectiveVertices"] >= 10
+                  assert target["candidateToDqsRmsMillimeters"] < target["baselineLbsToDqsRmsMillimeters"]
+                  assert 0 < target["maxRestDeltaMillimeters"] <= 4.001
+                  assert math.isfinite(target["rmsImprovementPercent"])
+                  print(hand, target["targetName"],
+                        round(target["rmsImprovementPercent"], 2), "percent RMS improvement",
+                        "quarter-area collapse safe:", target["noAdditionalQuarterAreaCollapse"])
+              assert (folder / f"{hand}-measured-joint-candidates.blend").stat().st_size > 10000
+          PY
       - name: Render three comparable MCP poses — left
         run: >-
           blender -b -t 2 --python-exit-code 2

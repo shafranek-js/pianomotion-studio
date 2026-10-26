@@ -85,3 +85,22 @@ LBS-to-DQS differences. They are **prioritization diagnostics**, not evidence
 that DQS is anatomically correct, not calibrated flexion, and not an approved
 GLB corrective. A human must review axes, visual bends, key contact and
 actual piano motions before any morph is enabled.
+
+## Measured-axis candidate morphs (not enabled)
+
+The independent Blender job runs `prototype_joint_correctives.py` on each
+LOD0 hand, with the generated unsigned-axis JSON, to create FOUR nonzero
+prototype keys: ring/index/middle MCP at 60° and pinky DIP at 60°.
+It analytically inverts the same Blender LBS model to approximate the
+diagnostic Preserve Volume deformation in the *local sculpt masks*,
+clamping rest-space deltas to 4 mm. A report includes RMS distance to DQS,
+local quarter-area collapses under LBS/DQS/candidate, changed-vertex counts,
+and an explicit boolean indicating **whether the candidate worsened severe
+collapse**. Improved DQS RMS is a *research gate only*, not anatomical proof.
+
+The output `left-measured-joint-candidates.blend` and
+`right-measured-joint-candidates.blend` remain offline artifacts.
+The hinge axis direction and physiological flexion sign are unverified;
+thumb opposition, surface contact, multi-joint poses and LOD1/LOD2 remain
+unverified. Do **not** add these shape keys to the visible Testing model or
+publish experimental GLBs until those gates pass.
