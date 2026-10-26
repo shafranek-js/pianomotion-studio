@@ -10,6 +10,7 @@ on:
       - "apps/client/src/render/pianoScene.ts"
       - ".github/workflows/testing-hand-pr.yml"
       - "tests/browser/anatomical-improved.spec.ts"
+      - "tools/testing-hand-blender/**"
   workflow_dispatch:
 
 permissions:
@@ -56,6 +57,8 @@ jobs:
           apps/client/src/render3d/testingHandSemanticWeights.ts
           apps/client/src/render3d/testingHandSemanticWeights.test.ts
           apps/client/src/render3d/testingHandDeformationHotspots.ts
+          apps/client/src/render3d/testingHandPoseCorrectives.ts
+          apps/client/src/render3d/testingHandPoseCorrectives.test.ts
           apps/client/src/render3d/improvedHandRuntime.ts
           apps/client/src/render3d/pianoScene3d.ts
           apps/client/src/render/pianoScene.ts
@@ -65,7 +68,15 @@ jobs:
           apps/client/src/settings/handModel.test.ts
           apps/client/src/i18n
       - name: Focused unit tests
-        run: npx vitest run apps/client/src/render3d/testingHandSkin.test.ts apps/client/src/render3d/testingHandIntegration.actual.test.ts apps/client/src/render3d/testingHandRegistration.actual.test.ts apps/client/src/render3d/testingHandBoneFrameTransfer.test.ts apps/client/src/render3d/testingHandPianistBenchmark.test.ts apps/client/src/render3d/testingHandSemanticWeights.test.ts apps/client/src/settings/handModel.test.ts
+        run: npx vitest run apps/client/src/render3d/testingHandSkin.test.ts apps/client/src/render3d/testingHandIntegration.actual.test.ts apps/client/src/render3d/testingHandRegistration.actual.test.ts apps/client/src/render3d/testingHandBoneFrameTransfer.test.ts apps/client/src/render3d/testingHandPianistBenchmark.test.ts apps/client/src/render3d/testingHandSemanticWeights.test.ts apps/client/src/render3d/testingHandPoseCorrectives.test.ts apps/client/src/settings/handModel.test.ts
+
+  blender-syntax:
+    name: Testing hand / Blender authoring scripts compile
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify Blender Python syntax without bpy
+        run: python -m py_compile tools/testing-hand-blender/prepare_corrective_sculpt.py
 
   browser-comparison:
     name: Testing hand / visual evidence — ${{ matrix.model }}
