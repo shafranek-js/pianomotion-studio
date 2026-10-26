@@ -201,8 +201,15 @@ describe("Testing hand: real anatomical shell on original WebXR skeleton", () =>
             }
             expect(JSON.stringify(pose)).toBe(serializedPose);
             const deformation = measureTestingHandDeformation(mesh!);
-            console.info("[Testing skinned triangle deformation]", side, "hover=" + hover,
-              JSON.stringify(deformation));
+            let webxrMesh: THREE.SkinnedMesh | undefined;
+            referenceMotion.group.traverse(node => {
+              if (node instanceof THREE.SkinnedMesh) webxrMesh = node;
+            });
+            expect(webxrMesh).toBeDefined();
+            const webxrDeformation = measureTestingHandDeformation(webxrMesh!);
+            console.info("[Testing vs WebXR skinned triangle deformation]", side, "hover=" + hover,
+              JSON.stringify({ testing: deformation, webxr: webxrDeformation }));
+            expect(webxrDeformation.inspectedTriangles).toBeGreaterThan(0);
             expect(deformation.inspectedTriangles).toBeGreaterThan(7000);
             expect(deformation.edgeCompressionMin).toBeGreaterThan(0);
             expect(deformation.edgeStretchMax).toBeLessThan(100);
