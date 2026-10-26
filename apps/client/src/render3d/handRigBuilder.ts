@@ -36,6 +36,7 @@ import {
 } from "./improvedHandContact";
 import { solveFixedLengthFingerChain } from "./anatomicalHandContact";
 import { transferWebxrSkinToAnatomicalSurface } from "./testingHandSkin";
+import { transferTestingWeightsInBoneFrames } from "./testingHandBoneFrameTransfer";
 import { attachTestingHandMorphTargets } from "./testingHandMorphTargets";
 
 export const WHITE_KEY_WIDTH_IN = 6.5 / 7.0;
@@ -2827,20 +2828,34 @@ function buildTestingHandRig(
   lod: ImprovedHandLodManifest,
   expectedNames: readonly string[],
   frames: ImprovedHandManifestExtras,
+  thumbStrength: 0 | 0.25 | 0.5 | 0.75 | 1 = 0,
 ): ParsedHandGlbRig {
   const driver = parseHandGlbRig(hand, material, group);
   let anatomical: ParsedHandGlbRig | null = null;
   try {
     anatomical = buildImprovedHandGlbRig(hand, material, group, buffer, lod, expectedNames, frames);
-    const surface = transferWebxrSkinToAnatomicalSurface(
-      anatomical.skinnedMesh.geometry,
-      driver.skinnedMesh.geometry,
-      driver.skinnedMesh.skeleton.bones.length,
-      {
-        anatomicalBoneNames: anatomical.skinnedMesh.skeleton.bones.map(bone => bone.name),
-        webxrBoneNames: driver.skinnedMesh.skeleton.bones.map(bone => bone.name),
-      },
-    );
+    const weightTransferOptions = {
+      anatomicalBoneNames: anatomical.skinnedMesh.skeleton.bones.map(bone => bone.name),
+      webxrBoneNames: driver.skinnedMesh.skeleton.bones.map(bone => bone.name),
+    };
+    // Zero is byte-for-byte the original Testing transfer algorithm.
+    // For A/B, map only native thumb query coordinates into measured WebXR
+    // bind frames; the visible POSITION/UV/NORMAL geometry is unchanged.
+    const surface = thumbStrength === 0
+      ? transferWebxrSkinToAnatomicalSurface(
+        anatomical.skinnedMesh.geometry,
+        driver.skinnedMesh.geometry,
+        driver.skinnedMesh.skeleton.bones.length,
+        weightTransferOptions,
+      )
+      : transferTestingWeightsInBoneFrames(
+        anatomical.skinnedMesh.geometry,
+        driver.skinnedMesh.geometry,
+        anatomical.skinnedMesh.skeleton.bones,
+        driver.skinnedMesh.skeleton.bones,
+        weightTransferOptions,
+        { thumbAxialStrength: thumbStrength },
+      );
     const mesh = new THREE.SkinnedMesh(surface, material);
     mesh.castShadow = true;
     mesh.receiveShadow = true;
@@ -2898,6 +2913,7 @@ export class Hand3DMeshGroup {
   private loadedLod: ImprovedHandLod | null = null;
   private textureLease: ImprovedHandTextureLease | null = null;
   private testingMaterialMode: "original" | "no-normal" | "no-albedo" | "clay" = "original";
+  private testingThumbStrength: 0 | 0.25 | 0.5 | 0.75 | 1 = 0;
   private readonly readyWaiters = new Set<{ resolve: () => void; reject: (error: Error) => void }>();
   private readonly forearmOpeningPointScratch: THREE.Vector3[] = [];
   private readonly improvedContactPointScratch = Array.from({ length: 24 }, () => new THREE.Vector3());
@@ -4282,18 +4298,16 @@ export class Hand3DMeshGroup {
       }
 
       stagingMaterial = this.createImprovedHandMaterial(lease);
-      const buildRig = requestedModel === TESTING_HAND_MODEL_ID
-        ? buildTestingHandRig
-        : buildImprovedHandGlbRig;
-      stagedRig = buildRig(
-        this.hand,
-        stagingMaterial,
-        stagingGroup,
-        asset.buffer,
-        asset.lod,
-        IMPROVED_HAND_JOINT_NAMES,
-        asset.manifest.extras,
-      );
+      stagedRig = requestedModel === TESTING_HAND_MODEL_ID
+        ? buildTestingHandRig(
+          this.hand, stagingMaterial, stagingGroup, asset.buffer,
+          asset.lod, IMPROVED_HAND_JOINT_NAMES, asset.manifest.extras,
+          this.testingThumbStrength,
+        )
+        : buildImprovedHandGlbRig(
+          this.hand, stagingMaterial, stagingGroup, asset.buffer,
+          asset.lod, IMPROVED_HAND_JOINT_NAMES, asset.manifest.extras,
+        );
       stagingGroup.updateMatrixWorld(true);
       stagedRig.skinnedMesh.skeleton.update();
       this.assertImprovedRestPose(stagedRig);
@@ -4406,6 +4420,19 @@ export class Hand3DMeshGroup {
    * Reuses the leased original textures; it does not touch geometry, bone
    * animation, glTF source assets or the other three selectable hand models.
    */
+  /**
+   * Experimental A/B setting. Rebuilds the Testing mesh asynchronously and
+   * atomically: keep the old hand visible until its replacement is ready.
+   * No legacy model, glTF, or source WebXR bone is changed.
+   */
+  public setTestingThumbStrength(strength: 0 | 0.25 | 0.5 | 0.75 | 1): void {
+    if (this.isDisposed || this.testingThumbStrength === strength) return;
+    this.testingThumbStrength = strength;
+    if (this.requestedHandModel === TESTING_HAND_MODEL_ID) {
+      void this.requestImprovedHandLod(this.requestedLod ?? this.loadedLod ?? 0);
+    }
+  }
+
   public setTestingMaterialMode(mode: "original" | "no-normal" | "no-albedo" | "clay"): void {
     if (this.testingMaterialMode === mode) return;
     this.testingMaterialMode = mode;

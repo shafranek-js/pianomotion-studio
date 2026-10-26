@@ -147,3 +147,22 @@ unchanged while those gates are incomplete.
 - Existing asset licensing/provenance restrictions still apply (see `docs/PROVENANCE.md`).
 
 Do not merge to `main` or deploy Testing before a rendered-image review and typecheck/unit/browser gates. This branch is a **research preview** intended for user comparison, not a claim that deformation quality is solved.
+
+## Live Testing thumb A/B (27 October 2026 preview)
+
+Preferences → Hand Model → Testing now exposes an *explicit research-only*
+thumb bind calibration percentage: **0% (original)**, 25%, 50%, 75%, 100%.
+Changing it rebuilds both Testing shell weight fields while retaining the
+original realistic POSITION/UV/NORMAL assets and WebXR skeleton and motion.
+Setting **0%** takes the original weight transfer code path; none of the
+experimental candidates are enabled by default. Other hand models are not
+affected. The setting persists after reload; returning it to 0% provides an
+immediate known baseline. Material isolation modes remain independent.
+
+**Important:** The 100% thumb candidate previously showed expanded native
+thumb triangles (right 5 → 23) and increased whole-hand edge stretching, so
+it is **not** a validated correction. Intermediate settings are also only
+unreviewed visual experiments. Do not publish an app with a nonzero value as
+the approved/standard model, claim anatomical quality, or export the
+candidate as a fixed source GLB based on this UI. Run real piano passages
+and compare thumb/index webbing in both hands at identical positions.

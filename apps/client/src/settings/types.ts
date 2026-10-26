@@ -45,6 +45,11 @@ export type HandModel = z.infer<typeof HandModelSchema>;
 
 export const TestingHandMaterialSchema = z.enum(["original", "no-normal", "no-albedo", "clay"]);
 export type TestingHandMaterial = z.infer<typeof TestingHandMaterialSchema>;
+/** Research-only, never applied to WebXR or Anatomical Improved. */
+export const TestingThumbStrengthSchema = z.union([
+  z.literal(0), z.literal(0.25), z.literal(0.5), z.literal(0.75), z.literal(1),
+]);
+export type TestingThumbStrength = z.infer<typeof TestingThumbStrengthSchema>;
 
 export interface Settings {
   /** Visual environment preference; absent in settings saved by older versions. */
@@ -71,6 +76,7 @@ export interface Settings {
     | "photo-3d";
   handModel: HandModel;
   testingHandMaterial: TestingHandMaterial;
+  testingThumbStrength: TestingThumbStrength;
   showHandShadow: boolean;
   soundOutput: "synth" | "soundfont" | "webmidi";
   soundfontAssetId?: string | null;
@@ -101,6 +107,7 @@ export const SettingsSchema = z.object({
   skinStyle: SkinStyleSchema.default("realistic"),
   handModel: HandModelSchema.default("anatomical"),
   testingHandMaterial: TestingHandMaterialSchema.default("original"),
+  testingThumbStrength: TestingThumbStrengthSchema.default(0),
   showHandShadow: z.boolean().default(true),
   soundOutput: SoundOutputSchema.default("soundfont"),
   soundfontAssetId: z.string().nullable().default(BUILTIN_SOUNDFONT_ID),
@@ -124,6 +131,7 @@ export const DEFAULT_SETTINGS: Settings = {
   skinStyle: "realistic",
   handModel: "anatomical",
   testingHandMaterial: "original",
+  testingThumbStrength: 0,
   showHandShadow: true,
   soundOutput: "soundfont",
   soundfontAssetId: BUILTIN_SOUNDFONT_ID,
@@ -225,6 +233,9 @@ export function sanitizeSettings(input: Partial<Settings> | unknown): Settings {
     ? raw.testingHandMaterial as TestingHandMaterial
     : DEFAULT_SETTINGS.testingHandMaterial;
 
+  const testingThumbStrength = TestingThumbStrengthSchema.safeParse(raw.testingThumbStrength).success
+    ? raw.testingThumbStrength as TestingThumbStrength : DEFAULT_SETTINGS.testingThumbStrength;
+
   const showHandShadow =
     typeof raw.showHandShadow === "boolean"
       ? raw.showHandShadow
@@ -261,6 +272,7 @@ export function sanitizeSettings(input: Partial<Settings> | unknown): Settings {
     skinStyle,
     handModel,
     testingHandMaterial,
+    testingThumbStrength,
     showHandShadow,
     soundOutput,
     soundfontAssetId,

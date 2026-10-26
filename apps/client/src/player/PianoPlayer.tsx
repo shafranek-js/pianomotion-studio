@@ -566,6 +566,7 @@ export function PianoPlayer({
       stageAppearance: next.stageAppearance,
       handModel: next.handModel,
       testingHandMaterial: next.testingHandMaterial,
+      testingThumbStrength: next.testingThumbStrength,
     });
     transportRef.current?.setLeadInSeconds(Math.abs(next.leadInSeconds));
     if (next.keyStyle !== sourceContextRef.current.keyStyle) handleKeyStyleChange(next.keyStyle);
@@ -754,6 +755,7 @@ export function PianoPlayer({
           stageAppearance: settings.stageAppearance,
           handModel: settings.handModel,
           testingHandMaterial: settings.testingHandMaterial,
+          testingThumbStrength: settings.testingThumbStrength,
         },
         onContextLost: (error) => {
           if (live) onStatusChangeRef.current({
@@ -781,6 +783,7 @@ export function PianoPlayer({
           renderCapFps: settings.renderCapFps,
           handModel: settings.handModel,
           testingHandMaterial: settings.testingHandMaterial,
+          testingThumbStrength: settings.testingThumbStrength,
         });
         scene.setPianoKeyListeners(
           (pitch) => {
@@ -910,6 +913,7 @@ export function PianoPlayer({
       stageAppearance: settings.stageAppearance,
       handModel: settings.handModel,
           testingHandMaterial: settings.testingHandMaterial,
+          testingThumbStrength: settings.testingThumbStrength,
     });
     transportRef.current?.setLeadInSeconds(Math.abs(settings.leadInSeconds));
   }, [settings]);

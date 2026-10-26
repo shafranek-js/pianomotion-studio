@@ -535,6 +535,11 @@ export class PianoScene3D {
         ...(settings.showHandShadow !== undefined ? { shadow: settings.showHandShadow } : {}),
       });
     }
+    if (settings.testingThumbStrength !== undefined) {
+      // Controlled research A/B; affects only Testing shell weight sampling.
+      this.leftHand3D.setTestingThumbStrength(settings.testingThumbStrength);
+      this.rightHand3D.setTestingThumbStrength(settings.testingThumbStrength);
+    }
     if (settings.testingHandMaterial !== undefined) {
       // Preview shader changes on both loaded Testing hands without reloading
       // the GLB or altering any finger pose, skin weights, or source texture.

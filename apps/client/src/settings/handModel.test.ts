@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_SETTINGS, HandModelSchema, TestingHandMaterialSchema, sanitizeSettings, SettingsSchema } from "./types";
+import { DEFAULT_SETTINGS, HandModelSchema, TestingHandMaterialSchema, TestingThumbStrengthSchema, sanitizeSettings, SettingsSchema } from "./types";
 
 describe("hand model settings compatibility", () => {
   it("keeps anatomical as the default for new and legacy settings", () => {
@@ -31,6 +31,20 @@ describe("hand model settings compatibility", () => {
     }
     expect(sanitizeSettings({ testingHandMaterial: "invalid" }).testingHandMaterial).toBe("original");
     expect(SettingsSchema.safeParse({ testingHandMaterial: "invalid" }).success).toBe(false);
+  });
+
+  it("defaults to unmodified Testing thumb weights and rejects unsanctioned strengths", () => {
+    expect(DEFAULT_SETTINGS.testingThumbStrength).toBe(0);
+    expect(SettingsSchema.parse({}).testingThumbStrength).toBe(0);
+    for (const strength of [0, 0.25, 0.5, 0.75, 1] as const) {
+      expect(TestingThumbStrengthSchema.parse(strength)).toBe(strength);
+      expect(SettingsSchema.parse({ testingThumbStrength: strength }).testingThumbStrength).toBe(strength);
+      expect(sanitizeSettings({ handModel: "testing", testingThumbStrength: strength }).testingThumbStrength).toBe(strength);
+    }
+    for (const invalid of [-1, 2, 0.333, "0.5", null]) {
+      expect(TestingThumbStrengthSchema.safeParse(invalid).success).toBe(false);
+      expect(sanitizeSettings({ testingThumbStrength: invalid }).testingThumbStrength).toBe(0);
+    }
   });
 
 });

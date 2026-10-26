@@ -449,6 +449,32 @@ export function SettingsModal({ isOpen, onClose, onSettingsChanged, presentation
                   <p style={{ margin: "0.35rem 0 0", fontSize: "0.76rem", color: "var(--muted, #9fac9f)" }}>
                     Changes both Testing hands instantly without changing motion or geometry.
                   </p>
+                  <label htmlFor="settings-testing-thumb-strength" style={{ display: "block", fontSize: "0.8rem", color: "var(--muted, #9fac9f)", margin: "0.85rem 0 0.3rem" }}>
+                    Testing — thumb bind calibration A/B:
+                  </label>
+                  <select
+                    id="settings-testing-thumb-strength"
+                    value={settings.testingThumbStrength}
+                    onChange={(e) => handleChange("testingThumbStrength", Number(e.target.value) as AppSettings["testingThumbStrength"])}
+                    style={{
+                      background: "#19211d",
+                      color: "#edf2ed",
+                      border: "1px solid var(--border, #33423a)",
+                      borderRadius: "0.35rem",
+                      padding: "0.4rem 0.6rem",
+                      fontSize: "0.85rem",
+                    }}
+                  >
+                    <option value={0}>0% — Original Testing (baseline)</option>
+                    <option value={0.25}>25% — Experimental</option>
+                    <option value={0.5}>50% — Experimental</option>
+                    <option value={0.75}>75% — Experimental</option>
+                    <option value={1}>100% — Experimental (known stretch regression)</option>
+                  </select>
+                  <p style={{ margin: "0.35rem 0 0", fontSize: "0.76rem", color: "var(--muted, #9fac9f)" }}>
+                    Rebuilds both Testing hand meshes using the same bone poses and original surface.
+                    Research preview only: calibration is not yet anatomically approved.
+                  </p>
                 </div>
               )}
 
