@@ -73,8 +73,10 @@ describe("Testing Blender morph driver contract", () => {
   });
 
   it("is inert for current production GLBs without morph targets", () => {
-    const shape = { morphTargetDictionary: undefined, morphTargetInfluences: undefined }
-      as unknown as THREE.SkinnedMesh;
+    const shape = {
+      morphTargetDictionary: undefined,
+      morphTargetInfluences: undefined,
+    } as unknown as THREE.SkinnedMesh;
     const r = evaluateTestingCorrectiveMorphs(shape, new Map([["index_mcp", 60]]));
     expect(r.supportedTargets).toBe(0);
     expect(r.drivenTargets).toBe(0);
