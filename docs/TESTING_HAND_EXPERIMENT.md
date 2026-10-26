@@ -61,6 +61,43 @@ fingering motion. Preserve the PR as draft until visual acceptance.
 GitHub Actions workflow: `.github/workflows/testing-hand-pr.yml`.
 Browser test: `tests/browser/anatomical-improved.spec.ts`.
 
+## Thumb bind-frame proportional calibration — research candidate (26 October 2026)
+
+The user identified an oversized-looking thumb and angular webbing specifically in
+**Testing**, not in Anatomical (improved). The two rest GLBs do not have
+interchangeable segment lengths. Measurements on the **right LOD0**
+source-derived anatomical bind skeleton versus right.glb WebXR bind:
+
+| Bone segment | Anatomical source-derived | WebXR | WebXR / anatomical |
+|---|---:|---:|---:|
+| Thumb metacarpal → proximal | 5.41 cm | 3.25 cm | 0.60 |
+| Thumb proximal → distal | 2.87 cm | 3.38 cm | 1.18 |
+| Thumb distal → tip | 1.12 cm | 1.49 cm | 1.33 |
+
+The original complete hand_standard.glb is not committed here. This measurement
+is derived from the LOD0 model built from that source using a single global
+similarity transform; it is **not** a direct raw-file inspection.
+
+`testingHandBoneFrameTransfer.ts` now has an **experimental, opt-in
+`thumbAxialScale`** mode that maps anatomical query positions to their
+counterpart WebXR bind frames, scaling *only the thumb bone-local longitudinal
+query coordinate* by the measured segment ratio. The anatomical
+`POSITION`, `NORMAL`, `TEXCOORD_0`, texture data, index topology, original
+GLBs, WebXR joint transforms and musical motion remain unchanged.
+There is no thumb-size slider or user-visible activation.
+
+The real-GLB tests compare both hands at LOD2, validate finite ratios,
+normalized weights, no foreign-digit contamination and unchanged positions.
+The pose test also logs **thumb-only** collapsed/expanded triangle counts and
+maximum severity alongside full-hand metrics for the existing and calibrated
+weight fields at matched MotionPoses.
+
+This is a *candidate*, **not a fix yet**. Its acceptance must be based on
+pose-local improvement at neutral, thumb-under, 30/60/90° bends, both hands,
+all LODs and a rendered human review. Worse deformation or unacceptable
+fingertip positioning rejects the candidate. Existing Testing remains
+unchanged while those gates are incomplete.
+
 ## Acceptance required (not yet performed)
 
 1. Confirm the `Testing` option persists on refresh, selects correctly, switches back safely, and works with **both hands**.
