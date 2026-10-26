@@ -37,6 +37,8 @@ jobs:
           apps/client/src/render3d/handRigBuilder.ts
           apps/client/src/render3d/testingHandSkin.ts
           apps/client/src/render3d/testingHandSkin.test.ts
+          apps/client/src/render3d/testingHandRegistration.ts
+          apps/client/src/render3d/testingHandRegistration.actual.test.ts
           apps/client/src/render3d/testingHandIntegration.actual.test.ts
           apps/client/src/render3d/improvedHandRuntime.ts
           apps/client/src/render3d/pianoScene3d.ts
@@ -47,7 +49,7 @@ jobs:
           apps/client/src/settings/handModel.test.ts
           apps/client/src/i18n
       - name: Focused unit tests
-        run: npx vitest run apps/client/src/render3d/testingHandSkin.test.ts apps/client/src/render3d/testingHandIntegration.actual.test.ts apps/client/src/settings/handModel.test.ts
+        run: npx vitest run apps/client/src/render3d/testingHandSkin.test.ts apps/client/src/render3d/testingHandIntegration.actual.test.ts apps/client/src/render3d/testingHandRegistration.actual.test.ts apps/client/src/settings/handModel.test.ts
 
   browser-comparison:
     name: Testing hand / headless WebGL A-B
