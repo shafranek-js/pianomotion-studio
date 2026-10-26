@@ -4,6 +4,7 @@ import { transferWebxrSkinToAnatomicalSurface } from "./testingHandSkin";
 import { measureTestingHandDeformation } from "./testingHandDeformationQA";
 import { regularizeTestingSkinWeights } from "./testingHandWeightRegularizer";
 import { transferAnatomicalWeightsToWebxrSkeleton } from "./testingHandSemanticWeights";
+import { locateTestingHandDeformationHotspots } from "./testingHandDeformationHotspots";
 import * as THREE from "three";
 import { describe, expect, it } from "vitest";
 import type { MotionPose } from "@handthesia/contracts";
@@ -243,6 +244,24 @@ describe("Testing hand: real anatomical shell on original WebXR skeleton", () =>
             console.info("[Testing vs WebXR skinned triangle deformation]", side, "hover=" + hover,
               JSON.stringify({ testing: deformation, smoothed: smoothedDeformation,
                 semantic: semanticDeformation, webxr: webxrDeformation }));
+            if (hover === 0) {
+              const location = locateTestingHandDeformationHotspots(mesh!, side, 12);
+              const severeBones = location.bones.filter(row =>
+                row.flattenedBelowQuarterArea + row.stretchedAboveDoubleArea > 0);
+              console.info("[Testing joint-localized deformation hotspots]", side, JSON.stringify({
+                triangles: location.trianglesInspected,
+                worstTriangles: location.hotspots.map(row => ({
+                  triangle: row.triangle, joint: row.dominantBone,
+                  areaRatio: Number(row.areaRatio.toFixed(5)),
+                  centroid: row.centroidInches.map(value => Number(value.toFixed(3))),
+                })),
+                mostAffectedBones: severeBones.slice(0, 15),
+              }));
+              expect(location.trianglesInspected).toBe(deformation.inspectedTriangles);
+              expect(location.hotspots.length).toBe(12);
+              expect(location.hotspots[0]!.deformationSeverity).toBeGreaterThanOrEqual(
+                location.hotspots[11]!.deformationSeverity);
+            }
             expect(smoothedDeformation.inspectedTriangles).toBe(deformation.inspectedTriangles);
             expect(webxrDeformation.inspectedTriangles).toBeGreaterThan(0);
             expect(deformation.inspectedTriangles).toBeGreaterThan(7000);
