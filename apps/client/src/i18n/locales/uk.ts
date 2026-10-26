@@ -159,6 +159,7 @@ export const uk: TranslationDictionary = {
     handModel: "3D Модель рук",
     handModelAnatomical: "Анатомічна (реалістична)",
     handModelAnatomicalImproved: "Anatomical (improved)",
+    handModelTesting: "Testing (рух WebXR + реалістична шкіра)",
     handModelWebxr: "WebXR стандартна",
     showShadow: "Тінь від рук",
     showFingerLabels: "Номери пальців на нотах",
