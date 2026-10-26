@@ -120,12 +120,39 @@ biomechanics, key contact, collisions, 0/30/90° bends or LOD1/LOD2.
 
 ## Side-by-side real Blender visual proof
 
-After baking and validating the bounded 60° MCP/DIP candidates on each
-hand, `render_joint_corrective_review.py` renders identical-size joint
-closeups for ring MCP and pinky DIP in three variants: original LBS,
-Blender Preserve Volume, and the numerically bounded candidate.
-Six PNGs per hand and one JSON manifest are included in the same CI
-artifact under `render-review/`. Camera, lighting, armature, pose, and
-geometry source are fixed across the A/B/C triplet. Review must include
-the real full-hand MIDI performance later; **these synthetic offline
-stills do not approve animation, geometry, morph export or contact**.
+The first 60° A/B/C comparison of ring MCP and pinky DIP showed dark
+jagged, seam-like creases already visible on uncorrected LBS and DQS.
+Those frames do **not** identify the cause: original source textures,
+normal maps, surface normals, geometry and intersection artefacts must
+not be conflated.
+
+The follow-up `render_joint_corrective_review.py` produces **24 real
+closeups per hand** (48 total), with the **same source mesh, camera and
+lighting** per joint:
+
+- Unsigned joint bends at **0°, 30°, 60° and 90°** for baseline LBS.
+- At the candidate's authored **60° only**: additional Preserve Volume
+  (DQS reference) and bounded-corrective comparisons. No off-pose
+  application of the fixed 60° morph is passed off as evidence.
+- Each pose/variant rendered twice: **original textured material** and
+  **neutral rough clay** with no material normal-map node. The clay is
+  applied as a temporary view-layer material override; it does not
+  edit mesh positions, material slots, UVs or source GLBs.
+- Camera orthographic scale is reduced for a more useful joint closeup.
+
+The `*-bounded-joint-review.json` manifest (schema
+`testing-joint-material-pose-blender-v2`) identifies every angle,
+variant, material mode and the lack of anatomical calibration/approval.
+The GitHub Actions job rejects missing images, incomplete angle/material
+pairs and incorrect off-60° corrective claims.
+
+**Interpretation:** seams that appear in both textured and neutral-clay
+captures motivate a closer look at topology, shading normals and
+skin-induced geometry. Disappearance in clay suggests investigating
+textures, shader normal maps or material setup, but is *not proof* of
+a single root cause. Unsigned 0–90° rotations are merely controlled
+diagnostic probes, **not confirmed physiological flexion**.
+
+These frames do not replace visual motion acceptance on both hands with
+real MIDI, multi-joint/thumb opposition poses, full LOD checks, key
+contact or export. **Do not merge PR #9 or ship corrected GLBs.**
