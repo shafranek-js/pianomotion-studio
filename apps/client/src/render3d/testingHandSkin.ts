@@ -193,3 +193,68 @@ export function transferWebxrSkinToAnatomicalSurface(
   };
   return result;
 }
+
+
+/**
+ * Diagnostic: weighted influence from another digit on vertices whose native
+ * anatomical skinning identifies one digit with high confidence.
+ * Excludes unlabelled wrist/palm bones; reports, never changes, the mesh.
+ * Lower is better, but 0 alone does not guarantee natural joint creases.
+ */
+export function measureTestingCrossFingerWeights(
+  candidate: THREE.BufferGeometry,
+  anatomical: THREE.BufferGeometry,
+  options: TestingAnatomicalTransferOptions,
+): {
+  inspectedVertices: number;
+  meanForeignDigitWeight: number;
+  verticesAboveTenPercent: number;
+  maximumForeignDigitWeight: number;
+} {
+  const labels = anatomical.getAttribute("skinIndex");
+  const labelWeights = anatomical.getAttribute("skinWeight");
+  const joints = candidate.getAttribute("skinIndex");
+  const weights = candidate.getAttribute("skinWeight");
+  if (!labels || !labelWeights || !joints || !weights ||
+      labels.count !== candidate.getAttribute("position").count ||
+      joints.count !== labels.count || weights.count !== labels.count) {
+    throw new Error("Testing foreign-finger measurement requires matching skinning arrays.");
+  }
+  let inspectedVertices = 0;
+  let totalForeign = 0;
+  let verticesAboveTenPercent = 0;
+  let maximumForeignDigitWeight = 0;
+  for (let vertex = 0; vertex < labels.count; vertex++) {
+    const labelScores = new Float64Array(6);
+    for (let slot = 0; slot < 4; slot++) {
+      const index = Math.round(labels.getComponent(vertex, slot));
+      const strength = labelWeights.getComponent(vertex, slot);
+      if (strength > 0 && index >= 0 && index < options.anatomicalBoneNames.length) {
+        labelScores[fingerId(options.anatomicalBoneNames[index]!)] += strength;
+      }
+    }
+    let dominant = 0;
+    for (let digit = 1; digit <= 5; digit++) {
+      if (labelScores[digit]! > labelScores[dominant]!) dominant = digit;
+    }
+    if (dominant === 0 || labelScores[dominant]! < 0.82) continue;
+    inspectedVertices++;
+    let foreign = 0;
+    for (let slot = 0; slot < 4; slot++) {
+      const index = Math.round(joints.getComponent(vertex, slot));
+      const weight = weights.getComponent(vertex, slot);
+      if (weight <= 0 || index < 0 || index >= options.webxrBoneNames.length) continue;
+      const sourceDigit = fingerId(options.webxrBoneNames[index]!);
+      if (sourceDigit > 0 && sourceDigit !== dominant) foreign += weight;
+    }
+    totalForeign += foreign;
+    maximumForeignDigitWeight = Math.max(maximumForeignDigitWeight, foreign);
+    if (foreign > 0.1) verticesAboveTenPercent++;
+  }
+  return {
+    inspectedVertices,
+    meanForeignDigitWeight: inspectedVertices ? totalForeign / inspectedVertices : 0,
+    verticesAboveTenPercent,
+    maximumForeignDigitWeight,
+  };
+}
