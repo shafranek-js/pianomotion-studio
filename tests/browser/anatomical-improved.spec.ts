@@ -2575,5 +2575,11 @@ test("Testing hand: single-model WebGL screenshot and diagnostics", async ({ pag
   expect((await browserSnapshot(page))?.performancePlanId).toBe(beforePlan);
   const canvas = studioCanvas(page, "3d");
   await expect(canvas).toBeVisible({ timeout: 30_000 });
-  await canvas.screenshot({ path: testInfo.outputPath("testing-webgl-default-camera.png"), timeout: 30_000 });
+  // Animated WebGL never satisfies Playwright's "stable element" screenshot
+  // precondition. Capture the viewport instead, without element scrolling.
+  await page.screenshot({
+    path: testInfo.outputPath("testing-webgl-default-camera.png"),
+    animations: "disabled",
+    timeout: 60_000,
+  });
 });
