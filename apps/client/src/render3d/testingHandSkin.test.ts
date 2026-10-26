@@ -65,6 +65,37 @@ describe("Testing hand: WebXR bone field on anatomical appearance", () => {
     reference.dispose();
   });
 
+  it("keeps a labelled index fingertip from taking the adjacent middle-finger bones", () => {
+    const source = surface([
+      0, 0, 0,
+      0.1, 0, 0,
+    ]);
+    source.setAttribute("skinIndex", new THREE.Uint16BufferAttribute([
+      0, 0, 0, 0,
+      1, 0, 0, 0,
+    ], 4));
+    source.setAttribute("skinWeight", new THREE.Float32BufferAttribute([
+      1, 0, 0, 0,
+      1, 0, 0, 0,
+    ], 4));
+    const target = surface([0.06, 0, 0]);
+    target.setAttribute("skinIndex", new THREE.Uint16BufferAttribute([0, 0, 0, 0], 4));
+    target.setAttribute("skinWeight", new THREE.Float32BufferAttribute([1, 0, 0, 0], 4));
+
+    const baseline = transferWebxrSkinToAnatomicalSurface(target, source, 2);
+    const constrained = transferWebxrSkinToAnatomicalSurface(target, source, 2, {
+      anatomicalBoneNames: ["index-finger-phalanx-distal", "middle-finger-phalanx-distal"],
+      webxrBoneNames: ["index-finger-phalanx-distal", "middle-finger-phalanx-distal"],
+    });
+    expect(baseline.getAttribute("skinIndex").getX(0)).toBe(1);
+    expect(constrained.getAttribute("skinIndex").getX(0)).toBe(0);
+    expect(constrained.userData.testingFingerAware).toBe(true);
+    baseline.dispose();
+    constrained.dispose();
+    target.dispose();
+    source.dispose();
+  });
+
   it("rejects missing skinning and non-finite anatomy rather than silently corrupting it", () => {
     const source = surface([0, 0, 0]);
     const target = surface([0, 0, 0]);
