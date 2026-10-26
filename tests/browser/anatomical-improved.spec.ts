@@ -2567,7 +2567,12 @@ test("Testing hand: matched WebGL model and camera evidence / " + comparedModel,
   }> = [];
 
   for (const model of comparedModels) {
-    await selectHandModel(page, model);
+    // This is a render comparison, not a persistence test. IndexedDB commits
+    // are validated separately and can race on a loaded WebGL render loop.
+    await page.getByRole("button", { name: "Open preferences", exact: true }).click();
+    const preferences = page.getByRole("dialog", { name: "Preferences", exact: true });
+    await preferences.locator("#settings-hand-model").selectOption(model);
+    await preferences.getByRole("button", { name: "Done", exact: true }).click();
     await expectLoadedModel(page, model);
     await expect(studioCanvas(page, "3d")).toBeVisible({ timeout: 30_000 });
 
@@ -2625,7 +2630,10 @@ test("Testing hand: matched WebGL model and camera evidence / " + comparedModel,
   // advance its Three.js render loop and hand motion while the MIDI plays.
   // Software-rendered CI frame times are diagnostic, not hardware FPS targets.
   await seekToTime(page, 0.75);
-  const playbackProbe = await sampleAnimatedRender(page, 80);
+  // Under software-rendered WebGL, 80 frames can exceed the whole score
+  // fragment and stop naturally. Use a smaller probe and inspect actual
+  // renderer counter increments, never assume playback continues indefinitely.
+  const playbackProbe = await sampleAnimatedRender(page, 20);
   expect(playbackProbe.renderedFrames).toBeGreaterThan(0);
   expect(playbackProbe.handUpdateFrames).toBeGreaterThan(0);
   await writeFile(
