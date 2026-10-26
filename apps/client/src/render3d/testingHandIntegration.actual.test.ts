@@ -71,6 +71,19 @@ describe("Testing hand: real anatomical shell on original WebXR skeleton", () =>
         expect(mesh).toBeDefined();
         expect(mesh!.geometry.getAttribute("position").count).toBe(manifest.hands[side].lods[2]!.vertices);
         expect(mesh!.geometry.userData.testingWebxrSkinTransfer).toBe(true);
+        const registration = mesh!.geometry.userData.testingTransferStats as {
+          vertexCount: number;
+          nearestWebxrVertexMeanInches: number;
+          nearestWebxrVertexP95Inches: number;
+          nearestWebxrVertexMaxInches: number;
+          verticesOverHalfInch: number;
+        };
+        expect(registration.vertexCount).toBe(mesh!.geometry.getAttribute("position").count);
+        expect(registration.nearestWebxrVertexMeanInches).toBeGreaterThanOrEqual(0);
+        expect(Number.isFinite(registration.nearestWebxrVertexP95Inches)).toBe(true);
+        expect(Number.isFinite(registration.nearestWebxrVertexMaxInches)).toBe(true);
+        // Regression diagnostic only: interpretation requires anatomical pose review.
+        console.info("[Testing bind-space registration]", side, JSON.stringify(registration));
         expect(mesh!.skeleton.bones).toHaveLength(25);
         expect(model.skinMaterial.map).toBe(textures.baseColor);
         expect(model.skinMaterial.normalMap).toBe(textures.normal);
