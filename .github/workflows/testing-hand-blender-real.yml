@@ -1,0 +1,73 @@
+name: Testing Hand — real Blender rig validation
+
+on:
+  pull_request:
+    paths:
+      - "tools/testing-hand-blender/**"
+      - "apps/client/public/models/hands/improved/**"
+      - ".github/workflows/testing-hand-blender-real.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: testing-hand-blender-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  real-blender:
+    name: Blender import / native armature / corrective scaffold
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Blender
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends blender
+          blender --version
+      - name: Create left LOD0 Blender authoring project
+        run: >-
+          blender -b -t 2 --python-exit-code 2
+          --python tools/testing-hand-blender/prepare_corrective_sculpt.py --
+          --side left
+          --input apps/client/public/models/hands/improved/left-lod0.glb
+          --output-blend scratch/blender-correctives/left-lod0.blend
+          --report scratch/blender-correctives/left-lod0.json
+      - name: Create right LOD0 Blender authoring project
+        run: >-
+          blender -b -t 2 --python-exit-code 2
+          --python tools/testing-hand-blender/prepare_corrective_sculpt.py --
+          --side right
+          --input apps/client/public/models/hands/improved/right-lod0.glb
+          --output-blend scratch/blender-correctives/right-lod0.blend
+          --report scratch/blender-correctives/right-lod0.json
+      - name: Verify results and fail on missing masks
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root = Path('scratch/blender-correctives')
+          for side in ('left','right'):
+              path = root / f'{side}-lod0.json'
+              report = json.loads(path.read_text(encoding='utf8'))
+              assert report['hand'] == side
+              assert report['validatedInBlender'] is False
+              assert report['exportReady'] is False
+              assert len(report['slots']) == 48
+              assert report['unsculpted'] == 48
+              assert all(slot['maskedVertices'] >= 10 for slot in report['slots'])
+              assert all(slot['changedVertices'] == 0 for slot in report['slots'])
+              blend = root / f'{side}-lod0.blend'
+              assert blend.stat().st_size > 10000, blend
+              print(side, 'real Blender import passed; 48 empty slots, explicit NOT export-ready')
+          PY
+      - name: Attach reports and authoring projects
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: testing-hand-blender-lod0-authoring-${{ github.run_number }}
+          path: scratch/blender-correctives/
+          retention-days: 14
+          if-no-files-found: warn
