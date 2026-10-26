@@ -2497,3 +2497,29 @@ test("actual engine articulation matrix captures assigned notes, posed hands, an
     body: JSON.stringify(report, null, 2),
   });
 });
+
+
+test("Testing hand: WebXR-driven anatomical surface in POV and Side Arch", async ({ page }, testInfo) => {
+  test.setTimeout(180_000);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const initial = await loadTwoHandDemoSong(page);
+  const originalPlanId = initial.result.performancePlan?.planId ?? null;
+  const canvas = studioCanvas(page, "3d");
+  await expect(canvas).toBeVisible();
+
+  // Same performance and time under all three skins: only the visual hand
+  // implementation changes. Screenshots are evidence, not visual acceptance.
+  for (const model of ["webxr", "anatomical", "testing"] as const) {
+    await selectHandModel(page, model);
+    await expectLoadedModel(page, model);
+    for (const camera of ["pov", "side_arch"] as const) {
+      await setCamera(page, camera);
+      await expect(canvas).toBeVisible();
+      await canvas.screenshot({ path: testInfo.outputPath(`testing-hand-${model}-${camera}.png`) });
+    }
+    const diagnostic = (await browserSnapshot(page))?.handModelDiagnostics;
+    expect(diagnostic?.left.loadedModel).toBe(model);
+    expect(diagnostic?.right.loadedModel).toBe(model);
+  }
+  expect((await browserSnapshot(page))?.performancePlanId).toBe(originalPlanId);
+});
