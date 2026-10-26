@@ -511,5 +511,5 @@ describe("Testing hand: real anatomical shell on original WebXR skeleton", () =>
       }
       expect(leaseReleases).toBe(6);
     }
-  });
+  }, 30_000); // Two real hands, all LODs and multiple async A/B mesh rebuilds.
 });
