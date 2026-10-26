@@ -15,6 +15,7 @@ export interface PianoSceneDisplaySettings {
   showNoteNames?: boolean;
   skinStyle?: SkinStyle;
   handModel?: "anatomical" | "anatomical-improved" | "webxr" | "testing";
+  testingHandMaterial?: "original" | "no-normal" | "no-albedo" | "clay";
   showHandShadow?: boolean;
   renderCapFps?: number;
 }

@@ -535,6 +535,12 @@ export class PianoScene3D {
         ...(settings.showHandShadow !== undefined ? { shadow: settings.showHandShadow } : {}),
       });
     }
+    if (settings.testingHandMaterial !== undefined) {
+      // Preview shader changes on both loaded Testing hands without reloading
+      // the GLB or altering any finger pose, skin weights, or source texture.
+      this.leftHand3D.setTestingMaterialMode(settings.testingHandMaterial);
+      this.rightHand3D.setTestingMaterialMode(settings.testingHandMaterial);
+    }
     if (settings.handModel !== undefined) {
       this.requestedHandModel = settings.handModel;
       this.applyHandModelSelection();

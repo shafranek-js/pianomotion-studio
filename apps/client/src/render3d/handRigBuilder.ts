@@ -2897,6 +2897,7 @@ export class Hand3DMeshGroup {
   private requestedLod: ImprovedHandLod | null = null;
   private loadedLod: ImprovedHandLod | null = null;
   private textureLease: ImprovedHandTextureLease | null = null;
+  private testingMaterialMode: "original" | "no-normal" | "no-albedo" | "clay" = "original";
   private readonly readyWaiters = new Set<{ resolve: () => void; reject: (error: Error) => void }>();
   private readonly forearmOpeningPointScratch: THREE.Vector3[] = [];
   private readonly improvedContactPointScratch = Array.from({ length: 24 }, () => new THREE.Vector3());
@@ -4319,6 +4320,7 @@ export class Hand3DMeshGroup {
       this.loadedLod = lod;
       this.improvedTriangleCount = asset.lod.triangles;
       this.textureLease = lease;
+      this.applyTestingMaterialMode();
       this.forearmMesh.material = this.improvedForearmMaterial;
       this.resetForearmGeometryForCurrentRig();
       for (const nail of this.fingernails) nail.visible = false;
@@ -4396,6 +4398,30 @@ export class Hand3DMeshGroup {
     this.skinMaterial.attenuationDistance = 0.75;
     this.skinMaterial.sheen = 0.25;
     this.skinMaterial.sheenColor = new THREE.Color(0xe29382);
+    this.skinMaterial.needsUpdate = true;
+  }
+
+  /**
+   * Live visual comparator for the experimental Testing hand ONLY.
+   * Reuses the leased original textures; it does not touch geometry, bone
+   * animation, glTF source assets or the other three selectable hand models.
+   */
+  public setTestingMaterialMode(mode: "original" | "no-normal" | "no-albedo" | "clay"): void {
+    if (this.testingMaterialMode === mode) return;
+    this.testingMaterialMode = mode;
+    this.applyTestingMaterialMode();
+  }
+
+  private applyTestingMaterialMode(): void {
+    if (this.currentHandModel !== TESTING_HAND_MODEL_ID || !this.textureLease) return;
+    const lease = this.textureLease;
+    const mode = this.testingMaterialMode;
+    this.skinMaterial.map = mode === "original" || mode === "no-normal" ? lease.baseColor : null;
+    this.skinMaterial.normalMap = mode === "original" || mode === "no-albedo" ? lease.normal : null;
+    this.skinMaterial.roughnessMap = mode === "clay" ? null : lease.roughness;
+    this.skinMaterial.color.setHex(mode === "no-albedo" || mode === "clay" ? 0x989898 : 0xffffff);
+    this.skinMaterial.normalScale.set(0.28, 0.28);
+    this.skinMaterial.roughness = mode === "clay" ? 0.82 : 0.52;
     this.skinMaterial.needsUpdate = true;
   }
 

@@ -43,6 +43,9 @@ export type CalculationEngine = z.infer<typeof CalculationEngineSchema>;
 export const HandModelSchema = z.enum(["anatomical", "anatomical-improved", "webxr", "testing"]);
 export type HandModel = z.infer<typeof HandModelSchema>;
 
+export const TestingHandMaterialSchema = z.enum(["original", "no-normal", "no-albedo", "clay"]);
+export type TestingHandMaterial = z.infer<typeof TestingHandMaterialSchema>;
+
 export interface Settings {
   /** Visual environment preference; absent in settings saved by older versions. */
   stageAppearance?: StageAppearance;
@@ -67,6 +70,7 @@ export interface Settings {
     | "photo-mesh"
     | "photo-3d";
   handModel: HandModel;
+  testingHandMaterial: TestingHandMaterial;
   showHandShadow: boolean;
   soundOutput: "synth" | "soundfont" | "webmidi";
   soundfontAssetId?: string | null;
@@ -96,6 +100,7 @@ export const SettingsSchema = z.object({
     .default(60),
   skinStyle: SkinStyleSchema.default("realistic"),
   handModel: HandModelSchema.default("anatomical"),
+  testingHandMaterial: TestingHandMaterialSchema.default("original"),
   showHandShadow: z.boolean().default(true),
   soundOutput: SoundOutputSchema.default("soundfont"),
   soundfontAssetId: z.string().nullable().default(BUILTIN_SOUNDFONT_ID),
@@ -118,6 +123,7 @@ export const DEFAULT_SETTINGS: Settings = {
   renderCapFps: 60,
   skinStyle: "realistic",
   handModel: "anatomical",
+  testingHandMaterial: "original",
   showHandShadow: true,
   soundOutput: "soundfont",
   soundfontAssetId: BUILTIN_SOUNDFONT_ID,
@@ -215,6 +221,10 @@ export function sanitizeSettings(input: Partial<Settings> | unknown): Settings {
       ? raw.handModel
       : DEFAULT_SETTINGS.handModel;
 
+  const testingHandMaterial = TestingHandMaterialSchema.safeParse(raw.testingHandMaterial).success
+    ? raw.testingHandMaterial as TestingHandMaterial
+    : DEFAULT_SETTINGS.testingHandMaterial;
+
   const showHandShadow =
     typeof raw.showHandShadow === "boolean"
       ? raw.showHandShadow
@@ -250,6 +260,7 @@ export function sanitizeSettings(input: Partial<Settings> | unknown): Settings {
     renderCapFps,
     skinStyle,
     handModel,
+    testingHandMaterial,
     showHandShadow,
     soundOutput,
     soundfontAssetId,
