@@ -219,6 +219,12 @@ def candidate_for_joint(arm, mesh, modifier, bone, target, local_axis, rest, all
             "unrestrictedLocalRmsMillimeters": rms(desired[region] - full_candidate[region]) * 1000,
             "lbsLocalArea": before_area, "dqsLocalArea": dqs_area,
             "candidateLocalArea": candidate_area,
+            # Threshold counts can be unchanged even when the single
+            # worst triangle becomes dramatically more compressed.
+            "worstAreaRatioDelta": candidate_area["minRatio"] - before_area["minRatio"],
+            "worstAreaRatioNonRegression": (
+                candidate_area["minRatio"] + 1e-6 >= before_area["minRatio"]
+            ),
             # Local area can worsen even as DQS displacement improves.
             "noAdditionalQuarterAreaCollapse": (
                 candidate_area["belowQuarter"] <= before_area["belowQuarter"]

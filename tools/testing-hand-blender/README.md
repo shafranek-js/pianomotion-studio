@@ -221,3 +221,18 @@ Inspect those source polygon IDs in Blender before editing any vertex.
 
 This report does **not** reweight skin, sculpt the correction, alter source
 GLBs, calibrate bend sign, confirm pianist movement or approve export.
+
+## Worst-triangle safeguard — independent from collapse counts
+
+Real LOD0 60° candidate reports revealed that the index MCP's **smallest**
+triangle area ratio deteriorates **0.4680 → 0.2573**, while the count
+of below-half triangles stays **7 → 7**. Aggregate RMS and simple threshold
+counts miss this deformation.
+
+Candidate reports now include `worstAreaRatioDelta` and
+`worstAreaRatioNonRegression`. CI checks these against the actual Blender
+geometry and logs a **reject for runtime** warning when the local minimum
+regresses. This does not fail offline rendering: the unsafe candidate is
+retained for visual comparison, not for runtime use. The existing export
+and human-acceptance gates stay closed. A minimum ratio alone does not
+certify anatomically natural bending.

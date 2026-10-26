@@ -189,6 +189,13 @@ jobs:
                   assert 0 < target["chosenCorrectiveAmplitude"] <= 1
                   assert target["noAdditionalQuarterAreaCollapse"] is True
                   assert target["noAdditionalHalfAreaCollapse"] is True
+                  delta = target["candidateLocalArea"]["minRatio"] - target["lbsLocalArea"]["minRatio"]
+                  assert abs(target["worstAreaRatioDelta"] - delta) < 1e-7
+                  assert target["worstAreaRatioNonRegression"] is (delta >= -1e-6)
+                  if not target["worstAreaRatioNonRegression"]:
+                      print("WARNING — reject for runtime: local worst triangle"
+                            " area ratio regressed:", hand, target["targetName"],
+                            "delta", round(delta, 6))
                   assert target["candidateLocalArea"]["belowHalf"] <= target["lbsLocalArea"]["belowHalf"]
                   assert target["candidateLocalArea"]["belowQuarter"] <= target["lbsLocalArea"]["belowQuarter"]
                   assert math.isfinite(target["rmsImprovementPercent"])
