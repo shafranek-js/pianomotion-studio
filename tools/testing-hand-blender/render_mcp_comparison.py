@@ -56,7 +56,13 @@ def prepare_camera(arm, mesh):
         raise ValueError("Cannot derive real hand camera frame")
     normal.normalize()
     forward.normalize()
-    framing = max(0.14, (pinky - index).length * 2.5)
+    # Size by the whole original hand, not just the MCP span: a candidate
+    # cannot be judged if wrist/tip silhouettes are clipped.
+    corners = [mesh.matrix_world @ Vector(c) for c in mesh.bound_box]
+    bounds_center = sum(corners, Vector()) / len(corners)
+    extent = max((max(c[axis] for c in corners) - min(c[axis] for c in corners))
+                 for axis in range(3))
+    framing = max(0.29, extent * 2.2, (pinky - index).length * 3.0)
 
     camera_data = bpy.data.cameras.new("PianoMotion MCP review camera")
     camera = bpy.data.objects.new("PianoMotion MCP review camera", camera_data)
@@ -64,15 +70,15 @@ def prepare_camera(arm, mesh):
     bpy.context.scene.camera = camera
     camera_data.type = "ORTHO"
     camera_data.ortho_scale = framing
-    center = (index + middle) * 0.5
-    camera.location = center + normal * framing * 1.9 - forward * 0.2 * framing
+    center = bounds_center
+    camera.location = center + normal * framing * 1.9 - forward * 0.12 * framing
     look_at(camera, center)
 
     light_data = bpy.data.lights.new("PianoMotion joint review softbox", "AREA")
     light = bpy.data.objects.new("PianoMotion joint review softbox", light_data)
     bpy.context.scene.collection.objects.link(light)
     light.location = center + normal * framing * 1.0 + span.normalized() * framing * 0.5
-    light_data.energy = 200
+    light_data.energy = 4
     light_data.shape = "DISK"
     light_data.size = framing * 1.5
     look_at(light, center)
@@ -95,12 +101,13 @@ def configure_render():
                 layer.cycles.use_preview_denoising = False
     if hasattr(scene.cycles, "use_denoising"):
         scene.cycles.use_denoising = False
-    scene.render.resolution_x = 1100
-    scene.render.resolution_y = 850
+    scene.render.resolution_x = 960
+    scene.render.resolution_y = 960
     scene.render.resolution_percentage = 100
     scene.render.image_settings.file_format = "PNG"
     scene.render.film_transparent = False
-    scene.view_settings.view_transform = "Standard"
+    scene.view_settings.view_transform = "AgX"
+    scene.view_settings.exposure = -1.0
     world = bpy.data.worlds.new("PianoMotion review world") if not scene.world else scene.world
     scene.world = world
     world.use_nodes = True
