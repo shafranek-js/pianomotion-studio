@@ -44,6 +44,36 @@ jobs:
           --input apps/client/public/models/hands/improved/right-lod0.glb
           --output-blend scratch/blender-correctives/right-lod0.blend
           --report scratch/blender-correctives/right-lod0.json
+      - name: Compare Blender linear and preserve-volume skinning — left
+        run: >-
+          blender -b -t 2 --python-exit-code 2
+          --python tools/testing-hand-blender/measure_preserve_volume.py --
+          --input scratch/blender-correctives/left-lod0.blend
+          --report scratch/blender-correctives/left-dqs-vs-lbs.json
+      - name: Compare Blender linear and preserve-volume skinning — right
+        run: >-
+          blender -b -t 2 --python-exit-code 2
+          --python tools/testing-hand-blender/measure_preserve_volume.py --
+          --input scratch/blender-correctives/right-lod0.blend
+          --report scratch/blender-correctives/right-dqs-vs-lbs.json
+      - name: Validate paired surface-deformation measurements
+        run: |
+          python - <<'PY'
+          import json, math
+          from pathlib import Path
+          root = Path('scratch/blender-correctives')
+          for side in ('left', 'right'):
+              data = json.loads((root / f'{side}-dqs-vs-lbs.json').read_text('utf-8'))
+              assert data['axisCalibrated'] is False
+              assert data['correctiveShapeKeysSculpted'] is False
+              assert len(data['measurements']) == 12
+              for m in data['measurements']:
+                  assert m['degrees'] in (30, 60, 90)
+                  assert m['lbs']['triangles'] == m['dqs']['triangles'] == 34999
+                  assert math.isfinite(m['meanVertexDisplacementDifference'])
+                  assert m['meanVertexDisplacementDifference'] >= 0
+              print(side, 'real Blender DQS/LBS comparison measured; NOT anatomical validation')
+          PY
       - name: Verify results and fail on missing masks
         run: |
           python - <<'PY'
