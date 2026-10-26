@@ -51,6 +51,62 @@ describe("Testing hand rest-space rig registration experiments", () => {
           webxr.skinnedMesh.skeleton.bones,
           labels,
         );
+        const thumbCalibrated = transferTestingWeightsInBoneFrames(
+          anatomy.skinnedMesh.geometry, webxr.skinnedMesh.geometry,
+          anatomy.skinnedMesh.skeleton.bones,
+          webxr.skinnedMesh.skeleton.bones,
+          labels,
+          { thumbAxialScale: true },
+        );
+        try {
+          const anatomicalPositions = anatomy.skinnedMesh.geometry.getAttribute("position");
+          expect(thumbCalibrated.getAttribute("position").array).toEqual(anatomicalPositions.array);
+          expect(thumbCalibrated.getAttribute("normal").array)
+            .toEqual(anatomy.skinnedMesh.geometry.getAttribute("normal").array);
+          expect(thumbCalibrated.getAttribute("uv").array)
+            .toEqual(anatomy.skinnedMesh.geometry.getAttribute("uv").array);
+          const mapping = thumbCalibrated.userData.testingBoneFrameMapping as {
+            thumbAxialRatios: Record<string, number>;
+          };
+          const ratios = mapping.thumbAxialRatios;
+          expect(Object.keys(ratios).sort()).toEqual([
+            "thumb-metacarpal", "thumb-phalanx-distal", "thumb-phalanx-proximal",
+          ]);
+          for (const ratio of Object.values(ratios)) {
+            expect(Number.isFinite(ratio)).toBe(true);
+            expect(ratio).toBeGreaterThan(0.45);
+            expect(ratio).toBeLessThan(1.8);
+          }
+          const transferredIndices = thumbCalibrated.getAttribute("skinIndex");
+          const transferredWeights = thumbCalibrated.getAttribute("skinWeight");
+          let changedWeights = 0;
+          for (let vertex = 0; vertex < transferredIndices.count; vertex++) {
+            let sum = 0;
+            for (let slot = 0; slot < 4; slot++) {
+              const weight = transferredWeights.getComponent(vertex, slot);
+              sum += weight;
+              if (Math.abs(weight -
+                boneFrameCandidate.getAttribute("skinWeight").getComponent(vertex, slot)) > 1e-5 ||
+                transferredIndices.getComponent(vertex, slot) !==
+                boneFrameCandidate.getAttribute("skinIndex").getComponent(vertex, slot)) {
+                changedWeights++;
+              }
+            }
+            expect(sum).toBeCloseTo(1, 4);
+          }
+          const thumbBleed = measureTestingCrossFingerWeights(
+            thumbCalibrated, anatomy.skinnedMesh.geometry, labels,
+          );
+          expect(thumbBleed.verticesAboveTenPercent).toBe(0);
+          console.info("[Testing thumb axial bind calibration A/B]", side, JSON.stringify({
+            ratios, changedWeights,
+            baselineNearest: boneFrameCandidate.userData.testingTransferStats,
+            calibratedNearest: thumbCalibrated.userData.testingTransferStats,
+            foreignWeights: thumbBleed,
+          }));
+        } finally {
+          thumbCalibrated.dispose();
+        }
         const baselineNearest = digitAware.userData.testingTransferStats as {
           nearestWebxrVertexMeanInches: number;
           nearestWebxrVertexP95Inches: number;
