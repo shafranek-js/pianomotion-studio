@@ -427,6 +427,27 @@ describe("Testing hand: real anatomical shell on original WebXR skeleton", () =>
         const basePosition = Array.from(original.geometry.getAttribute("position").array);
         const baseIndices = Array.from(original.geometry.getAttribute("skinIndex").array);
         const baseWeights = Array.from(original.geometry.getAttribute("skinWeight").array);
+        // Capture the actively posed WebXR bones here, not the rest-pose
+        // sourceBones captured at the start of the test. An earlier section
+        // already played two MotionPoses, so comparing to rest gives a false
+        // regression even when the calibration preserves bone motion.
+        const beforeAB = new Map(
+          IMPROVED_HAND_JOINT_NAMES.map(name => {
+            const bone = model.getBone(name)!;
+            return [name, {
+              position: bone.position.clone(),
+              rotation: bone.quaternion.clone(),
+            }] as const;
+          }),
+        );
+        const assertSameWebxrPose = () => {
+          for (const [name, pose] of beforeAB) {
+            const bone = model.getBone(name)!;
+            expect(bone.position.distanceTo(pose.position), side + " " + name).toBeLessThan(1e-5);
+            expect(Math.abs(bone.quaternion.dot(pose.rotation)), side + " " + name)
+              .toBeGreaterThan(1 - 1e-5);
+          }
+        };
 
         model.setTestingThumbStrength(0.25);
         await model.waitForHandModelReady();
@@ -437,6 +458,7 @@ describe("Testing hand: real anatomical shell on original WebXR skeleton", () =>
         });
         expect(Array.from(partial.geometry.getAttribute("position").array)).toEqual(basePosition);
         expect(partial.skeleton.bones).toHaveLength(25);
+        assertSameWebxrPose();
         const partialWeights = Array.from(partial.geometry.getAttribute("skinWeight").array);
         const partialIndices = Array.from(partial.geometry.getAttribute("skinIndex").array);
         expect(partialWeights.some((value, index) =>
@@ -450,9 +472,7 @@ describe("Testing hand: real anatomical shell on original WebXR skeleton", () =>
         expect(Array.from(restored.geometry.getAttribute("position").array)).toEqual(basePosition);
         expect(Array.from(restored.geometry.getAttribute("skinIndex").array)).toEqual(baseIndices);
         expect(Array.from(restored.geometry.getAttribute("skinWeight").array)).toEqual(baseWeights);
-        for (const [name, position] of sourceBones) {
-          expect(model.getBone(name)!.position.distanceTo(position)).toBeLessThan(1e-5);
-        }
+        assertSameWebxrPose();
       } finally {
         model.dispose();
         textures.baseColor.dispose();
