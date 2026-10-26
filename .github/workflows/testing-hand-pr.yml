@@ -51,6 +51,8 @@ jobs:
           apps/client/src/render3d/testingHandWeightRegularizer.ts
           apps/client/src/render3d/testingHandBoneFrameTransfer.ts
           apps/client/src/render3d/testingHandBoneFrameTransfer.test.ts
+          apps/client/src/render3d/testingHandPianistBenchmark.ts
+          apps/client/src/render3d/testingHandPianistBenchmark.test.ts
           apps/client/src/render3d/improvedHandRuntime.ts
           apps/client/src/render3d/pianoScene3d.ts
           apps/client/src/render/pianoScene.ts
@@ -60,7 +62,7 @@ jobs:
           apps/client/src/settings/handModel.test.ts
           apps/client/src/i18n
       - name: Focused unit tests
-        run: npx vitest run apps/client/src/render3d/testingHandSkin.test.ts apps/client/src/render3d/testingHandIntegration.actual.test.ts apps/client/src/render3d/testingHandRegistration.actual.test.ts apps/client/src/render3d/testingHandBoneFrameTransfer.test.ts apps/client/src/settings/handModel.test.ts
+        run: npx vitest run apps/client/src/render3d/testingHandSkin.test.ts apps/client/src/render3d/testingHandIntegration.actual.test.ts apps/client/src/render3d/testingHandRegistration.actual.test.ts apps/client/src/render3d/testingHandBoneFrameTransfer.test.ts apps/client/src/render3d/testingHandPianistBenchmark.test.ts apps/client/src/settings/handModel.test.ts
 
   browser-comparison:
     name: Testing hand / visual evidence — ${{ matrix.model }}
