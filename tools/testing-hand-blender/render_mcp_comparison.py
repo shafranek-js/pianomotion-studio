@@ -84,6 +84,17 @@ def configure_render():
     scene.render.engine = "CYCLES"
     scene.cycles.device = "CPU"
     scene.cycles.samples = 12
+    # Ubuntu's distribution Blender is built without OpenImageDenoiser.
+    # Explicitly disable both render and preview denoising so raw CPU
+    # path tracing works reliably in headless CI.
+    for layer in scene.view_layers:
+        if hasattr(layer, "cycles"):
+            if hasattr(layer.cycles, "use_denoising"):
+                layer.cycles.use_denoising = False
+            if hasattr(layer.cycles, "use_preview_denoising"):
+                layer.cycles.use_preview_denoising = False
+    if hasattr(scene.cycles, "use_denoising"):
+        scene.cycles.use_denoising = False
     scene.render.resolution_x = 1100
     scene.render.resolution_y = 850
     scene.render.resolution_percentage = 100
