@@ -2530,3 +2530,50 @@ test("Testing hand: WebXR-driven anatomical surface in POV and Side Arch", async
   }
   expect((await browserSnapshot(page))?.performancePlanId).toBe(originalPlanId);
 });
+
+
+test("Testing hand: single-model WebGL screenshot and diagnostics", async ({ page }, testInfo) => {
+  test.setTimeout(240_000);
+  await page.setViewportSize({ width: 1280, height: 800 });
+  const initial = await loadTwoHandDemoSong(page);
+  const beforePlan = initial.result.performancePlan?.planId ?? null;
+
+  const sourceDiagnostics = await browserSnapshot(page);
+  expect(sourceDiagnostics?.handModelDiagnostics?.left).toBeDefined();
+  await page.getByRole("button", { name: "Open preferences", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Preferences", exact: true });
+  await expect(dialog.locator("#settings-hand-model")).toHaveCount(1);
+  await dialog.locator("#settings-hand-model").selectOption("testing");
+  await dialog.getByRole("button", { name: "Done", exact: true }).click();
+
+  // Capture the first observable transition; do not wait for IndexedDB as a
+  // proxy for rendering and never classify a fallback as a successful load.
+  await page.waitForFunction(() => {
+    const diagnostics = window.__playerSnapshot?.scene?.handModelDiagnostics;
+    return diagnostics?.left?.requestedModel === "testing" &&
+      diagnostics?.right?.requestedModel === "testing" &&
+      ["ready", "error"].includes(diagnostics.left.state) &&
+      ["ready", "error"].includes(diagnostics.right.state);
+  }, undefined, { timeout: 90_000, polling: 300 });
+  const diagnostics = (await browserSnapshot(page))?.handModelDiagnostics;
+  await testInfo.attach("testing-hand-load-diagnostics", {
+    body: JSON.stringify(diagnostics, null, 2),
+    contentType: "application/json",
+  });
+  expect(diagnostics?.left).toMatchObject({
+    requestedModel: "testing",
+    loadedModel: "testing",
+    state: "ready",
+    error: null,
+  });
+  expect(diagnostics?.right).toMatchObject({
+    requestedModel: "testing",
+    loadedModel: "testing",
+    state: "ready",
+    error: null,
+  });
+  expect((await browserSnapshot(page))?.performancePlanId).toBe(beforePlan);
+  const canvas = studioCanvas(page, "3d");
+  await expect(canvas).toBeVisible({ timeout: 30_000 });
+  await canvas.screenshot({ path: testInfo.outputPath("testing-webgl-default-camera.png"), timeout: 30_000 });
+});
