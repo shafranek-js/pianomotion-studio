@@ -49,6 +49,8 @@ jobs:
           apps/client/src/render3d/testingHandIntegration.actual.test.ts
           apps/client/src/render3d/testingHandDeformationQA.ts
           apps/client/src/render3d/testingHandWeightRegularizer.ts
+          apps/client/src/render3d/testingHandBoneFrameTransfer.ts
+          apps/client/src/render3d/testingHandBoneFrameTransfer.test.ts
           apps/client/src/render3d/improvedHandRuntime.ts
           apps/client/src/render3d/pianoScene3d.ts
           apps/client/src/render/pianoScene.ts
@@ -58,13 +60,18 @@ jobs:
           apps/client/src/settings/handModel.test.ts
           apps/client/src/i18n
       - name: Focused unit tests
-        run: npx vitest run apps/client/src/render3d/testingHandSkin.test.ts apps/client/src/render3d/testingHandIntegration.actual.test.ts apps/client/src/render3d/testingHandRegistration.actual.test.ts apps/client/src/settings/handModel.test.ts
+        run: npx vitest run apps/client/src/render3d/testingHandSkin.test.ts apps/client/src/render3d/testingHandIntegration.actual.test.ts apps/client/src/render3d/testingHandRegistration.actual.test.ts apps/client/src/render3d/testingHandBoneFrameTransfer.test.ts apps/client/src/settings/handModel.test.ts
 
   browser-comparison:
-    name: Testing hand / matched four-model WebGL evidence
+    name: Testing hand / visual evidence — ${{ matrix.model }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        model: [webxr, anatomical, anatomical-improved, testing]
     env:
+      PIANOMOTION_EVIDENCE_MODEL: ${{ matrix.model }}
       PIANOMOTION_BROWSER_CHANNEL: chromium
       PIANOMOTION_EVIDENCE_DIR: ${{ github.workspace }}/scratch/testing-hand-browser
     steps:
@@ -88,7 +95,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: testing-hand-webgl-${{ github.run_number }}
+          name: testing-hand-webgl-${{ matrix.model }}-${{ github.run_number }}
           path: |
             scratch/testing-hand-browser/playwright-results/
             scratch/testing-hand-browser/playwright-report.json
