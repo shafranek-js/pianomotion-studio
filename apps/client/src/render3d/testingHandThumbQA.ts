@@ -67,7 +67,7 @@ export function measureTestingFixedThumbRegion(
           !Number.isFinite(weight) || weight < 0) {
         throw new Error("Invalid native thumb segmentation influence.");
       }
-      if (thumbName(nativeBoneNames[index]!)) anatomyThumb[i]! += weight;
+      if (thumbName(nativeBoneNames[index]!)) anatomyThumb[i] = anatomyThumb[i]! + weight;
     }
     original.push(native);
     const warped = mesh.applyBoneTransform(i, candidate);
