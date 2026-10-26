@@ -159,7 +159,24 @@ def main():
         tri_indices = np.flatnonzero(local_selection)
         if len(tri_indices) < 10:
             raise ValueError("Too few affected joint-local triangles")
+        # Imported production meshes can contain zero-area/sliver triangles.
+        # Match the existing area-metric contract: exclude those faces
+        # while preserving original polygon IDs for every remaining face.
         tris = all_triangles[tri_indices]
+        a, b, c = (tris[:, i] for i in range(3))
+        area = np.linalg.norm(
+            np.cross(rest[b] - rest[a], rest[c] - rest[a]), axis=1
+        ) * .5
+        edges = np.stack([
+            np.linalg.norm(rest[e] - rest[s], axis=1)
+            for s, e in ((a, b), (b, c), (c, a))
+        ], axis=1)
+        valid = (area > 1e-12) & np.all(edges > 1e-9, axis=1)
+        skipped_degenerate = int(np.count_nonzero(~valid))
+        tri_indices = tri_indices[valid]
+        tris = tris[valid]
+        if len(tris) < 10:
+            raise ValueError("Too few nondegenerate joint-local triangles")
         joint = arm.pose.bones[bone_name]
         original_mode, original_rotation = joint.rotation_mode, joint.rotation_quaternion.copy()
         morph = shapes[shape_name]
@@ -181,6 +198,7 @@ def main():
             records.append({
                 "joint": label, "bone": bone_name, "shapeKey": shape_name,
                 "jointRegionMaskVertices": int(np.count_nonzero(mask)),
+                "skippedDegenerateLocalTriangles": skipped_degenerate,
                 "jointAxisBoneLocalUnsigned": [float(v) for v in axis],
                 "bendDegrees": BEND_DEGREES,
                 "variants": variants,
