@@ -119,3 +119,39 @@ jobs:
             scratch/testing-hand-browser/playwright-report.json
           if-no-files-found: warn
           retention-days: 14
+
+  compare-score-evidence:
+    name: Testing hand / confirm identical music across browser shards
+    if: always()
+    needs: browser-comparison
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download four model evidence artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: testing-hand-webgl-*-${{ github.run_number }}
+          path: scratch/matched-review
+      - name: Assert identical fingerprint and evidence for all four models
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root = Path("scratch/matched-review")
+          files = sorted(root.rglob("testing-hand-evidence.json"))
+          assert len(files) == 4, f"Expected complete model evidence in 4 artifacts, got {len(files)}"
+          models = {}
+          for path in files:
+              data = json.loads(path.read_text("utf-8"))
+              records = data["records"]
+              assert len(records) >= 1, path
+              name = records[0]["model"]
+              assert name not in models, f"Duplicate model evidence: {name}"
+              assert records[0]["left"]["loadedModel"] == name
+              assert records[0]["right"]["loadedModel"] == name
+              assert data["canonicalScoreEventCount"] > 1
+              models[name] = data["canonicalScoreFingerprintSha256"]
+              print(name, models[name], data["canonicalScoreEventCount"])
+          assert set(models) == {"webxr", "anatomical", "anatomical-improved", "testing"}
+          assert len(set(models.values())) == 1, f"Different MIDI/fingering performance events: {models}"
+          print("PASS: four model shards rendered matching musical events/fingering")
+          PY

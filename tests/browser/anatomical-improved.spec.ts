@@ -2579,6 +2579,27 @@ test("Testing hand: matched WebGL model and camera evidence / " + comparedModel,
   const initial = await loadTwoHandDemoSong(page);
   const originalPlanId = initial.result.performancePlan?.planId ?? null;
   expect(originalPlanId).toBeTruthy();
+  // Plan IDs incorporate per-project/session identity, so they cannot prove
+  // that four independent Chromium shards rendered the same piano notes.
+  // Finger assignments and physical press/release event times must match.
+  const originalEvents = initial.result.performancePlan?.events ?? [];
+  expect(originalEvents.length, "A/B fixture must contain real playable events").toBeGreaterThan(1);
+  const assigned = new Map((initial.result.fingeringPlan?.assignments ?? [])
+    .map(note => [note.noteId, note] as const));
+  const canonicalEvents = originalEvents.map(event => {
+    const fingering = event.noteId ? assigned.get(event.noteId) : undefined;
+    return {
+      type: event.type,
+      timeMillis: Math.round(event.timeSeconds * 1000),
+      pitch: event.pitch ?? null,
+      hand: fingering?.hand ?? null,
+      finger: fingering?.finger ?? null,
+    };
+  }).sort((a, b) => a.timeMillis - b.timeMillis || a.type.localeCompare(b.type) ||
+    (a.pitch ?? -1) - (b.pitch ?? -1) || (a.hand ?? "").localeCompare(b.hand ?? "") ||
+    (a.finger ?? -1) - (b.finger ?? -1));
+  const scoreFingerprint = createHash("sha256")
+    .update(JSON.stringify(canonicalEvents)).digest("hex");
 
   // All four options must play the *same* performance plan at the *same*
   // transport timestamps. Only their rendered hands and camera angles vary.
@@ -2666,6 +2687,9 @@ test("Testing hand: matched WebGL model and camera evidence / " + comparedModel,
   // throttles requestAnimationFrame for seconds at a time.
   const summary = {
     originalPerformancePlanId: originalPlanId,
+    canonicalScoreFingerprintSha256: scoreFingerprint,
+    canonicalScoreEventCount: canonicalEvents.length,
+    canonicalScoreEventFields: "type / rounded milliseconds / pitch / assigned hand and finger; session-local noteId excluded",
     cameraPresets: comparisonCameras,
     sampledTimesSeconds: comparedTimes,
     records: evidence,
