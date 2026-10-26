@@ -67,3 +67,21 @@ existing synthetic local-X morph remains an offline benchmark only; the
 new estimates do not alter Testing, Blender shape keys or source GLBs.
 Manual pivot/sign calibration and visual DQS/LBS/reconstructed-GLB testing
 are required before using these axes for corrected skinned movement.
+
+## Joint-by-joint deformation priority (research only)
+
+`measure_joint_local_deformation.py` reads the previously generated unsigned
+rest-axis report and evaluates each of the 12 finger MCP/PIP/DIP joints with
+the same 60° diagnostic rotation using both LBS and Blender Preserve Volume.
+The supplied `PM_MASK_*` masks restrict RMS displacement (in millimeters) and
+triangle area-collapse/expansion counts to a joint-local surface region.
+Both previous synthetic local +X and estimated per-joint rest axes are
+included, with the signed direction chosen closest to local +X for an
+apples-to-apples experiment.
+
+Reports `left-joint-local-deformation.json` and
+`right-joint-local-deformation.json` rank the joints by their local
+LBS-to-DQS differences. They are **prioritization diagnostics**, not evidence
+that DQS is anatomically correct, not calibrated flexion, and not an approved
+GLB corrective. A human must review axes, visual bends, key contact and
+actual piano motions before any morph is enabled.

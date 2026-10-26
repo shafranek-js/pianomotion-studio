@@ -65,6 +65,37 @@ jobs:
                   assert j["perpendicularityError"] < 1e-4
               print(side, "unsigned hinge axes surveyed, NOT anatomically validated")
           PY
+      - name: Rank MCP PIP DIP joint-local deformation using measured rest axes
+        run: |
+          for hand in left right; do
+            blender -b -t 2 --python-exit-code 2 --python tools/testing-hand-blender/measure_joint_local_deformation.py -- \
+              --input "scratch/blender-correctives/${hand}-lod0.blend" \
+              --axes "scratch/blender-correctives/${hand}-unsigned-hinge-axes.json" \
+              --report "scratch/blender-correctives/${hand}-joint-local-deformation.json" \
+              --side "$hand"
+          done
+          python - <<'PY'
+          import json, math
+          from pathlib import Path
+          for side in ("left", "right"):
+              path = Path(f"scratch/blender-correctives/{side}-joint-local-deformation.json")
+              data = json.loads(path.read_text("utf-8"))
+              assert data["schema"] == "testing-hinge-deformation-priority-v1"
+              assert len(data["joints"]) == 12
+              assert data["axisAnatomicallyCalibrated"] is False
+              assert data["exportApproved"] is False
+              assert set(j["joint"] for j in data["joints"]) == {"mcp", "pip", "dip"}
+              for joint in data["joints"]:
+                  assert joint["regionVertices"] >= 10
+                  a = joint["experiments"]
+                  assert set(a) == {"syntheticLocalX", "measuredUnsignedAxis"}
+                  for variant in a.values():
+                      value = variant["localLbsToDqsRmsMillimeters"]
+                      assert math.isfinite(value) and value >= 0
+                      assert variant["localLbs"]["triangles"] > 0
+                      assert variant["localDqs"]["triangles"] > 0
+              print(side, "joint-local deform survey complete; NOT human/anatomical acceptance")
+          PY
       - name: Compare Blender linear and preserve-volume skinning — left
         run: >-
           blender -b -t 2 --python-exit-code 2
