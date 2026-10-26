@@ -82,7 +82,7 @@ def prepare_camera(arm, mesh):
     light_data.shape = "DISK"
     light_data.size = framing * 1.5
     look_at(light, center)
-    return camera
+    return camera, index, span.normalized(), normal, forward, framing
 
 
 def configure_render():
@@ -132,26 +132,43 @@ def main():
     pb = arm.pose.bones["index-finger-phalanx-proximal"]
     original_mode = pb.rotation_mode
     original_quat = pb.rotation_quaternion.copy()
-    camera = prepare_camera(arm, mesh)
+    camera, index_pivot, lateral, normal, forward, framing = prepare_camera(arm, mesh)
+    full_position = camera.location.copy()
+    full_orientation = camera.rotation_euler.copy()
+    full_scale = camera.data.ortho_scale
     configure_render()
     args.output_dir.mkdir(parents=True, exist_ok=True)
     try:
         pb.rotation_mode = "QUATERNION"
         pb.rotation_quaternion = Quaternion((1, 0, 0), math.radians(90))
-        for variant, preserve_volume, morph in [
-            ("lbs", False, 0),
-            ("preserve-volume", True, 0),
-            ("mcp-candidate", False, 1),
-        ]:
-            skin.use_deform_preserve_volume = preserve_volume
-            key.value = morph
-            bpy.context.view_layer.update()
-            destination = args.output_dir / f"{args.side}-index-mcp-090-{variant}.png"
-            bpy.context.scene.render.filepath = str(destination.resolve())
-            bpy.ops.render.render(write_still=True)
-            if not destination.is_file() or destination.stat().st_size < 15000:
-                raise ValueError(f"Blender failed to produce valid render: {destination}")
-            print("[Testing hand rendered pose QA]", variant, destination)
+        for camera_view in ("full", "joint-side"):
+            if camera_view == "full":
+                camera.location = full_position
+                camera.rotation_euler = full_orientation
+                camera.data.ortho_scale = full_scale
+            else:
+                # Profile views show the contour/volume lost over the MCP
+                # hinge, mostly invisible in a palm-facing view.
+                target = index_pivot + forward * 0.015
+                camera.location = (target + lateral * framing * 1.3
+                                   + normal * framing * 0.32)
+                look_at(camera, target)
+                camera.data.ortho_scale = max(0.12, framing * 0.42)
+            for variant, preserve_volume, morph in [
+                ("lbs", False, 0),
+                ("preserve-volume", True, 0),
+                ("mcp-candidate", False, 1),
+            ]:
+                skin.use_deform_preserve_volume = preserve_volume
+                key.value = morph
+                bpy.context.view_layer.update()
+                suffix = "" if camera_view == "full" else "-joint-side"
+                destination = args.output_dir / f"{args.side}-index-mcp-090-{variant}{suffix}.png"
+                bpy.context.scene.render.filepath = str(destination.resolve())
+                bpy.ops.render.render(write_still=True)
+                if not destination.is_file() or destination.stat().st_size < 15000:
+                    raise ValueError(f"Blender failed to produce valid render: {destination}")
+                print("[Testing hand rendered pose QA]", camera_view, variant, destination)
     finally:
         pb.rotation_quaternion = original_quat
         pb.rotation_mode = original_mode
