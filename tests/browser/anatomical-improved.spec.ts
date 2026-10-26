@@ -2550,7 +2550,11 @@ test("Testing hand: matched WebGL model and camera evidence / " + comparedModel,
   // Keep evidence even if a visual defect is discovered later. A successful
   // capture is not, by itself, anatomical/animation acceptance.
   const comparedModels: readonly HandModelId[] = [comparedModel];
-  const comparedTimes = [0.75, 3, 6] as const;
+  // Fast per-PR render gate: 2 poses x 2 camera angles. A full four-camera
+  // three-pose comparison remains available with PIANOMOTION_EVIDENCE_FULL=1.
+  const fullReview = process.env.PIANOMOTION_EVIDENCE_FULL === "1";
+  const comparisonCameras = fullReview ? cameras : (["pov", "side_arch"] as const);
+  const comparedTimes = fullReview ? ([0.75, 3, 6] as const) : ([0.75, 3] as const);
   const evidence: Array<{
     model: HandModelId;
     timeSeconds: number;
@@ -2599,7 +2603,7 @@ test("Testing hand: matched WebGL model and camera evidence / " + comparedModel,
         screenshots: [] as string[],
       };
 
-      for (const camera of cameras) {
+      for (const camera of comparisonCameras) {
         await setCamera(page, camera);
         await page.waitForTimeout(100);
         const filename = "testing-ab-" + model + "-" + camera + "-" +
@@ -2631,7 +2635,7 @@ test("Testing hand: matched WebGL model and camera evidence / " + comparedModel,
   );
   const summary = {
     originalPerformancePlanId: originalPlanId,
-    cameraPresets: cameras,
+    cameraPresets: comparisonCameras,
     sampledTimesSeconds: comparedTimes,
     records: evidence,
     reviewRequired: [
@@ -2653,7 +2657,7 @@ test("Testing hand: matched WebGL model and camera evidence / " + comparedModel,
   // the CI artifact. Each cell links to its full-resolution reference frame.
   // No visual automatic threshold is imposed on skin appearance or motion.
   const rows = comparedTimes.map(timeSeconds => {
-    const camerasAtTime = cameras.map(camera => {
+    const camerasAtTime = comparisonCameras.map(camera => {
       const frames = comparedModels.map(model => {
         const filename = "testing-ab-" + model + "-" + camera + "-" +
           timeSeconds.toString().replace(".", "_") + "s.png";
