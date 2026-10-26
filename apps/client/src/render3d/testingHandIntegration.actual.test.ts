@@ -1,6 +1,7 @@
 // @ts-expect-error Vitest uses Node fs for real GLB conformance; browser tsconfig excludes Node types.
 import { readFileSync } from "node:fs";
 import { transferWebxrSkinToAnatomicalSurface } from "./testingHandSkin";
+import { measureTestingHandDeformation } from "./testingHandDeformationQA";
 import * as THREE from "three";
 import { describe, expect, it } from "vitest";
 import type { MotionPose } from "@handthesia/contracts";
@@ -105,6 +106,11 @@ describe("Testing hand: real anatomical shell on original WebXR skeleton", () =>
         expect(mesh).toBeDefined();
         expect(mesh!.geometry.getAttribute("position").count).toBe(manifest.hands[side].lods[2]!.vertices);
         expect(mesh!.geometry.userData.testingWebxrSkinTransfer).toBe(true);
+        const neutralSurface = measureTestingHandDeformation(mesh!);
+        expect(neutralSurface.areaRatioMin).toBeGreaterThan(0.99);
+        expect(neutralSurface.areaRatioMax).toBeLessThan(1.01);
+        expect(neutralSurface.edgeCompressionMin).toBeGreaterThan(0.99);
+        expect(neutralSurface.edgeStretchMax).toBeLessThan(1.01);
         const registration = mesh!.geometry.userData.testingTransferStats as {
           vertexCount: number;
           nearestWebxrVertexMeanInches: number;
@@ -194,6 +200,14 @@ describe("Testing hand: real anatomical shell on original WebXR skeleton", () =>
               }
             }
             expect(JSON.stringify(pose)).toBe(serializedPose);
+            const deformation = measureTestingHandDeformation(mesh!);
+            console.info("[Testing skinned triangle deformation]", side, "hover=" + hover,
+              JSON.stringify(deformation));
+            expect(deformation.inspectedTriangles).toBeGreaterThan(7000);
+            expect(deformation.edgeCompressionMin).toBeGreaterThan(0);
+            expect(deformation.edgeStretchMax).toBeLessThan(100);
+            expect(deformation.areaRatioMin).toBeGreaterThan(0);
+            expect(deformation.areaRatioMax).toBeLessThan(100);
           }
         } finally {
           referenceMotion.dispose();
