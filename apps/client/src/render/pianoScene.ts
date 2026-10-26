@@ -207,6 +207,7 @@ export class PianoScene {
     showHandShadow: true,
     renderCapFps: 60,
     handModel: "anatomical",
+    testingHandMaterial: "original",
   };
   private resizeObserver: ResizeObserver | null = null;
   private scene3D: PianoScene3D | null = null;
