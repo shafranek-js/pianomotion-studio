@@ -47,6 +47,10 @@ describe("Testing hand rest-space rig registration experiments", () => {
         expect(digitBleed.inspectedVertices).toBeGreaterThan(100);
         expect(digitBleed.verticesAboveTenPercent).toBeLessThanOrEqual(blindBleed.verticesAboveTenPercent);
         expect(digitBleed.meanForeignDigitWeight).toBeLessThanOrEqual(blindBleed.meanForeignDigitWeight + 1e-7);
+        // In regions that the native anatomical skin assigns confidently to
+        // one digit, Testing must never use a different digit's bone.
+        expect(digitBleed.maximumForeignDigitWeight).toBeLessThan(1e-6);
+        expect(digitBleed.verticesAboveTenPercent).toBe(0);
         digitAware.dispose();
 
         const metrics = {
