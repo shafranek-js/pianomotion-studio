@@ -59,6 +59,8 @@ jobs:
           apps/client/src/render3d/testingHandDeformationHotspots.ts
           apps/client/src/render3d/testingHandPoseCorrectives.ts
           apps/client/src/render3d/testingHandPoseCorrectives.test.ts
+          apps/client/src/render3d/testingHandMorphTargets.ts
+          apps/client/src/render3d/testingHandMorphTargets.test.ts
           apps/client/src/render3d/improvedHandRuntime.ts
           apps/client/src/render3d/pianoScene3d.ts
           apps/client/src/render/pianoScene.ts
@@ -68,7 +70,7 @@ jobs:
           apps/client/src/settings/handModel.test.ts
           apps/client/src/i18n
       - name: Focused unit tests
-        run: npx vitest run apps/client/src/render3d/testingHandSkin.test.ts apps/client/src/render3d/testingHandIntegration.actual.test.ts apps/client/src/render3d/testingHandRegistration.actual.test.ts apps/client/src/render3d/testingHandBoneFrameTransfer.test.ts apps/client/src/render3d/testingHandPianistBenchmark.test.ts apps/client/src/render3d/testingHandSemanticWeights.test.ts apps/client/src/render3d/testingHandPoseCorrectives.test.ts apps/client/src/settings/handModel.test.ts
+        run: npx vitest run apps/client/src/render3d/testingHandSkin.test.ts apps/client/src/render3d/testingHandIntegration.actual.test.ts apps/client/src/render3d/testingHandRegistration.actual.test.ts apps/client/src/render3d/testingHandBoneFrameTransfer.test.ts apps/client/src/render3d/testingHandPianistBenchmark.test.ts apps/client/src/render3d/testingHandSemanticWeights.test.ts apps/client/src/render3d/testingHandPoseCorrectives.test.ts apps/client/src/render3d/testingHandMorphTargets.test.ts apps/client/src/settings/handModel.test.ts
 
   blender-syntax:
     name: Testing hand / Blender authoring scripts compile
