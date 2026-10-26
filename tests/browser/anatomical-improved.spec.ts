@@ -2613,20 +2613,59 @@ test("Testing hand: matched WebGL model and camera evidence", async ({ page }, t
     }
   }
 
+  const summary = {
+    originalPerformancePlanId: originalPlanId,
+    cameraPresets: cameras,
+    sampledTimesSeconds: comparedTimes,
+    records: evidence,
+    reviewRequired: [
+      "MCP/PIP/DIP folds", "thumb web/opposition", "wrist seams",
+      "finger intersections", "nails", "white/black-key contact",
+      "continuous movement and exported video",
+    ],
+  };
+  const evidenceJson = JSON.stringify(summary, null, 2);
+  // Direct files, in addition to Playwright attachments, make the downloaded
+  // CI ZIP usable without opening an HTML test reporter.
+  await writeFile(testInfo.outputPath("testing-hand-evidence.json"), evidenceJson, "utf8");
   await testInfo.attach("testing-hand-matched-model-camera-evidence", {
-    body: JSON.stringify({
-      originalPerformancePlanId: originalPlanId,
-      cameraPresets: cameras,
-      sampledTimesSeconds: comparedTimes,
-      records: evidence,
-      reviewRequired: [
-        "MCP/PIP/DIP folds", "thumb web/opposition", "wrist seams",
-        "finger intersections", "nails", "white/black-key contact",
-        "continuous movement and exported video",
-      ],
-    }, null, 2),
+    body: evidenceJson,
     contentType: "application/json",
   });
+
+  // Offline contact sheet: open this HTML beside the PNGs after extracting
+  // the CI artifact. Each cell links to its full-resolution reference frame.
+  // No visual automatic threshold is imposed on skin appearance or motion.
+  const rows = comparedTimes.map(timeSeconds => {
+    const camerasAtTime = cameras.map(camera => {
+      const frames = comparedModels.map(model => {
+        const filename = "testing-ab-" + model + "-" + camera + "-" +
+          timeSeconds.toString().replace(".", "_") + "s.png";
+        return "<figure><a href=\"" + filename + "\"><img loading=\"lazy\" src=\"" +
+          filename + "\" alt=\"" + model + ", " + camera + ", " + timeSeconds +
+          " s\"></a><figcaption>" + model + "</figcaption></figure>";
+      }).join("");
+      return "<h3>" + camera + "</h3><div class=\"grid\">" + frames + "</div>";
+    }).join("");
+    return "<section><h2>Score time: " + timeSeconds + " s</h2>" + camerasAtTime + "</section>";
+  }).join("");
+  const reviewHtml = "<!doctype html><html lang=\"en\"><meta charset=\"utf-8\">" +
+    "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">" +
+    "<title>Testing hand / matched visual review</title><style>" +
+    "body{margin:24px;background:#16191e;color:#f3f4f7;font:14px system-ui,sans-serif}" +
+    "section{margin:24px 0 50px}h3{margin:20px 0 8px;text-transform:capitalize}" +
+    ".grid{display:grid;grid-template-columns:repeat(4,minmax(190px,1fr));gap:10px}" +
+    "figure{margin:0;background:#272c32;border-radius:6px;overflow:hidden}" +
+    "img{width:100%;height:auto;display:block}figcaption{padding:8px}" +
+    "a{color:inherit}p{max-width:900px;line-height:1.5}" +
+    "@media(max-width:800px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}" +
+    "</style><h1>Testing hand — matched model review</h1>" +
+    "<p>Same performance plan and score time, four hand models and four cameras. " +
+    "Click any image to inspect the full-resolution frame. These stills are evidence " +
+    "for human review, not certification of anatomically correct motion.</p>" +
+    rows + "</html>";
+  await writeFile(testInfo.outputPath("testing-hand-review.html"), reviewHtml, "utf8");
+
   expect(evidence).toHaveLength(comparedModels.length * comparedTimes.length);
   // Leave the opt-in Testing model selected for the end-of-run diagnostics.
   expect((await browserSnapshot(page))?.handModelDiagnostics?.left.loadedModel).toBe("testing");
