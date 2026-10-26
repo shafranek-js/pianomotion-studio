@@ -210,13 +210,53 @@ describe("Testing hand: real anatomical shell on original WebXR skeleton", () =>
           }
           expect(sum).toBeCloseTo(1, 4);
         }
+
+        // Real camera changes can move LOD2 -> LOD1 -> LOD0 and back.
+        // Verify the Testing model remains ready, each new surface has valid
+        // WebXR weight transfer, and all four texture leases are released.
+        for (const level of [1, 0, 2] as const) {
+          model.setHandModel("testing", level);
+          await model.waitForHandModelReady();
+          const expected = manifest.hands[side].lods[level]!;
+          expect(model.getHandModelDiagnostics()).toMatchObject({
+            requestedModel: "testing",
+            loadedModel: "testing",
+            loadedLod: level,
+            triangles: expected.triangles,
+            state: "ready",
+          });
+          let loaded: THREE.SkinnedMesh | null = null;
+          model.group.traverse(node => {
+            if (node instanceof THREE.SkinnedMesh && node.geometry.userData.testingWebxrSkinTransfer) {
+              loaded = node;
+            }
+          });
+          expect(loaded).not.toBeNull();
+          const surface = loaded! as THREE.SkinnedMesh;
+          expect(surface.geometry.getAttribute("position").count).toBe(expected.vertices);
+          expect(surface.skeleton.bones).toHaveLength(25);
+          const jointIndices = surface.geometry.getAttribute("skinIndex");
+          const jointWeights = surface.geometry.getAttribute("skinWeight");
+          for (let vertex = 0; vertex < jointWeights.count; vertex += 17) {
+            let total = 0;
+            for (let slot = 0; slot < 4; slot++) {
+              const joint = jointIndices.getComponent(vertex, slot);
+              const weight = jointWeights.getComponent(vertex, slot);
+              expect(joint).toBeGreaterThanOrEqual(0);
+              expect(joint).toBeLessThan(25);
+              expect(Number.isFinite(weight)).toBe(true);
+              total += weight;
+            }
+            expect(total).toBeCloseTo(1, 4);
+          }
+        }
       } finally {
         model.dispose();
         textures.baseColor.dispose();
         textures.normal.dispose();
         textures.roughness.dispose();
       }
-      expect(leaseReleases).toBe(1);
+      expect(leaseReleases).toBe(4);
     }
   });
 });
