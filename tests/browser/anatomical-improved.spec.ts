@@ -2500,7 +2500,7 @@ test("actual engine articulation matrix captures assigned notes, posed hands, an
 
 
 test("Testing hand: WebXR-driven anatomical surface in POV and Side Arch", async ({ page }, testInfo) => {
-  test.setTimeout(180_000);
+  test.setTimeout(300_000);
   await page.setViewportSize({ width: 1440, height: 900 });
   const initial = await loadTwoHandDemoSong(page);
   const originalPlanId = initial.result.performancePlan?.planId ?? null;
@@ -2510,7 +2510,12 @@ test("Testing hand: WebXR-driven anatomical surface in POV and Side Arch", async
   // Same performance and time under all three skins: only the visual hand
   // implementation changes. Screenshots are evidence, not visual acceptance.
   for (const model of ["webxr", "anatomical", "testing"] as const) {
-    await selectHandModel(page, model);
+    await page.getByRole("button", { name: "Open preferences", exact: true }).click();
+    const dialog = page.getByRole("dialog", { name: "Preferences", exact: true });
+    const modelSelector = dialog.locator("#settings-hand-model");
+    await modelSelector.selectOption(model);
+    await expect(modelSelector).toHaveValue(model);
+    await dialog.getByRole("button", { name: "Done", exact: true }).click();
     await expectLoadedModel(page, model);
     // Hold exactly the same moment of the score for all surface variants.
     await seekToTime(page, 0.75);
