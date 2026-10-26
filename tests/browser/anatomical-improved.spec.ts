@@ -2536,6 +2536,37 @@ test("Testing hand: WebXR-driven anatomical surface in POV and Side Arch", async
 });
 
 
+/** Bypass Playwright's animation/font/element-stability screenshot pipeline.
+ * A continuously repainted Three.js canvas can hang element/page.screenshot on
+ * software-rendered GitHub runners; CDP reads the same compositor surface.
+ * A timeout fails early and preserves any frames already written to disk.
+ */
+async function captureTestingReviewFrame(
+  page: Page,
+  filename: string,
+): Promise<void> {
+  const cdp = await page.context().newCDPSession(page);
+  try {
+    await cdp.send("Page.enable");
+    const capture = cdp.send("Page.captureScreenshot", {
+      format: "png",
+      captureBeyondViewport: false,
+      fromSurface: true,
+      optimizeForSpeed: true,
+    });
+    const result = await Promise.race([
+      capture,
+      new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error("Timed out reading WebGL compositor frame (CDP).")), 25_000);
+      }),
+    ]);
+    if (!result.data) throw new Error("CDP returned an empty WebGL screenshot.");
+    await writeFile(filename, Buffer.from(result.data, "base64"));
+  } finally {
+    await cdp.detach().catch(() => undefined);
+  }
+}
+
 // Separate Chromium captures per model so an expensive camera change or
 // GPU-stalled animation frame in one model cannot invalidate all 48 images.
 for (const comparedModel of ["webxr", "anatomical", "anatomical-improved", "testing"] as const) {
@@ -2616,17 +2647,14 @@ test("Testing hand: matched WebGL model and camera evidence / " + comparedModel,
       };
 
       for (const camera of comparisonCameras) {
-        await setCamera(page, camera);
+        const cameraButtons = page.getByRole("group", { name: "3D camera presets", exact: true }).locator("button");
+        // DOM click avoids Playwright's perpetual "element stability" checks
+        // when a heavily loaded WebGL renderer is still repainting.
+        await cameraButtons.nth(cameras.indexOf(camera)).evaluate((element: HTMLElement) => element.click());
         await page.waitForTimeout(100);
         const filename = "testing-ab-" + model + "-" + camera + "-" +
           timeSeconds.toString().replace(".", "_") + "s.png";
-        // Do not use canvas.screenshot: a continuously redrawn canvas never
-        // meets Playwright's stable-element prerequisite.
-        await page.screenshot({
-          path: testInfo.outputPath(filename),
-          animations: "disabled",
-          timeout: 45_000,
-        });
+        await captureTestingReviewFrame(page, testInfo.outputPath(filename));
         record.screenshots.push(filename);
       }
       evidence.push(record);
