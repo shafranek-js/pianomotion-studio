@@ -103,6 +103,25 @@ source of truth for a decision. Even the initial non-comparable measurements
 showed increased deformation for the right hand and worse global area P95.
 Do not enable the new weight field based on those early numbers.
 
+**Matched-triangle quantitative results** (real left/right LOD2, same 972
+native thumb triangles per hand, synthetic pose, hover=0):
+
+| Metric | Left current | Left full axial | Right current | Right full axial |
+|---|---:|---:|---:|---:|
+| Collapsed area below 0.25× | 43 | 20 | 10 | 2 |
+| Expanded area above 2× | 10 | 12 | 5 | 23 |
+| Worst area severity | 41.47 | 13.86 | 13.71 | 4.74 |
+| Full-hand edge stretch P95 | 1.611 | 1.746 | 1.407 | 1.495 |
+
+Although worst individual area severity improves, the full-correction variant
+**fails release acceptance** because severely expanded thumb faces increase
+(especially right), and global stretching increases. The follow-up A/B
+sweeps **0.25/0.50/0.75** partial longitudinal calibration strengths, measuring
+the same immutable anatomical triangle set and entire hand. An intermediate
+variant remains research-only until it improves BOTH hands without new spikes,
+passes multi-pose/LOD/contact/visual acceptance, and does not change WebXR
+motion. No live Testing activation is authorized by these metrics.
+
 This is a *candidate*, **not a fix yet**. Its acceptance must be based on
 pose-local improvement at neutral, thumb-under, 30/60/90° bends, both hands,
 all LODs and a rendered human review. Worse deformation or unacceptable
