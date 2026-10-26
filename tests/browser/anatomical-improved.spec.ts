@@ -2512,6 +2512,8 @@ test("Testing hand: WebXR-driven anatomical surface in POV and Side Arch", async
   for (const model of ["webxr", "anatomical", "testing"] as const) {
     await selectHandModel(page, model);
     await expectLoadedModel(page, model);
+    // Hold exactly the same moment of the score for all surface variants.
+    await seekToTime(page, 0.75);
     for (const camera of ["pov", "side_arch"] as const) {
       await setCamera(page, camera);
       await expect(canvas).toBeVisible();
