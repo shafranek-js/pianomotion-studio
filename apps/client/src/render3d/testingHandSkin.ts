@@ -47,6 +47,7 @@ export function transferWebxrSkinToAnatomicalSurface(
 
   const joints = new Uint16Array(target.count * 4);
   const weights = new Float32Array(target.count * 4);
+  const nearestDistancesInches = new Float32Array(target.count);
   for (let vertex = 0; vertex < target.count; vertex++) {
     const x = target.getX(vertex);
     const y = target.getY(vertex);
@@ -84,6 +85,7 @@ export function transferWebxrSkinToAnatomicalSurface(
       })
       .sort((a, b) => a.distanceSquared - b.distanceSquared)
       .slice(0, 12);
+    nearestDistancesInches[vertex] = Math.sqrt(nearest[0]!.distanceSquared);
 
     // Interpolate WebXR vertex weights rather than nearest-neighbour copying:
     // weighted interpolation softens visible skin seams and knuckle hinges.
@@ -117,5 +119,14 @@ export function transferWebxrSkinToAnatomicalSurface(
   result.setAttribute("skinIndex", new THREE.Uint16BufferAttribute(joints, 4));
   result.setAttribute("skinWeight", new THREE.Float32BufferAttribute(weights, 4));
   result.userData.testingWebxrSkinTransfer = true;
+  const sortedDistances = Array.from(nearestDistancesInches).sort((a, b) => a - b);
+  const mean = sortedDistances.reduce((sum, distance) => sum + distance, 0) / sortedDistances.length;
+  result.userData.testingTransferStats = {
+    vertexCount: target.count,
+    nearestWebxrVertexMeanInches: mean,
+    nearestWebxrVertexP95Inches: sortedDistances[Math.floor((sortedDistances.length - 1) * 0.95)]!,
+    nearestWebxrVertexMaxInches: sortedDistances[sortedDistances.length - 1]!,
+    verticesOverHalfInch: sortedDistances.filter(distance => distance > 0.5).length,
+  };
   return result;
 }
