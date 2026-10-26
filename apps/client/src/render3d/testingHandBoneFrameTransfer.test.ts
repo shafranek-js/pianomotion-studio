@@ -69,4 +69,63 @@ describe("Testing hand bone-frame anatomical registration", () => {
     )).toThrow("No matching WebXR bone");
     anatomical.dispose();
   });
+  it("calibrates thumb query coordinates against segment length WITHOUT changing the realistic mesh", () => {
+    const names = [
+      "thumb-metacarpal", "thumb-phalanx-proximal",
+      "thumb-phalanx-distal", "thumb-tip",
+    ];
+    const native = [0, -1, -3, -4].map((z, index) => {
+      const bone = new THREE.Bone();
+      bone.name = names[index]!;
+      bone.position.set(0, 0, z);
+      bone.updateMatrixWorld(true);
+      return bone;
+    });
+    const driver = [0, -0.6, -2.96, -4.29].map((z, index) => {
+      const bone = new THREE.Bone();
+      bone.name = names[index]!;
+      bone.position.set(0, 0, z);
+      bone.updateMatrixWorld(true);
+      return bone;
+    });
+    const anatomy = sourceMesh(0);
+    anatomy.setAttribute("position", new THREE.Float32BufferAttribute([
+      0, 0, -0.5, 0.1, 0, -2, 0, 0, -3.5,
+    ], 3));
+    anatomy.setAttribute("skinIndex", new THREE.Uint16BufferAttribute([
+      0, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0,
+    ], 4));
+
+    const baseline = mapAnatomicalSurfaceToWebxrBindFrames(anatomy, native, driver);
+    const calibrated = mapAnatomicalSurfaceToWebxrBindFrames(
+      anatomy, native, driver, { thumbAxialScale: true },
+    );
+    const c = calibrated.geometry.getAttribute("position");
+    expect(c.getZ(0)).toBeCloseTo(-0.3, 6);
+    expect(c.getZ(1)).toBeCloseTo(-1.78, 6);
+    expect(c.getZ(2)).toBeCloseTo(-3.625, 6);
+    expect(baseline.geometry.getAttribute("position").getZ(0)).toBeCloseTo(-0.5, 6);
+    expect(anatomy.getAttribute("position").getZ(0)).toBeCloseTo(-0.5, 6);
+    expect(calibrated.stats.thumbAxialRatios).toEqual({
+      "thumb-metacarpal": expect.closeTo(0.6),
+      "thumb-phalanx-proximal": expect.closeTo(1.18),
+      "thumb-phalanx-distal": expect.closeTo(1.33),
+    });
+    baseline.geometry.dispose();
+    calibrated.geometry.dispose();
+    anatomy.dispose();
+  });
+
+  it("refuses degenerate anatomical thumb reference segments", () => {
+    const anatomical = sourceMesh(0);
+    const first = makeBone("thumb-metacarpal", 0);
+    const second = makeBone("thumb-phalanx-proximal", 0);
+    const webxrRoot = makeBone("thumb-metacarpal", 0);
+    const webxrNext = makeBone("thumb-phalanx-proximal", 1);
+    expect(() => mapAnatomicalSurfaceToWebxrBindFrames(
+      anatomical, [first, second], [webxrRoot, webxrNext], { thumbAxialScale: true },
+    )).toThrow("Invalid thumb bind-segment length");
+    anatomical.dispose();
+  });
+
 });
