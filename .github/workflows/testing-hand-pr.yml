@@ -55,6 +55,7 @@ jobs:
           apps/client/src/render3d/testingHandPianistBenchmark.test.ts
           apps/client/src/render3d/testingHandSemanticWeights.ts
           apps/client/src/render3d/testingHandSemanticWeights.test.ts
+          apps/client/src/render3d/testingHandDeformationHotspots.ts
           apps/client/src/render3d/improvedHandRuntime.ts
           apps/client/src/render3d/pianoScene3d.ts
           apps/client/src/render/pianoScene.ts
