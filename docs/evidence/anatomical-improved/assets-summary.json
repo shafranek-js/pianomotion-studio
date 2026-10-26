@@ -1,0 +1,1111 @@
+{
+  "schemaVersion": 1,
+  "modelId": "anatomical-improved",
+  "sourceSha256": "2d516fee4cb0889d8a0c71e86d6f8d48cce789314bc9f857b159baf4ca1c7a77",
+  "checks": {
+    "sourceHashRecorded": true,
+    "uvTransformBaked": true,
+    "uvsNormalized": true,
+    "weightsFiniteNormalizedAndJointBounded": true,
+    "bindMatricesReproduceRest": true,
+    "texturesExternalShared": true,
+    "rightMirroringFlipsTangentHandedness": true,
+    "totalAssetBytesUnder6MiB": true,
+    "lodTargetsInRange": true
+  },
+  "hands": {
+    "left": [
+      {
+        "level": 0,
+        "file": "left-lod0.glb",
+        "bytes": 958384,
+        "vertices": 18475,
+        "triangles": 34999,
+        "uvSeamSplitVertexCount": 947,
+        "uvMin": [
+          0.0004882887005805969,
+          0.01271076500415802
+        ],
+        "uvMax": [
+          0.9984283447265625,
+          0.9991912841796875
+        ],
+        "boundaryEdgeCount": 55,
+        "boundaryLoopLengths": [
+          55
+        ],
+        "projectionDistanceFinalMeters": {
+          "nearestSourceVertexMean": 9.650262349881912e-05,
+          "nearestSourceVertexP95": 0.0001745963789645434,
+          "nearestSourceVertexMax": 0.0003166074081331181,
+          "sourceCoordinateUnitsScale": 0.144577830098641
+        },
+        "silhouetteDistance": {
+          "view_x": {
+            "resolution": 384,
+            "pixelScaleMeters": 0.0004658730711271093,
+            "iou": 0.996513153352206,
+            "symmetricMeanMeters": 5.037142942256535e-05,
+            "symmetricP95Meters": 0.0004658730711271093,
+            "symmetricMaxMeters": 0.0004658730711271093
+          },
+          "view_y": {
+            "resolution": 384,
+            "pixelScaleMeters": 0.00039996359805275086,
+            "iou": 0.9947593618362135,
+            "symmetricMeanMeters": 7.472373807931633e-05,
+            "symmetricP95Meters": 0.00039996359805275086,
+            "symmetricMaxMeters": 0.00039996359805275086
+          },
+          "view_z": {
+            "resolution": 384,
+            "pixelScaleMeters": 0.0004658730711271093,
+            "iou": 0.9964539007092199,
+            "symmetricMeanMeters": 5.3907985860883405e-05,
+            "symmetricP95Meters": 0.0004658730711271093,
+            "symmetricMaxMeters": 0.0004658730711271093
+          }
+        },
+        "weights": {
+          "sumMin": 1.0,
+          "sumMax": 1.0,
+          "palmVertexCount": 7544,
+          "nonPalmCrossFingerVertexCount": 0
+        },
+        "maxBindIdentityError": 3.80675180267076e-08,
+        "normalLengthMinMax": [
+          0.9999773502349854,
+          1.0000237226486206
+        ],
+        "tangentLengthMinMax": [
+          0.9999766945838928,
+          1.0000230073928833
+        ],
+        "maxAbsNormalTangentDot": 3.9577484130859375e-05,
+        "minLocalYDorsalDot": 0.912254347582521
+      },
+      {
+        "level": 1,
+        "file": "left-lod1.glb",
+        "bytes": 498416,
+        "vertices": 9526,
+        "triangles": 17999,
+        "uvSeamSplitVertexCount": 506,
+        "uvMin": [
+          0.0005645838100463152,
+          0.01271076500415802
+        ],
+        "uvMax": [
+          0.9987030029296875,
+          0.9987335205078125
+        ],
+        "boundaryEdgeCount": 39,
+        "boundaryLoopLengths": [
+          39
+        ],
+        "projectionDistanceFinalMeters": {
+          "nearestSourceVertexMean": 0.00010130660507108239,
+          "nearestSourceVertexP95": 0.0001839612100351975,
+          "nearestSourceVertexMax": 0.00030316226369887436,
+          "sourceCoordinateUnitsScale": 0.144577830098641
+        },
+        "silhouetteDistance": {
+          "view_x": {
+            "resolution": 384,
+            "pixelScaleMeters": 0.0004658542184468436,
+            "iou": 0.9938961307676392,
+            "symmetricMeanMeters": 8.795848879765578e-05,
+            "symmetricP95Meters": 0.0004658542184468436,
+            "symmetricMaxMeters": 0.0004658542184468436
+          },
+          "view_y": {
+            "resolution": 384,
+            "pixelScaleMeters": 0.00039996041138108776,
+            "iou": 0.9934315286624203,
+            "symmetricMeanMeters": 9.586618348106169e-05,
+            "symmetricP95Meters": 0.00039996041138108776,
+            "symmetricMaxMeters": 0.00039996041138108776
+          },
+          "view_z": {
+            "resolution": 384,
+            "pixelScaleMeters": 0.0004658542184468436,
+            "iou": 0.9953109243697479,
+            "symmetricMeanMeters": 7.041233973208715e-05,
+            "symmetricP95Meters": 0.0004658542184468436,
+            "symmetricMaxMeters": 0.0004658542184468436
+          }
+        },
+        "weights": {
+          "sumMin": 1.0,
+          "sumMax": 1.0,
+          "palmVertexCount": 3846,
+          "nonPalmCrossFingerVertexCount": 0
+        },
+        "maxBindIdentityError": 3.80675180267076e-08,
+        "normalLengthMinMax": [
+          0.9999776482582092,
+          1.0000224113464355
+        ],
+        "tangentLengthMinMax": [
+          0.999976396560669,
+          1.0000251531600952
+        ],
+        "maxAbsNormalTangentDot": 4.509091377258301e-05,
+        "minLocalYDorsalDot": 0.912254347582521
+      },
+      {
+        "level": 2,
+        "file": "left-lod2.glb",
+        "bytes": 227532,
+        "vertices": 4254,
+        "triangles": 8000,
+        "uvSeamSplitVertexCount": 240,
+        "uvMin": [
+          7.629510946571827e-05,
+          0.013931486755609512
+        ],
+        "uvMax": [
+          0.993240237236023,
+          0.9987335205078125
+        ],
+        "boundaryEdgeCount": 26,
+        "boundaryLoopLengths": [
+          26
+        ],
+        "projectionDistanceFinalMeters": {
+          "nearestSourceVertexMean": 0.00010833914311273474,
+          "nearestSourceVertexP95": 0.00018890568672143745,
+          "nearestSourceVertexMax": 0.00029963717242376754,
+          "sourceCoordinateUnitsScale": 0.144577830098641
+        },
+        "silhouetteDistance": {
+          "view_x": {
+            "resolution": 384,
+            "pixelScaleMeters": 0.0004658542184468436,
+            "iou": 0.9927908661308682,
+            "symmetricMeanMeters": 0.0001038847397396239,
+            "symmetricP95Meters": 0.0004658542184468436,
+            "symmetricMaxMeters": 0.0004658542184468436
+          },
+          "view_y": {
+            "resolution": 384,
+            "pixelScaleMeters": 0.00040008869529891246,
+            "iou": 0.9918340248962656,
+            "symmetricMeanMeters": 0.00011761804765048173,
+            "symmetricP95Meters": 0.00040008869529891246,
+            "symmetricMaxMeters": 0.0005658108590438788
+          },
+          "view_z": {
+            "resolution": 384,
+            "pixelScaleMeters": 0.0004658542184468436,
+            "iou": 0.994068223827928,
+            "symmetricMeanMeters": 8.977063595727121e-05,
+            "symmetricP95Meters": 0.0004658542184468436,
+            "symmetricMaxMeters": 0.0004658542184468436
+          }
+        },
+        "weights": {
+          "sumMin": 1.0,
+          "sumMax": 1.0,
+          "palmVertexCount": 1678,
+          "nonPalmCrossFingerVertexCount": 0
+        },
+        "maxBindIdentityError": 3.80675180267076e-08,
+        "normalLengthMinMax": [
+          0.999976634979248,
+          1.0000230073928833
+        ],
+        "tangentLengthMinMax": [
+          0.9999769926071167,
+          1.0000228881835938
+        ],
+        "maxAbsNormalTangentDot": 3.668665885925293e-05,
+        "minLocalYDorsalDot": 0.912254347582521
+      }
+    ],
+    "right": [
+      {
+        "level": 0,
+        "file": "right-lod0.glb",
+        "bytes": 958356,
+        "vertices": 18475,
+        "triangles": 34999,
+        "uvSeamSplitVertexCount": 947,
+        "uvMin": [
+          0.0004882887005805969,
+          0.01271076500415802
+        ],
+        "uvMax": [
+          0.9984283447265625,
+          0.9991912841796875
+        ],
+        "boundaryEdgeCount": 55,
+        "boundaryLoopLengths": [
+          55
+        ],
+        "projectionDistanceFinalMeters": {
+          "nearestSourceVertexMean": 9.650262349881912e-05,
+          "nearestSourceVertexP95": 0.0001745963789645434,
+          "nearestSourceVertexMax": 0.0003166074081331181,
+          "sourceCoordinateUnitsScale": 0.144577830098641
+        },
+        "silhouetteDistance": {
+          "view_x": {
+            "resolution": 384,
+            "pixelScaleMeters": 0.0004658730711271093,
+            "iou": 0.996513153352206,
+            "symmetricMeanMeters": 5.037142942256535e-05,
+            "symmetricP95Meters": 0.0004658730711271093,
+            "symmetricMaxMeters": 0.0004658730711271093
+          },
+          "view_y": {
+            "resolution": 384,
+            "pixelScaleMeters": 0.00039996359805275086,
+            "iou": 0.9947593618362135,
+            "symmetricMeanMeters": 7.472373807931633e-05,
+            "symmetricP95Meters": 0.00039996359805275086,
+            "symmetricMaxMeters": 0.00039996359805275086
+          },
+          "view_z": {
+            "resolution": 384,
+            "pixelScaleMeters": 0.0004658730711271093,
+            "iou": 0.9964539007092199,
+            "symmetricMeanMeters": 5.3907985860883405e-05,
+            "symmetricP95Meters": 0.0004658730711271093,
+            "symmetricMaxMeters": 0.0004658730711271093
+          }
+        },
+        "weights": {
+          "sumMin": 1.0,
+          "sumMax": 1.0,
+          "palmVertexCount": 7544,
+          "nonPalmCrossFingerVertexCount": 0
+        },
+        "maxBindIdentityError": 3.80675180267076e-08,
+        "normalLengthMinMax": [
+          0.9999773502349854,
+          1.0000237226486206
+        ],
+        "tangentLengthMinMax": [
+          0.9999766945838928,
+          1.0000230073928833
+        ],
+        "maxAbsNormalTangentDot": 3.9577484130859375e-05,
+        "minLocalYDorsalDot": 0.912254347582521
+      },
+      {
+        "level": 1,
+        "file": "right-lod1.glb",
+        "bytes": 498388,
+        "vertices": 9526,
+        "triangles": 17999,
+        "uvSeamSplitVertexCount": 506,
+        "uvMin": [
+          0.0005645838100463152,
+          0.01271076500415802
+        ],
+        "uvMax": [
+          0.9987030029296875,
+          0.9987335205078125
+        ],
+        "boundaryEdgeCount": 39,
+        "boundaryLoopLengths": [
+          39
+        ],
+        "projectionDistanceFinalMeters": {
+          "nearestSourceVertexMean": 0.00010130660507108239,
+          "nearestSourceVertexP95": 0.0001839612100351975,
+          "nearestSourceVertexMax": 0.00030316226369887436,
+          "sourceCoordinateUnitsScale": 0.144577830098641
+        },
+        "silhouetteDistance": {
+          "view_x": {
+            "resolution": 384,
+            "pixelScaleMeters": 0.0004658542184468436,
+            "iou": 0.9938961307676392,
+            "symmetricMeanMeters": 8.795848879765578e-05,
+            "symmetricP95Meters": 0.0004658542184468436,
+            "symmetricMaxMeters": 0.0004658542184468436
+          },
+          "view_y": {
+            "resolution": 384,
+            "pixelScaleMeters": 0.00039996041138108776,
+            "iou": 0.9934315286624203,
+            "symmetricMeanMeters": 9.586618348106169e-05,
+            "symmetricP95Meters": 0.00039996041138108776,
+            "symmetricMaxMeters": 0.00039996041138108776
+          },
+          "view_z": {
+            "resolution": 384,
+            "pixelScaleMeters": 0.0004658542184468436,
+            "iou": 0.9953109243697479,
+            "symmetricMeanMeters": 7.041233973208715e-05,
+            "symmetricP95Meters": 0.0004658542184468436,
+            "symmetricMaxMeters": 0.0004658542184468436
+          }
+        },
+        "weights": {
+          "sumMin": 1.0,
+          "sumMax": 1.0,
+          "palmVertexCount": 3846,
+          "nonPalmCrossFingerVertexCount": 0
+        },
+        "maxBindIdentityError": 3.80675180267076e-08,
+        "normalLengthMinMax": [
+          0.9999776482582092,
+          1.0000224113464355
+        ],
+        "tangentLengthMinMax": [
+          0.999976396560669,
+          1.0000251531600952
+        ],
+        "maxAbsNormalTangentDot": 4.509091377258301e-05,
+        "minLocalYDorsalDot": 0.912254347582521
+      },
+      {
+        "level": 2,
+        "file": "right-lod2.glb",
+        "bytes": 227504,
+        "vertices": 4254,
+        "triangles": 8000,
+        "uvSeamSplitVertexCount": 240,
+        "uvMin": [
+          7.629510946571827e-05,
+          0.013931486755609512
+        ],
+        "uvMax": [
+          0.993240237236023,
+          0.9987335205078125
+        ],
+        "boundaryEdgeCount": 26,
+        "boundaryLoopLengths": [
+          26
+        ],
+        "projectionDistanceFinalMeters": {
+          "nearestSourceVertexMean": 0.00010833914311273474,
+          "nearestSourceVertexP95": 0.00018890568672143745,
+          "nearestSourceVertexMax": 0.00029963717242376754,
+          "sourceCoordinateUnitsScale": 0.144577830098641
+        },
+        "silhouetteDistance": {
+          "view_x": {
+            "resolution": 384,
+            "pixelScaleMeters": 0.0004658542184468436,
+            "iou": 0.9927908661308682,
+            "symmetricMeanMeters": 0.0001038847397396239,
+            "symmetricP95Meters": 0.0004658542184468436,
+            "symmetricMaxMeters": 0.0004658542184468436
+          },
+          "view_y": {
+            "resolution": 384,
+            "pixelScaleMeters": 0.00040008869529891246,
+            "iou": 0.9918340248962656,
+            "symmetricMeanMeters": 0.00011761804765048173,
+            "symmetricP95Meters": 0.00040008869529891246,
+            "symmetricMaxMeters": 0.0005658108590438788
+          },
+          "view_z": {
+            "resolution": 384,
+            "pixelScaleMeters": 0.0004658542184468436,
+            "iou": 0.994068223827928,
+            "symmetricMeanMeters": 8.977063595727121e-05,
+            "symmetricP95Meters": 0.0004658542184468436,
+            "symmetricMaxMeters": 0.0004658542184468436
+          }
+        },
+        "weights": {
+          "sumMin": 1.0,
+          "sumMax": 1.0,
+          "palmVertexCount": 1678,
+          "nonPalmCrossFingerVertexCount": 0
+        },
+        "maxBindIdentityError": 3.80675180267076e-08,
+        "normalLengthMinMax": [
+          0.999976634979248,
+          1.0000230073928833
+        ],
+        "tangentLengthMinMax": [
+          0.9999769926071167,
+          1.0000228881835938
+        ],
+        "maxAbsNormalTangentDot": 3.668665885925293e-05,
+        "minLocalYDorsalDot": 0.912254347582521
+      }
+    ]
+  },
+  "landmarks": {
+    "pinky-finger-tip": {
+      "source": [
+        -0.4917506070424298,
+        0.7071530169648689,
+        -0.02894516612191464
+      ],
+      "rest": [
+        -0.01737849615141629,
+        -0.08145480742091302,
+        0.06497500991488034
+      ],
+      "referenceLeft": [
+        -0.015562495216727257,
+        -0.08192074298858643,
+        0.060044966638088226
+      ],
+      "distanceMeters": 0.00527449353578689
+    },
+    "pinky-finger-phalanx-distal": {
+      "source": [
+        -0.46598091226489663,
+        0.65405738442138,
+        -0.033293622914305064
+      ],
+      "rest": [
+        -0.017355323218045025,
+        -0.07418730945057178,
+        0.0604597987921541
+      ],
+      "referenceLeft": [
+        -0.016352267935872078,
+        -0.07041695713996887,
+        0.05706878751516342
+      ],
+      "distanceMeters": 0.00516920051128235
+    },
+    "pinky-finger-phalanx-intermediate": {
+      "source": [
+        -0.4571411854214902,
+        0.5907461305495799,
+        -0.0127964790010479
+      ],
+      "rest": [
+        -0.020617685698211832,
+        -0.06522409790771996,
+        0.058665942913590396
+      ],
+      "referenceLeft": [
+        -0.019206907600164413,
+        -0.051416680216789246,
+        0.05048138648271561
+      ],
+      "distanceMeters": 0.016112791257380913
+    },
+    "pinky-finger-phalanx-proximal": {
+      "source": [
+        -0.3931974132868188,
+        0.405,
+        0.056862983337999995
+      ],
+      "rest": [
+        -0.0322385898865152,
+        -0.039485601984745065,
+        0.048151198285597385
+      ],
+      "referenceLeft": [
+        -0.023632973432540894,
+        -0.017909586429595947,
+        0.04316800832748413
+      ],
+      "distanceMeters": 0.023757383356497633
+    },
+    "pinky-finger-metacarpal": {
+      "source": [
+        -0.30858125796550706,
+        0.131,
+        0.055503945361402796
+      ],
+      "rest": [
+        -0.034272818066888366,
+        -0.0012968634982620502,
+        0.03213629842268098
+      ],
+      "referenceLeft": [
+        -0.02790432795882225,
+        0.02191268838942051,
+        0.031112518161535263
+      ],
+      "distanceMeters": 0.024089190337300188
+    },
+    "ring-finger-tip": {
+      "source": [
+        -0.3097742173596712,
+        0.8858702268308613,
+        -0.006989189928088606
+      ],
+      "rest": [
+        -0.023339112331599063,
+        -0.10981743035199099,
+        0.04195452635207855
+      ],
+      "referenceLeft": [
+        -0.022381938993930817,
+        -0.1075858622789383,
+        0.04363660514354706
+      ],
+      "distanceMeters": 0.0029538899647277355
+    },
+    "ring-finger-phalanx-distal": {
+      "source": [
+        -0.28383222654393586,
+        0.78447011812214,
+        -0.01683257014876087
+      ],
+      "rest": [
+        -0.022655594211236835,
+        -0.09559971933026937,
+        0.03662500726692977
+      ],
+      "referenceLeft": [
+        -0.023155540227890015,
+        -0.09590168297290802,
+        0.04130611568689346
+      ],
+      "distanceMeters": 0.0047174043817016535
+    },
+    "ring-finger-phalanx-intermediate": {
+      "source": [
+        -0.27464958431758724,
+        0.66756459012674,
+        0.024543270872903644
+      ],
+      "rest": [
+        -0.029057147401641573,
+        -0.07894819397991504,
+        0.03439568777220757
+      ],
+      "referenceLeft": [
+        -0.026439357548952103,
+        -0.07032819092273712,
+        0.03487502783536911
+      ],
+      "distanceMeters": 0.009021476781256619
+    },
+    "ring-finger-phalanx-proximal": {
+      "source": [
+        -0.24345326529615455,
+        0.395,
+        0.05053249365499998
+      ],
+      "rest": [
+        -0.03404953078531579,
+        -0.04021273458778517,
+        0.026521853806517216
+      ],
+      "referenceLeft": [
+        -0.03079485520720482,
+        -0.028707534074783325,
+        0.02557918056845665
+      ],
+      "distanceMeters": 0.011993797763714604
+    },
+    "ring-finger-metacarpal": {
+      "source": [
+        -0.21873476917110857,
+        0.125,
+        0.05170565155160278
+      ],
+      "rest": [
+        -0.03535938260616872,
+        -0.001733143060086111,
+        0.01915869173523289
+      ],
+      "referenceLeft": [
+        -0.0316176675260067,
+        0.02899571880698204,
+        0.016379762440919876
+      ],
+      "distanceMeters": 0.031080312601536972
+    },
+    "middle-finger-tip": {
+      "source": [
+        -0.11603600151062962,
+        0.9469466216386795,
+        0.00622259912948287
+      ],
+      "rest": [
+        -0.028560768812894825,
+        -0.12142147123813633,
+        0.01541630178689957
+      ],
+      "referenceLeft": [
+        -0.02856076881289482,
+        -0.12142147123813629,
+        0.015416301786899567
+      ],
+      "distanceMeters": 4.192148702340308e-17
+    },
+    "middle-finger-phalanx-distal": {
+      "source": [
+        -0.1118157627323848,
+        0.8120000000000003,
+        0.0011957721696898268
+      ],
+      "rest": [
+        -0.028264038582285347,
+        -0.10206705039905818,
+        0.012795189674887346
+      ],
+      "referenceLeft": [
+        -0.02753138542175293,
+        -0.10936939716339111,
+        0.013799866661429405
+      ],
+      "distanceMeters": 0.007407457375340679
+    },
+    "middle-finger-phalanx-intermediate": {
+      "source": [
+        -0.1135917967921076,
+        0.6440000000000001,
+        0.053131553249261707
+      ],
+      "rest": [
+        -0.03611503614138242,
+        -0.07791502657737868,
+        0.011591770615096635
+      ],
+      "referenceLeft": [
+        -0.030302714556455612,
+        -0.08212926983833313,
+        0.01075422391295433
+      ],
+      "distanceMeters": 0.007228029672557765
+    },
+    "middle-finger-phalanx-proximal": {
+      "source": [
+        -0.12145773193792408,
+        0.395,
+        0.06156729218499998
+      ],
+      "rest": [
+        -0.03782633432245194,
+        -0.041989532730089915,
+        0.009310876536070167
+      ],
+      "referenceLeft": [
+        -0.03478100523352623,
+        -0.03566037118434906,
+        0.006388039793819189
+      ],
+      "distanceMeters": 0.007607581071128601
+    },
+    "middle-finger-metacarpal": {
+      "source": [
+        -0.14553744915617028,
+        0.125,
+        0.058326530669602784
+      ],
+      "rest": [
+        -0.037625464728450415,
+        -0.002799221945468961,
+        0.008832105372964656
+      ],
+      "referenceLeft": [
+        -0.0316176675260067,
+        0.026879899203777313,
+        0.004854800179600716
+      ],
+      "distanceMeters": 0.030541165924346893
+    },
+    "index-finger-tip": {
+      "source": [
+        0.08128962263723835,
+        0.8843423727552786,
+        -0.017023125949736442
+      ],
+      "rest": [
+        -0.028937075106898344,
+        -0.11525824809710818,
+        -0.014062349399065888
+      ],
+      "referenceLeft": [
+        -0.025165017694234848,
+        -0.11343123018741608,
+        -0.011311141774058342
+      ],
+      "distanceMeters": 0.00501353717076726
+    },
+    "index-finger-phalanx-distal": {
+      "source": [
+        0.06328326839379643,
+        0.7832830061118601,
+        -0.014764258650806723
+      ],
+      "rest": [
+        -0.02919812049043139,
+        -0.10046187352514577,
+        -0.012894973443564224
+      ],
+      "referenceLeft": [
+        -0.024555116891860962,
+        -0.1019338071346283,
+        -0.012577682733535767
+      ],
+      "distanceMeters": 0.004881059758057934
+    },
+    "index-finger-phalanx-intermediate": {
+      "source": [
+        0.05338269460832296,
+        0.66686533236726,
+        0.023849089264958993
+      ],
+      "rest": [
+        -0.034858977672672674,
+        -0.08360178847177444,
+        -0.012443901229992302
+      ],
+      "referenceLeft": [
+        -0.026773706078529358,
+        -0.0777682363986969,
+        -0.013908002525568008
+      ],
+      "distanceMeters": 0.010076980656132791
+    },
+    "index-finger-phalanx-proximal": {
+      "source": [
+        0.012195244768073925,
+        0.395,
+        0.054734428779449965
+      ],
+      "rest": [
+        -0.03925000674530712,
+        -0.04392151508622879,
+        -0.009888206357543314
+      ],
+      "referenceLeft": [
+        -0.030007705092430115,
+        -0.03600998967885971,
+        -0.015436742454767227
+      ],
+      "distanceMeters": 0.01337156037777253
+    },
+    "index-finger-metacarpal": {
+      "source": [
+        -0.06534566313257148,
+        0.125,
+        0.054226812626272776
+      ],
+      "rest": [
+        -0.03847966818216352,
+        -0.003958411359152283,
+        -0.002687344363203434
+      ],
+      "referenceLeft": [
+        -0.03183609992265701,
+        0.01958273909986019,
+        -0.0013778842985630035
+      ],
+      "distanceMeters": 0.024495661857020186
+    },
+    "thumb-tip": {
+      "source": [
+        0.5246833458877816,
+        0.27202618775802007,
+        -0.18393093820189615
+      ],
+      "rest": [
+        -0.014552304184588475,
+        -0.033476248510950136,
+        -0.08911983156294143
+      ],
+      "referenceLeft": [
+        0.011587950401008129,
+        -0.03569181263446808,
+        -0.06978465616703033
+      ],
+      "distanceMeters": 0.032589425306007926
+    },
+    "thumb-phalanx-distal": {
+      "source": [
+        0.45539296914641625,
+        0.24625885518577445,
+        -0.16161889656136524
+      ],
+      "rest": [
+        -0.016572903978856662,
+        -0.028782561371016722,
+        -0.07919368965451286
+      ],
+      "referenceLeft": [
+        0.006387657485902309,
+        -0.02713702619075775,
+        -0.058798640966415405
+      ],
+      "distanceMeters": 0.0307547261375599
+    },
+    "thumb-phalanx-proximal": {
+      "source": [
+        0.2772177146686196,
+        0.18,
+        -0.10424507520000001
+      ],
+      "rest": [
+        -0.021768732021260576,
+        -0.01671308015404508,
+        -0.053669324747125116
+      ],
+      "referenceLeft": [
+        -0.003016524948179722,
+        -0.003232412040233612,
+        -0.03684177249670029
+      ],
+      "distanceMeters": 0.028575167499897785
+    },
+    "thumb-metacarpal": {
+      "source": [
+        0.020247860463410455,
+        -0.07760000000000003,
+        -0.01592721558595609
+      ],
+      "rest": [
+        -0.030479771878325602,
+        0.02399854150183915,
+        -0.01907069165688348
+      ],
+      "referenceLeft": [
+        -0.018166445195674896,
+        0.020027821883559227,
+        -0.01991455629467964
+      ],
+      "distanceMeters": 0.012965212524582609
+    },
+    "wrist": {
+      "source": [
+        -0.18165702498353958,
+        -0.28,
+        0.05346538839650699
+      ],
+      "rest": [
+        -0.03732416033744812,
+        0.05598624423146248,
+        0.008113948628306389
+      ],
+      "referenceLeft": [
+        -0.03732416033744812,
+        0.05598624423146248,
+        0.008113948628306389
+      ],
+      "distanceMeters": 0.0
+    }
+  },
+  "landmarkDerivation": {
+    "separatedContoursAtY": 0.5,
+    "separatedContourCount": 4,
+    "digitSurfaceComponents": {
+      "pinky": {
+        "componentId": 0,
+        "componentVertexCount": 26950,
+        "sourceTipY": 0.7110375129059999,
+        "sourceTipXYZ": [
+          -0.4917506070424298,
+          0.7071530169648689,
+          -0.02894516612191464
+        ]
+      },
+      "ring": {
+        "componentId": 64147,
+        "componentVertexCount": 54212,
+        "sourceTipY": 0.8896850933179999,
+        "sourceTipXYZ": [
+          -0.3097742173596712,
+          0.8858702268308613,
+          -0.006989189928088606
+        ]
+      },
+      "middle": {
+        "componentId": 186766,
+        "componentVertexCount": 66106,
+        "sourceTipY": 0.9507830304420001,
+        "sourceTipXYZ": [
+          -0.11603600151062962,
+          0.9469466216386795,
+          0.00622259912948287
+        ]
+      },
+      "index": {
+        "componentId": 282735,
+        "componentVertexCount": 54287,
+        "sourceTipY": 0.8880589124820001,
+        "sourceTipXYZ": [
+          0.08128962263723835,
+          0.8843423727552786,
+          -0.017023125949736442
+        ]
+      }
+    },
+    "mcpXSource": {
+      "pinky": -0.3931974132868188,
+      "ring": -0.24345326529615455,
+      "middle": -0.12145773193792408,
+      "index": 0.012195244768073925
+    },
+    "mcpSpacingSource": [
+      0.14974414799066424,
+      0.12199553335823046,
+      0.13365297670599802
+    ],
+    "thumbMcpSource": [
+      0.2772177146686196,
+      0.18,
+      -0.10424507520000001
+    ],
+    "digitPhalanxProfileEstimates": {
+      "pinky": {
+        "sourcePipY": 0.5907461305495799,
+        "sourceDipY": 0.65405738442138,
+        "pipFromCrossSectionWidthMinimum": false,
+        "dipFromCrossSectionWidthMinimum": false,
+        "crossSectionSamples": 16,
+        "fallbackBasis": "distance fractions from first separated finger contour to tracked terminal cap when no stable constriction exists"
+      },
+      "ring": {
+        "sourcePipY": 0.66756459012674,
+        "sourceDipY": 0.78447011812214,
+        "pipFromCrossSectionWidthMinimum": false,
+        "dipFromCrossSectionWidthMinimum": false,
+        "crossSectionSamples": 31,
+        "fallbackBasis": "distance fractions from first separated finger contour to tracked terminal cap when no stable constriction exists"
+      },
+      "middle": {
+        "sourcePipY": 0.6440000000000001,
+        "sourceDipY": 0.8120000000000003,
+        "pipFromCrossSectionWidthMinimum": true,
+        "dipFromCrossSectionWidthMinimum": true,
+        "crossSectionSamples": 36,
+        "fallbackBasis": "distance fractions from first separated finger contour to tracked terminal cap when no stable constriction exists"
+      },
+      "index": {
+        "sourcePipY": 0.66686533236726,
+        "sourceDipY": 0.7832830061118601,
+        "pipFromCrossSectionWidthMinimum": false,
+        "dipFromCrossSectionWidthMinimum": false,
+        "crossSectionSamples": 31,
+        "fallbackBasis": "distance fractions from first separated finger contour to tracked terminal cap when no stable constriction exists"
+      }
+    },
+    "metacarpalAnchorMethod": "fractional wrist-to-MCP interpolation; source mesh has no joint/skeleton annotations"
+  },
+  "scaleFit": {
+    "uniformScale": 0.144577830098641,
+    "sourceWristToMiddleTipSourceUnits": 1.2296080726027825,
+    "targetReferenceWristToMiddleTipMeters": 0.1777740670086825,
+    "fittedWristToMiddleTipMeters": 0.1777740670086825,
+    "noNonuniformDeformation": true
+  },
+  "boneBasis": {
+    "localX": "hinge",
+    "localY": "dorsal projected into bone normal plane",
+    "localMinusZ": "forward along next joint",
+    "sourceDorsalNormalMean": [
+      0.001881830910881754,
+      -0.0828568800818777,
+      0.9965596801674852
+    ],
+    "sourceDorsalPositiveZDot": 0.9965596801674852,
+    "restDorsalAxis": [
+      -0.990372606000492,
+      0.07693110637055044,
+      0.11508130237530939
+    ],
+    "rightDorsalAxis": [
+      0.990372606000492,
+      0.07693110637055044,
+      0.11508130237530939
+    ],
+    "minimumLocalYToDorsalDot": {
+      "left": 0.912254347582521,
+      "right": 0.912254347582521
+    }
+  },
+  "wristCut": {
+    "sourceY": -0.28,
+    "side": "negative-Y forearm; fingers positive-Y",
+    "singleContourComponents": 1,
+    "sourceLoopVertices": 1286,
+    "sourceOpenEdges": 1286,
+    "sourceLoopCenter": [
+      -0.18165702498353958,
+      -0.28,
+      0.05346538839650699
+    ]
+  },
+  "uvRestoration": {
+    "sourceGeometricVertices": 674010,
+    "sourceUVSeamDuplicateVertices": 20536,
+    "method": "welded geometry simplification; per-face barycentric source projection; UV chart seed from nearest source face at target face center"
+  },
+  "textureEncoding": {
+    "profile": "optimized",
+    "baseColorHigh": {
+      "format": "JPEG",
+      "quality": 85,
+      "size": [
+        2048,
+        2048
+      ]
+    },
+    "baseColorLow": {
+      "format": "JPEG",
+      "quality": 85,
+      "size": [
+        1024,
+        1024
+      ]
+    },
+    "normalHigh": {
+      "bitsPerChannel": 6,
+      "width": 2048,
+      "height": 2048,
+      "bytes": 1559703,
+      "angularErrorDegreesMean": 0.9504690971028039,
+      "angularErrorDegreesP95": 1.270631018483696,
+      "angularErrorDegreesMax": 1.5305771206980827,
+      "reference": "same-resolution source normal, resized before quantization"
+    },
+    "normalLow": {
+      "bitsPerChannel": 6,
+      "width": 512,
+      "height": 512,
+      "bytes": 154566,
+      "angularErrorDegreesMean": 1.025146651473002,
+      "angularErrorDegreesP95": 1.270631018483696,
+      "angularErrorDegreesMax": 1.3892376322518312,
+      "reference": "same-resolution source normal, resized before quantization"
+    },
+    "roughnessEncoding": "lossless grayscale PNG; grayscale is replicated by browser image decoding for the green roughness-map channel"
+  },
+  "silhouetteReference": {
+    "proxyTriangles": 90000,
+    "rasterResolution": 384,
+    "method": "filled projected triangle masks; symmetric boundary distance transform",
+    "distanceUnits": "final-rest meters after multiplying source-coordinate pixel scale by global uniform fit"
+  },
+  "silhouetteMetricFixtures": {
+    "identicalMaxMeters": 0.0,
+    "movedIndexRegionP95Meters": 0.004658542184468436,
+    "passed": true
+  },
+  "assetBytesTotal": 6231395,
+  "elapsedSeconds": 42.202070236206055,
+  "assetPayloadScope": "complete-directory-including-manifest",
+  "lazyRequestPayloadBytes": {
+    "0": {
+      "textureSet": "high",
+      "manifest": 64448,
+      "sharedTextures": 2405264,
+      "singleHand": 3428096,
+      "bothHands": 4386452
+    },
+    "1": {
+      "textureSet": "high",
+      "manifest": 64448,
+      "sharedTextures": 2405264,
+      "singleHand": 2968128,
+      "bothHands": 3466516
+    },
+    "2": {
+      "textureSet": "low",
+      "manifest": 64448,
+      "sharedTextures": 393103,
+      "singleHand": 685083,
+      "bothHands": 912587
+    }
+  }
+}

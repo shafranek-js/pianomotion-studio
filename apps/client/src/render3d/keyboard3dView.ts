@@ -355,6 +355,15 @@ export class Keyboard3DView {
   public readonly group = new THREE.Group();
   public readonly keysByPitch = new Map<number, Key3DMeshEntry>();
   private readonly keyMeshes: THREE.Mesh[] = [];
+  private readonly keySurfaceRaycaster = new THREE.Raycaster(
+    new THREE.Vector3(),
+    new THREE.Vector3(0, -1, 0),
+    0,
+    200,
+  );
+  private readonly keySurfaceHits: THREE.Intersection[] = [];
+  private readonly keySurfaceNormalMatrix = new THREE.Matrix3();
+  private readonly keySurfaceNormal = new THREE.Vector3();
   private activePitches = new Map<number, KeyPressInfo | null>();
   private targetPitches = new Map<number, KeyPressInfo>();
   private wrongPitches = new Set<number>();
@@ -870,6 +879,34 @@ export class Keyboard3DView {
       }
     }
     this.refreshKeyStates();
+  }
+
+  /**
+   * Samples the current transformed top surface for a key at a world-space X/Z
+   * coordinate. A null result means the sample is outside that key's top face.
+   */
+  public sampleKeySurfaceYAt(pitch: number, worldX: number, worldZ: number): number | null {
+    const entry = this.keysByPitch.get(pitch);
+    if (!entry || !Number.isFinite(worldX) || !Number.isFinite(worldZ)) return null;
+
+    entry.mesh.updateWorldMatrix(true, false);
+    this.keySurfaceRaycaster.ray.origin.set(worldX, 100, worldZ);
+    this.keySurfaceRaycaster.ray.direction.set(0, -1, 0);
+    this.keySurfaceHits.length = 0;
+    this.keySurfaceRaycaster.intersectObject(entry.mesh, false, this.keySurfaceHits);
+    if (this.keySurfaceHits.length === 0) return null;
+
+    this.keySurfaceNormalMatrix.getNormalMatrix(entry.mesh.matrixWorld);
+    for (const hit of this.keySurfaceHits) {
+      if (!hit.face) continue;
+      this.keySurfaceNormal.copy(hit.face.normal)
+        .applyMatrix3(this.keySurfaceNormalMatrix)
+        .normalize();
+      // Ignore vertical key walls and side bevels; contact is against the
+      // playable top face, including the small key depression rotation.
+      if (this.keySurfaceNormal.y >= 0.75) return hit.point.y;
+    }
+    return null;
   }
 
   public setTargetKeys(targets: ReadonlyMap<number, KeyPressInfo> | null): void {

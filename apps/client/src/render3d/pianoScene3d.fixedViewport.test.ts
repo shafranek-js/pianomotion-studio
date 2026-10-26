@@ -2,8 +2,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as THREE from "three";
 import type { MotionPlan, Note, PerformancePlan } from "@handthesia/contracts";
 import { FallingNotes3DView } from "./fallingNotes3dView";
+import * as handRigBuilder from "./handRigBuilder";
 import { Hand3DMeshGroup } from "./handRigBuilder";
 import { Keyboard3DView } from "./keyboard3dView";
+import { IMPROVED_HAND_MODEL_ID, type HandModelId } from "./improvedHandRuntime";
 import { PianoScene3D, type Camera3DPreset } from "./pianoScene3d";
 
 const mocks = vi.hoisted(() => {
@@ -36,6 +38,10 @@ vi.mock("three", async (importOriginal) => {
   class TestWebGLRenderer {
     public readonly domElement = mocks.canvas as unknown as HTMLCanvasElement;
     public readonly shadowMap: Record<string, unknown> = {};
+    public readonly info = {
+      render: { calls: 0, triangles: 0 },
+      memory: { geometries: 0, textures: 0 },
+    };
 
     public setPixelRatio(ratio: number): void {
       mocks.setPixelRatio(ratio);
@@ -74,11 +80,12 @@ const viewports = {
   resolution: 1 as const,
 };
 
-function makeScene(): PianoScene3D {
+function makeScene(initialHandModel: HandModelId = "anatomical"): PianoScene3D {
   const target = { clientWidth: 480, clientHeight: 270 } as HTMLElement;
   return new PianoScene3D(target, {
     canvas: mocks.canvas as unknown as HTMLCanvasElement,
     fixedViewport: viewports,
+    initialHandModel,
   });
 }
 
@@ -157,6 +164,63 @@ describe("PianoScene3D fixed viewport", () => {
   });
 
   afterEach(() => vi.unstubAllGlobals());
+
+  it("boots improved and WebXR without anatomical asset requests or anatomical fallback textures", async () => {
+    const requestedUrls: string[] = [];
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      requestedUrls.push(String(input));
+      return { ok: false, status: 404 } as Response;
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const nativeFs = {
+      existsSync: () => false,
+      readFileSync: () => { throw new Error("No local anatomical fixture should be read."); },
+    };
+    const anatomicalPreloadSpy = vi.spyOn(handRigBuilder, "preloadAnatomicalHandModels");
+    const runtimeProcess = Reflect.get(globalThis, "process") as { getBuiltinModule: (name: string) => unknown };
+    const getBuiltinModule = runtimeProcess.getBuiltinModule.bind(runtimeProcess);
+    const builtinModuleSpy = vi.spyOn(runtimeProcess, "getBuiltinModule").mockImplementation((name: string) =>
+      name === "fs" ? nativeFs as never : getBuiltinModule(name),
+    );
+
+    const improvedScene = makeScene(IMPROVED_HAND_MODEL_ID);
+    let webxrScene: PianoScene3D | null = null;
+    try {
+      await expect(improvedScene.waitForHandModelReady()).rejects.toThrow("Improved hand manifest request failed (404)");
+
+      const diagnostics = improvedScene.getHandModelDiagnostics();
+      expect(diagnostics.left.requestedModel).toBe(IMPROVED_HAND_MODEL_ID);
+      expect(diagnostics.left.loadedModel).toBe("webxr");
+      expect(diagnostics.right.loadedModel).toBe("webxr");
+      const handGroups = improvedScene as unknown as {
+        leftHand3D: Hand3DMeshGroup;
+        rightHand3D: Hand3DMeshGroup;
+      };
+      const leftSkin = (handGroups.leftHand3D as unknown as { skinMaterial: THREE.MeshPhysicalMaterial }).skinMaterial;
+      const rightSkin = (handGroups.rightHand3D as unknown as { skinMaterial: THREE.MeshPhysicalMaterial }).skinMaterial;
+      expect(leftSkin.map).toBeNull();
+      expect(leftSkin.normalMap).toBe(handRigBuilder.getSkinNormalMap());
+      expect(leftSkin.roughnessMap).toBe(handRigBuilder.getSkinRoughnessMap());
+      expect(rightSkin.map).toBeNull();
+      expect(rightSkin.normalMap).toBe(handRigBuilder.getSkinNormalMap());
+      expect(rightSkin.roughnessMap).toBe(handRigBuilder.getSkinRoughnessMap());
+      expect(anatomicalPreloadSpy).not.toHaveBeenCalled();
+      expect(requestedUrls.some((url) => /anatomical_(left|right)\.glb/.test(url))).toBe(false);
+      expect(requestedUrls.some((url) => /anatomical_(base_color\.jpg|normal\.png)/.test(url))).toBe(false);
+
+      const callsAfterImprovedFailure = fetchMock.mock.calls.length;
+      webxrScene = makeScene("webxr");
+      expect(fetchMock).toHaveBeenCalledTimes(callsAfterImprovedFailure);
+      expect(webxrScene.getHandModelDiagnostics().left.loadedModel).toBe("webxr");
+      expect(anatomicalPreloadSpy).not.toHaveBeenCalled();
+    } finally {
+      anatomicalPreloadSpy.mockRestore();
+      improvedScene.destroy();
+      webxrScene?.destroy();
+      builtinModuleSpy.mockRestore();
+    }
+  });
 
   it("orients each actual preset camera toward its target and keeps export dimensions and inputs fixed", () => {
     class TestResizeObserver {
@@ -239,6 +303,28 @@ describe("PianoScene3D fixed viewport", () => {
     scene.update(5);
     expect(isKeyPressed(scene, 60)).toBe(false);
     scene.destroy();
+  });
+
+  it("passes contact targets only while the improved model is selected", () => {
+    const setHandModel = vi.spyOn(Hand3DMeshGroup.prototype, "setHandModel").mockImplementation(() => {});
+    const scene = makeScene(IMPROVED_HAND_MODEL_ID);
+    setHandModel.mockRestore();
+
+    try {
+      scene.setNotes([sourceNote()]);
+      scene.setMotionPlan(motionPlan());
+      const handUpdate = leftHandUpdate(scene);
+      scene.update(5);
+      expect(handUpdate).toHaveBeenLastCalledWith(
+        expect.anything(),
+        expect.anything(),
+        expect.anything(),
+        expect.anything(),
+        expect.arrayContaining([expect.objectContaining({ finger: 1, pitch: 60 })]),
+      );
+    } finally {
+      scene.destroy();
+    }
   });
 
   it("uses performed intervals for rolled timing, early release, hover, and backward seeks", () => {

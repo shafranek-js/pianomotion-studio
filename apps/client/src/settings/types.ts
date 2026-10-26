@@ -40,6 +40,9 @@ export type SoundOutputSetting = z.infer<typeof SoundOutputSchema>;
 export const CalculationEngineSchema = z.enum(["python", "typescript"]);
 export type CalculationEngine = z.infer<typeof CalculationEngineSchema>;
 
+export const HandModelSchema = z.enum(["anatomical", "anatomical-improved", "webxr"]);
+export type HandModel = z.infer<typeof HandModelSchema>;
+
 export interface Settings {
   /** Visual environment preference; absent in settings saved by older versions. */
   stageAppearance?: StageAppearance;
@@ -63,6 +66,7 @@ export interface Settings {
     | "photo-segmented"
     | "photo-mesh"
     | "photo-3d";
+  handModel: HandModel;
   showHandShadow: boolean;
   soundOutput: "synth" | "soundfont" | "webmidi";
   soundfontAssetId?: string | null;
@@ -91,6 +95,7 @@ export const SettingsSchema = z.object({
     })
     .default(60),
   skinStyle: SkinStyleSchema.default("realistic"),
+  handModel: HandModelSchema.default("anatomical"),
   showHandShadow: z.boolean().default(true),
   soundOutput: SoundOutputSchema.default("soundfont"),
   soundfontAssetId: z.string().nullable().default(BUILTIN_SOUNDFONT_ID),
@@ -112,6 +117,7 @@ export const DEFAULT_SETTINGS: Settings = {
   soundTimbre: "acoustic",
   renderCapFps: 60,
   skinStyle: "realistic",
+  handModel: "anatomical",
   showHandShadow: true,
   soundOutput: "soundfont",
   soundfontAssetId: BUILTIN_SOUNDFONT_ID,
@@ -204,6 +210,11 @@ export function sanitizeSettings(input: Partial<Settings> | unknown): Settings {
   const skinStyle = storedSkinStyle === "photo-segmented" || storedSkinStyle === "photo-mesh"
     ? "realistic" : storedSkinStyle;
 
+  const handModel: HandModel =
+    raw.handModel === "webxr" || raw.handModel === "anatomical" || raw.handModel === "anatomical-improved"
+      ? raw.handModel
+      : DEFAULT_SETTINGS.handModel;
+
   const showHandShadow =
     typeof raw.showHandShadow === "boolean"
       ? raw.showHandShadow
@@ -238,6 +249,7 @@ export function sanitizeSettings(input: Partial<Settings> | unknown): Settings {
     soundTimbre,
     renderCapFps,
     skinStyle,
+    handModel,
     showHandShadow,
     soundOutput,
     soundfontAssetId,

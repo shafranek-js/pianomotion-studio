@@ -163,6 +163,10 @@ export interface SettingsTranslations {
   skinGloves: string;
   skinRobot: string;
   skinSkeleton: string;
+  handModel: string;
+  handModelAnatomical: string;
+  handModelAnatomicalImproved: string;
+  handModelWebxr: string;
   showShadow: string;
   showFingerLabels: string;
   showNoteNames: string;

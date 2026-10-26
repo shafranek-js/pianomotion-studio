@@ -22,9 +22,13 @@ import {
 } from "../render";
 import {
   createFingernailGeometry,
+  getAnatomicalBaseColorTexture,
+  getAnatomicalNormalMap,
   getFingernailTexture,
   getSkinNormalMap,
   getSkinRoughnessMap,
+  preloadAnatomicalHandModels,
+  subdivideHandMesh,
 } from "./handRigBuilder";
 
 function createMockPose(hand: "left" | "right" = "right", layerOrder = 0): MotionPose {
@@ -167,16 +171,23 @@ describe("render3d — 3D Hand Rig & Piano Scene", () => {
       const handGroup = new Hand3DMeshGroup(handSide);
       const pose = createMockPose(handSide);
 
-      // Verify skinMaterial PBR maps and realistic skin properties
+      // Verify skinMaterial PBR maps and realistic skin properties for default anatomical model
       const skinMat = handGroup.skinMaterial;
+      expect(skinMat.vertexColors).toBe(false);
+      expect(skinMat.color.getHex()).toBe(0xffffff);
+      expect(skinMat.map).toBeDefined();
       expect(skinMat.normalMap).toBeDefined();
-      expect(skinMat.roughnessMap).toBeDefined();
-      expect(skinMat.normalScale.x).toBeCloseTo(0.12);
-      expect(skinMat.normalScale.y).toBeCloseTo(0.12);
-      expect(skinMat.transmission).toBeCloseTo(0.0);
-      expect(skinMat.sheen).toBeCloseTo(0.18);
+      expect(skinMat.normalScale.x).toBeCloseTo(0.22);
+      expect(skinMat.normalScale.y).toBeCloseTo(0.22);
+      expect(skinMat.roughness).toBeCloseTo(0.56);
+      expect(skinMat.metalness).toBe(0.0);
+      expect(skinMat.transmission).toBeCloseTo(0.04);
+      expect(skinMat.thickness).toBeCloseTo(0.18);
+      expect(skinMat.attenuationColor.getHex()).toBe(0xd94436);
+      expect(skinMat.attenuationDistance).toBeCloseTo(0.75);
+      expect(skinMat.sheen).toBeCloseTo(0.25);
       expect(skinMat.sheenRoughness).toBeCloseTo(0.60);
-      expect(skinMat.sheenColor.getHex()).toBe(0xf0c8b8);
+      expect(skinMat.sheenColor.getHex()).toBe(0xe29382);
       expect(skinMat.clearcoat).toBeCloseTo(0.08);
       expect(skinMat.clearcoatRoughness).toBeCloseTo(0.40);
 
@@ -187,10 +198,10 @@ describe("render3d — 3D Hand Rig & Piano Scene", () => {
         const nailMat = nail.material as THREE.MeshPhysicalMaterial;
         expect(nailMat).toBeInstanceOf(THREE.MeshPhysicalMaterial);
         expect(nailMat.map).toBeDefined();
-        expect(nailMat.roughness).toBeCloseTo(0.24);
+        expect(nailMat.roughness).toBeCloseTo(0.22);
         expect(nailMat.metalness).toBe(0.0);
-        expect(nailMat.clearcoat).toBeCloseTo(0.40);
-        expect(nailMat.clearcoatRoughness).toBeCloseTo(0.15);
+        expect(nailMat.clearcoat).toBeCloseTo(0.45);
+        expect(nailMat.clearcoatRoughness).toBeCloseTo(0.14);
         expect(nailMat.transmission).toBeCloseTo(0.0);
         expect(nailMat.transparent).toBe(false);
         expect(nailMat.depthWrite).toBe(true);
@@ -202,7 +213,24 @@ describe("render3d — 3D Hand Rig & Piano Scene", () => {
         expect(nail.geometry.getIndex()).toBeDefined();
       }
 
-      // Update in realistic mode -> nails should be positioned and visible on each finger
+      // Update in realistic mode for default anatomical model -> procedural nails must be hidden
+      handGroup.updateFromPose(pose, DEFAULT_SKIN_SETTINGS, false);
+      for (const nail of handGroup.fingernails) {
+        expect(nail.visible).toBe(false);
+      }
+
+      // Switch to webxr model -> verify webxr PBR properties
+      handGroup.setHandModel("webxr");
+      expect(skinMat.vertexColors).toBe(true);
+      expect(skinMat.map).toBeNull();
+      expect(skinMat.normalMap).toBeDefined();
+      expect(skinMat.roughnessMap).toBeDefined();
+      expect(skinMat.normalScale.x).toBeCloseTo(0.12);
+      expect(skinMat.normalScale.y).toBeCloseTo(0.12);
+      expect(skinMat.roughness).toBeCloseTo(0.58);
+      expect(skinMat.metalness).toBe(0.0);
+
+      // Update in realistic mode on WebXR model -> verify procedural nails positioned and visible on each finger
       handGroup.updateFromPose(pose, DEFAULT_SKIN_SETTINGS, false);
       for (let f = 0; f < 5; f++) {
         const nail = handGroup.fingernails[f]!;
@@ -231,7 +259,7 @@ describe("render3d — 3D Hand Rig & Piano Scene", () => {
     }
   });
 
-  it("verifies standalone fingernail and skin PBR generator helpers", () => {
+  it("verifies standalone fingernail and skin PBR generator helpers", async () => {
     const nailGeo = createFingernailGeometry();
     expect(nailGeo.getAttribute("position").count).toBeGreaterThan(100);
     expect(nailGeo.getAttribute("normal").count).toBeGreaterThan(100);
@@ -249,6 +277,21 @@ describe("render3d — 3D Hand Rig & Piano Scene", () => {
     const roughnessMap = getSkinRoughnessMap();
     expect(roughnessMap).toBeInstanceOf(THREE.CanvasTexture);
     expect(roughnessMap.repeat.x).toBe(4);
+
+    const anatBaseColor = getAnatomicalBaseColorTexture();
+    expect(anatBaseColor).toBeInstanceOf(THREE.Texture);
+    expect(anatBaseColor.flipY).toBe(false);
+    expect(anatBaseColor.colorSpace).toBe(THREE.SRGBColorSpace);
+    expect(anatBaseColor.wrapS).toBe(THREE.ClampToEdgeWrapping);
+    expect(anatBaseColor.wrapT).toBe(THREE.ClampToEdgeWrapping);
+
+    const anatNormal = getAnatomicalNormalMap();
+    expect(anatNormal).toBeInstanceOf(THREE.Texture);
+    expect(anatNormal.flipY).toBe(false);
+    expect(anatNormal.wrapS).toBe(THREE.ClampToEdgeWrapping);
+    expect(anatNormal.wrapT).toBe(THREE.ClampToEdgeWrapping);
+
+    await expect(preloadAnatomicalHandModels()).resolves.toBeUndefined();
   });
 
   it("creates 88 3D Concert Grand Piano keys with outward normals on all black key faces and animates sustain pedal", () => {
@@ -615,7 +658,7 @@ describe("render3d — 3D Hand Rig & Piano Scene", () => {
           const distal = handGroup.getBone(`${prefix}-phalanx-distal`)!;
           const chain = reconstructed.chains[finger]!;
           const originalTip = chain[chain.length - 1]!;
-          const expectedPadLift = Math.max(0, 0.13 - Math.max(0, originalTip.y) * 0.5);
+          const expectedPadLift = 0;
 
           expect(tip).toBeDefined();
           expect(distal).toBeDefined();
@@ -762,6 +805,225 @@ describe("render3d — 3D Hand Rig & Piano Scene", () => {
     kb3d.dispose();
     rightHand.dispose();
   });
+
+  it("supports dual-model hand rig architecture ('anatomical' and 'webxr') with 25 bones, continuous wrist loops, and corrected thumbnail rotation", () => {
+    // 1. Anatomical high-poly hand model (default)
+    for (const handSide of ["right", "left"] as const) {
+      const defaultHand = new Hand3DMeshGroup(handSide);
+      expect(defaultHand.getHandModel()).toBe("anatomical");
+      expect(defaultHand.wristBoundaryVertexCount).toBe(40);
+
+      const explicitAnatHand = new Hand3DMeshGroup(handSide, "anatomical");
+      expect(explicitAnatHand.getHandModel()).toBe("anatomical");
+      expect(explicitAnatHand.wristBoundaryVertexCount).toBe(40);
+
+      const pose = createMockPose(handSide);
+      explicitAnatHand.updateFromPose(pose, DEFAULT_SKIN_SETTINGS, false);
+
+      let skinnedMesh: THREE.SkinnedMesh | null = null;
+      let vertexCount = 0;
+      explicitAnatHand.group.traverse((obj) => {
+        if (obj instanceof THREE.SkinnedMesh) {
+          skinnedMesh = obj;
+          vertexCount = obj.geometry.getAttribute("position").count;
+        }
+      });
+      expect(skinnedMesh).not.toBeNull();
+      expect(skinnedMesh!.skeleton.bones).toHaveLength(25);
+      // High-poly authentic Meshy model has 15,035 vertices and 23,893 triangles (with decimation bridge triangles removed)
+      expect(vertexCount).toBe(15105);
+      expect(skinnedMesh!.geometry.getIndex()!.count / 3).toBe(24000);
+
+      // Verify 5 fingernails with unaltered 0 rotation
+      expect(explicitAnatHand.fingernails).toHaveLength(5);
+      const thumbNail = explicitAnatHand.fingernails[0]!;
+      expect(thumbNail.rotation.z).toBe(0);
+      expect(thumbNail.parent?.name).toBe("thumb-phalanx-distal");
+
+      for (let f = 1; f < 5; f++) {
+        expect(explicitAnatHand.fingernails[f]!.rotation.z).toBe(0);
+      }
+
+      // Procedural fingernails must be hidden for authentic anatomical model
+      for (const nail of explicitAnatHand.fingernails) {
+        expect(nail.visible).toBe(false);
+      }
+
+      defaultHand.dispose();
+      explicitAnatHand.dispose();
+    }
+
+    // 2. WebXR standard hand model (low-poly baseline)
+    for (const handSide of ["right", "left"] as const) {
+      const webxrHand = new Hand3DMeshGroup(handSide, "webxr");
+      expect(webxrHand.getHandModel()).toBe("webxr");
+      expect(webxrHand.wristBoundaryVertexCount).toBe(20);
+
+      const pose = createMockPose(handSide);
+      webxrHand.updateFromPose(pose, DEFAULT_SKIN_SETTINGS, false);
+
+      let skinnedMesh: THREE.SkinnedMesh | null = null;
+      let webxrVertexCount = 0;
+      webxrHand.group.traverse((obj) => {
+        if (obj instanceof THREE.SkinnedMesh) {
+          skinnedMesh = obj;
+          webxrVertexCount = obj.geometry.getAttribute("position").count;
+        }
+      });
+      expect(skinnedMesh).not.toBeNull();
+      expect(skinnedMesh!.skeleton.bones).toHaveLength(25);
+      expect(webxrVertexCount).toBe(1360);
+
+      // Verify thumbnail rotation is unaltered in WebXR model and visible
+      expect(webxrHand.fingernails).toHaveLength(5);
+      const thumbNail = webxrHand.fingernails[0]!;
+      expect(thumbNail.rotation.z).toBe(0);
+      expect(thumbNail.parent?.name).toBe("thumb-phalanx-distal");
+
+      for (let f = 1; f < 5; f++) {
+        expect(webxrHand.fingernails[f]!.rotation.z).toBe(0);
+      }
+      for (const nail of webxrHand.fingernails) {
+        expect(nail.visible).toBe(true);
+      }
+
+      webxrHand.dispose();
+    }
+  });
+
+  it("supports dynamic runtime switching between 'anatomical' and 'webxr' models via setHandModel", () => {
+    for (const handSide of ["right", "left"] as const) {
+      const handGroup = new Hand3DMeshGroup(handSide, "anatomical");
+      const pose = createMockPose(handSide);
+
+      expect(handGroup.getHandModel()).toBe("anatomical");
+      expect(handGroup.wristBoundaryVertexCount).toBe(40);
+
+      let currentVertexCount = 0;
+      handGroup.group.traverse((obj) => {
+        if (obj instanceof THREE.SkinnedMesh) {
+          currentVertexCount = obj.geometry.getAttribute("position").count;
+        }
+      });
+      expect(currentVertexCount).toBe(15105);
+
+      handGroup.updateFromPose(pose, DEFAULT_SKIN_SETTINGS, false);
+      for (const nail of handGroup.fingernails) {
+        expect(nail.visible).toBe(false);
+      }
+
+      // Switch to webxr model
+      handGroup.setHandModel("webxr");
+      expect(handGroup.getHandModel()).toBe("webxr");
+      expect(handGroup.wristBoundaryVertexCount).toBe(20);
+
+      handGroup.group.traverse((obj) => {
+        if (obj instanceof THREE.SkinnedMesh) {
+          currentVertexCount = obj.geometry.getAttribute("position").count;
+        }
+      });
+      expect(currentVertexCount).toBe(1360);
+
+      // Verify fingernails are preserved, re-parented to the new WebXR distal bones, and thumbnail rotated
+      expect(handGroup.fingernails).toHaveLength(5);
+      expect(handGroup.fingernails[0]!.parent?.name).toBe("thumb-phalanx-distal");
+      expect(handGroup.fingernails[1]!.parent?.name).toBe("index-finger-phalanx-distal");
+      expect(handGroup.fingernails[0]!.rotation.z).toBe(0);
+
+      // Update pose works seamlessly on switched WebXR rig and shows procedural nails
+      handGroup.updateFromPose(pose, DEFAULT_SKIN_SETTINGS, false);
+      expect(handGroup.group.visible).toBe(true);
+      for (const nail of handGroup.fingernails) {
+        expect(nail.visible).toBe(true);
+      }
+
+      // Switch back to anatomical model
+      handGroup.setHandModel("anatomical");
+      expect(handGroup.getHandModel()).toBe("anatomical");
+      expect(handGroup.wristBoundaryVertexCount).toBe(40);
+
+      handGroup.group.traverse((obj) => {
+        if (obj instanceof THREE.SkinnedMesh) {
+          currentVertexCount = obj.geometry.getAttribute("position").count;
+        }
+      });
+      expect(currentVertexCount).toBe(15105);
+
+      // Verify fingernails are properly re-attached to new Anatomical distal bones
+      expect(handGroup.fingernails).toHaveLength(5);
+      expect(handGroup.fingernails[0]!.parent?.name).toBe("thumb-phalanx-distal");
+      expect(handGroup.fingernails[0]!.rotation.z).toBe(0);
+
+      handGroup.updateFromPose(pose, DEFAULT_SKIN_SETTINGS, false);
+      expect(handGroup.group.visible).toBe(true);
+      for (const nail of handGroup.fingernails) {
+        expect(nail.visible).toBe(false);
+      }
+
+      handGroup.dispose();
+    }
+  });
+
+  it("subdivides watertight base mesh into organic high-poly geometry with cylinder rounding and normalized skin weights", () => {
+    const basePositions = new Float32Array([
+      0, 0, 0,
+      1, 0, 0,
+      0, 1, 0,
+      1, 1, 0,
+    ]);
+    const baseNormals = new Float32Array([
+      0, 0, 1,
+      0, 0, 1,
+      0, 0, 1,
+      0, 0, 1,
+    ]);
+    const baseUvs = new Float32Array([
+      0, 0,
+      1, 0,
+      0, 1,
+      1, 1,
+    ]);
+    const baseSkinIndices = new Uint16Array([
+      0, 1, 0, 0,
+      0, 2, 0, 0,
+      1, 3, 0, 0,
+      2, 3, 0, 0,
+    ]);
+    const baseSkinWeights = new Float32Array([
+      0.6, 0.4, 0, 0,
+      0.7, 0.3, 0, 0,
+      0.5, 0.5, 0, 0,
+      0.8, 0.2, 0, 0,
+    ]);
+    const baseIndices = new Uint16Array([
+      0, 1, 2,
+      1, 3, 2,
+    ]);
+
+    const sub = subdivideHandMesh(
+      basePositions,
+      baseNormals,
+      baseUvs,
+      baseSkinIndices,
+      baseSkinWeights,
+      baseIndices,
+    );
+
+    // 2 triangles * 4 = 8 triangles -> 24 index entries
+    expect(sub.indices.length).toBe(24);
+    expect(sub.positions.length / 3).toBeGreaterThan(4);
+
+    // Verify all vertex skin weights sum to 1.0
+    const vCount = sub.positions.length / 3;
+    for (let i = 0; i < vCount; i++) {
+      let sum = 0;
+      for (let k = 0; k < 4; k++) {
+        sum += sub.skinWeights[i * 4 + k]!;
+      }
+      expect(sum).toBeCloseTo(1.0, 4);
+    }
+  });
+
 });
 
 

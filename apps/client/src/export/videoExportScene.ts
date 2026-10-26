@@ -2,6 +2,7 @@ import type { M1KeyStyle } from "@handthesia/contracts";
 import { PianoScene } from "../render";
 import type { MotionBuffer } from "../render/motionBuffer";
 import { PianoScene3D } from "../render3d";
+import { materializeImprovedHandExportDocument } from "./improvedHandExportDocument";
 import type { FrozenVideoExportSnapshot } from "./videoExportSnapshot";
 
 export interface VideoFrameScene {
@@ -24,17 +25,26 @@ export async function createVideoFrameScene(
     skinStyle: snapshot.settings.skinStyle,
     showHandShadow: snapshot.settings.showHandShadow,
     renderCapFps: 0,
+    handModel: snapshot.settings.handModel,
   };
+  const sceneDocument = snapshot.settings.handModel === "anatomical-improved"
+    ? materializeImprovedHandExportDocument(snapshot.document, snapshot.sourceIdentity.fingeringPlan)
+    : snapshot.document;
   if (snapshot.sceneView.dimension === "3d") {
-    const scene = new PianoScene3D(canvas, { canvas, fixedViewport });
+    const scene = new PianoScene3D(canvas, {
+      canvas,
+      fixedViewport,
+      initialHandModel: snapshot.settings.handModel,
+    });
     try {
-      scene.setNotes(snapshot.document.notes);
+      scene.setNotes(sceneDocument.notes);
       scene.setMotionPlan(snapshot.motionPlan ?? null);
       scene.setMotionBuffer(motionBuffer);
       scene.setPerformancePlan(snapshot.performancePlan);
       scene.setDisplaySettings(displaySettings);
       scene.setPixelsPerSecond(180);
       scene.setCameraPreset(snapshot.sceneView.cameraPreset);
+      await scene.waitForHandModelReady?.();
     } catch (error) {
       scene.destroy();
       throw error;
@@ -42,10 +52,16 @@ export async function createVideoFrameScene(
     return { renderAt: (time) => scene.update(time), destroy: () => scene.destroy() };
   }
   const scene = await PianoScene.create({
-    target: canvas, fixedViewport, song: snapshot.document,
+    target: canvas, fixedViewport, song: sceneDocument,
     performancePlan: snapshot.performancePlan, motionPlan: snapshot.motionPlan ?? null,
     motionBuffer, keyStyle, displaySettings, pixelsPerSecond: 180,
   });
+  try {
+    await scene.waitForHandModelReady?.();
+  } catch (error) {
+    scene.destroy();
+    throw error;
+  }
   return {
     renderAt(time) {
       scene.update(time);

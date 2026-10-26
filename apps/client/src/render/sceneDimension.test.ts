@@ -3,7 +3,7 @@ import { PianoScene } from "./pianoScene";
 
 const mocks = vi.hoisted(() => ({ init: vi.fn(), destroy: vi.fn(), settings: vi.fn(), visible: vi.fn() }));
 vi.mock("../render3d", () => ({ PianoScene3D: class {
-  constructor() { mocks.init(); }
+  constructor(...args: unknown[]) { mocks.init(...args); }
   setNotes = vi.fn(); setMotionPlan = vi.fn(); setMotionBuffer = vi.fn();
   setPerformancePlan = vi.fn(); setPixelsPerSecond = vi.fn(); setDisplaySettings = mocks.settings;
   setPlayAlongMode = vi.fn(); setPlayAlongTargetPitches = vi.fn(); setLivePressedPitches = vi.fn();
@@ -47,5 +47,14 @@ describe("transactional 3D activation", () => {
     expect(mocks.destroy).toHaveBeenCalledOnce();
     scene.set3DMode(true);
     expect(mocks.init).toHaveBeenCalledTimes(2);
+  });
+
+  it("forwards the selected hand model when the live 3D scene is first created", () => {
+    const { scene } = sceneHarness();
+    (scene as unknown as { displaySettings: { handModel: string } }).displaySettings.handModel = "anatomical-improved";
+
+    scene.set3DMode(true);
+
+    expect(mocks.init).toHaveBeenCalledWith({}, { initialHandModel: "anatomical-improved" });
   });
 });

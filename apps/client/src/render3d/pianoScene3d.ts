@@ -15,7 +15,12 @@ import type { PianoSceneDisplaySettings } from "../render/pianoScene";
 import { normalizeSkinSettings, type SkinSettings } from "../render/skins";
 import type { StageAppearance } from "../settings/stageAppearance";
 import { FallingNotes3DView, NoteTimeIndex } from "./fallingNotes3dView";
-import { Hand3DMeshGroup, KEYBOARD_WIDTH_IN } from "./handRigBuilder";
+import {
+  Hand3DMeshGroup,
+  KEYBOARD_WIDTH_IN,
+} from "./handRigBuilder";
+import { chooseImprovedHandExportLod, chooseImprovedHandLod, IMPROVED_HAND_MODEL_ID, type HandModelDiagnosticsSnapshot, type HandModelId } from "./improvedHandRuntime";
+import { populateHandContactTargets, type ImprovedHandContactTarget } from "./improvedHandContact";
 import { Keyboard3DView } from "./keyboard3dView";
 import { PianoStage3D, type PianoStageDiagnostics } from "./pianoStage3d";
 
@@ -32,6 +37,8 @@ export interface PianoScene3DOptions {
   fixedViewport?: { width: number; height: number; resolution: 1 };
   onContextLost?: (error: Error) => void;
   onContextRestored?: () => void;
+  /** Select the initial visible model before constructing either hand rig. */
+  initialHandModel?: HandModelId;
 }
 
 export interface PianoCameraFit {
@@ -167,6 +174,28 @@ export class PianoScene3D {
   private readonly camera: THREE.PerspectiveCamera;
   private controls: OrbitControls | null = null;
   private readonly keyboard3D: Keyboard3DView;
+  private readonly sampleKeySurfaceY = (pitch: number, x: number, z: number): number | null =>
+    this.keyboard3D.sampleKeySurfaceYAt(pitch, x, z);
+  private readonly enrichContactTargetsWithKeyBounds = (targets: ImprovedHandContactTarget[]): void => {
+    const bounds = new THREE.Box3();
+    const center = new THREE.Vector3();
+    for (const target of targets) {
+      if (target.pitch === null) continue;
+      const key = this.keyboard3D.keysByPitch.get(target.pitch);
+      if (!key) continue;
+      key.mesh.updateWorldMatrix(true, false);
+      bounds.setFromObject(key.mesh);
+      if (bounds.isEmpty()) continue;
+      bounds.getCenter(center);
+      target.contactCenterX = center.x;
+      target.contactMinX = bounds.min.x;
+      target.contactMaxX = bounds.max.x;
+      target.contactMinZ = bounds.min.z;
+      target.contactMaxZ = bounds.max.z;
+    }
+  };
+  private readonly leftHandContactTargets: ImprovedHandContactTarget[] = [];
+  private readonly rightHandContactTargets: ImprovedHandContactTarget[] = [];
   private readonly fallingNotes3D: FallingNotes3DView;
   private readonly leftHand3D: Hand3DMeshGroup;
   private readonly rightHand3D: Hand3DMeshGroup;
@@ -215,11 +244,24 @@ export class PianoScene3D {
   private readonly handleContextRestored = () => {
     this.onContextRestored?.();
   };
+  private requestedHandModel: HandModelId = "anatomical";
+  private readonly handProjectionPoint = new THREE.Vector3();
+  private readonly renderFrameTimes = new Float64Array(1200);
+  private renderFrameTimeCount = 0;
+  private renderFrameTimeCursor = 0;
+  private renderedFramesTotal = 0;
+  private readonly handUpdateTimes = new Float64Array(1200);
+  private readonly handUpdateDurations = new Float32Array(1200);
+  private handUpdateSampleCount = 0;
+  private handUpdateSampleCursor = 0;
+  private handUpdateFramesTotal = 0;
+  private readonly diagnosticsCreatedAt = typeof performance !== "undefined" ? performance.now() : Date.now();
 
   public constructor(
     private readonly target: HTMLElement,
     options: PianoScene3DOptions = {},
   ) {
+    this.requestedHandModel = options.initialHandModel ?? "anatomical";
     this.fixedViewport = options.fixedViewport;
     this.ownsCanvas = options.canvas === undefined;
     this.onContextLost = options.onContextLost;
@@ -301,7 +343,7 @@ export class PianoScene3D {
         };
         controls.addEventListener("change", () => {
           if (!this.isDestroyed && !this.isUpdatingControlsInternally && this.canvas.style.display !== "none") {
-            this.renderer.render(this.scene, this.camera);
+            this.renderFrame();
           }
         });
       }
@@ -314,12 +356,14 @@ export class PianoScene3D {
       this.fallingNotes3D = new FallingNotes3DView(this.keyboard3D);
       this.scene.add(this.fallingNotes3D.group);
 
-      this.leftHand3D = new Hand3DMeshGroup("left");
-      this.rightHand3D = new Hand3DMeshGroup("right");
+      const initialRigModel = this.requestedHandModel === "anatomical" ? "anatomical" : "webxr";
+      this.leftHand3D = new Hand3DMeshGroup("left", initialRigModel);
+      this.rightHand3D = new Hand3DMeshGroup("right", initialRigModel);
       this.scene.add(this.leftHand3D.group);
       this.scene.add(this.rightHand3D.group);
 
       this.setCameraPreset("concert");
+      if (this.requestedHandModel === IMPROVED_HAND_MODEL_ID) this.applyHandModelSelection();
       if (!this.fixedViewport) {
         this.setupPointerEvents();
         this.setupResizeObserver();
@@ -491,6 +535,10 @@ export class PianoScene3D {
         ...(settings.showHandShadow !== undefined ? { shadow: settings.showHandShadow } : {}),
       });
     }
+    if (settings.handModel !== undefined) {
+      this.requestedHandModel = settings.handModel;
+      this.applyHandModelSelection();
+    }
     if ("stageAppearance" in settings) {
       this.deferStageAppearanceRender = true;
       try {
@@ -510,6 +558,108 @@ export class PianoScene3D {
 
   public getStageDiagnostics(): PianoStageDiagnostics | null {
     return this.stage3D?.getDiagnostics() ?? null;
+  }
+
+  public getHandModelDiagnostics(): HandModelDiagnosticsSnapshot {
+    const left = this.leftHand3D.getHandModelDiagnostics();
+    const right = this.rightHand3D.getHandModelDiagnostics();
+    const now = typeof performance !== "undefined" ? performance.now() : Date.now();
+    const renderCutoff = now - 5000;
+    const renderSamples = Math.min(this.renderFrameTimeCount, this.renderFrameTimes.length);
+    let renderedFramesWindow = 0;
+    for (let index = 0; index < renderSamples; index++) {
+      const sample = this.renderFrameTimes[index]!;
+      if (sample >= renderCutoff) renderedFramesWindow++;
+    }
+    const handCutoff = now - 5000;
+    const handSamples = Math.min(this.handUpdateSampleCount, this.handUpdateTimes.length);
+    let handUpdateFramesWindow = 0;
+    let handUpdateDurationTotalMs = 0;
+    let handUpdateLastMs = 0;
+    let latestHandUpdateTime = -Infinity;
+    for (let index = 0; index < handSamples; index++) {
+      const sampleTime = this.handUpdateTimes[index]!;
+      if (sampleTime < handCutoff) continue;
+      handUpdateFramesWindow++;
+      handUpdateDurationTotalMs += this.handUpdateDurations[index]!;
+      if (sampleTime > latestHandUpdateTime) {
+        latestHandUpdateTime = sampleTime;
+        handUpdateLastMs = this.handUpdateDurations[index]!;
+      }
+    }
+    const snapshot: HandModelDiagnosticsSnapshot = {
+      left,
+      right,
+      renderer: {
+        drawCalls: this.renderer.info.render.calls,
+        triangles: this.renderer.info.render.triangles,
+        geometries: this.renderer.info.memory.geometries,
+        textures: this.renderer.info.memory.textures,
+        renderedFramesTotal: this.renderedFramesTotal,
+        renderedFramesWindow,
+        renderWindowMs: Math.min(5000, Math.max(0, now - this.diagnosticsCreatedAt)),
+        handUpdateFramesTotal: this.handUpdateFramesTotal,
+        handUpdateFramesWindow,
+        handUpdateMeanMs: handUpdateFramesWindow > 0
+          ? handUpdateDurationTotalMs / handUpdateFramesWindow
+          : 0,
+        handUpdateLastMs,
+      },
+    };
+    return snapshot;
+  }
+
+  public async waitForHandModelReady(): Promise<void> {
+    await Promise.all([
+      this.leftHand3D.waitForHandModelReady(),
+      this.rightHand3D.waitForHandModelReady(),
+    ]);
+  }
+
+  private applyHandModelSelection(): void {
+    if (this.requestedHandModel !== IMPROVED_HAND_MODEL_ID) {
+      this.leftHand3D.setHandModel(this.requestedHandModel);
+      this.rightHand3D.setHandModel(this.requestedHandModel);
+      return;
+    }
+    this.leftHand3D.setHandModel(
+      IMPROVED_HAND_MODEL_ID,
+      this.selectImprovedLod(this.leftHand3D),
+    );
+    this.rightHand3D.setHandModel(
+      IMPROVED_HAND_MODEL_ID,
+      this.selectImprovedLod(this.rightHand3D),
+    );
+  }
+
+  private selectImprovedLod(hand: Hand3DMeshGroup): 0 | 1 | 2 {
+    if (this.fixedViewport) return chooseImprovedHandExportLod();
+    const diagnostics = hand.getHandModelDiagnostics();
+    const current = diagnostics.requestedLod ?? diagnostics.loadedLod;
+    const bone = hand.getBone("wrist");
+    if (!bone) return chooseImprovedHandLod(Number.POSITIVE_INFINITY, current);
+    bone.getWorldPosition(this.handProjectionPoint);
+    const distance = Math.max(0.5, this.camera.position.distanceTo(this.handProjectionPoint));
+    const viewportHeight = Math.max(2, this.target.clientHeight || this.renderer.domElement.clientHeight || 540);
+    const projectedHeight = (8 / (2 * Math.tan((this.camera.fov * Math.PI) / 360) * distance)) * viewportHeight;
+    return chooseImprovedHandLod(projectedHeight, current);
+  }
+
+  private recordHandUpdate(durationMs: number): void {
+    const now = typeof performance !== "undefined" ? performance.now() : Date.now();
+    this.handUpdateTimes[this.handUpdateSampleCursor] = now;
+    this.handUpdateDurations[this.handUpdateSampleCursor] = durationMs;
+    this.handUpdateSampleCursor = (this.handUpdateSampleCursor + 1) % this.handUpdateTimes.length;
+    this.handUpdateSampleCount = Math.min(this.handUpdateSampleCount + 1, this.handUpdateTimes.length);
+    this.handUpdateFramesTotal += 1;
+  }
+
+  private recordRenderedFrame(): void {
+    const now = typeof performance !== "undefined" ? performance.now() : Date.now();
+    this.renderFrameTimes[this.renderFrameTimeCursor] = now;
+    this.renderFrameTimeCursor = (this.renderFrameTimeCursor + 1) % this.renderFrameTimes.length;
+    this.renderFrameTimeCount = Math.min(this.renderFrameTimeCount + 1, this.renderFrameTimes.length);
+    this.renderedFramesTotal += 1;
   }
 
   public setKeyInputHandlers(handlers: {
@@ -553,7 +703,6 @@ export class PianoScene3D {
     if (!this.isVisible()) return;
 
     this.fallingNotes3D.update(timeSeconds);
-    this.updateHandsAtTime(timeSeconds);
 
     // Update pedal depression states:
     // CC64: Sustain (right pedal)
@@ -590,10 +739,12 @@ export class PianoScene3D {
     }
 
     this.keyboard3D.setActiveKeys(activeMap);
+    this.updateHandsAtTime(timeSeconds);
     this.renderFrame();
   }
 
   private updateHandsAtTime(timeSeconds: number): void {
+    const startedAt = typeof performance !== "undefined" ? performance.now() : Date.now();
     let leftPose: MotionPose | null = null;
     let rightPose: MotionPose | null = null;
 
@@ -618,18 +769,57 @@ export class PianoScene3D {
 
     const leftHoverLift = calculateHandHoverLift("left", timeSeconds, noteSource);
     const rightHoverLift = calculateHandHoverLift("right", timeSeconds, noteSource);
+    const usesImprovedHand = this.requestedHandModel === IMPROVED_HAND_MODEL_ID;
 
     if (leftPose) {
-      this.leftHand3D.updateFromPose(leftPose, this.skinSettings, this.showFingerLabels, leftHoverLift);
+      if (usesImprovedHand) {
+        const contactTargets = populateHandContactTargets(
+          noteSource,
+          "left",
+          timeSeconds,
+          this.leftHandContactTargets,
+          this.sampleKeySurfaceY,
+        );
+        this.enrichContactTargetsWithKeyBounds(contactTargets);
+        this.leftHand3D.updateFromPose(
+          leftPose,
+          this.skinSettings,
+          this.showFingerLabels,
+          leftHoverLift,
+          contactTargets,
+        );
+      } else {
+        this.leftHand3D.updateFromPose(leftPose, this.skinSettings, this.showFingerLabels, leftHoverLift);
+      }
     } else {
       this.leftHand3D.clear();
     }
 
     if (rightPose) {
-      this.rightHand3D.updateFromPose(rightPose, this.skinSettings, this.showFingerLabels, rightHoverLift);
+      if (usesImprovedHand) {
+        const contactTargets = populateHandContactTargets(
+          noteSource,
+          "right",
+          timeSeconds,
+          this.rightHandContactTargets,
+          this.sampleKeySurfaceY,
+        );
+        this.enrichContactTargetsWithKeyBounds(contactTargets);
+        this.rightHand3D.updateFromPose(
+          rightPose,
+          this.skinSettings,
+          this.showFingerLabels,
+          rightHoverLift,
+          contactTargets,
+        );
+      } else {
+        this.rightHand3D.updateFromPose(rightPose, this.skinSettings, this.showFingerLabels, rightHoverLift);
+      }
     } else {
       this.rightHand3D.clear();
     }
+    const finishedAt = typeof performance !== "undefined" ? performance.now() : Date.now();
+    this.recordHandUpdate(Math.max(0, finishedAt - startedAt));
   }
 
   private interpolatePoseFromArray(poses: MotionPose[], timeSeconds: number): MotionPose | null {
@@ -721,7 +911,11 @@ export class PianoScene3D {
 
   private renderFrame(): void {
     if (this.isDestroyed || !this.isVisible()) return;
+    if (this.requestedHandModel === IMPROVED_HAND_MODEL_ID) {
+      this.applyHandModelSelection();
+    }
     this.renderer.render(this.scene, this.camera);
+    this.recordRenderedFrame();
   }
 
   public destroy(): void {

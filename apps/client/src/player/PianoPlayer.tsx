@@ -564,6 +564,7 @@ export function PianoPlayer({
       showHandShadow: next.showHandShadow,
       renderCapFps: next.renderCapFps,
       stageAppearance: next.stageAppearance,
+      handModel: next.handModel,
     });
     transportRef.current?.setLeadInSeconds(Math.abs(next.leadInSeconds));
     if (next.keyStyle !== sourceContextRef.current.keyStyle) handleKeyStyleChange(next.keyStyle);
@@ -750,6 +751,7 @@ export function PianoPlayer({
           showHandShadow: settings.showHandShadow,
           renderCapFps: settings.renderCapFps,
           stageAppearance: settings.stageAppearance,
+          handModel: settings.handModel,
         },
         onContextLost: (error) => {
           if (live) onStatusChangeRef.current({
@@ -767,7 +769,7 @@ export function PianoPlayer({
         const motionBuffer = createPlaybackMotionBuffer(result);
         motionBufferRef.current = motionBuffer;
         scene.setMotionBuffer(motionBuffer);
-        scene.setPerformancePlan(result.performancePlan!, document ?? result.document!);
+        scene.setPerformancePlan(result.performancePlan!, sceneDocument(result.document!, result.fingeringPlan!));
         scene.setMotionPlan(result.motionPlan);
         scene.setDisplaySettings({
           showFingerLabels: settings.showFingerLabels,
@@ -775,6 +777,7 @@ export function PianoPlayer({
           skinStyle: settings.skinStyle,
           showHandShadow: settings.showHandShadow,
           renderCapFps: settings.renderCapFps,
+          handModel: settings.handModel,
         });
         scene.setPianoKeyListeners(
           (pitch) => {
@@ -863,7 +866,7 @@ export function PianoPlayer({
     scene.setMotionBuffer(buffer);
     motionStreamRef.current?.reset({ projectId: analysis.projectId, revision: analysis.revision, engineVersion: analysis.engineVersion }, seekEpochRef.current);
     motionErrorRef.current = null;
-  }, [analysis, document, keyStyle]);
+  }, [analysis, document, keyStyle, sceneRevision]);
 
   useEffect(() => {
     const transport = transportRef.current;
@@ -902,6 +905,7 @@ export function PianoPlayer({
       showHandShadow: settings.showHandShadow,
       renderCapFps: settings.renderCapFps,
       stageAppearance: settings.stageAppearance,
+      handModel: settings.handModel,
     });
     transportRef.current?.setLeadInSeconds(Math.abs(settings.leadInSeconds));
   }, [settings]);

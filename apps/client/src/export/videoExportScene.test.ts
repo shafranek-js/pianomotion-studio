@@ -22,7 +22,8 @@ describe("isolated video frame scene", () => {
   const buffer = {} as MotionBuffer;
   const snapshot = {
     sceneView: { dimension: "3d", cameraPreset: "overhead" },
-    document: { notes: [] }, settings: { showHandShadow: true },
+    sourceIdentity: { fingeringPlan: { assignments: [] } },
+    document: { notes: [] }, settings: { showHandShadow: true, handModel: "anatomical-improved" },
     motionPlan: null, performancePlan: { events: [] },
   } as unknown as FrozenVideoExportSnapshot;
 
@@ -31,7 +32,9 @@ describe("isolated video frame scene", () => {
     expect(mocks.create2d).not.toHaveBeenCalled();
     expect(mocks.init3d).toHaveBeenCalledWith(canvas, {
       canvas, fixedViewport: { width: 1920, height: 1080, resolution: 1 },
+      initialHandModel: "anatomical-improved",
     });
+    expect(mocks.settings).toHaveBeenCalledWith(expect.objectContaining({ handModel: "anatomical-improved" }));
     expect(mocks.camera).toHaveBeenCalledWith("overhead");
     scene.renderAt(2.75);
     expect(mocks.update).toHaveBeenLastCalledWith(2.75);

@@ -1,0 +1,13 @@
+{
+  "extends": "../../apps/client/tsconfig.app.json",
+  "compilerOptions": { "composite": false, "noEmit": true, "types": ["vite/client", "node"] },
+  "include": [
+    "./anatomical-improved.spec.ts",
+    "./anatomical-improved-production.spec.ts",
+    "./anatomical-improved-production.playwright.config.ts",
+    "./anatomical-improved-source-viewer.ts",
+    "./studio-helpers.ts",
+    "./media-export-helpers.ts",
+    "../../apps/client/src/vite-env.d.ts"
+  ]
+}

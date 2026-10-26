@@ -6,7 +6,7 @@ import {
   resetToDefaultsPersisted,
   subscribeSettings,
 } from "./settingsStore";
-import type { AppSettings, CalculationEngine, SkinStyleSetting } from "./types";
+import type { AppSettings, CalculationEngine, HandModel, SkinStyleSetting } from "./types";
 import { getStorageQuota, clearSessionSnapshot } from "../storage";
 import {
   listSoundFontAssets,
@@ -396,6 +396,29 @@ export function SettingsModal({ isOpen, onClose, onSettingsChanged, presentation
                   <option value="gloves">{dict.settings.skinGloves}</option>
                   <option value="robot">{dict.settings.skinRobot}</option>
                   <option value="skeleton">{dict.settings.skinSkeleton}</option>
+                </select>
+              </div>
+
+              <div>
+                <label htmlFor="settings-hand-model" style={{ display: "block", fontSize: "0.8rem", color: "var(--muted, #9fac9f)", marginBottom: "0.3rem" }}>
+                  {dict.settings.handModel}:
+                </label>
+                <select
+                  id="settings-hand-model"
+                  value={settings.handModel}
+                  onChange={(e) => handleChange("handModel", e.target.value as HandModel)}
+                  style={{
+                    background: "#19211d",
+                    color: "#edf2ed",
+                    border: "1px solid var(--border, #33423a)",
+                    borderRadius: "0.35rem",
+                    padding: "0.4rem 0.6rem",
+                    fontSize: "0.85rem",
+                  }}
+                >
+                  <option value="anatomical">{dict.settings.handModelAnatomical}</option>
+                  <option value="anatomical-improved">{dict.settings.handModelAnatomicalImproved}</option>
+                  <option value="webxr">{dict.settings.handModelWebxr}</option>
                 </select>
               </div>
 

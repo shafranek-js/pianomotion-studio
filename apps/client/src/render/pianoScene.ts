@@ -1,6 +1,7 @@
 import type { FingeringPlan, M1KeyStyle, MotionPlan, Note, PerformancePlan, SongDocument } from "@handthesia/contracts";
 import { Application, Container, Graphics } from "pixi.js";
 import { PianoScene3D, type Camera3DPreset } from "../render3d";
+import type { HandModelDiagnosticsSnapshot } from "../render3d/improvedHandRuntime";
 import { FallingNotesView } from "./fallingNotesView";
 import { HandsView } from "./handsView";
 import { KeyboardView, type KeyPressInfo } from "./keyboardView";
@@ -13,6 +14,7 @@ export interface PianoSceneDisplaySettings {
   showFingerLabels?: boolean;
   showNoteNames?: boolean;
   skinStyle?: SkinStyle;
+  handModel?: "anatomical" | "anatomical-improved" | "webxr";
   showHandShadow?: boolean;
   renderCapFps?: number;
 }
@@ -78,6 +80,7 @@ export interface PianoSceneGeometrySnapshot {
   maxPitch: number;
   rendererSize: { width: number; height: number };
   viewTime: number;
+  handModelDiagnostics: HandModelDiagnosticsSnapshot | null;
 }
 
 export function getKeyboardInventory(keyRects: ReadonlyMap<number, unknown>): {
@@ -202,6 +205,7 @@ export class PianoScene {
     skinStyle: "cartoon",
     showHandShadow: true,
     renderCapFps: 60,
+    handModel: "anatomical",
   };
   private resizeObserver: ResizeObserver | null = null;
   private scene3D: PianoScene3D | null = null;
@@ -495,6 +499,7 @@ export class PianoScene {
         candidate = new PianoScene3D(this.target, {
           onContextLost: this.onContextLost,
           onContextRestored: this.onContextRestored,
+          initialHandModel: this.displaySettings.handModel,
         });
         candidate.setNotes(this.notes);
         candidate.setMotionPlan(this.motionPlan);
@@ -851,6 +856,7 @@ export class PianoScene {
       ...inventory,
       rendererSize: { width: this.app.screen.width, height: this.app.screen.height },
       viewTime,
+      handModelDiagnostics: this.scene3D?.getHandModelDiagnostics() ?? null,
     };
   }
 
@@ -867,6 +873,10 @@ export class PianoScene {
 
   public getMotionBuffer(): MotionBuffer | null {
     return this.handsView.getMotionBuffer();
+  }
+
+  public async waitForHandModelReady(): Promise<void> {
+    await this.scene3D?.waitForHandModelReady();
   }
 
   public setDisplaySettings(settings: PianoSceneDisplaySettings): void {
