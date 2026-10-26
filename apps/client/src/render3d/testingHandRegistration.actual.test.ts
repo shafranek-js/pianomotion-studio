@@ -4,7 +4,7 @@ import * as THREE from "three";
 import { describe, expect, it } from "vitest";
 import { buildImprovedHandGlbRig, parseHandGlbRig } from "./handRigBuilder";
 import { IMPROVED_HAND_JOINT_NAMES, validateImprovedHandManifest } from "./improvedHandAssets";
-import { transferWebxrSkinToAnatomicalSurface } from "./testingHandSkin";
+import { measureTestingCrossFingerWeights, transferWebxrSkinToAnatomicalSurface } from "./testingHandSkin";
 import { registerWebxrSamplingSurface } from "./testingHandRegistration";
 
 describe("Testing hand rest-space rig registration experiments", () => {
@@ -33,6 +33,22 @@ describe("Testing hand rest-space rig registration experiments", () => {
           anatomy.skinnedMesh.skeleton.bones, { axialScale: true });
         const axialCorrected = transferWebxrSkinToAnatomicalSurface(
           anatomy.skinnedMesh.geometry, scaledReference, webxr.skinnedMesh.skeleton.bones.length);
+        const labels = {
+          anatomicalBoneNames: anatomy.skinnedMesh.skeleton.bones.map(bone => bone.name),
+          webxrBoneNames: webxr.skinnedMesh.skeleton.bones.map(bone => bone.name),
+        };
+        const digitAware = transferWebxrSkinToAnatomicalSurface(
+          anatomy.skinnedMesh.geometry, webxr.skinnedMesh.geometry,
+          webxr.skinnedMesh.skeleton.bones.length, labels,
+        );
+        const blindBleed = measureTestingCrossFingerWeights(raw, anatomy.skinnedMesh.geometry, labels);
+        const digitBleed = measureTestingCrossFingerWeights(digitAware, anatomy.skinnedMesh.geometry, labels);
+        console.info("[Testing digit-aware real GLB A/B]", side, JSON.stringify({ blindBleed, digitBleed }));
+        expect(digitBleed.inspectedVertices).toBeGreaterThan(100);
+        expect(digitBleed.verticesAboveTenPercent).toBeLessThanOrEqual(blindBleed.verticesAboveTenPercent);
+        expect(digitBleed.meanForeignDigitWeight).toBeLessThanOrEqual(blindBleed.meanForeignDigitWeight + 1e-7);
+        digitAware.dispose();
+
         const metrics = {
           raw: raw.userData.testingTransferStats,
           registered: corrected.userData.testingTransferStats,
