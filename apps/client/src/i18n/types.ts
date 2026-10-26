@@ -166,6 +166,7 @@ export interface SettingsTranslations {
   handModel: string;
   handModelAnatomical: string;
   handModelAnatomicalImproved: string;
+  handModelTesting: string;
   handModelWebxr: string;
   showShadow: string;
   showFingerLabels: string;
