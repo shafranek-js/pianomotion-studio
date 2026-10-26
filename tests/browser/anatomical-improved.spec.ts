@@ -14,7 +14,7 @@ import {
   waitForLoadingToClear,
 } from "./studio-helpers";
 
-type HandModelId = "anatomical" | "webxr" | "anatomical-improved";
+type HandModelId = "anatomical" | "webxr" | "anatomical-improved" | "testing";
 type CameraId = "concert" | "overhead" | "pov" | "side_arch";
 
 type HandDiagnostics = {
@@ -360,7 +360,7 @@ async function selectHandModel(page: Page, model: HandModelId) {
   await page.getByRole("button", { name: "Open preferences", exact: true }).click();
   const preferences = page.getByRole("dialog", { name: "Preferences", exact: true });
   const select = preferences.locator("#settings-hand-model");
-  await expect(select.locator("option")).toHaveCount(3);
+  await expect(select.locator("option")).toHaveCount(4);
   await select.selectOption(model);
   await expect.poll(async () => (await committedStudioSettings(page)).handModel).toBe(model);
   await preferences.getByRole("button", { name: "Done", exact: true }).click();
@@ -389,7 +389,7 @@ async function expectLoadedModel(page: Page, model: HandModelId) {
   ]);
 
   for (const hand of [diagnostics!.left, diagnostics!.right]) {
-    if (model === "anatomical-improved") {
+    if (model === "anatomical-improved" || model === "testing") {
       expect(hand.loadedLod).toBeGreaterThanOrEqual(0);
       expect(hand.loadedLod).toBeLessThanOrEqual(2);
       expect(hand.requestedLod).toBe(hand.loadedLod);
@@ -1066,13 +1066,14 @@ test("improved hand selection persists and leaves the playing project and audio 
   await page.getByRole("button", { name: "Open preferences", exact: true }).click();
   const preferences = page.getByRole("dialog", { name: "Preferences", exact: true });
   const selector = preferences.locator("#settings-hand-model");
-  await expect(selector.locator("option")).toHaveCount(3);
+  await expect(selector.locator("option")).toHaveCount(4);
   expect(await selector.locator("option").evaluateAll(options => options.map(option => ({
     value: (option as HTMLOptionElement).value,
     label: option.textContent?.trim(),
   })))).toEqual([
     { value: "anatomical", label: "Anatomical (Realistic)" },
     { value: "anatomical-improved", label: "Anatomical (improved)" },
+    { value: "testing", label: "Testing (WebXR motion + realistic skin)" },
     { value: "webxr", label: "WebXR Standard" },
   ]);
   await preferences.getByRole("button", { name: "Done", exact: true }).click();
