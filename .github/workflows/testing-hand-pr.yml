@@ -35,6 +35,8 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
+      - name: Cloudflare release gate safety regression
+        run: node --test cloudflare/release-gate.test.mjs
       - name: Typecheck
         run: npm run typecheck
       - name: Lint changed Testing paths

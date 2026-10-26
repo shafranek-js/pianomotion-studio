@@ -5,6 +5,7 @@
  * The Worker serves the unchanged original URL by streaming these parts.
  */
 import { createHash } from "node:crypto";
+import { requireApprovedCloudflareRelease } from "./release-gate.mjs";
 import { open, readdir, readFile, stat, writeFile, unlink } from "node:fs/promises";
 import { dirname, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -80,8 +81,17 @@ export async function splitCloudflareAssets(distRoot = DEFAULT_DIST) {
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  splitCloudflareAssets(process.argv[2] ?? DEFAULT_DIST).catch((error) => {
+  // This is the last Cloudflare Build step before wrangler deploy. Fail
+  // closed unless an operator approved this EXACT commit for publication.
+  // Normal main pushes remain available to local Vite and GitHub CI.
+  try {
+    requireApprovedCloudflareRelease();
+    splitCloudflareAssets(process.argv[2] ?? DEFAULT_DIST).catch((error) => {
+      console.error(error);
+      process.exitCode = 1;
+    });
+  } catch (error) {
     console.error(error);
     process.exitCode = 1;
-  });
+  }
 }
