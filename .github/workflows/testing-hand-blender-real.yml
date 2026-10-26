@@ -247,6 +247,21 @@ jobs:
                   assert (root / row["image"]).stat().st_size > 15000
               print(side, "24 real pose/material joint renders; NOT visually accepted")
           PY
+      - name: Assemble visual Blender A/B gallery for human inspection
+        run: |
+          python tools/testing-hand-blender/build_joint_review_gallery.py \
+            --input-dir scratch/blender-correctives/render-review \
+            --output scratch/blender-correctives/render-review/index.html
+          python - <<'PY'
+          from pathlib import Path
+          page = Path("scratch/blender-correctives/render-review/index.html")
+          content = page.read_text(encoding="utf8")
+          assert page.stat().st_size > 5000
+          assert content.count("<img ") == 48
+          assert "NOT visually approved" in content
+          assert "60° bounded corrective is never extrapolated" in content
+          print("Validated 48 real Blender comparison frames in offline HTML gallery")
+          PY
       - name: Render three comparable MCP poses — left
         run: >-
           blender -b -t 2 --python-exit-code 2
