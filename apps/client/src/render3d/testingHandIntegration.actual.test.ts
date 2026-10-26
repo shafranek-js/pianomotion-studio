@@ -168,6 +168,12 @@ describe("Testing hand: real anatomical shell on original WebXR skeleton", () =>
         expect(model.skinMaterial.normalMap).toBe(textures.normal);
         expect(model.skinMaterial.vertexColors).toBe(false);
 
+        // The original WebXR bind skeleton, not the anatomical inferred bones,
+        // remains the source of all subsequent 3D joint transformations.
+        for (const [name, position] of sourceBones) {
+          expect(model.getBone(name)!.position.distanceTo(position)).toBeLessThan(1e-5);
+        }
+
         // WebXR is the motion oracle: identical input poses and hover must
         // produce matching world transforms for *every* bone in Testing.
         const referenceMotion = new Hand3DMeshGroup(side, "webxr");
@@ -193,11 +199,6 @@ describe("Testing hand: real anatomical shell on original WebXR skeleton", () =>
           referenceMotion.dispose();
         }
 
-        // The original WebXR bind skeleton, not the anatomical inferred bones,
-        // remains the source of all subsequent 3D joint transformations.
-        for (const [name, position] of sourceBones) {
-          expect(model.getBone(name)!.position.distanceTo(position)).toBeLessThan(1e-5);
-        }
         const weights = mesh!.geometry.getAttribute("skinWeight");
         const indices = mesh!.geometry.getAttribute("skinIndex");
         for (let i = 0; i < weights.count; i++) {
