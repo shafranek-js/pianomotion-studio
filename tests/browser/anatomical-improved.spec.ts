@@ -2575,7 +2575,14 @@ test("Testing hand: matched WebGL model and camera evidence / " + comparedModel,
   test.skip(Boolean(process.env.PIANOMOTION_EVIDENCE_MODEL) &&
     process.env.PIANOMOTION_EVIDENCE_MODEL !== comparedModel,
     "This CI shard captures only its assigned hand model.");
-  await page.setViewportSize({ width: 1280, height: 800 });
+  // Software WebGL on hosted headless Chromium can saturate the page main
+  // thread at 1280×800, starving even a direct camera button DOM click.
+  // Use a smaller, identical viewport for all four quick evidence shards.
+  // Full-resolution / multi-camera visual acceptance remains a separate gate.
+  const fullReviewViewport = process.env.PIANOMOTION_EVIDENCE_FULL === "1";
+  await page.setViewportSize(fullReviewViewport
+    ? { width: 1280, height: 800 }
+    : { width: 900, height: 600 });
   const initial = await loadTwoHandDemoSong(page);
   const originalPlanId = initial.result.performancePlan?.planId ?? null;
   expect(originalPlanId).toBeTruthy();
