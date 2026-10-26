@@ -6,6 +6,7 @@ import { buildImprovedHandGlbRig, parseHandGlbRig } from "./handRigBuilder";
 import { IMPROVED_HAND_JOINT_NAMES, validateImprovedHandManifest } from "./improvedHandAssets";
 import { measureTestingCrossFingerWeights, transferWebxrSkinToAnatomicalSurface } from "./testingHandSkin";
 import { registerWebxrSamplingSurface } from "./testingHandRegistration";
+import { transferTestingWeightsInBoneFrames } from "./testingHandBoneFrameTransfer";
 
 describe("Testing hand rest-space rig registration experiments", () => {
   it("measures raw and bone-registered weight transfer on both real LOD2 hand assets", () => {
@@ -41,6 +42,36 @@ describe("Testing hand rest-space rig registration experiments", () => {
           anatomy.skinnedMesh.geometry, webxr.skinnedMesh.geometry,
           webxr.skinnedMesh.skeleton.bones.length, labels,
         );
+        // Bone-frame transfer registers every anatomical joint to the
+        // corresponding WebXR rest joint before looking up skin weights.
+        // This is diagnostic-only until the real-pose distortion improves.
+        const boneFrameCandidate = transferTestingWeightsInBoneFrames(
+          anatomy.skinnedMesh.geometry, webxr.skinnedMesh.geometry,
+          anatomy.skinnedMesh.skeleton.bones,
+          webxr.skinnedMesh.skeleton.bones,
+          labels,
+        );
+        const baselineNearest = digitAware.userData.testingTransferStats as {
+          nearestWebxrVertexMeanInches: number;
+          nearestWebxrVertexP95Inches: number;
+        };
+        const registeredNearest = boneFrameCandidate.userData.testingTransferStats as
+          typeof baselineNearest;
+        const boneFrameBleed = measureTestingCrossFingerWeights(
+          boneFrameCandidate, anatomy.skinnedMesh.geometry, labels,
+        );
+        console.info("[Testing bone-frame registration A/B]", side, JSON.stringify({
+          directNearest: baselineNearest,
+          frameNearest: registeredNearest,
+          boneFrameMapping: boneFrameCandidate.userData.testingBoneFrameMapping,
+          boneFrameBleed,
+        }));
+        expect(boneFrameCandidate.getAttribute("position").array)
+          .toEqual(anatomy.skinnedMesh.geometry.getAttribute("position").array);
+        expect(Number.isFinite(registeredNearest.nearestWebxrVertexMeanInches)).toBe(true);
+        expect(boneFrameBleed.inspectedVertices).toBeGreaterThan(100);
+        expect(boneFrameBleed.verticesAboveTenPercent).toBe(0);
+        boneFrameCandidate.dispose();
         const blindBleed = measureTestingCrossFingerWeights(raw, anatomy.skinnedMesh.geometry, labels);
         const digitBleed = measureTestingCrossFingerWeights(digitAware, anatomy.skinnedMesh.geometry, labels);
         console.info("[Testing digit-aware real GLB A/B]", side, JSON.stringify({ blindBleed, digitBleed }));
