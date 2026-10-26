@@ -147,6 +147,7 @@ describe("Testing hand: real anatomical shell on original WebXR skeleton", () =>
         let thumbCalibratedCandidate: THREE.BufferGeometry | null = null;
         let thumbAnatomySource: THREE.BufferGeometry | null = null;
         let thumbAnatomyNames: string[] = [];
+        const partialThumbCandidates: Array<{ strength: number; geometry: THREE.BufferGeometry }> = [];
         try {
           const independentSurface = transferWebxrSkinToAnatomicalSurface(
             independentAnatomy.skinnedMesh.geometry,
@@ -195,6 +196,22 @@ describe("Testing hand: real anatomical shell on original WebXR skeleton", () =>
             },
             { thumbAxialScale: true },
           );
+          for (const strength of [0.25, 0.5, 0.75]) {
+            partialThumbCandidates.push({
+              strength,
+              geometry: transferTestingWeightsInBoneFrames(
+                independentAnatomy.skinnedMesh.geometry,
+                independentWebxr.skinnedMesh.geometry,
+                independentAnatomy.skinnedMesh.skeleton.bones,
+                independentWebxr.skinnedMesh.skeleton.bones,
+                {
+                  anatomicalBoneNames: independentAnatomy.skinnedMesh.skeleton.bones.map(bone => bone.name),
+                  webxrBoneNames: independentWebxr.skinnedMesh.skeleton.bones.map(bone => bone.name),
+                },
+                { thumbAxialStrength: strength },
+              ),
+            });
+          }
           const semanticIndices = semanticCandidate.getAttribute("skinIndex");
           const semanticWeights = semanticCandidate.getAttribute("skinWeight");
           for (let i = 0; i < semanticIndices.count; i += 37) {
@@ -235,6 +252,11 @@ describe("Testing hand: real anatomical shell on original WebXR skeleton", () =>
         semanticSurface.bind(mesh!.skeleton, mesh!.bindMatrix);
         const thumbCalibratedSurface = new THREE.SkinnedMesh(thumbCalibratedCandidate!, model.skinMaterial);
         thumbCalibratedSurface.bind(mesh!.skeleton, mesh!.bindMatrix);
+        const partialThumbSurfaces = partialThumbCandidates.map(({ strength, geometry }) => {
+          const candidateMesh = new THREE.SkinnedMesh(geometry, model.skinMaterial);
+          candidateMesh.bind(mesh!.skeleton, mesh!.bindMatrix);
+          return { strength, mesh: candidateMesh };
+        });
         try {
           const pose = makeWebxrComparisonPose(side);
           for (const hover of [0, 0.65]) {
@@ -280,6 +302,23 @@ describe("Testing hand: real anatomical shell on original WebXR skeleton", () =>
                 calibratedGlobal: { edgeStretchP95: thumbCalibratedDeformation.edgeStretchP95,
                   areaRatioP95: thumbCalibratedDeformation.areaRatioP95 },
               }));
+            const partialThumbMetrics = partialThumbSurfaces.map(sample => ({
+              strength: sample.strength,
+              thumb: measureTestingFixedThumbRegion(
+                sample.mesh, thumbAnatomySource!, thumbAnatomyNames,
+              ),
+              wholeHand: (() => {
+                const metrics = measureTestingHandDeformation(sample.mesh);
+                return { edgeStretchP95: metrics.edgeStretchP95,
+                  areaRatioP95: metrics.areaRatioP95 };
+              })(),
+            }));
+            for (const sample of partialThumbMetrics) {
+              expect(sample.thumb.inspectedTriangles).toBe(baselineThumb.inspectedTriangles);
+            }
+            console.info("[Testing partial thumb calibration sweep]", side, "hover=" + hover,
+              JSON.stringify({ baseline: baselineThumb, partial: partialThumbMetrics,
+                full: calibratedThumb }));
             console.info("[Testing vs WebXR skinned triangle deformation]", side, "hover=" + hover,
               JSON.stringify({ testing: deformation, smoothed: smoothedDeformation,
                 semantic: semanticDeformation, thumbCalibrated: thumbCalibratedDeformation,
@@ -315,6 +354,7 @@ describe("Testing hand: real anatomical shell on original WebXR skeleton", () =>
           experimentalSurface.geometry.dispose();
           semanticSurface.geometry.dispose();
           thumbCalibratedSurface.geometry.dispose();
+          for (const sample of partialThumbSurfaces) sample.mesh.geometry.dispose();
           thumbAnatomySource?.dispose();
         }
 
