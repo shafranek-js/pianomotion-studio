@@ -2582,4 +2582,28 @@ test("Testing hand: single-model WebGL screenshot and diagnostics", async ({ pag
     animations: "disabled",
     timeout: 60_000,
   });
+
+  // Unlike the pre-roll screenshot above, these are real active-note poses.
+  // The same musical plan is kept. No camera changes or per-frame WebGL
+  // readback are needed, so tests remain repeatable under headless Chromium.
+  for (const poseTime of [0.75, 3, 6] as const) {
+    await seekToTime(page, poseTime);
+    const snapshot = await browserSnapshot(page);
+    expect(snapshot?.handModelDiagnostics?.left).toMatchObject({
+      requestedModel: "testing",
+      loadedModel: "testing",
+      state: "ready",
+    });
+    expect(snapshot?.handModelDiagnostics?.right).toMatchObject({
+      requestedModel: "testing",
+      loadedModel: "testing",
+      state: "ready",
+    });
+    expect(snapshot?.performancePlanId).toBe(beforePlan);
+    await page.screenshot({
+      path: testInfo.outputPath(`testing-webgl-active-${poseTime.toString().replace(".", "_")}s.png`),
+      animations: "disabled",
+      timeout: 45_000,
+    });
+  }
 });
