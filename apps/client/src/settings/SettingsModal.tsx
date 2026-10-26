@@ -418,9 +418,39 @@ export function SettingsModal({ isOpen, onClose, onSettingsChanged, presentation
                 >
                   <option value="anatomical">{dict.settings.handModelAnatomical}</option>
                   <option value="anatomical-improved">{dict.settings.handModelAnatomicalImproved}</option>
+                  <option value="testing">{dict.settings.handModelTesting}</option>
                   <option value="webxr">{dict.settings.handModelWebxr}</option>
                 </select>
               </div>
+
+              {settings.handModel === "testing" && (
+                <div>
+                  <label htmlFor="settings-testing-hand-material" style={{ display: "block", fontSize: "0.8rem", color: "var(--muted, #9fac9f)", marginBottom: "0.3rem" }}>
+                    Testing — material comparison (experimental):
+                  </label>
+                  <select
+                    id="settings-testing-hand-material"
+                    value={settings.testingHandMaterial}
+                    onChange={(e) => handleChange("testingHandMaterial", e.target.value as AppSettings["testingHandMaterial"])}
+                    style={{
+                      background: "#19211d",
+                      color: "#edf2ed",
+                      border: "1px solid var(--border, #33423a)",
+                      borderRadius: "0.35rem",
+                      padding: "0.4rem 0.6rem",
+                      fontSize: "0.85rem",
+                    }}
+                  >
+                    <option value="original">Original skin — all textures</option>
+                    <option value="no-normal">Original color — no normal map</option>
+                    <option value="no-albedo">Neutral color — retain normal map</option>
+                    <option value="clay">Neutral clay — no textures</option>
+                  </select>
+                  <p style={{ margin: "0.35rem 0 0", fontSize: "0.76rem", color: "var(--muted, #9fac9f)" }}>
+                    Changes both Testing hands instantly without changing motion or geometry.
+                  </p>
+                </div>
+              )}
 
               <div style={{ display: "flex", gap: "1.5rem", flexWrap: "wrap", marginTop: "0.2rem" }}>
                 <label style={{ display: "flex", alignItems: "center", gap: "0.4rem", fontSize: "0.82rem", cursor: "pointer" }}>

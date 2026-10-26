@@ -159,6 +159,7 @@ export const cs: TranslationDictionary = {
     handModel: "3D Model rukou",
     handModelAnatomical: "Anatomický (realistický)",
     handModelAnatomicalImproved: "Anatomical (improved)",
+    handModelTesting: "Testing (pohyb WebXR + realistická kůže)",
     handModelWebxr: "WebXR standardní",
     showShadow: "Stíny rukou na klaviatuře",
     showFingerLabels: "Zobrazovat čísla prstů na notách",

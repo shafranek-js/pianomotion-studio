@@ -14,7 +14,7 @@ import {
   waitForLoadingToClear,
 } from "./studio-helpers";
 
-type HandModelId = "anatomical" | "webxr" | "anatomical-improved";
+type HandModelId = "anatomical" | "webxr" | "anatomical-improved" | "testing";
 type CameraId = "concert" | "overhead" | "pov" | "side_arch";
 
 type HandDiagnostics = {
@@ -360,7 +360,7 @@ async function selectHandModel(page: Page, model: HandModelId) {
   await page.getByRole("button", { name: "Open preferences", exact: true }).click();
   const preferences = page.getByRole("dialog", { name: "Preferences", exact: true });
   const select = preferences.locator("#settings-hand-model");
-  await expect(select.locator("option")).toHaveCount(3);
+  await expect(select.locator("option")).toHaveCount(4);
   await select.selectOption(model);
   await expect.poll(async () => (await committedStudioSettings(page)).handModel).toBe(model);
   await preferences.getByRole("button", { name: "Done", exact: true }).click();
@@ -389,7 +389,7 @@ async function expectLoadedModel(page: Page, model: HandModelId) {
   ]);
 
   for (const hand of [diagnostics!.left, diagnostics!.right]) {
-    if (model === "anatomical-improved") {
+    if (model === "anatomical-improved" || model === "testing") {
       expect(hand.loadedLod).toBeGreaterThanOrEqual(0);
       expect(hand.loadedLod).toBeLessThanOrEqual(2);
       expect(hand.requestedLod).toBe(hand.loadedLod);
@@ -462,8 +462,12 @@ async function sampleAnimatedRender(page: Page, count: number) {
   const before = await browserSnapshot(page);
   const intervals = await sampleFrameIntervals(page, count);
   const after = await browserSnapshot(page);
-  await play.click();
-  await expect(play).toContainText("Play");
+  // The music may naturally reach its end before a slow headless GPU probe
+  // returns. Never click "Play" when playback has already stopped.
+  if ((await play.getAttribute("aria-label")) === "Pause") {
+    await play.click();
+  }
+  await expect(play).toHaveAttribute("aria-label", "Play");
   const playbackSeconds = (after?.currentTimeSeconds ?? startTime) - (before?.currentTimeSeconds ?? startTime);
   const beforeRenderer = before?.handModelDiagnostics?.renderer;
   const afterRenderer = after?.handModelDiagnostics?.renderer;
@@ -1066,13 +1070,14 @@ test("improved hand selection persists and leaves the playing project and audio 
   await page.getByRole("button", { name: "Open preferences", exact: true }).click();
   const preferences = page.getByRole("dialog", { name: "Preferences", exact: true });
   const selector = preferences.locator("#settings-hand-model");
-  await expect(selector.locator("option")).toHaveCount(3);
+  await expect(selector.locator("option")).toHaveCount(4);
   expect(await selector.locator("option").evaluateAll(options => options.map(option => ({
     value: (option as HTMLOptionElement).value,
     label: option.textContent?.trim(),
   })))).toEqual([
     { value: "anatomical", label: "Anatomical (Realistic)" },
     { value: "anatomical-improved", label: "Anatomical (improved)" },
+    { value: "testing", label: "Testing (WebXR motion + realistic skin)" },
     { value: "webxr", label: "WebXR Standard" },
   ]);
   await preferences.getByRole("button", { name: "Done", exact: true }).click();
@@ -2496,3 +2501,281 @@ test("actual engine articulation matrix captures assigned notes, posed hands, an
     body: JSON.stringify(report, null, 2),
   });
 });
+
+
+test("Testing hand: WebXR-driven anatomical surface in POV and Side Arch", async ({ page }, testInfo) => {
+  test.setTimeout(300_000);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const initial = await loadTwoHandDemoSong(page);
+  const originalPlanId = initial.result.performancePlan?.planId ?? null;
+  const canvas = studioCanvas(page, "3d");
+  await expect(canvas).toBeVisible();
+
+  // Same performance and time under all three skins: only the visual hand
+  // implementation changes. Screenshots are evidence, not visual acceptance.
+  for (const model of ["webxr", "anatomical", "testing"] as const) {
+    await page.getByRole("button", { name: "Open preferences", exact: true }).click();
+    const dialog = page.getByRole("dialog", { name: "Preferences", exact: true });
+    const modelSelector = dialog.locator("#settings-hand-model");
+    await modelSelector.selectOption(model);
+    await expect(modelSelector).toHaveValue(model);
+    await dialog.getByRole("button", { name: "Done", exact: true }).click();
+    await expectLoadedModel(page, model);
+    // Hold exactly the same moment of the score for all surface variants.
+    await seekToTime(page, 0.75);
+    for (const camera of ["pov", "side_arch"] as const) {
+      await setCamera(page, camera);
+      await expect(canvas).toBeVisible();
+      await canvas.screenshot({ path: testInfo.outputPath(`testing-hand-${model}-${camera}.png`) });
+    }
+    const diagnostic = (await browserSnapshot(page))?.handModelDiagnostics;
+    expect(diagnostic?.left.loadedModel).toBe(model);
+    expect(diagnostic?.right.loadedModel).toBe(model);
+  }
+  expect((await browserSnapshot(page))?.performancePlanId).toBe(originalPlanId);
+});
+
+
+/** Bypass Playwright's animation/font/element-stability screenshot pipeline.
+ * A continuously repainted Three.js canvas can hang element/page.screenshot on
+ * software-rendered GitHub runners; CDP reads the same compositor surface.
+ * A timeout fails early and preserves any frames already written to disk.
+ */
+async function captureTestingReviewFrame(
+  page: Page,
+  filename: string,
+): Promise<void> {
+  const cdp = await page.context().newCDPSession(page);
+  try {
+    await cdp.send("Page.enable");
+    const capture = cdp.send("Page.captureScreenshot", {
+      format: "png",
+      captureBeyondViewport: false,
+      fromSurface: true,
+      optimizeForSpeed: true,
+    });
+    const result = await Promise.race([
+      capture,
+      new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error("Timed out reading WebGL compositor frame (CDP).")), 25_000);
+      }),
+    ]);
+    if (!result.data) throw new Error("CDP returned an empty WebGL screenshot.");
+    await writeFile(filename, Buffer.from(result.data, "base64"));
+  } finally {
+    await cdp.detach().catch(() => undefined);
+  }
+}
+
+// Separate Chromium captures per model so an expensive camera change or
+// GPU-stalled animation frame in one model cannot invalidate all 48 images.
+for (const comparedModel of ["webxr", "anatomical", "anatomical-improved", "testing"] as const) {
+test("Testing hand: matched WebGL model and camera evidence / " + comparedModel, async ({ page }, testInfo) => {
+  test.setTimeout(240_000);
+  test.skip(Boolean(process.env.PIANOMOTION_EVIDENCE_MODEL) &&
+    process.env.PIANOMOTION_EVIDENCE_MODEL !== comparedModel,
+    "This CI shard captures only its assigned hand model.");
+  // Software WebGL on hosted headless Chromium can saturate the page main
+  // thread at 1280×800, starving even a direct camera button DOM click.
+  // Use a smaller, identical viewport for all four quick evidence shards.
+  // Full-resolution / multi-camera visual acceptance remains a separate gate.
+  const fullReviewViewport = process.env.PIANOMOTION_EVIDENCE_FULL === "1";
+  await page.setViewportSize(fullReviewViewport
+    ? { width: 1280, height: 800 }
+    : { width: 900, height: 600 });
+  const initial = await loadTwoHandDemoSong(page);
+  const originalPlanId = initial.result.performancePlan?.planId ?? null;
+  expect(originalPlanId).toBeTruthy();
+  // Plan IDs incorporate per-project/session identity, so they cannot prove
+  // that four independent Chromium shards rendered the same piano notes.
+  // Finger assignments and physical press/release event times must match.
+  const originalEvents = initial.result.performancePlan?.events ?? [];
+  expect(originalEvents.length, "A/B fixture must contain real playable events").toBeGreaterThan(1);
+  const assigned = new Map((initial.result.fingeringPlan?.assignments ?? [])
+    .map(note => [note.noteId, note] as const));
+  const pitchForNote = new Map(originalEvents
+    .filter(event => event.type === "press")
+    .map(event => [event.noteId, event.pitch] as const));
+  const canonicalEvents = originalEvents.map(event => {
+    const noteId = "noteId" in event ? event.noteId : null;
+    const fingering = noteId ? assigned.get(noteId) : undefined;
+    return {
+      type: event.type,
+      timeMillis: Math.round(event.timeSeconds * 1000),
+      pitch: event.type === "press" ? event.pitch :
+        (noteId ? pitchForNote.get(noteId) ?? null : null),
+      hand: fingering?.hand ?? null,
+      finger: fingering?.finger ?? null,
+      controller: event.type === "pedal" ? event.controller : null,
+      pedalValue: event.type === "pedal" ? event.value : null,
+    };
+  }).sort((a, b) => a.timeMillis - b.timeMillis || a.type.localeCompare(b.type) ||
+    (a.pitch ?? -1) - (b.pitch ?? -1) || (a.hand ?? "").localeCompare(b.hand ?? "") ||
+    (a.finger ?? -1) - (b.finger ?? -1));
+  const scoreFingerprint = createHash("sha256")
+    .update(JSON.stringify(canonicalEvents)).digest("hex");
+
+  // All four options must play the *same* performance plan at the *same*
+  // transport timestamps. Only their rendered hands and camera angles vary.
+  // Keep evidence even if a visual defect is discovered later. A successful
+  // capture is not, by itself, anatomical/animation acceptance.
+  const comparedModels: readonly HandModelId[] = [comparedModel];
+  // Fast per-PR smoke evidence deliberately captures ONE matched musical
+  // pose and ONE initial camera per model. Headless SwiftShader can starve
+  // React's camera change handler after its first WebGL compositor capture.
+  // Full four-camera/three-time visual inspection is explicitly separate
+  // and must still pass before acceptance, not inferred from this smoke.
+  const fullReview = process.env.PIANOMOTION_EVIDENCE_FULL === "1";
+  const comparisonCameras = fullReview ? cameras : (["pov"] as const);
+  const comparedTimes = fullReview ? ([0.75, 3, 6] as const) : ([0.75] as const);
+  const evidence: Array<{
+    model: HandModelId;
+    timeSeconds: number;
+    performancePlanId: string | null;
+    transportTimeSeconds: number | null;
+    sceneTimeSeconds: number | null;
+    left: HandDiagnostics;
+    right: HandDiagnostics;
+    screenshots: string[];
+  }> = [];
+
+  for (const model of comparedModels) {
+    // This is a render comparison, not a persistence test. IndexedDB commits
+    // are validated separately and can race on a loaded WebGL render loop.
+    await page.getByRole("button", { name: "Open preferences", exact: true }).click();
+    const preferences = page.getByRole("dialog", { name: "Preferences", exact: true });
+    await preferences.locator("#settings-hand-model").selectOption(model);
+    await preferences.getByRole("button", { name: "Done", exact: true }).click();
+    await expectLoadedModel(page, model);
+    await expect(studioCanvas(page, "3d")).toBeVisible({ timeout: 30_000 });
+
+    for (const timeSeconds of comparedTimes) {
+      await seekToTime(page, timeSeconds);
+      // Wait for the 3D scene to consume the seek before capturing WebGL.
+      // A suspended/throttled headless WebGL RAF may never fire; do not block
+      // the entire comparison on frame callbacks.
+      await page.waitForTimeout(100);
+      const snapshot = await browserSnapshot(page);
+      expect(snapshot?.performancePlanId).toBe(originalPlanId);
+      expect(snapshot?.currentTimeSeconds).toBeCloseTo(timeSeconds, 1);
+      expect(snapshot?.handModelDiagnostics?.left).toMatchObject({
+        requestedModel: model,
+        loadedModel: model,
+        state: "ready",
+        error: null,
+      });
+      expect(snapshot?.handModelDiagnostics?.right).toMatchObject({
+        requestedModel: model,
+        loadedModel: model,
+        state: "ready",
+        error: null,
+      });
+      const record = {
+        model,
+        timeSeconds,
+        performancePlanId: snapshot!.performancePlanId,
+        transportTimeSeconds: snapshot!.currentTimeSeconds,
+        sceneTimeSeconds: snapshot!.sceneTime,
+        left: snapshot!.handModelDiagnostics!.left,
+        right: snapshot!.handModelDiagnostics!.right,
+        screenshots: [] as string[],
+      };
+
+      for (const camera of comparisonCameras) {
+        // The responsive 3D toolbar uses a select in narrower layouts.
+        // Previously we always addressed the desktop button group: headless
+        // Chromium sometimes displays the select instead, so nth(3) waited
+        // until the entire 240-second capture deadline expired.
+        const compactCameraSelect = page.getByRole("combobox", {
+          name: "3D camera preset", exact: true,
+        });
+        if (await compactCameraSelect.isVisible()) {
+          await compactCameraSelect.selectOption(camera, { timeout: 10_000 });
+        } else {
+          const cameraButtons = page.getByRole("group", {
+            name: "3D camera presets", exact: true,
+          }).locator("button");
+          await expect(cameraButtons).toHaveCount(cameras.length, { timeout: 10_000 });
+          // DOM click avoids Playwright's perpetual element-stability wait
+          // while the continuously animated WebGL scene is repainting.
+          await cameraButtons.nth(cameras.indexOf(camera)).evaluate(
+            (element: HTMLElement) => element.click(),
+            undefined,
+            { timeout: 10_000 },
+          );
+        }
+        await page.waitForTimeout(100);
+        const filename = "testing-ab-" + model + "-" + camera + "-" +
+          timeSeconds.toString().replace(".", "_") + "s.png";
+        await captureTestingReviewFrame(page, testInfo.outputPath(filename));
+        record.screenshots.push(filename);
+      }
+      evidence.push(record);
+    }
+  }
+
+  // Animation sampling is a separate, bounded performance experiment.
+  // The screenshot evidence must complete even if headless SwiftShader
+  // throttles requestAnimationFrame for seconds at a time.
+  const summary = {
+    originalPerformancePlanId: originalPlanId,
+    canonicalScoreFingerprintSha256: scoreFingerprint,
+    canonicalScoreEventCount: canonicalEvents.length,
+    canonicalScoreEventFields: "type / rounded milliseconds / pitch / assigned hand and finger; session-local noteId excluded",
+    cameraPresets: comparisonCameras,
+    sampledTimesSeconds: comparedTimes,
+    records: evidence,
+    reviewRequired: [
+      "MCP/PIP/DIP folds", "thumb web/opposition", "wrist seams",
+      "finger intersections", "nails", "white/black-key contact",
+      "continuous movement and exported video",
+    ],
+  };
+  const evidenceJson = JSON.stringify(summary, null, 2);
+  // Direct files, in addition to Playwright attachments, make the downloaded
+  // CI ZIP usable without opening an HTML test reporter.
+  await writeFile(testInfo.outputPath("testing-hand-evidence.json"), evidenceJson, "utf8");
+  await testInfo.attach("testing-hand-matched-model-camera-evidence", {
+    body: evidenceJson,
+    contentType: "application/json",
+  });
+
+  // Offline contact sheet: open this HTML beside the PNGs after extracting
+  // the CI artifact. Each cell links to its full-resolution reference frame.
+  // No visual automatic threshold is imposed on skin appearance or motion.
+  const rows = comparedTimes.map(timeSeconds => {
+    const camerasAtTime = comparisonCameras.map(camera => {
+      const frames = comparedModels.map(model => {
+        const filename = "testing-ab-" + model + "-" + camera + "-" +
+          timeSeconds.toString().replace(".", "_") + "s.png";
+        return "<figure><a href=\"" + filename + "\"><img loading=\"lazy\" src=\"" +
+          filename + "\" alt=\"" + model + ", " + camera + ", " + timeSeconds +
+          " s\"></a><figcaption>" + model + "</figcaption></figure>";
+      }).join("");
+      return "<h3>" + camera + "</h3><div class=\"grid\">" + frames + "</div>";
+    }).join("");
+    return "<section><h2>Score time: " + timeSeconds + " s</h2>" + camerasAtTime + "</section>";
+  }).join("");
+  const reviewHtml = "<!doctype html><html lang=\"en\"><meta charset=\"utf-8\">" +
+    "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">" +
+    "<title>Testing hand / matched visual review</title><style>" +
+    "body{margin:24px;background:#16191e;color:#f3f4f7;font:14px system-ui,sans-serif}" +
+    "section{margin:24px 0 50px}h3{margin:20px 0 8px;text-transform:capitalize}" +
+    ".grid{display:grid;grid-template-columns:repeat(4,minmax(190px,1fr));gap:10px}" +
+    "figure{margin:0;background:#272c32;border-radius:6px;overflow:hidden}" +
+    "img{width:100%;height:auto;display:block}figcaption{padding:8px}" +
+    "a{color:inherit}p{max-width:900px;line-height:1.5}" +
+    "@media(max-width:800px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}}" +
+    "</style><h1>Testing hand — matched model review</h1>" +
+    "<p>Same performance plan and score time, four hand models and four cameras. " +
+    "Click any image to inspect the full-resolution frame. These stills are evidence " +
+    "for human review, not certification of anatomically correct motion.</p>" +
+    rows + "</html>";
+  await writeFile(testInfo.outputPath("testing-hand-review.html"), reviewHtml, "utf8");
+
+  expect(evidence).toHaveLength(comparedModels.length * comparedTimes.length);
+  // Leave the opt-in Testing model selected for the end-of-run diagnostics.
+  expect((await browserSnapshot(page))?.handModelDiagnostics?.left.loadedModel).toBe(comparedModel);
+  expect((await browserSnapshot(page))?.handModelDiagnostics?.right.loadedModel).toBe(comparedModel);
+});
+}

@@ -14,7 +14,8 @@ export interface PianoSceneDisplaySettings {
   showFingerLabels?: boolean;
   showNoteNames?: boolean;
   skinStyle?: SkinStyle;
-  handModel?: "anatomical" | "anatomical-improved" | "webxr";
+  handModel?: "anatomical" | "anatomical-improved" | "webxr" | "testing";
+  testingHandMaterial?: "original" | "no-normal" | "no-albedo" | "clay";
   showHandShadow?: boolean;
   renderCapFps?: number;
 }
@@ -206,6 +207,7 @@ export class PianoScene {
     showHandShadow: true,
     renderCapFps: 60,
     handModel: "anatomical",
+    testingHandMaterial: "original",
   };
   private resizeObserver: ResizeObserver | null = null;
   private scene3D: PianoScene3D | null = null;

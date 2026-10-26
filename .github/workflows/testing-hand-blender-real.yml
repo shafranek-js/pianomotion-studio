@@ -1,0 +1,396 @@
+name: Testing Hand — real Blender rig validation
+
+on:
+  pull_request:
+    paths:
+      - "tools/testing-hand-blender/**"
+      - "apps/client/public/models/hands/improved/**"
+      - ".github/workflows/testing-hand-blender-real.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Preserve long real-Blender captures from distinct experiment commits.
+# GitHub permits only ONE pending run per concurrency group and silently
+# replaces older queued runs even with cancel-in-progress: false. Include
+# immutable head SHA to prevent that cancellation/starvation. Do not use this
+# workflow for broad releases: Blender results remain research-only.
+concurrency:
+  group: testing-hand-blender-${{ github.ref }}-${{ github.event.pull_request.head.sha || github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  real-blender:
+    name: Blender import / native armature / corrective scaffold
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Blender
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends blender python3-numpy
+          blender --version
+          blender -b --python-expr 'import numpy; print("Blender NumPy", numpy.__version__)'
+      - name: Create left LOD0 Blender authoring project
+        run: >-
+          blender -b -t 2 --python-exit-code 2
+          --python tools/testing-hand-blender/prepare_corrective_sculpt.py --
+          --side left
+          --input apps/client/public/models/hands/improved/left-lod0.glb
+          --output-blend scratch/blender-correctives/left-lod0.blend
+          --report scratch/blender-correctives/left-lod0.json
+      - name: Create right LOD0 Blender authoring project
+        run: >-
+          blender -b -t 2 --python-exit-code 2
+          --python tools/testing-hand-blender/prepare_corrective_sculpt.py --
+          --side right
+          --input apps/client/public/models/hands/improved/right-lod0.glb
+          --output-blend scratch/blender-correctives/right-lod0.blend
+          --report scratch/blender-correctives/right-lod0.json
+      - name: Survey candidate MCP/PIP/DIP hinge axes in both rest rigs
+        run: |
+          for hand in left right; do
+            blender -b -t 2 --python-exit-code 2 --python tools/testing-hand-blender/measure_hinge_axes.py -- \
+              --input "scratch/blender-correctives/${hand}-lod0.blend" \
+              --report "scratch/blender-correctives/${hand}-unsigned-hinge-axes.json" --side "$hand"
+          done
+          python - <<'PY'
+          import json, math
+          from pathlib import Path
+          for side in ("left", "right"):
+              report = json.loads(Path(f"scratch/blender-correctives/{side}-unsigned-hinge-axes.json").read_text())
+              assert len(report["joints"]) == 12
+              assert report["anatomicalAxesCalibrated"] is False
+              assert report["thumbOppositionCalibrated"] is False
+              assert report["exportApproved"] is False
+              for j in report["joints"]:
+                  assert math.isfinite(j["differenceFromAssumedLocalXDegrees"])
+                  assert j["perpendicularityError"] < 1e-4
+              print(side, "unsigned hinge axes surveyed, NOT anatomically validated")
+          PY
+      - name: Rank MCP PIP DIP joint-local deformation using measured rest axes
+        run: |
+          for hand in left right; do
+            blender -b -t 2 --python-exit-code 2 --python tools/testing-hand-blender/measure_joint_local_deformation.py -- \
+              --input "scratch/blender-correctives/${hand}-lod0.blend" \
+              --axes "scratch/blender-correctives/${hand}-unsigned-hinge-axes.json" \
+              --report "scratch/blender-correctives/${hand}-joint-local-deformation.json" \
+              --side "$hand"
+          done
+          python - <<'PY'
+          import json, math
+          from pathlib import Path
+          for side in ("left", "right"):
+              path = Path(f"scratch/blender-correctives/{side}-joint-local-deformation.json")
+              data = json.loads(path.read_text("utf-8"))
+              assert data["schema"] == "testing-hinge-deformation-priority-v1"
+              assert len(data["joints"]) == 12
+              assert data["axisAnatomicallyCalibrated"] is False
+              assert data["exportApproved"] is False
+              assert set(j["joint"] for j in data["joints"]) == {"mcp", "pip", "dip"}
+              for joint in data["joints"]:
+                  assert joint["regionVertices"] >= 10
+                  a = joint["experiments"]
+                  assert set(a) == {"syntheticLocalX", "measuredUnsignedAxis"}
+                  for variant in a.values():
+                      value = variant["localLbsToDqsRmsMillimeters"]
+                      assert math.isfinite(value) and value >= 0
+                      assert variant["localLbs"]["triangles"] > 0
+                      assert variant["localDqs"]["triangles"] > 0
+              print(side, "joint-local deform survey complete; NOT human/anatomical acceptance")
+          PY
+      - name: Compare Blender linear and preserve-volume skinning — left
+        run: >-
+          blender -b -t 2 --python-exit-code 2
+          --python tools/testing-hand-blender/measure_preserve_volume.py --
+          --input scratch/blender-correctives/left-lod0.blend
+          --report scratch/blender-correctives/left-dqs-vs-lbs.json
+      - name: Compare Blender linear and preserve-volume skinning — right
+        run: >-
+          blender -b -t 2 --python-exit-code 2
+          --python tools/testing-hand-blender/measure_preserve_volume.py --
+          --input scratch/blender-correctives/right-lod0.blend
+          --report scratch/blender-correctives/right-dqs-vs-lbs.json
+      - name: Validate paired surface-deformation measurements
+        run: |
+          python - <<'PY'
+          import json, math
+          from pathlib import Path
+          root = Path('scratch/blender-correctives')
+          for side in ('left', 'right'):
+              data = json.loads((root / f'{side}-dqs-vs-lbs.json').read_text('utf-8'))
+              assert data['axisCalibrated'] is False
+              assert data['correctiveShapeKeysSculpted'] is False
+              assert len(data['measurements']) == 12
+              for m in data['measurements']:
+                  assert m['degrees'] in (30, 60, 90)
+                  assert m['lbs']['triangles'] == m['dqs']['triangles'] == 34999
+                  assert math.isfinite(m['meanVertexDisplacementDifference'])
+                  assert m['meanVertexDisplacementDifference'] >= 0
+              print(side, 'real Blender DQS/LBS comparison measured; NOT anatomical validation')
+          PY
+      - name: Bake index and middle MCP prototype morphs — left
+        run: >-
+          blender -b -t 2 --python-exit-code 2
+          --python tools/testing-hand-blender/prototype_mcp_corrective.py --
+          --input scratch/blender-correctives/left-lod0.blend
+          --output scratch/blender-correctives/left-mcp-candidate.blend
+          --report scratch/blender-correctives/left-mcp-candidate.json
+      - name: Bake index and middle MCP prototype morphs — right
+        run: >-
+          blender -b -t 2 --python-exit-code 2
+          --python tools/testing-hand-blender/prototype_mcp_corrective.py --
+          --input scratch/blender-correctives/right-lod0.blend
+          --output scratch/blender-correctives/right-mcp-candidate.blend
+          --report scratch/blender-correctives/right-mcp-candidate.json
+      - name: Bake measured-axis MCP and pinky DIP candidates — left
+        run: >-
+          blender -b -t 2 --python-exit-code 2
+          --python tools/testing-hand-blender/prototype_joint_correctives.py --
+          --input scratch/blender-correctives/left-lod0.blend
+          --axes scratch/blender-correctives/left-unsigned-hinge-axes.json
+          --side left
+          --output scratch/blender-correctives/left-measured-joint-candidates.blend
+          --report scratch/blender-correctives/left-measured-joint-candidates.json
+      - name: Bake measured-axis MCP and pinky DIP candidates — right
+        run: >-
+          blender -b -t 2 --python-exit-code 2
+          --python tools/testing-hand-blender/prototype_joint_correctives.py --
+          --input scratch/blender-correctives/right-lod0.blend
+          --axes scratch/blender-correctives/right-unsigned-hinge-axes.json
+          --side right
+          --output scratch/blender-correctives/right-measured-joint-candidates.blend
+          --report scratch/blender-correctives/right-measured-joint-candidates.json
+      - name: Validate measured-axis candidates but prohibit release
+        run: |
+          python - <<'PY'
+          import json, math
+          from pathlib import Path
+          folder = Path("scratch/blender-correctives")
+          for hand in ("left","right"):
+              report = json.loads((folder / f"{hand}-measured-joint-candidates.json").read_text())
+              assert report["schema"] == "testing-measured-axis-joint-corrective-candidate-v1"
+              assert len(report["targets"]) == 4
+              assert {t["targetName"] for t in report["targets"]} == {
+                  "pmcorr_ring_mcp_060","pmcorr_index_mcp_060",
+                  "pmcorr_middle_mcp_060","pmcorr_pinky_dip_060",
+              }
+              assert report["exportApproved"] is False
+              assert report["axisAnatomicallyCalibrated"] is False
+              assert report["physiologicalFlexionSignCalibrated"] is False
+              assert report["keyContactValidated"] is False
+              assert report["allThreeLodsVerified"] is False
+              for target in report["targets"]:
+                  assert target["nonzeroCorrectiveVertices"] >= 10
+                  assert target["candidateToDqsRmsMillimeters"] < target["baselineLbsToDqsRmsMillimeters"]
+                  assert 0 < target["maxRestDeltaMillimeters"] <= 4.001
+                  assert 0 < target["chosenCorrectiveAmplitude"] <= 1
+                  assert target["noAdditionalQuarterAreaCollapse"] is True
+                  assert target["noAdditionalHalfAreaCollapse"] is True
+                  delta = target["candidateLocalArea"]["minRatio"] - target["lbsLocalArea"]["minRatio"]
+                  assert abs(target["worstAreaRatioDelta"] - delta) < 1e-7
+                  assert target["worstAreaRatioNonRegression"] is (delta >= -1e-6)
+                  if not target["worstAreaRatioNonRegression"]:
+                      print("WARNING — reject for runtime: local worst triangle"
+                            " area ratio regressed:", hand, target["targetName"],
+                            "delta", round(delta, 6))
+                  assert target["candidateLocalArea"]["belowHalf"] <= target["lbsLocalArea"]["belowHalf"]
+                  assert target["candidateLocalArea"]["belowQuarter"] <= target["lbsLocalArea"]["belowQuarter"]
+                  assert math.isfinite(target["rmsImprovementPercent"])
+                  print(hand, target["targetName"],
+                        round(target["rmsImprovementPercent"], 2), "percent RMS improvement",
+                        "quarter-area collapse safe:", target["noAdditionalQuarterAreaCollapse"])
+              assert (folder / f"{hand}-measured-joint-candidates.blend").stat().st_size > 10000
+          PY
+      - name: Attribute real LOD0 joint fold polygons to original mesh indices
+        run: |
+          for side in left right; do
+            blender -b -t 2 --python-exit-code 2 \
+              --python tools/testing-hand-blender/analyze_fold_polygons.py -- \
+              --side "$side" \
+              --input "scratch/blender-correctives/${side}-measured-joint-candidates.blend" \
+              --axes "scratch/blender-correctives/${side}-unsigned-hinge-axes.json" \
+              --output "scratch/blender-correctives/${side}-fold-hotspots.json"
+          done
+          python - <<'PY'
+          import json, math
+          from pathlib import Path
+          for side in ("left", "right"):
+              data = json.loads(Path(f"scratch/blender-correctives/{side}-fold-hotspots.json").read_text())
+              assert data["schema"] == "testing-real-lod0-fold-polygons-v1"
+              assert data["meshTriangles"] == 34999
+              assert data["side"] == side
+              assert data["visualAcceptance"] is False
+              assert data["axisSignedAndAnatomicallyCalibrated"] is False
+              assert data["exportApproved"] is False
+              assert len(data["joints"]) == 2
+              assert {row["joint"] for row in data["joints"]} == {"ring-mcp", "pinky-dip"}
+              for joint in data["joints"]:
+                  assert joint["bendDegrees"] == 60
+                  assert joint["jointRegionMaskVertices"] >= 10
+                  assert {v["variant"] for v in joint["variants"]} == {
+                      "lbs", "bounded-corrective"}
+                  for variant in joint["variants"]:
+                      assert variant["regionTriangles"] >= 10
+                      for field in ("mostCompressedFaces","mostExpandedFaces",
+                                    "worstEdgeCollapseFaces"):
+                          assert len(variant[field]) == 12
+                          for triangle in variant[field]:
+                              assert 0 <= triangle["polygonIndex"] < data["meshTriangles"]
+                              assert len(triangle["vertexIndices"]) == 3
+                              assert all(0 <= i < data["meshVertices"]
+                                         for i in triangle["vertexIndices"])
+                              assert all(math.isfinite(triangle[x]) for x in
+                                         ("areaRatio","smallestEdgeRatio",
+                                          "largestEdgeRatio"))
+              print(side, "real fold polygon IDs reported, NOT a morph acceptance")
+          PY
+      - name: Render real bounded joint comparisons — left
+        run: >-
+          blender -b -t 2 --python-exit-code 2
+          --python tools/testing-hand-blender/render_joint_corrective_review.py --
+          --side left
+          --input scratch/blender-correctives/left-measured-joint-candidates.blend
+          --axes scratch/blender-correctives/left-unsigned-hinge-axes.json
+          --manifest apps/client/public/models/hands/improved/manifest.json
+          --output-dir scratch/blender-correctives/render-review
+      - name: Render real bounded joint comparisons — right
+        run: >-
+          blender -b -t 2 --python-exit-code 2
+          --python tools/testing-hand-blender/render_joint_corrective_review.py --
+          --side right
+          --input scratch/blender-correctives/right-measured-joint-candidates.blend
+          --axes scratch/blender-correctives/right-unsigned-hinge-axes.json
+          --manifest apps/client/public/models/hands/improved/manifest.json
+          --output-dir scratch/blender-correctives/render-review
+      - name: Validate comparable joint image evidence
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root = Path("scratch/blender-correctives/render-review")
+          for side in ("left", "right"):
+              report = json.loads((root / f"{side}-bounded-joint-review.json").read_text())
+              assert report["schema"] == "testing-joint-material-pose-blender-v3"
+              assert report["exportApproved"] is False
+              assert report["humanVisualReviewAccepted"] is False
+              assert report["axisAnatomicallyCalibrated"] is False
+              assert report["physiologicalFlexionSignCalibrated"] is False
+              assert report["syntheticAxisBendOnly"] is True
+              assert report["geometrySourceUnchanged"] is True
+              assert report["shaderVisualParityWithThreeJsCertified"] is False
+              reference = report["runtimeMaterialReference"]
+              assert reference["sourceTexturesMatchRuntimeManifest"] is True
+              assert reference["blenderMaterialIsThreeJsApproximation"] is True
+              assert reference["textureSet"] == "high"
+              assert reference["lod"] == 0
+              assert set(reference["manifestPaths"]) == {"baseColor", "normal", "roughness"}
+              assert all(len(checksum) == 64 and
+                         all(c in "0123456789abcdef" for c in checksum)
+                         for checksum in reference["sha256"].values())
+              images = report["images"]
+              assert len(images) == len({row["image"] for row in images}) == 28
+              assert len({row["bone"] for row in images}) == 2
+              assert {row["materialMode"] for row in images} == {
+                  "textured", "clay", "albedo-only", "normal-only"}
+              assert {row["jointBendDegrees"] for row in images} == {0, 30, 60, 90}
+              assert {row["variant"] for row in images} == {
+                  "lbs", "preserve-volume", "bounded-corrective"}
+              for bone in {row["bone"] for row in images}:
+                  for angle in (0, 30, 60, 90):
+                      variants = {"lbs", "preserve-volume", "bounded-corrective"} if angle == 60 else {"lbs"}
+                      for variant in variants:
+                          materials = {row["materialMode"] for row in images
+                                       if row["bone"] == bone
+                                       and row["jointBendDegrees"] == angle
+                                       and row["variant"] == variant}
+                          expected = {"textured", "clay"}
+                          if angle == 60 and variant == "lbs":
+                              expected |= {"albedo-only", "normal-only"}
+                          assert materials == expected, (bone, angle, variant, materials)
+              for row in images:
+                  assert row["jointAxisSignedAndCalibrated"] is False
+                  assert row["anatomicallyApproved"] is False
+                  assert (root / row["image"]).stat().st_size > 15000
+              print(side, "28 real pose/material joint renders; NOT visually accepted")
+          PY
+      - name: Assemble visual Blender A/B gallery for human inspection
+        run: |
+          python tools/testing-hand-blender/build_joint_review_gallery.py \
+            --input-dir scratch/blender-correctives/render-review \
+            --output scratch/blender-correctives/render-review/index.html
+          python - <<'PY'
+          from pathlib import Path
+          page = Path("scratch/blender-correctives/render-review/index.html")
+          content = page.read_text(encoding="utf8")
+          assert page.stat().st_size > 5000
+          assert content.count("<img ") == 56
+          assert "NOT visually approved" in content
+          assert "60° bounded corrective is never extrapolated" in content
+          print("Validated 56 real Blender comparison frames in offline HTML gallery")
+          PY
+      - name: Render three comparable MCP poses — left
+        run: >-
+          blender -b -t 2 --python-exit-code 2
+          --python tools/testing-hand-blender/render_mcp_comparison.py --
+          --side left
+          --input scratch/blender-correctives/left-mcp-candidate.blend
+          --output-dir scratch/blender-correctives/render-review
+      - name: Render three comparable MCP poses — right
+        run: >-
+          blender -b -t 2 --python-exit-code 2
+          --python tools/testing-hand-blender/render_mcp_comparison.py --
+          --side right
+          --input scratch/blender-correctives/right-mcp-candidate.blend
+          --output-dir scratch/blender-correctives/render-review
+      - name: Validate nonzero prototypes and DQS target improvements
+        run: |
+          python - <<'PY'
+          import json, math
+          from pathlib import Path
+          root = Path("scratch/blender-correctives")
+          for hand in ("left", "right"):
+              data = json.loads((root / f"{hand}-mcp-candidate.json").read_text("utf8"))
+              assert data['anatomicalAxesCalibrated'] is False
+              assert data['exportApproved'] is False
+              assert len(data['targets']) == 2
+              for item in data['targets']:
+                  assert item['nonzeroCorrectiveVertices'] >= 10
+                  assert item['candidateToDqsRmsMeters'] < item['baselineLbsToDqsRmsMeters']
+                  assert 0 < item['maxRestDeltaMeters'] <= 0.004001
+                  assert all(math.isfinite(item[x]) for x in
+                      ('candidateToDqsRmsMeters','rmsImprovementPercent','maxRestDeltaMeters'))
+                  print(hand, item['targetName'], round(item['rmsImprovementPercent'], 2),
+                        '% closer to Blender preserve-volume reference')
+              assert (root / f"{hand}-mcp-candidate.blend").stat().st_size > 10000
+          PY
+      - name: Verify results and fail on missing masks
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root = Path('scratch/blender-correctives')
+          for side in ('left','right'):
+              path = root / f'{side}-lod0.json'
+              report = json.loads(path.read_text(encoding='utf8'))
+              assert report['hand'] == side
+              assert report['validatedInBlender'] is False
+              assert report['exportReady'] is False
+              assert len(report['slots']) == 48
+              assert report['unsculpted'] == 48
+              assert all(slot['maskedVertices'] >= 10 for slot in report['slots'])
+              assert all(slot['changedVertices'] == 0 for slot in report['slots'])
+              blend = root / f'{side}-lod0.blend'
+              assert blend.stat().st_size > 10000, blend
+              print(side, 'real Blender import passed; 48 empty slots, explicit NOT export-ready')
+          PY
+      - name: Attach reports and authoring projects
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: testing-hand-blender-lod0-authoring-${{ github.run_number }}
+          path: scratch/blender-correctives/
+          retention-days: 14
+          if-no-files-found: warn
