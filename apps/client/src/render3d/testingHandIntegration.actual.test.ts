@@ -3,6 +3,8 @@ import { readFileSync } from "node:fs";
 import { transferWebxrSkinToAnatomicalSurface } from "./testingHandSkin";
 import * as THREE from "three";
 import { describe, expect, it } from "vitest";
+import type { MotionPose } from "@handthesia/contracts";
+import { DEFAULT_SKIN_SETTINGS } from "../render/skins";
 import { Hand3DMeshGroup, buildImprovedHandGlbRig, parseHandGlbRig, type HandModelRuntimeDependencies } from "./handRigBuilder";
 import {
   type ImprovedHandAsset,
@@ -12,6 +14,36 @@ import {
 } from "./improvedHandAssets";
 
 const manifestUrl = new URL("../../public/models/hands/improved/manifest.json", import.meta.url);
+
+function makeWebxrComparisonPose(hand: "left" | "right"): MotionPose {
+  const x = hand === "left" ? 18 : 30;
+  const bones: MotionPose["bones"] = [
+    { a: [x - 1, -1, 0.9], b: [x - 1, 0, 0.9], kind: "forearm" },
+    { a: [x + 1, -1, 0.9], b: [x + 1, 0, 0.9], kind: "forearm" },
+  ];
+  const joints: MotionPose["joints"] = [
+    { point: [x - 1, 0, 0.9], kind: "wrist" },
+    { point: [x + 1, 0, 0.9], kind: "wrist" },
+  ];
+  for (const finger of [2, 3, 4, 5, 1]) {
+    const xx = x + (finger - 3.5) * 0.7;
+    const points: [number, number, number][] = finger === 1 ? [
+      [xx + 0.4, 0.5, 0.8], [xx, 1.2, 0.7],
+      [xx - 0.3, 1.8, 0.45], [xx - 0.5, 2.6, 0.15],
+    ] : [
+      [xx - 0.2, 0.25, 0.8], [xx, 1.0, 0.8],
+      [xx, 2.0, 0.5], [xx, 3.0, 0.2], [xx, 4.0, 0.1],
+    ];
+    const kinds = finger === 1
+      ? ["metacarpal", "proximal", "distal"] as const
+      : ["metacarpal", "proximal", "middle", "distal"] as const;
+    for (let i = 0; i < kinds.length; i++) {
+      bones.push({ a: points[i]!, b: points[i + 1]!, kind: kinds[i]! });
+    }
+    joints.push({ point: points.at(-1)!, kind: "tip" });
+  }
+  return { hand, transportTimeSeconds: 0.75, layerOrder: 0, bones, joints };
+}
 
 describe("Testing hand: real anatomical shell on original WebXR skeleton", () => {
   it("loads both hands at LOD2 without changing the original bind skeleton", async () => {
@@ -135,6 +167,31 @@ describe("Testing hand: real anatomical shell on original WebXR skeleton", () =>
         expect(model.skinMaterial.map).toBe(textures.baseColor);
         expect(model.skinMaterial.normalMap).toBe(textures.normal);
         expect(model.skinMaterial.vertexColors).toBe(false);
+
+        // WebXR is the motion oracle: identical input poses and hover must
+        // produce matching world transforms for *every* bone in Testing.
+        const referenceMotion = new Hand3DMeshGroup(side, "webxr");
+        try {
+          const pose = makeWebxrComparisonPose(side);
+          for (const hover of [0, 0.65]) {
+            const serializedPose = JSON.stringify(pose);
+            referenceMotion.updateFromPose(pose, DEFAULT_SKIN_SETTINGS, false, hover);
+            model.updateFromPose(pose, DEFAULT_SKIN_SETTINGS, false, hover);
+            referenceMotion.group.updateMatrixWorld(true);
+            model.group.updateMatrixWorld(true);
+            for (const name of IMPROVED_HAND_JOINT_NAMES) {
+              const expected = referenceMotion.getBone(name)!;
+              const actual = model.getBone(name)!;
+              for (let axis = 0; axis < 16; axis++) {
+                expect(actual.matrixWorld.elements[axis], `${side} ${name} hover=${hover}`)
+                  .toBeCloseTo(expected.matrixWorld.elements[axis]!, 5);
+              }
+            }
+            expect(JSON.stringify(pose)).toBe(serializedPose);
+          }
+        } finally {
+          referenceMotion.dispose();
+        }
 
         // The original WebXR bind skeleton, not the anatomical inferred bones,
         // remains the source of all subsequent 3D joint transformations.
