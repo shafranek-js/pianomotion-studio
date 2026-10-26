@@ -5,6 +5,10 @@ its original textured materials or a material override WITHOUT texture/normal
 maps. LBS is shown at unsigned 0/30/60/90 degrees; DQS reference and the
 *60-degree-only* bounded candidate are shown only at their authored 60 degrees.
 
+At baseline LBS 60 degrees we additionally isolate color/roughness textures
+from normal mapping by temporarily cloning original Blender materials: this
+helps locate texture cracks before changing any source GLB or runtime model.
+
 This is an offline shading-versus-geometry investigation, NOT a physiological
 flexion sign calibration, anatomically correct contact test or export approval.
 """
@@ -27,6 +31,73 @@ CASES = (
     ("ring-mcp", "ring-finger-phalanx-proximal", "pmcorr_ring_mcp_060"),
     ("pinky-dip", "pinky-finger-phalanx-distal", "pmcorr_pinky_dip_060"),
 )
+
+
+def copy_material_for_isolation(source, mode):
+    """Make an unsaved source-preserving material clone for the diagnostic."""
+    if source is None or not source.use_nodes or source.node_tree is None:
+        raise ValueError("Real hand source must have an inspectable PBR node material")
+    material = source.copy()
+    material.name = f"PM offline {mode} {source.name}"
+    found = 0
+    material_graph = {
+        "sourceName": source.name,
+        "principledCount": 0,
+        "sourceNormalConnected": False,
+        "sourceBaseColorConnected": False,
+    }
+    for node in material.node_tree.nodes:
+        if node.type != "BSDF_PRINCIPLED":
+            continue
+        found += 1
+        normal_input = node.inputs.get("Normal")
+        base_input = node.inputs.get("Base Color")
+        if normal_input is None or base_input is None:
+            raise ValueError("Source Principled BSDF has missing Normal/Base Color input")
+        material_graph["sourceNormalConnected"] |= bool(normal_input.is_linked)
+        material_graph["sourceBaseColorConnected"] |= bool(base_input.is_linked)
+        if mode == "albedo-only":
+            # Keep original Base Color, roughness and source textures,
+            # but remove shader-space normal/bump modification.
+            for link in list(normal_input.links):
+                material.node_tree.links.remove(link)
+        elif mode == "normal-only":
+            # Preserve the entire source Normal input chain (if present),
+            # while replacing color/roughness to eliminate color-map cracks.
+            for name, default_value in (
+                ("Base Color", (.58, .58, .58, 1)),
+                ("Roughness", .82),
+                ("Metallic", 0.0),
+            ):
+                socket = node.inputs.get(name)
+                if socket is None:
+                    continue
+                for link in list(socket.links):
+                    material.node_tree.links.remove(link)
+                socket.default_value = default_value
+        else:
+            raise ValueError("Unknown material-isolation mode: " + mode)
+    if not found:
+        raise ValueError("No Principled BSDF in original hand material: " + source.name)
+    material_graph["principledCount"] = found
+    return material, material_graph
+
+
+def prepare_material_isolation(mesh):
+    sources = [slot.material for slot in mesh.material_slots]
+    if not sources or any(material is None for material in sources):
+        raise ValueError("Hand mesh source has no complete material slots")
+    by_mode = {}
+    graphs = []
+    for mode in ("albedo-only", "normal-only"):
+        copies = []
+        for index, source in enumerate(sources):
+            variant, graph = copy_material_for_isolation(source, mode)
+            copies.append(variant)
+            if mode == "albedo-only":
+                graphs.append({"slot": index, **graph})
+        by_mode[mode] = copies
+    return sources, by_mode, graphs
 
 
 def main():
@@ -74,6 +145,7 @@ def main():
     principal.inputs["Roughness"].default_value = .82
     if principal.inputs["Normal"].is_linked:
         raise ValueError("Neutral clay must not use a normal map")
+    source_materials, material_copies, source_material_graph = prepare_material_isolation(mesh)
     params.output_dir.mkdir(parents=True, exist_ok=True)
     reports = []
 
@@ -107,47 +179,66 @@ def main():
                      ("bounded-corrective", False, 1.0))
                     if degrees == 60 else (("lbs", False, 0.0),)
                 )
-                for material_mode in ("textured", "clay"):
-                    # Material override leaves real mesh/UV/material slots
-                    # untouched and removes shader normal-map inputs in clay.
-                    view_layer.material_override = (
-                        clay if material_mode == "clay" else old_material_override
-                    )
-                    for variant, preserve_volume, value in variants:
-                        skin.use_deform_preserve_volume = preserve_volume
-                        shape.value = value
-                        view_layer.update()
-                        filename = (
-                            f"{params.side}-{short}-{degrees:03d}-{variant}-"
-                            f"{material_mode}-joint-closeup.png"
-                        )
-                        destination = params.output_dir / filename
-                        bpy.context.scene.render.filepath = str(destination.resolve())
-                        bpy.ops.render.render(write_still=True)
-                        if not destination.is_file() or destination.stat().st_size < 15000:
-                            raise ValueError(f"Missing real Blender joint render: {filename}")
-                        reports.append({
-                            "side": params.side, "bone": bone_name,
-                            "morphName": shape_name, "variant": variant,
-                            "materialMode": material_mode,
-                            "image": filename, "jointBendDegrees": degrees,
-                            "jointAxisSignedAndCalibrated": False,
-                            "anatomicallyApproved": False,
-                        })
-                        print("[Testing joint material/pose render]", filename)
+                for variant, preserve_volume, value in variants:
+                    skin.use_deform_preserve_volume = preserve_volume
+                    shape.value = value
+                    modes = ["textured", "clay"]
+                    if degrees == 60 and variant == "lbs":
+                        # Isolate PBR color versus normal-chain artefacts
+                        # without applying the 60-degree corrective at
+                        # uncalibrated non-authoring poses.
+                        modes += ["albedo-only", "normal-only"]
+                    for material_mode in modes:
+                        try:
+                            view_layer.material_override = (
+                                clay if material_mode == "clay" else old_material_override
+                            )
+                            source_or_copy = material_copies.get(
+                                material_mode, source_materials)
+                            for slot, material in zip(mesh.material_slots, source_or_copy):
+                                slot.material = material
+                            view_layer.update()
+                            filename = (
+                                f"{params.side}-{short}-{degrees:03d}-{variant}-"
+                                f"{material_mode}-joint-closeup.png"
+                            )
+                            destination = params.output_dir / filename
+                            bpy.context.scene.render.filepath = str(destination.resolve())
+                            bpy.ops.render.render(write_still=True)
+                            if not destination.is_file() or destination.stat().st_size < 15000:
+                                raise ValueError(f"Missing real Blender joint render: {filename}")
+                            reports.append({
+                                "side": params.side, "bone": bone_name,
+                                "morphName": shape_name, "variant": variant,
+                                "materialMode": material_mode,
+                                "image": filename, "jointBendDegrees": degrees,
+                                "jointAxisSignedAndCalibrated": False,
+                                "anatomicallyApproved": False,
+                            })
+                            print("[Testing joint material/pose render]", filename)
+                        finally:
+                            for slot, material in zip(mesh.material_slots, source_materials):
+                                slot.material = material
+                            view_layer.material_override = old_material_override
         finally:
+            for slot, material in zip(mesh.material_slots, source_materials):
+                slot.material = material
             view_layer.material_override = old_material_override
             shape.value = 0
             skin.use_deform_preserve_volume = False
             joint.rotation_quaternion = old_rotation
             joint.rotation_mode = old_mode
-    if len(reports) != 24 or len({row["image"] for row in reports}) != 24:
-        raise ValueError("Expected 24 unique real joint closeups per hand")
+    if len(reports) != 28 or len({row["image"] for row in reports}) != 28:
+        raise ValueError("Expected 28 unique real joint closeups per hand")
     output = params.output_dir / f"{params.side}-bounded-joint-review.json"
     output.write_text(json.dumps({
-        "schema": "testing-joint-material-pose-blender-v2",
+        "schema": "testing-joint-material-pose-blender-v3",
         "source": str(params.input), "side": params.side, "images": reports,
-        "materialControl": "textured source versus neutral clay without shader normal map",
+        "materialControl": (
+            "source PBR vs neutral clay; at 60-degree LBS also source albedo"
+            " without normal input and source normal chain without color texture"
+        ),
+        "sourceMaterialGraph": source_material_graph,
         "geometrySourceUnchanged": True,
         "syntheticAxisBendOnly": True,
         "axisAnatomicallyCalibrated": False,
