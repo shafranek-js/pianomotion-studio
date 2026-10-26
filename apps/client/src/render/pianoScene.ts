@@ -14,7 +14,7 @@ export interface PianoSceneDisplaySettings {
   showFingerLabels?: boolean;
   showNoteNames?: boolean;
   skinStyle?: SkinStyle;
-  handModel?: "anatomical" | "anatomical-improved" | "webxr";
+  handModel?: "anatomical" | "anatomical-improved" | "webxr" | "testing";
   showHandShadow?: boolean;
   renderCapFps?: number;
 }
