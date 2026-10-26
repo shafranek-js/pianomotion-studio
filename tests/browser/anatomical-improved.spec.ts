@@ -2532,78 +2532,102 @@ test("Testing hand: WebXR-driven anatomical surface in POV and Side Arch", async
 });
 
 
-test("Testing hand: single-model WebGL screenshot and diagnostics", async ({ page }, testInfo) => {
-  test.setTimeout(240_000);
+test("Testing hand: matched WebGL model and camera evidence", async ({ page }, testInfo) => {
+  test.setTimeout(720_000);
   await page.setViewportSize({ width: 1280, height: 800 });
   const initial = await loadTwoHandDemoSong(page);
-  const beforePlan = initial.result.performancePlan?.planId ?? null;
+  const originalPlanId = initial.result.performancePlan?.planId ?? null;
+  expect(originalPlanId).toBeTruthy();
 
-  const sourceDiagnostics = await browserSnapshot(page);
-  expect(sourceDiagnostics?.handModelDiagnostics?.left).toBeDefined();
-  await page.getByRole("button", { name: "Open preferences", exact: true }).click();
-  const dialog = page.getByRole("dialog", { name: "Preferences", exact: true });
-  await expect(dialog.locator("#settings-hand-model")).toHaveCount(1);
-  await dialog.locator("#settings-hand-model").selectOption("testing");
-  await dialog.getByRole("button", { name: "Done", exact: true }).click();
+  // All four options must play the *same* performance plan at the *same*
+  // transport timestamps. Only their rendered hands and camera angles vary.
+  // Keep evidence even if a visual defect is discovered later. A successful
+  // capture is not, by itself, anatomical/animation acceptance.
+  const comparedModels: readonly HandModelId[] = ["webxr", "anatomical", "anatomical-improved", "testing"];
+  const comparedTimes = [0.75, 3, 6] as const;
+  const evidence: Array<{
+    model: HandModelId;
+    timeSeconds: number;
+    performancePlanId: string | null;
+    transportTimeSeconds: number | null;
+    sceneTimeSeconds: number | null;
+    left: HandDiagnostics;
+    right: HandDiagnostics;
+    screenshots: string[];
+  }> = [];
 
-  // Capture the first observable transition; do not wait for IndexedDB as a
-  // proxy for rendering and never classify a fallback as a successful load.
-  await page.waitForFunction(() => {
-    const diagnostics = window.__playerSnapshot?.scene?.handModelDiagnostics;
-    return diagnostics?.left?.requestedModel === "testing" &&
-      diagnostics?.right?.requestedModel === "testing" &&
-      ["ready", "error"].includes(diagnostics.left.state) &&
-      ["ready", "error"].includes(diagnostics.right.state);
-  }, undefined, { timeout: 90_000, polling: 300 });
-  const diagnostics = (await browserSnapshot(page))?.handModelDiagnostics;
-  await testInfo.attach("testing-hand-load-diagnostics", {
-    body: JSON.stringify(diagnostics, null, 2),
+  for (const model of comparedModels) {
+    await selectHandModel(page, model);
+    await expectLoadedModel(page, model);
+    await expect(studioCanvas(page, "3d")).toBeVisible({ timeout: 30_000 });
+
+    for (const timeSeconds of comparedTimes) {
+      await seekToTime(page, timeSeconds);
+      // Wait for the 3D scene to consume the seek before capturing WebGL.
+      await page.evaluate(() => new Promise<void>(resolve => {
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+      }));
+      const snapshot = await browserSnapshot(page);
+      expect(snapshot?.performancePlanId).toBe(originalPlanId);
+      expect(snapshot?.currentTimeSeconds).toBeCloseTo(timeSeconds, 1);
+      expect(snapshot?.handModelDiagnostics?.left).toMatchObject({
+        requestedModel: model,
+        loadedModel: model,
+        state: "ready",
+        error: null,
+      });
+      expect(snapshot?.handModelDiagnostics?.right).toMatchObject({
+        requestedModel: model,
+        loadedModel: model,
+        state: "ready",
+        error: null,
+      });
+      const record = {
+        model,
+        timeSeconds,
+        performancePlanId: snapshot!.performancePlanId,
+        transportTimeSeconds: snapshot!.currentTimeSeconds,
+        sceneTimeSeconds: snapshot!.sceneTime,
+        left: snapshot!.handModelDiagnostics!.left,
+        right: snapshot!.handModelDiagnostics!.right,
+        screenshots: [] as string[],
+      };
+
+      for (const camera of cameras) {
+        await setCamera(page, camera);
+        await page.evaluate(() => new Promise<void>(resolve => {
+          requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+        }));
+        const filename = "testing-ab-" + model + "-" + camera + "-" +
+          timeSeconds.toString().replace(".", "_") + "s.png";
+        // Do not use canvas.screenshot: a continuously redrawn canvas never
+        // meets Playwright's stable-element prerequisite.
+        await page.screenshot({
+          path: testInfo.outputPath(filename),
+          animations: "disabled",
+          timeout: 45_000,
+        });
+        record.screenshots.push(filename);
+      }
+      evidence.push(record);
+    }
+  }
+
+  await testInfo.attach("testing-hand-matched-model-camera-evidence", {
+    body: JSON.stringify({
+      originalPerformancePlanId: originalPlanId,
+      cameraPresets: cameras,
+      sampledTimesSeconds: comparedTimes,
+      records: evidence,
+      reviewRequired: [
+        "MCP/PIP/DIP folds", "thumb web/opposition", "wrist seams",
+        "finger intersections", "nails", "white/black-key contact",
+        "continuous movement and exported video",
+      ],
+    }, null, 2),
     contentType: "application/json",
   });
-  expect(diagnostics?.left).toMatchObject({
-    requestedModel: "testing",
-    loadedModel: "testing",
-    state: "ready",
-    error: null,
-  });
-  expect(diagnostics?.right).toMatchObject({
-    requestedModel: "testing",
-    loadedModel: "testing",
-    state: "ready",
-    error: null,
-  });
-  expect((await browserSnapshot(page))?.performancePlanId).toBe(beforePlan);
-  const canvas = studioCanvas(page, "3d");
-  await expect(canvas).toBeVisible({ timeout: 30_000 });
-  // Animated WebGL never satisfies Playwright's "stable element" screenshot
-  // precondition. Capture the viewport instead, without element scrolling.
-  await page.screenshot({
-    path: testInfo.outputPath("testing-webgl-default-camera.png"),
-    animations: "disabled",
-    timeout: 60_000,
-  });
-
-  // Unlike the pre-roll screenshot above, these are real active-note poses.
-  // The same musical plan is kept. No camera changes or per-frame WebGL
-  // readback are needed, so tests remain repeatable under headless Chromium.
-  for (const poseTime of [0.75, 3, 6] as const) {
-    await seekToTime(page, poseTime);
-    const snapshot = await browserSnapshot(page);
-    expect(snapshot?.handModelDiagnostics?.left).toMatchObject({
-      requestedModel: "testing",
-      loadedModel: "testing",
-      state: "ready",
-    });
-    expect(snapshot?.handModelDiagnostics?.right).toMatchObject({
-      requestedModel: "testing",
-      loadedModel: "testing",
-      state: "ready",
-    });
-    expect(snapshot?.performancePlanId).toBe(beforePlan);
-    await page.screenshot({
-      path: testInfo.outputPath(`testing-webgl-active-${poseTime.toString().replace(".", "_")}s.png`),
-      animations: "disabled",
-      timeout: 45_000,
-    });
-  }
+  expect(evidence).toHaveLength(comparedModels.length * comparedTimes.length);
+  // Leave the opt-in Testing model selected for the end-of-run diagnostics.
+  expect((await browserSnapshot(page))?.handModelDiagnostics?.left.loadedModel).toBe("testing");
 });
