@@ -2,6 +2,7 @@
 import { readFileSync } from "node:fs";
 import { transferWebxrSkinToAnatomicalSurface } from "./testingHandSkin";
 import { measureTestingHandDeformation } from "./testingHandDeformationQA";
+import { regularizeTestingSkinWeights } from "./testingHandWeightRegularizer";
 import * as THREE from "three";
 import { describe, expect, it } from "vitest";
 import type { MotionPose } from "@handthesia/contracts";
@@ -137,6 +138,7 @@ describe("Testing hand: real anatomical shell on original WebXR skeleton", () =>
           side, referenceMaterial, referenceGroup, sourceBuffer, sourceLod,
           IMPROVED_HAND_JOINT_NAMES, manifest.extras,
         );
+        let smootherCandidate: THREE.BufferGeometry | null = null;
         try {
           const independentSurface = transferWebxrSkinToAnatomicalSurface(
             independentAnatomy.skinnedMesh.geometry,
@@ -159,6 +161,14 @@ describe("Testing hand: real anatomical shell on original WebXR skeleton", () =>
             .toBeCloseTo(independentlyMeasured.nearestWebxrVertexP95Inches, 6);
           expect(independentSurface.getAttribute("position").array)
             .toEqual(mesh!.geometry.getAttribute("position").array);
+          smootherCandidate = regularizeTestingSkinWeights(
+            independentSurface,
+            independentAnatomy.skinnedMesh.geometry,
+            {
+              anatomicalBoneNames: independentAnatomy.skinnedMesh.skeleton.bones.map(bone => bone.name),
+              webxrBoneNames: independentWebxr.skinnedMesh.skeleton.bones.map(bone => bone.name),
+            },
+          );
           independentSurface.dispose();
         } finally {
           independentWebxr.skinnedMesh.geometry.dispose();
@@ -183,6 +193,8 @@ describe("Testing hand: real anatomical shell on original WebXR skeleton", () =>
         // WebXR is the motion oracle: identical input poses and hover must
         // produce matching world transforms for *every* bone in Testing.
         const referenceMotion = new Hand3DMeshGroup(side, "webxr");
+        const experimentalSurface = new THREE.SkinnedMesh(smootherCandidate!, model.skinMaterial);
+        experimentalSurface.bind(mesh!.skeleton, mesh!.bindMatrix);
         try {
           const pose = makeWebxrComparisonPose(side);
           for (const hover of [0, 0.65]) {
@@ -207,8 +219,11 @@ describe("Testing hand: real anatomical shell on original WebXR skeleton", () =>
             });
             expect(webxrMesh).toBeDefined();
             const webxrDeformation = measureTestingHandDeformation(webxrMesh!);
+            const smoothedDeformation = measureTestingHandDeformation(experimentalSurface);
             console.info("[Testing vs WebXR skinned triangle deformation]", side, "hover=" + hover,
-              JSON.stringify({ testing: deformation, webxr: webxrDeformation }));
+              JSON.stringify({ testing: deformation, smoothed: smoothedDeformation,
+                webxr: webxrDeformation }));
+            expect(smoothedDeformation.inspectedTriangles).toBe(deformation.inspectedTriangles);
             expect(webxrDeformation.inspectedTriangles).toBeGreaterThan(0);
             expect(deformation.inspectedTriangles).toBeGreaterThan(7000);
             expect(deformation.edgeCompressionMin).toBeGreaterThan(0);
@@ -218,6 +233,7 @@ describe("Testing hand: real anatomical shell on original WebXR skeleton", () =>
           }
         } finally {
           referenceMotion.dispose();
+          experimentalSurface.geometry.dispose();
         }
 
         const weights = mesh!.geometry.getAttribute("skinWeight");
