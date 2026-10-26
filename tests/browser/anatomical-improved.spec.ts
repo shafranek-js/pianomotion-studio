@@ -2532,8 +2532,14 @@ test("Testing hand: WebXR-driven anatomical surface in POV and Side Arch", async
 });
 
 
-test("Testing hand: matched WebGL model and camera evidence", async ({ page }, testInfo) => {
-  test.setTimeout(720_000);
+// Separate Chromium captures per model so an expensive camera change or
+// GPU-stalled animation frame in one model cannot invalidate all 48 images.
+for (const comparedModel of ["webxr", "anatomical", "anatomical-improved", "testing"] as const) {
+test("Testing hand: matched WebGL model and camera evidence / " + comparedModel, async ({ page }, testInfo) => {
+  test.setTimeout(360_000);
+  test.skip(Boolean(process.env.PIANOMOTION_EVIDENCE_MODEL) &&
+    process.env.PIANOMOTION_EVIDENCE_MODEL !== comparedModel,
+    "This CI shard captures only its assigned hand model.");
   await page.setViewportSize({ width: 1280, height: 800 });
   const initial = await loadTwoHandDemoSong(page);
   const originalPlanId = initial.result.performancePlan?.planId ?? null;
@@ -2543,7 +2549,7 @@ test("Testing hand: matched WebGL model and camera evidence", async ({ page }, t
   // transport timestamps. Only their rendered hands and camera angles vary.
   // Keep evidence even if a visual defect is discovered later. A successful
   // capture is not, by itself, anatomical/animation acceptance.
-  const comparedModels: readonly HandModelId[] = ["webxr", "anatomical", "anatomical-improved", "testing"];
+  const comparedModels: readonly HandModelId[] = [comparedModel];
   const comparedTimes = [0.75, 3, 6] as const;
   const evidence: Array<{
     model: HandModelId;
@@ -2564,9 +2570,9 @@ test("Testing hand: matched WebGL model and camera evidence", async ({ page }, t
     for (const timeSeconds of comparedTimes) {
       await seekToTime(page, timeSeconds);
       // Wait for the 3D scene to consume the seek before capturing WebGL.
-      await page.evaluate(() => new Promise<void>(resolve => {
-        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
-      }));
+      // A suspended/throttled headless WebGL RAF may never fire; do not block
+      // the entire comparison on frame callbacks.
+      await page.waitForTimeout(100);
       const snapshot = await browserSnapshot(page);
       expect(snapshot?.performancePlanId).toBe(originalPlanId);
       expect(snapshot?.currentTimeSeconds).toBeCloseTo(timeSeconds, 1);
@@ -2595,9 +2601,7 @@ test("Testing hand: matched WebGL model and camera evidence", async ({ page }, t
 
       for (const camera of cameras) {
         await setCamera(page, camera);
-        await page.evaluate(() => new Promise<void>(resolve => {
-          requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
-        }));
+        await page.waitForTimeout(100);
         const filename = "testing-ab-" + model + "-" + camera + "-" +
           timeSeconds.toString().replace(".", "_") + "s.png";
         // Do not use canvas.screenshot: a continuously redrawn canvas never
@@ -2680,5 +2684,6 @@ test("Testing hand: matched WebGL model and camera evidence", async ({ page }, t
 
   expect(evidence).toHaveLength(comparedModels.length * comparedTimes.length);
   // Leave the opt-in Testing model selected for the end-of-run diagnostics.
-  expect((await browserSnapshot(page))?.handModelDiagnostics?.left.loadedModel).toBe("testing");
+  expect((await browserSnapshot(page))?.handModelDiagnostics?.left.loadedModel).toBe(comparedModel);
 });
+}
