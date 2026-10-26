@@ -69,7 +69,10 @@ jobs:
       - name: Prepare local-only test resources
         run: node tools/ensure-test-assets.mjs
       - name: Capture real WebGL hand A-B
-        run: npx playwright test --config tests/browser/anatomical-improved.playwright.config.ts --grep "Testing hand: WebXR-driven anatomical surface"
+        run: >-
+          npx playwright test
+          --config tests/browser/anatomical-improved.playwright.config.ts
+          --grep 'Testing hand: WebXR-driven anatomical surface'
       - name: Save WebGL screenshots and diagnostic traces
         if: always()
         uses: actions/upload-artifact@v4
