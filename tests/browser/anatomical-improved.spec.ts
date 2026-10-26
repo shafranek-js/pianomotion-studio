@@ -2675,10 +2675,27 @@ test("Testing hand: matched WebGL model and camera evidence / " + comparedModel,
       };
 
       for (const camera of comparisonCameras) {
-        const cameraButtons = page.getByRole("group", { name: "3D camera presets", exact: true }).locator("button");
-        // DOM click avoids Playwright's perpetual "element stability" checks
-        // when a heavily loaded WebGL renderer is still repainting.
-        await cameraButtons.nth(cameras.indexOf(camera)).evaluate((element: HTMLElement) => element.click());
+        // The responsive 3D toolbar uses a select in narrower layouts.
+        // Previously we always addressed the desktop button group: headless
+        // Chromium sometimes displays the select instead, so nth(3) waited
+        // until the entire 240-second capture deadline expired.
+        const compactCameraSelect = page.getByRole("combobox", {
+          name: "3D camera preset", exact: true,
+        });
+        if (await compactCameraSelect.isVisible()) {
+          await compactCameraSelect.selectOption(camera, { timeout: 10_000 });
+        } else {
+          const cameraButtons = page.getByRole("group", {
+            name: "3D camera presets", exact: true,
+          }).locator("button");
+          await expect(cameraButtons).toHaveCount(cameras.length, { timeout: 10_000 });
+          // DOM click avoids Playwright's perpetual element-stability wait
+          // while the continuously animated WebGL scene is repainting.
+          await cameraButtons.nth(cameras.indexOf(camera)).evaluate(
+            (element: HTMLElement) => element.click(),
+            { timeout: 10_000 },
+          );
+        }
         await page.waitForTimeout(100);
         const filename = "testing-ab-" + model + "-" + camera + "-" +
           timeSeconds.toString().replace(".", "_") + "s.png";
