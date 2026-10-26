@@ -198,3 +198,26 @@ Normal links. For each hand, the review expands from 24 to **28 frames**
 Do not attribute the defect to normal maps or color texture until the new
 comparison has been rendered and inspected; other shader graph inputs may
 remain. No uncalibrated pose is treated as physiological flexion.
+
+## Exact fold-polygon attribution (offline, not applied)
+
+The real LOD0 diagnostic `analyze_fold_polygons.py` runs separately for both
+hands on the generated measured-axis corrective Blender projects. It bends
+**only ring MCP or pinky DIP to the uncalibrated 60° axis**, then measures
+the *same original polygon IDs* in LBS and the 60° bounded-corrective pose.
+The resulting `left-fold-hotspots.json` / `right-fold-hotspots.json` record:
+
+- Top 12 collapsed-area, expanded-area and collapsed-edge triangles per
+  joint/variant, by **original mesh polygon and vertex index**.
+- Rest and posed local-space centroids, area ratios, edge-length ratios,
+  and top contributing native bone vertex groups (excluding sculpt masks).
+- Exact joint mask and affected polygon coverage, left/right independently.
+
+The output is a reproducible **artist/engineering inspection list** for
+targeted skin weight paint and geometry repair. A triangle-area metric alone
+does not certify a fold as incorrect: the screenshots already show that
+left ring MCP's physically implausible fan-like pinches persist in clay.
+Inspect those source polygon IDs in Blender before editing any vertex.
+
+This report does **not** reweight skin, sculpt the correction, alter source
+GLBs, calibrate bend sign, confirm pianist movement or approve export.
