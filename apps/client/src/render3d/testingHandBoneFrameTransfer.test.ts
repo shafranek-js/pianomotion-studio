@@ -106,11 +106,9 @@ describe("Testing hand bone-frame anatomical registration", () => {
     expect(c.getZ(2)).toBeCloseTo(-3.625, 6);
     expect(baseline.geometry.getAttribute("position").getZ(0)).toBeCloseTo(-0.5, 6);
     expect(anatomy.getAttribute("position").getZ(0)).toBeCloseTo(-0.5, 6);
-    expect(calibrated.stats.thumbAxialRatios).toEqual({
-      "thumb-metacarpal": expect.closeTo(0.6),
-      "thumb-phalanx-proximal": expect.closeTo(1.18),
-      "thumb-phalanx-distal": expect.closeTo(1.33),
-    });
+    expect(calibrated.stats.thumbAxialRatios?.["thumb-metacarpal"]).toBeCloseTo(0.6, 6);
+    expect(calibrated.stats.thumbAxialRatios?.["thumb-phalanx-proximal"]).toBeCloseTo(1.18, 6);
+    expect(calibrated.stats.thumbAxialRatios?.["thumb-phalanx-distal"]).toBeCloseTo(1.33, 6);
     baseline.geometry.dispose();
     calibrated.geometry.dispose();
     anatomy.dispose();
