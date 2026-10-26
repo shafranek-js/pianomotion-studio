@@ -192,6 +192,42 @@ jobs:
                         "quarter-area collapse safe:", target["noAdditionalQuarterAreaCollapse"])
               assert (folder / f"{hand}-measured-joint-candidates.blend").stat().st_size > 10000
           PY
+      - name: Render real bounded joint comparisons — left
+        run: >-
+          blender -b -t 2 --python-exit-code 2
+          --python tools/testing-hand-blender/render_joint_corrective_review.py --
+          --side left
+          --input scratch/blender-correctives/left-measured-joint-candidates.blend
+          --axes scratch/blender-correctives/left-unsigned-hinge-axes.json
+          --output-dir scratch/blender-correctives/render-review
+      - name: Render real bounded joint comparisons — right
+        run: >-
+          blender -b -t 2 --python-exit-code 2
+          --python tools/testing-hand-blender/render_joint_corrective_review.py --
+          --side right
+          --input scratch/blender-correctives/right-measured-joint-candidates.blend
+          --axes scratch/blender-correctives/right-unsigned-hinge-axes.json
+          --output-dir scratch/blender-correctives/render-review
+      - name: Validate comparable joint image evidence
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          root = Path("scratch/blender-correctives/render-review")
+          for side in ("left", "right"):
+              report = json.loads((root / f"{side}-bounded-joint-review.json").read_text())
+              assert report["schema"] == "testing-joint-abc-blender-v1"
+              assert report["exportApproved"] is False
+              assert report["humanVisualReviewAccepted"] is False
+              assert len(report["images"]) == 6
+              assert {row["variant"] for row in report["images"]} == {
+                  "lbs", "preserve-volume", "bounded-corrective"}
+              assert len({row["bone"] for row in report["images"]}) == 2
+              for row in report["images"]:
+                  assert row["jointBendDegrees"] == 60
+                  assert (root / row["image"]).stat().st_size > 15000
+              print(side, "six matching real Blender images; NOT visually accepted")
+          PY
       - name: Render three comparable MCP poses — left
         run: >-
           blender -b -t 2 --python-exit-code 2

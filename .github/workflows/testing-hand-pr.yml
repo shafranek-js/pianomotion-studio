@@ -78,7 +78,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Verify Blender Python syntax without bpy
-        run: python -m py_compile tools/testing-hand-blender/prepare_corrective_sculpt.py tools/testing-hand-blender/measure_hinge_axes.py tools/testing-hand-blender/measure_joint_local_deformation.py tools/testing-hand-blender/prototype_joint_correctives.py
+        run: python -m py_compile tools/testing-hand-blender/prepare_corrective_sculpt.py tools/testing-hand-blender/measure_hinge_axes.py tools/testing-hand-blender/measure_joint_local_deformation.py tools/testing-hand-blender/prototype_joint_correctives.py tools/testing-hand-blender/render_joint_corrective_review.py
 
   browser-comparison:
     name: Testing hand / visual evidence — ${{ matrix.model }}

@@ -117,3 +117,15 @@ candidate metrics, chosen fraction, baseline and bounded result.
 If no nonzero safer candidate exists, the CI fails rather than accepting
 a visually riskier morph. This diagnostic safeguard **does not** validate
 biomechanics, key contact, collisions, 0/30/90° bends or LOD1/LOD2.
+
+## Side-by-side real Blender visual proof
+
+After baking and validating the bounded 60° MCP/DIP candidates on each
+hand, `render_joint_corrective_review.py` renders identical-size joint
+closeups for ring MCP and pinky DIP in three variants: original LBS,
+Blender Preserve Volume, and the numerically bounded candidate.
+Six PNGs per hand and one JSON manifest are included in the same CI
+artifact under `render-review/`. Camera, lighting, armature, pose, and
+geometry source are fixed across the A/B/C triplet. Review must include
+the real full-hand MIDI performance later; **these synthetic offline
+stills do not approve animation, geometry, morph export or contact**.
