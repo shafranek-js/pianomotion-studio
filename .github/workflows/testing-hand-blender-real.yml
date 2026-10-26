@@ -25,8 +25,9 @@ jobs:
       - name: Install Blender
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends blender
+          sudo apt-get install -y --no-install-recommends blender python3-numpy
           blender --version
+          blender -b --python-expr 'import numpy; print("Blender NumPy", numpy.__version__)'
       - name: Create left LOD0 Blender authoring project
         run: >-
           blender -b -t 2 --python-exit-code 2
