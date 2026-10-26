@@ -23,20 +23,43 @@ The detailed hand manifest, shared texture cache, async loading/retry, LOD selec
 
 ## Matched four-model browser evidence (26 October 2026)
 
-The experiment now includes a repeatable Playwright capture of all **four** hand options:
-`webxr`, `anatomical`, `anatomical-improved`, and `testing`. Each is
-rendered with the **same two-hand MIDI, performance plan, viewport (1280 × 800),
-transport positions (0.75, 3.00, 6.00 s)** and all four camera presets
-(`concert`, `overhead`, `pov`, `side_arch`).
+The Playwright case `Testing hand: matched WebGL model and camera evidence`
+runs independently for four models: `webxr`, `anatomical`,
+`anatomical-improved`, `testing`. Each uses the same two-hand MIDI,
+settled performance plan, 1280×800 viewport, and the same requested
+musical position. Each shard verifies BOTH hands have loaded the requested
+model without silently falling back.
 
-- 48 full-page PNG reference frames are stored as `testing-ab-<model>-<camera>-<time>s.png` in the CI artifact. Open **`testing-hand-review.html`** from the extracted artifact for a four-column offline contact sheet; click any frame for full resolution. **`testing-hand-evidence.json`** records loaded left/right model, LOD, errors, scene/transport time, retained plan ID and screenshot filenames.
-- The automation **asserts real WebGL model readiness and no fallback** for both hands, and asserts that the original performance-plan ID and requested transport time survive every model/camera switch.
-- Headless frames are **inspection evidence, not a pass criterion for natural movement**. They cannot verify between-frame interpolation, realistic thumb opposition, a real user's device/GPU performance, or exporter parity.
-- After inspecting comparable frames, perform interactive playback with alternating chords, octaves/tenths, white/black keys, thumb-under, continuous seeking, and export. Reject visible finger folding/collapse, unnatural nail motion, adjacent-digit penetration, wrist seams or skin shading discontinuities before merging.
+**CI quick evidence (default):** score position **0.75 s**, views
+**Pianist POV** and **Side Arch** (2 PNGs per model, 8 total across four
+separate artifact ZIPs). This is deliberate: the original four-model
+48-frame test timed out on SwiftShader before emitting complete evidence.
+The initial failure run `40368626896` still saved partial screenshots, but
+**all four cases failed**, so those files alone do not constitute a passed
+visual comparison.
 
-GitHub Actions workflow: `.github/workflows/testing-hand-pr.yml`. Test case:
-`Testing hand: matched WebGL model and camera evidence` in
-`tests/browser/anatomical-improved.spec.ts`.
+**Extended inspection (opt-in):** with
+`PIANOMOTION_EVIDENCE_FULL=1`, capture positions 0.75/3/6 s and
+Concert/Overhead/POV/Side Arch, totaling 12 PNGs per model (48 across
+four shards). It is not part of the standard PR gate because a CPU
+software-GPU capture can exceed the browser-test deadline.
+
+Each shard writes `testing-hand-evidence.json` and
+`testing-hand-review.html`; images are named
+`testing-ab-<model>-<camera>-<time>s.png`. To compare the four models,
+extract all **four** artifact ZIPs into the same directory or compile an
+offline contact sheet. Do not report 48 complete images if some cases
+fail or a shard captures only the quick subset.
+
+The matched-image job **does not perform a 20/80-frame playback benchmark**:
+`requestAnimationFrame` under headless SwiftShader caused timeouts even
+after successful screenshots. Animation/renderer counters and contact
+quality require an independent bounded playback and real-device check.
+Static screenshots prove neither anatomical realism nor continuous
+fingering motion. Preserve the PR as draft until visual acceptance.
+
+GitHub Actions workflow: `.github/workflows/testing-hand-pr.yml`.
+Browser test: `tests/browser/anatomical-improved.spec.ts`.
 
 ## Acceptance required (not yet performed)
 
