@@ -11,10 +11,13 @@ on:
 permissions:
   contents: read
 
-# Blender authoring/renders are intentionally long-running. Do not destroy
-# their diagnostic artifacts whenever a new experiment commit is pushed.
+# Preserve long real-Blender captures from distinct experiment commits.
+# GitHub permits only ONE pending run per concurrency group and silently
+# replaces older queued runs even with cancel-in-progress: false. Include
+# immutable head SHA to prevent that cancellation/starvation. Do not use this
+# workflow for broad releases: Blender results remain research-only.
 concurrency:
-  group: testing-hand-blender-${{ github.ref }}
+  group: testing-hand-blender-${{ github.ref }}-${{ github.event.pull_request.head.sha || github.sha }}
   cancel-in-progress: false
 
 jobs:
