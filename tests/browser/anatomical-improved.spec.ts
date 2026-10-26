@@ -462,8 +462,12 @@ async function sampleAnimatedRender(page: Page, count: number) {
   const before = await browserSnapshot(page);
   const intervals = await sampleFrameIntervals(page, count);
   const after = await browserSnapshot(page);
-  await play.click();
-  await expect(play).toContainText("Play");
+  // The music may naturally reach its end before a slow headless GPU probe
+  // returns. Never click "Play" when playback has already stopped.
+  if ((await play.getAttribute("aria-label")) === "Pause") {
+    await play.click();
+  }
+  await expect(play).toHaveAttribute("aria-label", "Play");
   const playbackSeconds = (after?.currentTimeSeconds ?? startTime) - (before?.currentTimeSeconds ?? startTime);
   const beforeRenderer = before?.handModelDiagnostics?.renderer;
   const afterRenderer = after?.handModelDiagnostics?.renderer;
