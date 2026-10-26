@@ -52,6 +52,7 @@ export function transferWebxrSkinToAnatomicalSurface(
     throw new Error("Testing anatomical transfer requires complete native bone labels.");
   }
   const referenceFinger = options ? new Int8Array(source.count) : null;
+  const sourceByFinger: number[][] = Array.from({ length: 6 }, () => []);
   if (options && referenceFinger) {
     for (let vertex = 0; vertex < source.count; vertex++) {
       const scores = new Float64Array(6);
@@ -67,6 +68,7 @@ export function transferWebxrSkinToAnatomicalSurface(
         if (scores[digit]! > scores[best]!) best = digit;
       }
       referenceFinger[vertex] = scores[best]! > 0.55 ? best : 0;
+      if (referenceFinger[vertex]! > 0) sourceByFinger[referenceFinger[vertex]!]!.push(vertex);
     }
   }
 
@@ -132,6 +134,23 @@ export function transferWebxrSkinToAnatomicalSurface(
     if (candidates.length === 0) {
       throw new Error("Testing hand mesh has vertices too far from the WebXR reference rig.");
     }
+    // Dense anatomy and coarse WebXR do not always share nearest samples
+    // for a digit. Guarantee at least one matching digit reference, rather
+    // than allowing the neighbouring finger to claim 100% of this vertex.
+    if (anatomicalFinger > 0 && referenceFinger &&
+        !candidates.some(index => referenceFinger[index] === anatomicalFinger)) {
+      const matching = sourceByFinger[anatomicalFinger]!;
+      if (matching.length === 0) {
+        throw new Error(`Testing WebXR reference lacks digit ${anatomicalFinger} samples.`);
+      }
+      const nearestMatching = matching.map(index => {
+        const dx = x - source.getX(index);
+        const dy = y - source.getY(index);
+        const dz = z - source.getZ(index);
+        return { index, dist2: dx * dx + dy * dy + dz * dz };
+      }).sort((a, b) => a.dist2 - b.dist2).slice(0, 12);
+      candidates.push(...nearestMatching.map(sample => sample.index));
+    }
 
     const nearest = candidates
       .map((index) => {
@@ -162,6 +181,15 @@ export function transferWebxrSkinToAnatomicalSurface(
           throw new Error("WebXR skinning has an invalid joint or weight.");
         }
         if (weight > 0) influence.set(joint, (influence.get(joint) ?? 0) + spatialWeight * weight);
+      }
+    }
+    // For strongly labelled anatomical digit regions, no other finger
+    // should ever articulate the skin. Keep wrist/carpal influences and
+    // proper same-digit blends; unclassified palm/webbing remains smooth.
+    if (anatomicalFinger > 0 && options) {
+      for (const [joint] of influence) {
+        const sourceDigit = fingerId(options.webxrBoneNames[joint]!);
+        if (sourceDigit > 0 && sourceDigit !== anatomicalFinger) influence.delete(joint);
       }
     }
     const strongest = [...influence.entries()]
