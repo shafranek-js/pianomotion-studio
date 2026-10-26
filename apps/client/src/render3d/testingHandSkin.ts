@@ -12,21 +12,62 @@ import * as THREE from "three";
  * particular, nearest-surface transfer is not a replacement for corrective
  * shapes or manual review of thumb-web and wrist topology.
  */
+export interface TestingAnatomicalTransferOptions {
+  anatomicalBoneNames: readonly string[];
+  webxrBoneNames: readonly string[];
+}
+
+function fingerId(name: string): number {
+  if (name.startsWith("thumb-")) return 1;
+  if (name.startsWith("index-finger-")) return 2;
+  if (name.startsWith("middle-finger-")) return 3;
+  if (name.startsWith("ring-finger-")) return 4;
+  if (name.startsWith("pinky-finger-")) return 5;
+  return 0;
+}
+
 export function transferWebxrSkinToAnatomicalSurface(
   anatomicalGeometry: THREE.BufferGeometry,
   webxrGeometry: THREE.BufferGeometry,
   jointCount: number,
+  options?: TestingAnatomicalTransferOptions,
 ): THREE.BufferGeometry {
   const target = anatomicalGeometry.getAttribute("position");
   const source = webxrGeometry.getAttribute("position");
   const sourceJoints = webxrGeometry.getAttribute("skinIndex");
   const sourceWeights = webxrGeometry.getAttribute("skinWeight");
+  const targetJoints = anatomicalGeometry.getAttribute("skinIndex");
+  const targetWeights = anatomicalGeometry.getAttribute("skinWeight");
   if (!target || !source || !sourceJoints || !sourceWeights ||
       target.itemSize !== 3 || source.itemSize !== 3 ||
       sourceJoints.itemSize !== 4 || sourceWeights.itemSize !== 4 ||
       source.count !== sourceJoints.count || source.count !== sourceWeights.count ||
       !Number.isInteger(jointCount) || jointCount < 1 || jointCount > 65535) {
     throw new Error("Testing hand requires complete WebXR skin attributes and valid geometry.");
+  }
+
+  if (options && (!targetJoints || !targetWeights || targetJoints.count !== target.count ||
+      targetWeights.count !== target.count || targetJoints.itemSize !== 4 ||
+      targetWeights.itemSize !== 4 || options.webxrBoneNames.length !== jointCount)) {
+    throw new Error("Testing anatomical transfer requires complete native bone labels.");
+  }
+  const referenceFinger = options ? new Int8Array(source.count) : null;
+  if (options && referenceFinger) {
+    for (let vertex = 0; vertex < source.count; vertex++) {
+      const scores = new Float64Array(6);
+      for (let slot = 0; slot < 4; slot++) {
+        const index = Math.round(sourceJoints.getComponent(vertex, slot));
+        const weight = sourceWeights.getComponent(vertex, slot);
+        if (weight > 0 && index >= 0 && index < options.webxrBoneNames.length) {
+          scores[fingerId(options.webxrBoneNames[index]!)] += weight;
+        }
+      }
+      let best = 0;
+      for (let digit = 1; digit <= 5; digit++) {
+        if (scores[digit]! > scores[best]!) best = digit;
+      }
+      referenceFinger[vertex] = scores[best]! > 0.55 ? best : 0;
+    }
   }
 
   const cellSize = 0.36; // inches; hand geometry is already in world-inch bind space
@@ -57,6 +98,22 @@ export function transferWebxrSkinToAnatomicalSurface(
     const cx = cell(x);
     const cy = cell(y);
     const cz = cell(z);
+    let anatomicalFinger = 0;
+    if (options && targetJoints && targetWeights) {
+      const scores = new Float64Array(6);
+      for (let slot = 0; slot < 4; slot++) {
+        const index = Math.round(targetJoints.getComponent(vertex, slot));
+        const weight = targetWeights.getComponent(vertex, slot);
+        if (weight > 0 && index >= 0 && index < options.anatomicalBoneNames.length) {
+          scores[fingerId(options.anatomicalBoneNames[index]!)] += weight;
+        }
+      }
+      let best = 0;
+      for (let digit = 1; digit <= 5; digit++) {
+        if (scores[digit]! > scores[best]!) best = digit;
+      }
+      anatomicalFinger = best > 0 && scores[best]! >= 0.82 ? best : 0;
+    }
     const candidates: number[] = [];
     // Include all neighbouring bind-surface samples in at least one full shell,
     // keeping the interpolation continuous across voxel cell boundaries.
@@ -81,17 +138,22 @@ export function transferWebxrSkinToAnatomicalSurface(
         const dx = x - source.getX(index);
         const dy = y - source.getY(index);
         const dz = z - source.getZ(index);
-        return { index, distanceSquared: dx * dx + dy * dy + dz * dz };
-      })
-      .sort((a, b) => a.distanceSquared - b.distanceSquared)
-      .slice(0, 12);
-    nearestDistancesInches[vertex] = Math.sqrt(nearest[0]!.distanceSquared);
+        const distanceSquared = dx * dx + dy * dy + dz * dz;
+        const sourceFinger = referenceFinger?.[index] ?? 0;
+        const mismatch = anatomicalFinger > 0 && sourceFinger !== anatomicalFinger;
+        const penalty = mismatch ? (sourceFinger === 0 ? 0.18 : 0.81) : 0;
+        return { index, distanceSquared, score: distanceSquared + penalty };
+      });
+    const physicalNearest = Math.min(...nearest.map(candidate => candidate.distanceSquared));
+    nearest.sort((a, b) => a.score - b.score || a.index - b.index);
+    nearest.length = Math.min(nearest.length, 12);
+    nearestDistancesInches[vertex] = Math.sqrt(physicalNearest);
 
     // Interpolate WebXR vertex weights rather than nearest-neighbour copying:
     // weighted interpolation softens visible skin seams and knuckle hinges.
     const influence = new Map<number, number>();
     for (const sample of nearest) {
-      const spatialWeight = 1 / Math.pow(sample.distanceSquared + 0.015, 1.65);
+      const spatialWeight = 1 / Math.pow(sample.score + 0.015, 1.65);
       for (let slot = 0; slot < 4; slot++) {
         const joint = Math.round(sourceJoints.getComponent(sample.index, slot));
         const weight = sourceWeights.getComponent(sample.index, slot);
@@ -119,6 +181,7 @@ export function transferWebxrSkinToAnatomicalSurface(
   result.setAttribute("skinIndex", new THREE.Uint16BufferAttribute(joints, 4));
   result.setAttribute("skinWeight", new THREE.Float32BufferAttribute(weights, 4));
   result.userData.testingWebxrSkinTransfer = true;
+  result.userData.testingFingerAware = Boolean(options);
   const sortedDistances = Array.from(nearestDistancesInches).sort((a, b) => a - b);
   const mean = sortedDistances.reduce((sum, distance) => sum + distance, 0) / sortedDistances.length;
   result.userData.testingTransferStats = {
