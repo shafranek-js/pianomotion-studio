@@ -418,6 +418,7 @@ export function SettingsModal({ isOpen, onClose, onSettingsChanged, presentation
                 >
                   <option value="anatomical">{dict.settings.handModelAnatomical}</option>
                   <option value="anatomical-improved">{dict.settings.handModelAnatomicalImproved}</option>
+                    <option value="testing">{dict.settings.handModelTesting}</option>
                   <option value="webxr">{dict.settings.handModelWebxr}</option>
                 </select>
               </div>
