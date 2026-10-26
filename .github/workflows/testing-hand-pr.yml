@@ -48,6 +48,7 @@ jobs:
           apps/client/src/render3d/testingHandRegistration.actual.test.ts
           apps/client/src/render3d/testingHandIntegration.actual.test.ts
           apps/client/src/render3d/testingHandDeformationQA.ts
+          apps/client/src/render3d/testingHandWeightRegularizer.ts
           apps/client/src/render3d/improvedHandRuntime.ts
           apps/client/src/render3d/pianoScene3d.ts
           apps/client/src/render/pianoScene.ts
