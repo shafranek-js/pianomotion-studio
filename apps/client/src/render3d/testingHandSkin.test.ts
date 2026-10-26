@@ -96,6 +96,36 @@ describe("Testing hand: WebXR bone field on anatomical appearance", () => {
     source.dispose();
   });
 
+  it("fades adjacent-finger influence continuously across the native webbing threshold", () => {
+    const reference = surface([0, 0, 0, 0.1, 0, 0]);
+    reference.setAttribute("skinIndex", new THREE.Uint16BufferAttribute([0, 0, 0, 0, 1, 0, 0, 0], 4));
+    reference.setAttribute("skinWeight", new THREE.Float32BufferAttribute([1, 0, 0, 0, 1, 0, 0, 0], 4));
+    const anatomy = surface([0.06, 0, 0, 0.06, 0, 0]);
+    anatomy.setAttribute("skinIndex", new THREE.Uint16BufferAttribute([0, 1, 0, 0, 0, 1, 0, 0], 4));
+    anatomy.setAttribute("skinWeight", new THREE.Float32BufferAttribute([
+      0.81, 0.19, 0, 0, 0.82, 0.18, 0, 0,
+    ], 4));
+    const result = transferWebxrSkinToAnatomicalSurface(anatomy, reference, 2, {
+      anatomicalBoneNames: ["index-finger-phalanx-distal", "middle-finger-phalanx-distal"],
+      webxrBoneNames: ["index-finger-phalanx-distal", "middle-finger-phalanx-distal"],
+    });
+    const foreign = (vertex: number) => {
+      let sum = 0;
+      const indices = result.getAttribute("skinIndex");
+      const weights = result.getAttribute("skinWeight");
+      for (let slot = 0; slot < 4; slot++) {
+        if (indices.getComponent(vertex, slot) === 1) sum += weights.getComponent(vertex, slot);
+      }
+      return sum;
+    };
+    expect(foreign(0)).toBeGreaterThanOrEqual(foreign(1));
+    expect(foreign(0)).toBeLessThan(0.12);
+    expect(foreign(1)).toBeLessThan(1e-6);
+    result.dispose();
+    anatomy.dispose();
+    reference.dispose();
+  });
+
   it("rejects missing skinning and non-finite anatomy rather than silently corrupting it", () => {
     const source = surface([0, 0, 0]);
     const target = surface([0, 0, 0]);
