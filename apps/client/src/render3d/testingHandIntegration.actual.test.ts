@@ -104,6 +104,10 @@ describe("Testing hand: real anatomical shell on original WebXR skeleton", () =>
             independentAnatomy.skinnedMesh.geometry,
             independentWebxr.skinnedMesh.geometry,
             independentWebxr.skinnedMesh.skeleton.bones.length,
+            {
+              anatomicalBoneNames: independentAnatomy.skinnedMesh.skeleton.bones.map(bone => bone.name),
+              webxrBoneNames: independentWebxr.skinnedMesh.skeleton.bones.map(bone => bone.name),
+            },
           );
           const independentlyMeasured = independentSurface.userData.testingTransferStats as
             typeof registration;
