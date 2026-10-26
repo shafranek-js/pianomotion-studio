@@ -51,3 +51,19 @@ Run on **both hands and all three LODs** before attaching any morph to visible T
 The development container used to prepare this code has Python and Node but **does not contain Blender**, so the `.blend` generation and deform sculpts cannot be truthfully claimed complete. Source can be syntax-checked by CPython, but Blender execution and human review need Blender 4.x on an authorized workstation.
 
 Related studies: [research & engineering plan](../../docs/RESEARCH_PIANIST_HANDS_2026-10-26.md), [testing experiment notes](../../docs/TESTING_HAND_EXPERIMENT.md).
+
+## Unsigned MCP/PIP/DIP axis survey (research gate)
+
+The real Blender CI also runs `measure_hinge_axes.py` on *both* imported
+LOD0 armatures and writes `left-unsigned-hinge-axes.json` and
+`right-unsigned-hinge-axes.json`. It records all 12 MCP/PIP/DIP axes
+as bone-local unit vectors derived from the palm plane and each finger's
+actual rest centerline. It reports their angular disagreement with the
+previous synthetic local-X rotation and fails on missing/degenerate joints.
+
+**These are unsigned geometric candidates, not calibrated anatomical axes.**
+No thumb CMC opposition axis or physiological bend sign is inferred. The
+existing synthetic local-X morph remains an offline benchmark only; the
+new estimates do not alter Testing, Blender shape keys or source GLBs.
+Manual pivot/sign calibration and visual DQS/LBS/reconstructed-GLB testing
+are required before using these axes for corrected skinned movement.
