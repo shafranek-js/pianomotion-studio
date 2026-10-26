@@ -25,7 +25,7 @@ blender --background --python tools/testing-hand-blender/prepare_corrective_scul
 
 Blender must report one armature with the expected named joints and one bound mesh. No rig or absent native vertex groups is a **hard error**. The input GLB remains unchanged.
 
-The script creates **45 empty, localized sculpt slots**: thumb CMC/MCP/IP; four fingers × MCP/PIP/DIP; wrist; each at 30°, 60° and 90°. For example `pmcorr_index_mcp_030`, `pmcorr_middle_pip_060`, `pmcorr_thumb_cmc_090`, `pmcorr_wrist_flex_030`. It generates masked groups `PM_MASK_<bone-name>` using the joint location and native bone weighting, and a JSON report with mask coverage and sculpted-vertex counts.
+The script creates **48 empty, localized sculpt slots**: thumb CMC/MCP/IP; four fingers × MCP/PIP/DIP; wrist; each at 30°, 60° and 90°. For example `pmcorr_index_mcp_030`, `pmcorr_middle_pip_060`, `pmcorr_thumb_cmc_090`, `pmcorr_wrist_flex_030`. It generates masked groups `PM_MASK_<bone-name>` using the joint location and native bone weighting, and a JSON report with mask coverage and sculpted-vertex counts.
 
 **Important:** Every new target starts identical to the Basis. This is an authoring scaffold, **not** an already fixed hand. Do not export or deploy an unchanged shape key as an anatomical corrective.
 
