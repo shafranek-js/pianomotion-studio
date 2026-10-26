@@ -24,6 +24,8 @@ import {
   errorMessage,
   HandModelRequestGate,
   IMPROVED_HAND_MODEL_ID,
+  TESTING_HAND_MODEL_ID,
+  isDetailedHandModel,
   type HandModelDiagnostics,
   type HandModelId,
   type ImprovedHandLod,
@@ -33,6 +35,7 @@ import {
   type ImprovedHandContactTarget,
 } from "./improvedHandContact";
 import { solveFixedLengthFingerChain } from "./anatomicalHandContact";
+import { transferWebxrSkinToAnatomicalSurface } from "./testingHandSkin";
 
 export const WHITE_KEY_WIDTH_IN = 6.5 / 7.0;
 export const KEYBOARD_WHITE_KEYS = 52;
@@ -2772,6 +2775,70 @@ const FINGER_PREFIX_BY_DIGIT: Record<number, string> = {
  * (`left.glb` & `right.glb`), with Subsurface Scattering vertex shading,
  * 3D glossy fingernails, key-surface contact shadows, and concert tuxedo sleeve.
  */
+/**
+ * Testing retains the anatomical surface and PBR textures but drives it with
+ * WebXR bind bones and smoothly resampled WebXR skin weights. The original
+ * anatomical/improved and WebXR rigs are never modified.
+ */
+function buildTestingHandRig(
+  hand: "left" | "right",
+  material: THREE.MeshPhysicalMaterial,
+  group: THREE.Group,
+  buffer: ArrayBuffer,
+  lod: ImprovedHandLodManifest,
+  expectedNames: readonly string[],
+  frames: ImprovedHandManifestExtras,
+): ParsedHandGlbRig {
+  const driver = parseHandGlbRig(hand, material, group);
+  let anatomical: ParsedHandGlbRig | null = null;
+  try {
+    anatomical = buildImprovedHandGlbRig(hand, material, group, buffer, lod, expectedNames, frames);
+    const surface = transferWebxrSkinToAnatomicalSurface(
+      anatomical.skinnedMesh.geometry,
+      driver.skinnedMesh.geometry,
+      driver.skinnedMesh.skeleton.bones.length,
+    );
+    const mesh = new THREE.SkinnedMesh(surface, material);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    mesh.frustumCulled = false;
+    mesh.bind(driver.skinnedMesh.skeleton, new THREE.Matrix4());
+
+    // The WebXR bone frames, inverse bind matrices, and runtime pose algorithm
+    // are the *only* articulation source. High detail is only the shell.
+    driver.skinnedMesh.removeFromParent();
+    driver.skinnedMesh.geometry.dispose();
+    anatomical.skinnedMesh.removeFromParent();
+    anatomical.skinnedMesh.geometry.dispose();
+    anatomical.skinnedMesh.skeleton.dispose();
+    for (const meta of anatomical.bonesByName.values()) meta.bone.removeFromParent();
+    surface.userData.wristBoundaryVertexIndices = anatomical.wristBoundaryVertexIndices;
+    group.add(mesh);
+
+    return {
+      ...driver,
+      skinnedMesh: mesh,
+      vertexAnatomy: anatomical.vertexAnatomy,
+      wristBoundaryVertexIndices: anatomical.wristBoundaryVertexIndices,
+      // Improved contact-floor correction deliberately does NOT run in Testing:
+      // it bends phalanges independently of the proven WebXR motion.
+      contactSupportVertexIndicesByFinger: undefined,
+    };
+  } catch (error) {
+    driver.skinnedMesh.removeFromParent();
+    driver.skinnedMesh.geometry.dispose();
+    driver.skinnedMesh.skeleton.dispose();
+    for (const meta of driver.bonesByName.values()) meta.bone.removeFromParent();
+    if (anatomical) {
+      anatomical.skinnedMesh.removeFromParent();
+      anatomical.skinnedMesh.geometry.dispose();
+      anatomical.skinnedMesh.skeleton.dispose();
+      for (const meta of anatomical.bonesByName.values()) meta.bone.removeFromParent();
+    }
+    throw error;
+  }
+}
+
 export class Hand3DMeshGroup {
   public readonly group = new THREE.Group();
   public readonly fingernails: THREE.Mesh[] = [];
@@ -3088,6 +3155,8 @@ export class Hand3DMeshGroup {
     this.lastHoverLift = hoverLift;
     this.lastContactTargets = contactTargets;
     const isImproved = this.currentHandModel === IMPROVED_HAND_MODEL_ID;
+    const isTesting = this.currentHandModel === TESTING_HAND_MODEL_ID;
+    const isPhotoSurface = isImproved || isTesting;
     const isAnatomical = this.currentHandModel === "anatomical";
     const isAnatomicalOrImproved = isImproved || isAnatomical;
     for (let finger = 1; finger <= 5; finger++) {
@@ -3144,10 +3213,10 @@ export class Hand3DMeshGroup {
           ? skinSettings.colors.robot.shell
           : naturalKnuckleRgb;
 
-    if (!isImproved) this.updateVertexColors(baseSkinRgb, creaseRgb, tipWarmRgb, knuckleHighlightRgb);
+    if (!isPhotoSurface) this.updateVertexColors(baseSkinRgb, creaseRgb, tipWarmRgb, knuckleHighlightRgb);
 
     this.sleeveMaterial.color.setHex(0x12141c);
-    if (!isImproved) {
+    if (!isPhotoSurface) {
       this.skinMaterial.roughness = skinSettings.style === "robot" ? 0.28 : (this.currentHandModel === "anatomical" ? 0.52 : 0.62);
       this.skinMaterial.metalness = skinSettings.style === "robot" ? 0.45 : 0.01;
     }
@@ -3797,7 +3866,7 @@ export class Hand3DMeshGroup {
     const sourcePositions = this.rig.skinnedMesh.geometry.getAttribute("position") as THREE.BufferAttribute;
     const openingIndices = this.rig.wristBoundaryVertexIndices;
     let openingPoints: THREE.Vector3[];
-    if (this.currentHandModel === IMPROVED_HAND_MODEL_ID) {
+    if (isDetailedHandModel(this.currentHandModel)) {
       this.forearmOpeningPointScratch.length = Math.min(
         this.forearmOpeningPointScratch.length,
         openingIndices.length,
@@ -3978,7 +4047,7 @@ export class Hand3DMeshGroup {
   public getHandModelDiagnostics(): HandModelDiagnostics {
     const glbStats = this.assetLoader.getCacheStats();
     const textureStats = this.textureCache.getCacheStats();
-    const triangles = this.currentHandModel === IMPROVED_HAND_MODEL_ID
+    const triangles = isDetailedHandModel(this.currentHandModel)
       ? this.improvedTriangleCount
       : ((this.rig.skinnedMesh.geometry.index?.count ?? 0) / 3);
     const diagnostics: HandModelDiagnostics = {
@@ -3995,7 +4064,7 @@ export class Hand3DMeshGroup {
       cachedTextureCount: textureStats.count,
       estimatedTextureBaseBytes: textureStats.estimatedBaseBytes,
       cachedAssetBytes: glbStats.retainedGlbBytes + textureStats.estimatedBaseBytes,
-      activeContactTargets: this.currentHandModel === IMPROVED_HAND_MODEL_ID
+      activeContactTargets: isDetailedHandModel(this.currentHandModel)
         ? this.lastContactTargets.flatMap((target) =>
           target.pitch === null ? [] : [{ finger: target.finger, pitch: target.pitch }])
         : [],
@@ -4005,8 +4074,8 @@ export class Hand3DMeshGroup {
 
   public waitForHandModelReady(): Promise<void> {
     if (this.isDisposed) return Promise.reject(new Error("Hand model scene is disposed."));
-    if (this.requestedHandModel !== IMPROVED_HAND_MODEL_ID ||
-        (this.loadState === "ready" && this.currentHandModel === IMPROVED_HAND_MODEL_ID &&
+    if (!isDetailedHandModel(this.requestedHandModel) ||
+        (this.loadState === "ready" && this.currentHandModel === this.requestedHandModel &&
          this.loadedLod === this.requestedLod)) {
       return Promise.resolve();
     }
@@ -4022,11 +4091,11 @@ export class Hand3DMeshGroup {
 
   public setHandModel(handModel: HandModelId, lod: ImprovedHandLod = 0): void {
     if (this.isDisposed) return;
-    if (handModel === IMPROVED_HAND_MODEL_ID) {
+    if (isDetailedHandModel(handModel)) {
       // Camera-driven LOD checks call this from each rendered frame. Keep a
       // failed selection sticky until the user switches away/back or retries.
-      if (this.requestedHandModel === IMPROVED_HAND_MODEL_ID && this.loadState === "error") return;
-      if (this.currentHandModel === IMPROVED_HAND_MODEL_ID && this.loadedLod === lod && this.loadState === "ready") {
+      if (isDetailedHandModel(this.requestedHandModel) && this.loadState === "error") return;
+      if (this.currentHandModel === handModel && this.loadedLod === lod && this.loadState === "ready") {
         this.requestedHandModel = handModel;
         this.requestedLod = lod;
         this.loadError = null;
@@ -4044,7 +4113,7 @@ export class Hand3DMeshGroup {
   }
 
   public retryHandModelLoad(): void {
-    if (this.isDisposed || this.requestedHandModel !== IMPROVED_HAND_MODEL_ID || this.loadState !== "error") return;
+    if (this.isDisposed || !isDetailedHandModel(this.requestedHandModel) || this.loadState !== "error") return;
     const lod = this.requestedLod ?? 0;
     this.loadState = "idle";
     this.loadError = null;
@@ -4052,7 +4121,7 @@ export class Hand3DMeshGroup {
   }
 
   private setLegacyHandModel(handModel: "anatomical" | "webxr"): void {
-    const wasWaitingForImproved = this.requestedHandModel === IMPROVED_HAND_MODEL_ID &&
+    const wasWaitingForImproved = isDetailedHandModel(this.requestedHandModel) &&
       this.loadState === "loading";
     this.requestGate.invalidate();
     this.requestedHandModel = handModel;
@@ -4148,6 +4217,8 @@ export class Hand3DMeshGroup {
   }
 
   private async requestImprovedHandLod(lod: ImprovedHandLod): Promise<void> {
+    const requestedModel = this.requestedHandModel;
+    if (!isDetailedHandModel(requestedModel)) return;
     const token = this.requestGate.begin();
     this.loadState = "loading";
     this.loadError = null;
@@ -4167,7 +4238,10 @@ export class Hand3DMeshGroup {
       }
 
       stagingMaterial = this.createImprovedHandMaterial(lease);
-      stagedRig = buildImprovedHandGlbRig(
+      const buildRig = requestedModel === TESTING_HAND_MODEL_ID
+        ? buildTestingHandRig
+        : buildImprovedHandGlbRig;
+      stagedRig = buildRig(
         this.hand,
         stagingMaterial,
         stagingGroup,
@@ -4198,7 +4272,7 @@ export class Hand3DMeshGroup {
       this.configureMaterialForImproved(lease);
       stagedRig.skinnedMesh.material = this.skinMaterial;
       this.rig = stagedRig;
-      this.currentHandModel = IMPROVED_HAND_MODEL_ID;
+      this.currentHandModel = requestedModel;
       this.loadedLod = lod;
       this.improvedTriangleCount = asset.lod.triangles;
       this.textureLease = lease;
@@ -4430,20 +4504,20 @@ export class Hand3DMeshGroup {
     this.sleeveGeometry.dispose();
     this.nailGeometry.dispose();
     this.skinMaterial.dispose();
-    if (this.currentHandModel !== IMPROVED_HAND_MODEL_ID &&
+    if (!isDetailedHandModel(this.currentHandModel) &&
       this.skinMaterial.normalMap &&
       this.skinMaterial.normalMap !== sharedSkinNormalMap &&
       this.skinMaterial.normalMap !== cachedAnatomicalNormalTexture
     ) {
       this.skinMaterial.normalMap.dispose();
     }
-    if (this.currentHandModel !== IMPROVED_HAND_MODEL_ID &&
+    if (!isDetailedHandModel(this.currentHandModel) &&
       this.skinMaterial.roughnessMap &&
       this.skinMaterial.roughnessMap !== sharedSkinRoughnessMap
     ) {
       this.skinMaterial.roughnessMap.dispose();
     }
-    if (this.currentHandModel !== IMPROVED_HAND_MODEL_ID &&
+    if (!isDetailedHandModel(this.currentHandModel) &&
       this.skinMaterial.map &&
       this.skinMaterial.map !== cachedAnatomicalBaseColorTexture
     ) {
