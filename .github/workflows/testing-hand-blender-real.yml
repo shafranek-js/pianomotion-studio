@@ -181,6 +181,11 @@ jobs:
                   assert target["nonzeroCorrectiveVertices"] >= 10
                   assert target["candidateToDqsRmsMillimeters"] < target["baselineLbsToDqsRmsMillimeters"]
                   assert 0 < target["maxRestDeltaMillimeters"] <= 4.001
+                  assert 0 < target["chosenCorrectiveAmplitude"] <= 1
+                  assert target["noAdditionalQuarterAreaCollapse"] is True
+                  assert target["noAdditionalHalfAreaCollapse"] is True
+                  assert target["candidateLocalArea"]["belowHalf"] <= target["lbsLocalArea"]["belowHalf"]
+                  assert target["candidateLocalArea"]["belowQuarter"] <= target["lbsLocalArea"]["belowQuarter"]
                   assert math.isfinite(target["rmsImprovementPercent"])
                   print(hand, target["targetName"],
                         round(target["rmsImprovementPercent"], 2), "percent RMS improvement",

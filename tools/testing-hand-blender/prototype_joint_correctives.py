@@ -158,19 +158,53 @@ def candidate_for_joint(arm, mesh, modifier, bone, target, local_axis, rest, all
         if generated < 10:
             raise ValueError("Experimental correction did not move enough local vertices: " + bone)
 
-        # Commit actual rest-position deltas, not Blender-only masks.
+        # First evaluate the unrestricted proposal. LBS is linear in rest
+        # morph deltas, so any reduced amplitude is the exact linear
+        # interpolation between neutral LBS and the full posed morph.
         basis = shapes[0]
         shape.vertex_group = ""
         for i in range(len(rest)):
             shape.data[i].co = basis.data[i].co + Vector(delta_by_vertex[i].tolist())
         shape.value = 1
-        corrected_mesh = capture_vertices(mesh)
-        corrected = rms(desired[region] - corrected_mesh[region])
-        if not math.isfinite(corrected) or corrected >= baseline:
-            raise ValueError(f"Prototype failed to improve local DQS RMS for {bone}: {baseline} -> {corrected}")
+        full_candidate = capture_vertices(mesh)
+        raw_area = triangle_area_ratios(rest, full_candidate, local_triangles)
         before_area = triangle_area_ratios(rest, linear, local_triangles)
         dqs_area = triangle_area_ratios(rest, desired, local_triangles)
-        candidate_area = triangle_area_ratios(rest, corrected_mesh, local_triangles)
+        full_displacement = full_candidate - linear
+
+        # Never exchange an RMS gain for new quarter- or half-area collapses.
+        # Search each joint independently; under local linear blend skinning
+        # these candidates require NO new inverse bind calculation.
+        feasible = []
+        for step in range(1, 101):
+            alpha = step / 100
+            trial = linear + alpha * full_displacement
+            trial_area = triangle_area_ratios(rest, trial, local_triangles)
+            trial_rms = rms(desired[region] - trial[region])
+            if (trial_rms < baseline and
+                    trial_area["belowQuarter"] <= before_area["belowQuarter"] and
+                    trial_area["belowHalf"] <= before_area["belowHalf"]):
+                feasible.append((trial_rms, -alpha, trial_area))
+        if not feasible:
+            raise ValueError(f"No positive amplitude preserves local half/quarter collapse for {bone}")
+        corrected, negative_alpha, candidate_area = min(feasible, key=lambda x: (x[0], x[1]))
+        chosen_alpha = -negative_alpha
+        # Bake a real, reduced morph rather than retaining an unsafe full key
+        # and merely setting the Blender shape slider below 1. glTF will
+        # receive the actual reduced vertex deltas if later approved.
+        for i in range(len(rest)):
+            shape.data[i].co = basis.data[i].co + Vector((delta_by_vertex[i] * chosen_alpha).tolist())
+        shape.value = 1
+        confirmed = capture_vertices(mesh)
+        measured_rms = rms(desired[region] - confirmed[region])
+        verified_area = triangle_area_ratios(rest, confirmed, local_triangles)
+        if abs(measured_rms - corrected) > 1e-6 or (
+            verified_area["belowHalf"] != candidate_area["belowHalf"] or
+            verified_area["belowQuarter"] != candidate_area["belowQuarter"]
+        ):
+            raise ValueError(f"Linear morph interpolation not verified in Blender for {bone}")
+        corrected = measured_rms
+        candidate_area = verified_area
         result = {
             "bone": bone, "targetName": target, "angleDegrees": ANGLE_DEGREES,
             "measuredAxisBoneLocalUnsigned": [float(v) for v in local_axis],
@@ -179,12 +213,18 @@ def candidate_for_joint(arm, mesh, modifier, bone, target, local_axis, rest, all
             "candidateToDqsRmsMillimeters": corrected * 1000,
             "rmsImprovementPercent": (1 - corrected / baseline) * 100,
             "maxLbsReconstructionErrorMillimeters": reconstruction_max * 1000,
-            "maxRestDeltaMillimeters": float(np.max(np.linalg.norm(delta_by_vertex, axis=1))) * 1000,
+            "maxRestDeltaMillimeters": float(np.max(np.linalg.norm(delta_by_vertex, axis=1))) * 1000 * chosen_alpha,
+            "chosenCorrectiveAmplitude": chosen_alpha,
+            "unrestrictedLocalArea": raw_area,
+            "unrestrictedLocalRmsMillimeters": rms(desired[region] - full_candidate[region]) * 1000,
             "lbsLocalArea": before_area, "dqsLocalArea": dqs_area,
             "candidateLocalArea": candidate_area,
             # Local area can worsen even as DQS displacement improves.
             "noAdditionalQuarterAreaCollapse": (
                 candidate_area["belowQuarter"] <= before_area["belowQuarter"]
+            ),
+            "noAdditionalHalfAreaCollapse": (
+                candidate_area["belowHalf"] <= before_area["belowHalf"]
             ),
             "axisAndFlexionSignCalibrated": False, "approvedForExport": False,
         }

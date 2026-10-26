@@ -104,3 +104,16 @@ The hinge axis direction and physiological flexion sign are unverified;
 thumb opposition, surface contact, multi-joint poses and LOD1/LOD2 remain
 unverified. Do **not** add these shape keys to the visible Testing model or
 publish experimental GLBs until those gates pass.
+
+## Joint-specific corrective strength safeguard
+
+The experimental 60° candidate bake now tests 100 strengths (0.01–1.00)
+per joint and selects the best LBS→DQS RMS fit **only among amplitudes
+that do not increase local triangles below 25% or 50% of rest area**.
+The selected fraction is baked into the actual Blender shape-key vertex
+coordinates; an independent posed Blender evaluation must reproduce the
+predicted RMS and collapse counts. The JSON retains the unrestricted
+candidate metrics, chosen fraction, baseline and bounded result.
+If no nonzero safer candidate exists, the CI fails rather than accepting
+a visually riskier morph. This diagnostic safeguard **does not** validate
+biomechanics, key contact, collisions, 0/30/90° bends or LOD1/LOD2.
