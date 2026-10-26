@@ -194,6 +194,49 @@ jobs:
                         "quarter-area collapse safe:", target["noAdditionalQuarterAreaCollapse"])
               assert (folder / f"{hand}-measured-joint-candidates.blend").stat().st_size > 10000
           PY
+      - name: Attribute real LOD0 joint fold polygons to original mesh indices
+        run: |
+          for side in left right; do
+            blender -b -t 2 --python-exit-code 2 \
+              --python tools/testing-hand-blender/analyze_fold_polygons.py -- \
+              --side "$side" \
+              --input "scratch/blender-correctives/${side}-measured-joint-candidates.blend" \
+              --axes "scratch/blender-correctives/${side}-unsigned-hinge-axes.json" \
+              --output "scratch/blender-correctives/${side}-fold-hotspots.json"
+          done
+          python - <<'PY'
+          import json, math
+          from pathlib import Path
+          for side in ("left", "right"):
+              data = json.loads(Path(f"scratch/blender-correctives/{side}-fold-hotspots.json").read_text())
+              assert data["schema"] == "testing-real-lod0-fold-polygons-v1"
+              assert data["meshTriangles"] == 34999
+              assert data["side"] == side
+              assert data["visualAcceptance"] is False
+              assert data["axisSignedAndAnatomicallyCalibrated"] is False
+              assert data["exportApproved"] is False
+              assert len(data["joints"]) == 2
+              assert {row["joint"] for row in data["joints"]} == {"ring-mcp", "pinky-dip"}
+              for joint in data["joints"]:
+                  assert joint["bendDegrees"] == 60
+                  assert joint["jointRegionMaskVertices"] >= 10
+                  assert {v["variant"] for v in joint["variants"]} == {
+                      "lbs", "bounded-corrective"}
+                  for variant in joint["variants"]:
+                      assert variant["regionTriangles"] >= 10
+                      for field in ("mostCompressedFaces","mostExpandedFaces",
+                                    "worstEdgeCollapseFaces"):
+                          assert len(variant[field]) == 12
+                          for triangle in variant[field]:
+                              assert 0 <= triangle["polygonIndex"] < data["meshTriangles"]
+                              assert len(triangle["vertexIndices"]) == 3
+                              assert all(0 <= i < data["meshVertices"]
+                                         for i in triangle["vertexIndices"])
+                              assert all(math.isfinite(triangle[x]) for x in
+                                         ("areaRatio","smallestEdgeRatio",
+                                          "largestEdgeRatio"))
+              print(side, "real fold polygon IDs reported, NOT a morph acceptance")
+          PY
       - name: Render real bounded joint comparisons — left
         run: >-
           blender -b -t 2 --python-exit-code 2
