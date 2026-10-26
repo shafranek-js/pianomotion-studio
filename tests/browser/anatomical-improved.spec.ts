@@ -2620,13 +2620,13 @@ test("Testing hand: matched WebGL model and camera evidence / " + comparedModel,
   // Keep evidence even if a visual defect is discovered later. A successful
   // capture is not, by itself, anatomical/animation acceptance.
   const comparedModels: readonly HandModelId[] = [comparedModel];
-  // Fast per-PR evidence deliberately captures ONE identical musical pose
-  // in two views per model. Four independent Chromium jobs previously timed
-  // out before writing a complete report even though these PNGs existed.
-  // Full visual sampling is opt-in; never block screenshot evidence on
-  // CPU-bound headless-GPU playback benchmarks.
+  // Fast per-PR smoke evidence deliberately captures ONE matched musical
+  // pose and ONE initial camera per model. Headless SwiftShader can starve
+  // React's camera change handler after its first WebGL compositor capture.
+  // Full four-camera/three-time visual inspection is explicitly separate
+  // and must still pass before acceptance, not inferred from this smoke.
   const fullReview = process.env.PIANOMOTION_EVIDENCE_FULL === "1";
-  const comparisonCameras = fullReview ? cameras : (["pov", "side_arch"] as const);
+  const comparisonCameras = fullReview ? cameras : (["pov"] as const);
   const comparedTimes = fullReview ? ([0.75, 3, 6] as const) : ([0.75] as const);
   const evidence: Array<{
     model: HandModelId;
