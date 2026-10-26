@@ -2904,7 +2904,7 @@ export class Hand3DMeshGroup {
 
   public constructor(
     hand: "left" | "right",
-    handModel: Exclude<HandModelId, typeof IMPROVED_HAND_MODEL_ID> = "anatomical",
+    handModel: Exclude<HandModelId, typeof IMPROVED_HAND_MODEL_ID | typeof TESTING_HAND_MODEL_ID> = "anatomical",
     dependencies?: HandModelRuntimeDependencies,
   ) {
     this.hand = hand;
