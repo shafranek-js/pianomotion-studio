@@ -254,6 +254,7 @@ jobs:
           --side left
           --input scratch/blender-correctives/left-measured-joint-candidates.blend
           --axes scratch/blender-correctives/left-unsigned-hinge-axes.json
+          --manifest apps/client/public/models/hands/improved/manifest.json
           --output-dir scratch/blender-correctives/render-review
       - name: Render real bounded joint comparisons — right
         run: >-
@@ -262,6 +263,7 @@ jobs:
           --side right
           --input scratch/blender-correctives/right-measured-joint-candidates.blend
           --axes scratch/blender-correctives/right-unsigned-hinge-axes.json
+          --manifest apps/client/public/models/hands/improved/manifest.json
           --output-dir scratch/blender-correctives/render-review
       - name: Validate comparable joint image evidence
         run: |
@@ -278,9 +280,16 @@ jobs:
               assert report["physiologicalFlexionSignCalibrated"] is False
               assert report["syntheticAxisBendOnly"] is True
               assert report["geometrySourceUnchanged"] is True
-              graph = report["sourceMaterialGraph"]
-              assert graph and all(g["principledCount"] > 0 for g in graph)
-              assert all(isinstance(g["sourceNormalConnected"], bool) for g in graph)
+              assert report["shaderVisualParityWithThreeJsCertified"] is False
+              reference = report["runtimeMaterialReference"]
+              assert reference["sourceTexturesMatchRuntimeManifest"] is True
+              assert reference["blenderMaterialIsThreeJsApproximation"] is True
+              assert reference["textureSet"] == "high"
+              assert reference["lod"] == 0
+              assert set(reference["manifestPaths"]) == {"baseColor", "normal", "roughness"}
+              assert all(len(checksum) == 64 and
+                         all(c in "0123456789abcdef" for c in checksum)
+                         for checksum in reference["sha256"].values())
               images = report["images"]
               assert len(images) == len({row["image"] for row in images}) == 28
               assert len({row["bone"] for row in images}) == 2

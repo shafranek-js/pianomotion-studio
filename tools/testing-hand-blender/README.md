@@ -236,3 +236,27 @@ regresses. This does not fail offline rendering: the unsafe candidate is
 retained for visual comparison, not for runtime use. The existing export
 and human-acceptance gates stay closed. A minimum ratio alone does not
 certify anatomically natural bending.
+
+
+## Runtime texture parity correction (26 October 2026)
+
+**Critical correction to the earlier clay-vs-textured experiment:** the visible
+Testing and Anatomical Improved renderers use external assets declared in
+`apps/client/public/models/hands/improved/manifest.json`: LOD0 uses
+`textures/base-color-2048.jpg`, `textures/normal-2048.png`, and
+`textures/roughness-1024.png`. Simply importing the small LOD0 GLB into
+Blender does *not* establish that its original Blender material reproduces
+the runtime appearance. Previous clay differences cannot identify which
+runtime map is causing dark marks.
+
+The new renderer requires `--manifest`, loads all **three actual runtime
+texture files**, configures sRGB vs Non-Color explicitly, and builds four
+temporary Blender material controls: `textured`, `clay`, `albedo-only`,
+and `normal-only`. It records each source path and SHA-256 digest, checks
+that the imported mesh has UVs, and never modifies the source GLB or saved
+sculpt project. Both hands must use the same high-resolution texture set.
+Blender Principled and Three.js MeshPhysicalMaterial are **not certified
+pixel-equivalent**; lighting, tangent spaces, shader implementations and
+material features may differ. Blender visual comparisons diagnose the
+shared external map sources, but actual Three.js browser frames are still
+required before selecting a final runtime material correction.

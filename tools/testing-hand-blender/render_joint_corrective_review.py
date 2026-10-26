@@ -14,6 +14,7 @@ flexion sign calibration, anatomically correct contact test or export approval.
 """
 from __future__ import annotations
 import argparse
+import hashlib
 import json
 import math
 import sys
@@ -33,71 +34,92 @@ CASES = (
 )
 
 
-def copy_material_for_isolation(source, mode):
-    """Make an unsaved source-preserving material clone for the diagnostic."""
-    if source is None or not source.use_nodes or source.node_tree is None:
-        raise ValueError("Real hand source must have an inspectable PBR node material")
-    material = source.copy()
-    material.name = f"PM offline {mode} {source.name}"
-    found = 0
-    material_graph = {
-        "sourceName": source.name,
-        "principledCount": 0,
-        "sourceNormalConnected": False,
-        "sourceBaseColorConnected": False,
+def runtime_reference_materials(mesh, manifest_path, side):
+    """Construct Blender control shaders from EXACT WebGL manifest textures.
+
+    Nodes are only a Blender approximation of the Three.js PBR shader, not
+    a claim of pixel-identical materials. Nothing is saved to the GLB.
+    """
+    if not manifest_path.is_file():
+        raise FileNotFoundError("Missing real WebGL runtime texture manifest")
+    manifest = json.loads(manifest_path.read_text(encoding="utf8"))
+    if manifest.get("schemaVersion") != 1 or manifest.get("modelId") != "anatomical-improved":
+        raise ValueError("Unexpected PianoMotion runtime texture manifest")
+    lods = manifest["hands"][side]["lods"]
+    lod0 = next((lod for lod in lods if lod["level"] == 0), None)
+    if lod0 is None or lod0["textureSet"] != "high":
+        raise ValueError("LOD0 must use the exact high-resolution runtime textures")
+    info = manifest["textures"][lod0["textureSet"]]
+    if (info["flipY"] is not False or info["baseColorColorSpace"] != "srgb"
+            or info["normalColorSpace"] != "linear"
+            or info["roughnessColorSpace"] != "linear"):
+        raise ValueError("Unexpected Three.js texture orientation/color-space contract")
+    if not mesh.data.uv_layers or mesh.data.uv_layers.active is None:
+        raise ValueError("Real LOD0 hand is missing a UV map for runtime textures")
+    root = manifest_path.parent.resolve()
+    textures, texture_hashes, texture_paths = {}, {}, {}
+    for key, cs in (("baseColor", "sRGB"), ("normal", "Non-Color"),
+                    ("roughness", "Non-Color")):
+        relative = info[key]
+        path = (root / relative).resolve()
+        if not path.is_relative_to(root) or not path.is_file():
+            raise FileNotFoundError("Invalid or absent manifest texture: " + relative)
+        image = bpy.data.images.load(str(path), check_existing=True)
+        image.colorspace_settings.name = cs
+        textures[key] = image
+        texture_paths[key] = relative
+        texture_hashes[key] = hashlib.sha256(path.read_bytes()).hexdigest()
+
+    def make_material(mode):
+        m = bpy.data.materials.new("PianoMotion runtime " + mode)
+        m.use_nodes = True
+        nodes, links = m.node_tree.nodes, m.node_tree.links
+        nodes.clear()
+        out = nodes.new("ShaderNodeOutputMaterial")
+        bsdf = nodes.new("ShaderNodeBsdfPrincipled")
+        links.new(bsdf.outputs["BSDF"], out.inputs["Surface"])
+        bsdf.inputs["Base Color"].default_value = (.58, .58, .58, 1)
+        bsdf.inputs["Roughness"].default_value = .82
+        bsdf.inputs["Metallic"].default_value = 0.0
+
+        if mode in ("textured", "albedo-only"):
+            albedo = nodes.new("ShaderNodeTexImage")
+            albedo.image = textures["baseColor"]
+            links.new(albedo.outputs["Color"], bsdf.inputs["Base Color"])
+            rough = nodes.new("ShaderNodeTexImage")
+            rough.image = textures["roughness"]
+            scale = nodes.new("ShaderNodeMath")
+            scale.operation = "MULTIPLY"
+            scale.inputs[1].default_value = .52
+            links.new(rough.outputs["Color"], scale.inputs[0])
+            links.new(scale.outputs["Value"], bsdf.inputs["Roughness"])
+        if mode in ("textured", "normal-only"):
+            normal_image = nodes.new("ShaderNodeTexImage")
+            normal_image.image = textures["normal"]
+            nm = nodes.new("ShaderNodeNormalMap")
+            nm.space = "TANGENT"
+            nm.inputs["Strength"].default_value = .28
+            links.new(normal_image.outputs["Color"], nm.inputs["Color"])
+            links.new(nm.outputs["Normal"], bsdf.inputs["Normal"])
+        if mode not in ("textured", "albedo-only", "normal-only", "clay"):
+            raise ValueError("Unknown diagnostic material mode " + mode)
+        return m
+
+    modes = {
+        name: make_material(name)
+        for name in ("textured", "clay", "albedo-only", "normal-only")
     }
-    for node in material.node_tree.nodes:
-        if node.type != "BSDF_PRINCIPLED":
-            continue
-        found += 1
-        normal_input = node.inputs.get("Normal")
-        base_input = node.inputs.get("Base Color")
-        if normal_input is None or base_input is None:
-            raise ValueError("Source Principled BSDF has missing Normal/Base Color input")
-        material_graph["sourceNormalConnected"] |= bool(normal_input.is_linked)
-        material_graph["sourceBaseColorConnected"] |= bool(base_input.is_linked)
-        if mode == "albedo-only":
-            # Keep original Base Color, roughness and source textures,
-            # but remove shader-space normal/bump modification.
-            for link in list(normal_input.links):
-                material.node_tree.links.remove(link)
-        elif mode == "normal-only":
-            # Preserve the entire source Normal input chain (if present),
-            # while replacing color/roughness to eliminate color-map cracks.
-            for name, default_value in (
-                ("Base Color", (.58, .58, .58, 1)),
-                ("Roughness", .82),
-                ("Metallic", 0.0),
-            ):
-                socket = node.inputs.get(name)
-                if socket is None:
-                    continue
-                for link in list(socket.links):
-                    material.node_tree.links.remove(link)
-                socket.default_value = default_value
-        else:
-            raise ValueError("Unknown material-isolation mode: " + mode)
-    if not found:
-        raise ValueError("No Principled BSDF in original hand material: " + source.name)
-    material_graph["principledCount"] = found
-    return material, material_graph
-
-
-def prepare_material_isolation(mesh):
-    sources = [slot.material for slot in mesh.material_slots]
-    if not sources or any(material is None for material in sources):
-        raise ValueError("Hand mesh source has no complete material slots")
-    by_mode = {}
-    graphs = []
-    for mode in ("albedo-only", "normal-only"):
-        copies = []
-        for index, source in enumerate(sources):
-            variant, graph = copy_material_for_isolation(source, mode)
-            copies.append(variant)
-            if mode == "albedo-only":
-                graphs.append({"slot": index, **graph})
-        by_mode[mode] = copies
-    return sources, by_mode, graphs
+    summary = {
+        "manifestModelId": manifest["modelId"],
+        "lod": 0,
+        "textureSet": "high",
+        "manifestPaths": texture_paths,
+        "sha256": texture_hashes,
+        "blenderMaterialIsThreeJsApproximation": True,
+        "sourceTexturesMatchRuntimeManifest": True,
+        "uvLayer": mesh.data.uv_layers.active.name,
+    }
+    return modes, summary
 
 
 def main():
@@ -105,6 +127,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--input", type=Path, required=True)
     parser.add_argument("--axes", type=Path, required=True)
+    parser.add_argument("--manifest", type=Path, required=True)
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--side", choices=("left", "right"), required=True)
     params = parser.parse_args(rest)
@@ -135,17 +158,14 @@ def main():
     bpy.context.scene.render.resolution_y = 720
     view_layer = bpy.context.view_layer
     old_material_override = view_layer.material_override
-    clay = bpy.data.materials.new("PianoMotion neutral clay - no normal map")
-    clay.use_nodes = True
-    clay.diffuse_color = (.58, .58, .58, 1)
-    principal = clay.node_tree.nodes.get("Principled BSDF")
-    if principal is None:
-        raise ValueError("Blender cannot construct neutral diagnostic material")
-    principal.inputs["Base Color"].default_value = (.58, .58, .58, 1)
-    principal.inputs["Roughness"].default_value = .82
-    if principal.inputs["Normal"].is_linked:
-        raise ValueError("Neutral clay must not use a normal map")
-    source_materials, material_copies, source_material_graph = prepare_material_isolation(mesh)
+    if old_material_override is not None:
+        raise ValueError("Cannot compare source materials with a nonempty view-layer override")
+    source_materials = [slot.material for slot in mesh.material_slots]
+    if not source_materials:
+        raise ValueError("Expected imported GLB mesh to have material slots")
+    reference_modes, runtime_material_metadata = runtime_reference_materials(
+        mesh, params.manifest, params.side
+    )
     params.output_dir.mkdir(parents=True, exist_ok=True)
     reports = []
 
@@ -190,13 +210,11 @@ def main():
                         modes += ["albedo-only", "normal-only"]
                     for material_mode in modes:
                         try:
-                            view_layer.material_override = (
-                                clay if material_mode == "clay" else old_material_override
-                            )
-                            source_or_copy = material_copies.get(
-                                material_mode, source_materials)
-                            for slot, material in zip(mesh.material_slots, source_or_copy):
-                                slot.material = material
+                            # All four modes use the runtime manifest's
+                            # external images, never accidental GLB materials.
+                            reference = reference_modes[material_mode]
+                            for slot in mesh.material_slots:
+                                slot.material = reference
                             view_layer.update()
                             filename = (
                                 f"{params.side}-{short}-{degrees:03d}-{variant}-"
@@ -238,8 +256,9 @@ def main():
             "source PBR vs neutral clay; at 60-degree LBS also source albedo"
             " without normal input and source normal chain without color texture"
         ),
-        "sourceMaterialGraph": source_material_graph,
+        "runtimeMaterialReference": runtime_material_metadata,
         "geometrySourceUnchanged": True,
+        "shaderVisualParityWithThreeJsCertified": False,
         "syntheticAxisBendOnly": True,
         "axisAnatomicallyCalibrated": False,
         "physiologicalFlexionSignCalibrated": False,
