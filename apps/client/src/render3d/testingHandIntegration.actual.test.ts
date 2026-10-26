@@ -5,6 +5,7 @@ import { measureTestingHandDeformation } from "./testingHandDeformationQA";
 import { regularizeTestingSkinWeights } from "./testingHandWeightRegularizer";
 import { transferAnatomicalWeightsToWebxrSkeleton } from "./testingHandSemanticWeights";
 import { transferTestingWeightsInBoneFrames } from "./testingHandBoneFrameTransfer";
+import { measureTestingFixedThumbRegion } from "./testingHandThumbQA";
 import { locateTestingHandDeformationHotspots } from "./testingHandDeformationHotspots";
 import * as THREE from "three";
 import { describe, expect, it } from "vitest";
@@ -144,6 +145,8 @@ describe("Testing hand: real anatomical shell on original WebXR skeleton", () =>
         let smootherCandidate: THREE.BufferGeometry | null = null;
         let semanticCandidate: THREE.BufferGeometry | null = null;
         let thumbCalibratedCandidate: THREE.BufferGeometry | null = null;
+        let thumbAnatomySource: THREE.BufferGeometry | null = null;
+        let thumbAnatomyNames: string[] = [];
         try {
           const independentSurface = transferWebxrSkinToAnatomicalSurface(
             independentAnatomy.skinnedMesh.geometry,
@@ -179,6 +182,8 @@ describe("Testing hand: real anatomical shell on original WebXR skeleton", () =>
             independentAnatomy.skinnedMesh.skeleton.bones,
             independentWebxr.skinnedMesh.skeleton.bones,
           );
+          thumbAnatomySource = independentAnatomy.skinnedMesh.geometry.clone();
+          thumbAnatomyNames = independentAnatomy.skinnedMesh.skeleton.bones.map(bone => bone.name);
           thumbCalibratedCandidate = transferTestingWeightsInBoneFrames(
             independentAnatomy.skinnedMesh.geometry,
             independentWebxr.skinnedMesh.geometry,
@@ -257,20 +262,19 @@ describe("Testing hand: real anatomical shell on original WebXR skeleton", () =>
             const smoothedDeformation = measureTestingHandDeformation(experimentalSurface);
             const semanticDeformation = measureTestingHandDeformation(semanticSurface);
             const thumbCalibratedDeformation = measureTestingHandDeformation(thumbCalibratedSurface);
-            const thumbBones = (surface: THREE.SkinnedMesh) => {
-              const report = locateTestingHandDeformationHotspots(surface, side, 20);
-              const thumb = report.bones.filter(bone => bone.bone.startsWith("thumb-"));
-              return {
-                inspectedThumbTriangles: thumb.reduce((total, bone) => total + bone.triangles, 0),
-                collapsedThumbTriangles: thumb.reduce((total, bone) => total + bone.flattenedBelowQuarterArea, 0),
-                overstretchedThumbTriangles: thumb.reduce((total, bone) => total + bone.stretchedAboveDoubleArea, 0),
-                maxThumbSeverity: Math.max(0, ...thumb.map(bone => bone.worstSeverity)),
-              };
-            };
-            console.info("[Testing thumb calibration A/B posed geometry]", side, "hover=" + hover,
+            // Compare EXACTLY the same triangles, selected by the native
+            // anatomical thumb labels, not the candidate WebXR weight map.
+            const baselineThumb = measureTestingFixedThumbRegion(
+              mesh!, thumbAnatomySource!, thumbAnatomyNames,
+            );
+            const calibratedThumb = measureTestingFixedThumbRegion(
+              thumbCalibratedSurface, thumbAnatomySource!, thumbAnatomyNames,
+            );
+            expect(calibratedThumb.inspectedTriangles).toBe(baselineThumb.inspectedTriangles);
+            console.info("[Testing fixed native-thumb triangle A/B]", side, "hover=" + hover,
               JSON.stringify({
-                baseline: thumbBones(mesh!),
-                calibrated: thumbBones(thumbCalibratedSurface),
+                baseline: baselineThumb,
+                calibrated: calibratedThumb,
                 baselineGlobal: { edgeStretchP95: deformation.edgeStretchP95,
                   areaRatioP95: deformation.areaRatioP95 },
                 calibratedGlobal: { edgeStretchP95: thumbCalibratedDeformation.edgeStretchP95,
@@ -311,6 +315,7 @@ describe("Testing hand: real anatomical shell on original WebXR skeleton", () =>
           experimentalSurface.geometry.dispose();
           semanticSurface.geometry.dispose();
           thumbCalibratedSurface.geometry.dispose();
+          thumbAnatomySource?.dispose();
         }
 
         const weights = mesh!.geometry.getAttribute("skinWeight");
