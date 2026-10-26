@@ -92,6 +92,17 @@ The pose test also logs **thumb-only** collapsed/expanded triangle counts and
 maximum severity alongside full-hand metrics for the existing and calibrated
 weight fields at matched MotionPoses.
 
+**Critical A/B methodology:** the initial hotspot experiment grouped triangles
+by each candidate's transferred WebXR bone weights, producing *different*
+thumb triangle counts (e.g. left 1,276 vs 1,521). Those figures are NOT
+apples-to-apples evidence of a visual improvement. The revised
+`testingHandThumbQA.ts` selects thumb triangle IDs exclusively from the
+**unchanged native GLB bone names and weights** and asserts identical topology,
+vertices and triangle counts for both algorithms. The revised CI report is the
+source of truth for a decision. Even the initial non-comparable measurements
+showed increased deformation for the right hand and worse global area P95.
+Do not enable the new weight field based on those early numbers.
+
 This is a *candidate*, **not a fix yet**. Its acceptance must be based on
 pose-local improvement at neutral, thumb-under, 30/60/90° bends, both hands,
 all LODs and a rendered human review. Worse deformation or unacceptable
