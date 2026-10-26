@@ -1,11 +1,13 @@
 // @ts-expect-error Vitest uses Node fs for real GLB conformance; browser tsconfig excludes Node types.
 import { readFileSync } from "node:fs";
+import { transferWebxrSkinToAnatomicalSurface } from "./testingHandSkin";
 import * as THREE from "three";
 import { describe, expect, it } from "vitest";
-import { Hand3DMeshGroup, type HandModelRuntimeDependencies } from "./handRigBuilder";
+import { Hand3DMeshGroup, buildImprovedHandGlbRig, parseHandGlbRig, type HandModelRuntimeDependencies } from "./handRigBuilder";
 import {
   type ImprovedHandAsset,
   type ImprovedHandTextureLease,
+  IMPROVED_HAND_JOINT_NAMES,
   validateImprovedHandManifest,
 } from "./improvedHandAssets";
 
@@ -82,6 +84,47 @@ describe("Testing hand: real anatomical shell on original WebXR skeleton", () =>
         expect(registration.nearestWebxrVertexMeanInches).toBeGreaterThanOrEqual(0);
         expect(Number.isFinite(registration.nearestWebxrVertexP95Inches)).toBe(true);
         expect(Number.isFinite(registration.nearestWebxrVertexMaxInches)).toBe(true);
+
+        // Cross-check that runtime Testing actually uses the same GLB geometry
+        // and WebXR reference as the standalone asset-registry experiment.
+        const sourceLod = manifest.hands[side].lods[2]!;
+        const sourceBytes = readFileSync(new URL(sourceLod.url, directory));
+        const sourceBuffer = sourceBytes.buffer.slice(
+          sourceBytes.byteOffset, sourceBytes.byteOffset + sourceBytes.byteLength,
+        ) as ArrayBuffer;
+        const referenceGroup = new THREE.Group();
+        const referenceMaterial = new THREE.MeshPhysicalMaterial();
+        const independentWebxr = parseHandGlbRig(side, referenceMaterial, referenceGroup);
+        const independentAnatomy = buildImprovedHandGlbRig(
+          side, referenceMaterial, referenceGroup, sourceBuffer, sourceLod,
+          IMPROVED_HAND_JOINT_NAMES, manifest.extras,
+        );
+        try {
+          const independentSurface = transferWebxrSkinToAnatomicalSurface(
+            independentAnatomy.skinnedMesh.geometry,
+            independentWebxr.skinnedMesh.geometry,
+            independentWebxr.skinnedMesh.skeleton.bones.length,
+          );
+          const independentlyMeasured = independentSurface.userData.testingTransferStats as
+            typeof registration;
+          console.info("[Testing runtime/standalone registration check]", side, JSON.stringify({
+            runtime: registration,
+            standalone: independentlyMeasured,
+          }));
+          expect(registration.nearestWebxrVertexMeanInches)
+            .toBeCloseTo(independentlyMeasured.nearestWebxrVertexMeanInches, 6);
+          expect(registration.nearestWebxrVertexP95Inches)
+            .toBeCloseTo(independentlyMeasured.nearestWebxrVertexP95Inches, 6);
+          expect(independentSurface.getAttribute("position").array)
+            .toEqual(mesh!.geometry.getAttribute("position").array);
+          independentSurface.dispose();
+        } finally {
+          independentWebxr.skinnedMesh.geometry.dispose();
+          independentWebxr.skinnedMesh.skeleton.dispose();
+          independentAnatomy.skinnedMesh.geometry.dispose();
+          independentAnatomy.skinnedMesh.skeleton.dispose();
+          referenceMaterial.dispose();
+        }
         // Regression diagnostic only: interpretation requires anatomical pose review.
         console.info("[Testing bind-space registration]", side, JSON.stringify(registration));
         expect(mesh!.skeleton.bones).toHaveLength(25);
