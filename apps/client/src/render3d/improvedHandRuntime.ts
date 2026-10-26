@@ -1,6 +1,13 @@
 export const IMPROVED_HAND_MODEL_ID = "anatomical-improved" as const;
 
-export type HandModelId = "anatomical" | "webxr" | typeof IMPROVED_HAND_MODEL_ID;
+export const TESTING_HAND_MODEL_ID = "testing" as const;
+
+export type HandModelId = "anatomical" | "webxr" | typeof IMPROVED_HAND_MODEL_ID | typeof TESTING_HAND_MODEL_ID;
+
+/** Detailed PBR shell models are async-loaded; WebXR and old Anatomical remain unchanged. */
+export function isDetailedHandModel(model: HandModelId): boolean {
+  return model === IMPROVED_HAND_MODEL_ID || model === TESTING_HAND_MODEL_ID;
+}
 export type ImprovedHandLod = 0 | 1 | 2;
 export type HandModelLoadState = "idle" | "loading" | "ready" | "error" | "disposed";
 
