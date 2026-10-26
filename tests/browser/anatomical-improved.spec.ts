@@ -2693,6 +2693,7 @@ test("Testing hand: matched WebGL model and camera evidence / " + comparedModel,
           // while the continuously animated WebGL scene is repainting.
           await cameraButtons.nth(cameras.indexOf(camera)).evaluate(
             (element: HTMLElement) => element.click(),
+            undefined,
             { timeout: 10_000 },
           );
         }
