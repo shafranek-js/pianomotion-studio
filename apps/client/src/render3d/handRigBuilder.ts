@@ -3753,8 +3753,13 @@ export class Hand3DMeshGroup {
           const afterPad = new THREE.Vector3().fromBufferAttribute(position, vertex);
           this.rig.skinnedMesh.applyBoneTransform(vertex, afterPad);
           afterPad.applyMatrix4(this.rig.skinnedMesh.matrixWorld);
+          // A bone move can bring the pad closer in X yet push it off the
+          // playable key top in Z. The source keyboard raycast is authoritative:
+          // never accept a correction if the visible pad misses the real key.
+          const actualKeyY = target.sampleSurfaceYAt(target.pitch, afterPad.x, afterPad.z);
+          if (actualKeyY === null || !Number.isFinite(actualKeyY)) continue;
           const afterHorizontal = Math.abs(afterPad.x - desiredX);
-          const afterVertical = Math.abs(afterPad.y - (targetSurfaceY + 0.012));
+          const afterVertical = Math.abs(afterPad.y - (actualKeyY + 0.012));
           if (afterHorizontal <= beforeHorizontal + 1e-5 &&
               afterVertical <= beforeVertical + 0.012 &&
               afterHorizontal + afterVertical < beforeHorizontal + beforeVertical - 1e-5) {
