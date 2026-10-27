@@ -11,6 +11,7 @@ import * as THREE from "three";
 import { describe, expect, it } from "vitest";
 import type { MotionPose } from "@handthesia/contracts";
 import { DEFAULT_SKIN_SETTINGS } from "../render/skins";
+import type { ImprovedHandContactTarget } from "./improvedHandContact";
 import { Hand3DMeshGroup, buildImprovedHandGlbRig, parseHandGlbRig, type HandModelRuntimeDependencies } from "./handRigBuilder";
 import {
   type ImprovedHandAsset,
@@ -503,6 +504,60 @@ describe("Testing hand: real anatomical shell on original WebXR skeleton", () =>
         expect(Array.from(restored.geometry.getAttribute("skinIndex").array)).toEqual(baseIndices);
         expect(Array.from(restored.geometry.getAttribute("skinWeight").array)).toEqual(baseWeights);
         assertSameWebxrPose();
+
+        // Regression: real Testing LOD2 needs a measurable pad-versus-key
+        // response, not merely identical WebXR bones and complete skin weights.
+        // The synthetic planar key is based on the observed pressed pad point,
+        // so both thumb and index are tested for vertical penetration while
+        // maintaining a small sideways (X) key-center offset.
+        const playingPose = makeWebxrComparisonPose(side);
+        const actualPad = (skinnedMesh: THREE.SkinnedMesh, vertex: number) => {
+          skinnedMesh.updateMatrixWorld(true);
+          skinnedMesh.skeleton.update();
+          const p = new THREE.Vector3().fromBufferAttribute(
+            skinnedMesh.geometry.getAttribute("position"), vertex,
+          );
+          skinnedMesh.applyBoneTransform(vertex, p);
+          return p.applyMatrix4(skinnedMesh.matrixWorld);
+        };
+        for (const finger of [1, 2] as const) {
+          model.setTestingKeyContact(false);
+          model.updateFromPose(playingPose, DEFAULT_SKIN_SETTINGS, false, 0);
+          const beforeMesh = loadedTestingMesh();
+          const samples = beforeMesh.geometry.userData
+            .testingContactSupportVertexIndicesByFinger as number[][];
+          expect(samples[finger]?.length).toBeGreaterThan(0);
+          const beforeSample = samples[finger]!
+            .map(vertex => ({ vertex, point: actualPad(beforeMesh, vertex) }))
+            .sort((a, b) => a.point.y - b.point.y)[0]!;
+          const prefix = finger === 1 ? "thumb" : "index-finger";
+          const tipName = prefix + "-tip";
+          const uncorrectedTip = model.getBone(tipName)!.position.clone();
+          const y = beforeSample.point.y + 0.12;
+          const x = beforeSample.point.x + 0.10;
+          const z = beforeSample.point.z;
+          const target: ImprovedHandContactTarget = {
+            finger, pitch: 60 + finger,
+            sourceStartSeconds: 0.5,
+            contactCenterX: x, contactMinX: x - 0.45,
+            contactMaxX: x + 0.45, contactMinZ: z - 0.45,
+            contactMaxZ: z + 0.45,
+            sampleSurfaceYAt: (_pitch, px, pz) =>
+              Math.abs(px - x) <= 0.45 && Math.abs(pz - z) <= 0.45 ? y : null,
+          };
+          model.setTestingKeyContact(true);
+          model.updateFromPose(playingPose, DEFAULT_SKIN_SETTINGS, false, 0, [target]);
+          const correctedTip = model.getBone(tipName)!.position;
+          const afterSample = actualPad(loadedTestingMesh(), beforeSample.vertex);
+          expect(correctedTip.distanceTo(uncorrectedTip), side + " finger " + finger)
+            .toBeGreaterThan(1e-4);
+          expect(Math.abs(afterSample.y - y), side + " finger " + finger + " depth")
+            .toBeLessThan(Math.abs(beforeSample.point.y - y));
+          // Turning the correction off must recover the same uncorrected pose.
+          model.setTestingKeyContact(false);
+          expect(model.getBone(tipName)!.position.distanceTo(uncorrectedTip))
+            .toBeLessThan(1e-5);
+        }
       } finally {
         model.dispose();
         textures.baseColor.dispose();

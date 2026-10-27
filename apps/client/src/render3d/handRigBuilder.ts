@@ -2871,6 +2871,10 @@ function buildTestingHandRig(
     anatomical.skinnedMesh.skeleton.dispose();
     for (const meta of anatomical.bonesByName.values()) meta.bone.removeFromParent();
     surface.userData.wristBoundaryVertexIndices = anatomical.wristBoundaryVertexIndices;
+    // Diagnostic and QA use the SAME fixed native fingertip vertex IDs as
+    // contact resolution; Testing skin transfer preserves GLB topology.
+    surface.userData.testingContactSupportVertexIndicesByFinger =
+      anatomical.contactSupportVertexIndicesByFinger;
     group.add(mesh);
 
     return {
