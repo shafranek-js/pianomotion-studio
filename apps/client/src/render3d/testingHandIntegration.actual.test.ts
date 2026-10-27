@@ -1,5 +1,5 @@
 // @ts-expect-error Vitest uses Node fs for real GLB conformance; browser tsconfig excludes Node types.
-import { readFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { transferWebxrSkinToAnatomicalSurface } from "./testingHandSkin";
 import { measureTestingHandDeformation } from "./testingHandDeformationQA";
 import { regularizeTestingSkinWeights } from "./testingHandWeightRegularizer";
@@ -171,6 +171,13 @@ describe("Testing hand: real anatomical shell on original WebXR skeleton", () =>
             .sort((a, b) => b.wristLocalOffsetMm - a.wristLocalOffsetMm)
             .slice(0, 5).map(j => [j.name, j.wristLocalOffsetMm]),
         }));
+        // Save the exact joint, phalanx and contact-pad records, rather
+        // than a rounded screenshot estimate. CI uploads both hand reports.
+        mkdirSync("scratch/testing-hand-bind-alignment", { recursive: true });
+        writeFileSync(
+          "scratch/testing-hand-bind-alignment/" + side + ".json",
+          JSON.stringify(alignment, null, 2) + "\n", "utf8",
+        );
         const registration = mesh!.geometry.userData.testingTransferStats as {
           vertexCount: number;
           nearestWebxrVertexMeanInches: number;

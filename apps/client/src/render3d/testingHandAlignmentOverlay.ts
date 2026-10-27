@@ -45,7 +45,6 @@ export class TestingHandAlignmentOverlay {
     report: TestingBindAlignmentSnapshot,
   ) {
     const skeleton = skinnedMesh.skeleton;
-    const scratchBone = new THREE.Vector3();
     for (const joint of report.joints) {
       const bone = bonesByName.get(joint.name)?.bone;
       if (!bone) continue;
@@ -79,7 +78,6 @@ export class TestingHandAlignmentOverlay {
       bone.add(connector);
       this.connectors.push(connector);
     }
-    scratchBone.set(0, 0, 0); // shared scratch remains deterministic across loads
 
     for (const pad of report.pads) {
       const marker = new THREE.Mesh(this.geometry, this.padMaterial);

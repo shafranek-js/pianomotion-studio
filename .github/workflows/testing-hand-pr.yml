@@ -63,6 +63,8 @@ jobs:
         run: >-
           npx eslint --config eslint.config.js
           apps/client/src/render3d/handRigBuilder.ts
+          apps/client/src/render3d/testingHandBindAlignment.ts
+          apps/client/src/render3d/testingHandAlignmentOverlay.ts
           apps/client/src/render3d/testingHandSkin.ts
           apps/client/src/render3d/testingHandSkin.test.ts
           apps/client/src/render3d/testingHandRegistration.ts
@@ -91,6 +93,14 @@ jobs:
           apps/client/src/i18n
       - name: Focused unit tests
         run: npx vitest run apps/client/src/render3d/testingHandSkin.test.ts apps/client/src/render3d/testingHandIntegration.actual.test.ts apps/client/src/render3d/testingHandRegistration.actual.test.ts apps/client/src/render3d/testingHandBoneFrameTransfer.test.ts apps/client/src/render3d/testingHandPianistBenchmark.test.ts apps/client/src/render3d/testingHandSemanticWeights.test.ts apps/client/src/render3d/testingHandPoseCorrectives.test.ts apps/client/src/render3d/testingHandMorphTargets.test.ts apps/client/src/settings/handModel.test.ts
+      - name: Save exact source-to-WebXR joint correspondence, both hands
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: testing-bind-alignment-${{ github.run_number }}
+          path: scratch/testing-hand-bind-alignment/
+          if-no-files-found: warn
+          retention-days: 14
 
   blender-syntax:
     name: Testing hand / Blender authoring scripts compile
