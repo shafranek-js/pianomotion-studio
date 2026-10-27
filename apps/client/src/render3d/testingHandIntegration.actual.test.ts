@@ -551,8 +551,16 @@ describe("Testing hand: real anatomical shell on original WebXR skeleton", () =>
           const afterSample = actualPad(loadedTestingMesh(), beforeSample.vertex);
           expect(correctedTip.distanceTo(uncorrectedTip), side + " finger " + finger)
             .toBeGreaterThan(1e-4);
+          console.info("[Testing key contact A/B]", JSON.stringify({
+            side, finger,
+            before: [beforeSample.point.x, beforeSample.point.y, beforeSample.point.z],
+            target: [x, y, z],
+            after: [afterSample.x, afterSample.y, afterSample.z],
+          }));
           expect(Math.abs(afterSample.y - y), side + " finger " + finger + " depth")
             .toBeLessThan(Math.abs(beforeSample.point.y - y));
+          expect(Math.abs(afterSample.x - x), side + " finger " + finger + " lateral contact")
+            .toBeLessThan(Math.abs(beforeSample.point.x - x));
           // Turning the correction off must recover the same uncorrected pose.
           model.setTestingKeyContact(false);
           expect(model.getBone(tipName)!.position.distanceTo(uncorrectedTip))
