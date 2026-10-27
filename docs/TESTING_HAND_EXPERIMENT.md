@@ -200,3 +200,24 @@ Testing uses uncorrected WebXR bone motion; WebXR/Anatomical/Improved are not
 modified. This alters Testing joint poses *only during assigned active-note
 contacts* and must be tested on real piano passages; do not claim perfect
 physical contact or unchanged WebXR bone motion while the option is enabled.
+
+## Real GLB anatomical-surface / WebXR bind registration audit
+
+The first live-surface alignment measurement now runs **before** Testing
+releases the independent native anatomical skeleton. Its read-only snapshot
+is attached to `testingBindAlignment` on Testing's skinned geometry and
+compared against an independent GLB fixture for both hands in focused CI.
+For each matched 25-joint rig bone it records the original GLB object-frame
+origin, native wrist-relative origin, WebXR counterpart, positional offsets
+in millimetres and bind-axis orientation difference. Consecutive native and
+WebXR phalanx lengths are compared. Five sets of original palmar fingertip
+vertices provide centroid-to-WebXR-tip distances, with fixed vertex IDs.
+
+**Interpretation caution:** GLB bone origins are NOT annotated visible
+knuckle centers or measured physiological centers of rotation. Tip bone
+origins are NOT necessarily fingertip contact points. The wrist-relative
+metric helps separate a frame mismatch from a local phalanx mismatch; it
+cannot by itself certify that a surface and skeleton are registered. We
+must next show native/driver landmarks together on the 3D view and verify
+position *under several bends* before authoring corrective morph shapes.
+This audit changes no render geometry, animation, skin weights or key IK.

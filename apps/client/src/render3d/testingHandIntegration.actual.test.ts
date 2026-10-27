@@ -6,6 +6,7 @@ import { regularizeTestingSkinWeights } from "./testingHandWeightRegularizer";
 import { transferAnatomicalWeightsToWebxrSkeleton } from "./testingHandSemanticWeights";
 import { transferTestingWeightsInBoneFrames } from "./testingHandBoneFrameTransfer";
 import { measureTestingFixedThumbRegion } from "./testingHandThumbQA";
+import { measureTestingBindAlignment, type TestingBindAlignmentSnapshot } from "./testingHandBindAlignment";
 import { locateTestingHandDeformationHotspots } from "./testingHandDeformationHotspots";
 import * as THREE from "three";
 import { describe, expect, it } from "vitest";
@@ -117,6 +118,35 @@ describe("Testing hand: real anatomical shell on original WebXR skeleton", () =>
         expect(neutralSurface.areaRatioMax).toBeLessThan(1.01);
         expect(neutralSurface.edgeCompressionMin).toBeGreaterThan(0.99);
         expect(neutralSurface.edgeStretchMax).toBeLessThan(1.01);
+        const alignment = mesh!.geometry.userData.testingBindAlignment as TestingBindAlignmentSnapshot;
+        expect(alignment.method).toBe("source-rig-origins-not-annotated-surface-knuckles");
+        expect(alignment.side).toBe(side);
+        expect(alignment.joints.length).toBeGreaterThanOrEqual(20);
+        expect(alignment.segments.length).toBeGreaterThanOrEqual(15);
+        expect(alignment.pads).toHaveLength(5);
+        expect(alignment.missingNativeBoneNames).toEqual([]);
+        for (const landmark of alignment.joints) {
+          expect(Number.isFinite(landmark.rawOffsetMm)).toBe(true);
+          expect(Number.isFinite(landmark.wristLocalOffsetMm)).toBe(true);
+          expect(Number.isFinite(landmark.bindAxisDifferenceDegrees)).toBe(true);
+        }
+        for (const pad of alignment.pads) {
+          expect(pad.vertexIds.length).toBeGreaterThan(0);
+          expect(pad.centroidToWebxrTipMm).toBeGreaterThanOrEqual(0);
+        }
+        // These are SOURCE BONE origins and native fingertip-vertex
+        // centroids, not manually annotated physiological rotation axes.
+        console.info("[Testing source-to-WebXR bind alignment]", JSON.stringify({
+          side, originCount: alignment.joints.length, segmentCount: alignment.segments.length,
+          meanMm: alignment.jointOffsetMeanMm, p95Mm: alignment.jointOffsetP95Mm,
+          maxMm: alignment.jointOffsetMaxMm, wristLocalP95Mm: alignment.wristLocalP95Mm,
+          pads: alignment.pads.map(pad => ({
+            finger: pad.finger, padGapMm: pad.centroidToWebxrTipMm,
+          })),
+          largestJointOffsets: [...alignment.joints]
+            .sort((a, b) => b.wristLocalOffsetMm - a.wristLocalOffsetMm)
+            .slice(0, 5).map(j => [j.name, j.wristLocalOffsetMm]),
+        }));
         const registration = mesh!.geometry.userData.testingTransferStats as {
           vertexCount: number;
           nearestWebxrVertexMeanInches: number;
@@ -151,7 +181,13 @@ describe("Testing hand: real anatomical shell on original WebXR skeleton", () =>
         let untouchedNonThumb: Uint8Array | null = null;
         const partialThumbCandidates: Array<{ strength: number; geometry: THREE.BufferGeometry }> = [];
         try {
-          const independentSurface = transferWebxrSkinToAnatomicalSurface(
+          const standaloneAlignment = measureTestingBindAlignment(
+          side, independentAnatomy, independentWebxr,
+        );
+        expect(standaloneAlignment.joints).toEqual(alignment.joints);
+        expect(standaloneAlignment.segments).toEqual(alignment.segments);
+        expect(standaloneAlignment.pads).toEqual(alignment.pads);
+        const independentSurface = transferWebxrSkinToAnatomicalSurface(
             independentAnatomy.skinnedMesh.geometry,
             independentWebxr.skinnedMesh.geometry,
             independentWebxr.skinnedMesh.skeleton.bones.length,

@@ -37,6 +37,7 @@ import {
 import { solveFixedLengthFingerChain } from "./anatomicalHandContact";
 import { transferWebxrSkinToAnatomicalSurface } from "./testingHandSkin";
 import { transferTestingWeightsInBoneFrames } from "./testingHandBoneFrameTransfer";
+import { measureTestingBindAlignment } from "./testingHandBindAlignment";
 import { attachTestingHandMorphTargets } from "./testingHandMorphTargets";
 
 export const WHITE_KEY_WIDTH_IN = 6.5 / 7.0;
@@ -2856,6 +2857,11 @@ function buildTestingHandRig(
         weightTransferOptions,
         { thumbAxialStrength: thumbStrength, thumbOnly: true },
       );
+    // Measure native/driver joint origins BEFORE discarding the independent
+    // anatomical skeleton. This is a read-only rest-pose diagnostic; it
+    // must not modify the WebXR bind matrices or source mesh.
+    const bindAlignment = measureTestingBindAlignment(hand, anatomical, driver);
+    surface.userData.testingBindAlignment = bindAlignment;
     const mesh = new THREE.SkinnedMesh(surface, material);
     mesh.castShadow = true;
     mesh.receiveShadow = true;
