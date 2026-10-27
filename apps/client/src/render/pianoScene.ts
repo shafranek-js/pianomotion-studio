@@ -17,6 +17,7 @@ export interface PianoSceneDisplaySettings {
   handModel?: "anatomical" | "anatomical-improved" | "webxr" | "testing";
   testingHandMaterial?: "original" | "no-normal" | "no-albedo" | "clay";
   testingThumbStrength?: 0 | 0.25 | 0.5 | 0.75 | 1;
+  testingKeyContact?: boolean;
   showHandShadow?: boolean;
   renderCapFps?: number;
 }
@@ -210,6 +211,7 @@ export class PianoScene {
     handModel: "anatomical",
     testingHandMaterial: "original",
     testingThumbStrength: 0,
+    testingKeyContact: true,
   };
   private resizeObserver: ResizeObserver | null = null;
   private scene3D: PianoScene3D | null = null;

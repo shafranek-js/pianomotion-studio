@@ -77,6 +77,7 @@ export interface Settings {
   handModel: HandModel;
   testingHandMaterial: TestingHandMaterial;
   testingThumbStrength: TestingThumbStrength;
+  testingKeyContact: boolean;
   showHandShadow: boolean;
   soundOutput: "synth" | "soundfont" | "webmidi";
   soundfontAssetId?: string | null;
@@ -108,6 +109,7 @@ export const SettingsSchema = z.object({
   handModel: HandModelSchema.default("anatomical"),
   testingHandMaterial: TestingHandMaterialSchema.default("original"),
   testingThumbStrength: TestingThumbStrengthSchema.default(0),
+  testingKeyContact: z.boolean().default(true),
   showHandShadow: z.boolean().default(true),
   soundOutput: SoundOutputSchema.default("soundfont"),
   soundfontAssetId: z.string().nullable().default(BUILTIN_SOUNDFONT_ID),
@@ -132,6 +134,7 @@ export const DEFAULT_SETTINGS: Settings = {
   handModel: "anatomical",
   testingHandMaterial: "original",
   testingThumbStrength: 0,
+  testingKeyContact: true,
   showHandShadow: true,
   soundOutput: "soundfont",
   soundfontAssetId: BUILTIN_SOUNDFONT_ID,
@@ -236,6 +239,9 @@ export function sanitizeSettings(input: Partial<Settings> | unknown): Settings {
   const testingThumbStrength = TestingThumbStrengthSchema.safeParse(raw.testingThumbStrength).success
     ? raw.testingThumbStrength as TestingThumbStrength : DEFAULT_SETTINGS.testingThumbStrength;
 
+  const testingKeyContact = typeof raw.testingKeyContact === "boolean"
+    ? raw.testingKeyContact : DEFAULT_SETTINGS.testingKeyContact;
+
   const showHandShadow =
     typeof raw.showHandShadow === "boolean"
       ? raw.showHandShadow
@@ -273,6 +279,7 @@ export function sanitizeSettings(input: Partial<Settings> | unknown): Settings {
     handModel,
     testingHandMaterial,
     testingThumbStrength,
+    testingKeyContact,
     showHandShadow,
     soundOutput,
     soundfontAssetId,

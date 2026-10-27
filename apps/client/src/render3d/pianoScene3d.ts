@@ -219,6 +219,7 @@ export class PianoScene3D {
   private motionBuffer: MotionBuffer | null = null;
   private skinSettings: SkinSettings = normalizeSkinSettings();
   private showFingerLabels = false;
+  private testingKeyContact = true;
   private currentTransportTime = 0;
   private lastActiveNotes: number[] | undefined;
   private playAlongMode = false;
@@ -535,6 +536,11 @@ export class PianoScene3D {
         ...(settings.showHandShadow !== undefined ? { shadow: settings.showHandShadow } : {}),
       });
     }
+    if (settings.testingKeyContact !== undefined) {
+      this.testingKeyContact = settings.testingKeyContact;
+      this.leftHand3D.setTestingKeyContact(settings.testingKeyContact);
+      this.rightHand3D.setTestingKeyContact(settings.testingKeyContact);
+    }
     if (settings.testingThumbStrength !== undefined) {
       // Controlled research A/B; affects only Testing shell weight sampling.
       this.leftHand3D.setTestingThumbStrength(settings.testingThumbStrength);
@@ -780,7 +786,10 @@ export class PianoScene3D {
 
     const leftHoverLift = calculateHandHoverLift("left", timeSeconds, noteSource);
     const rightHoverLift = calculateHandHoverLift("right", timeSeconds, noteSource);
-    const usesImprovedHand = this.requestedHandModel === IMPROVED_HAND_MODEL_ID;
+    // Testing also needs the *actual depressed key top* under the fingertips.
+    // Only pass these contacts for Testing when its diagnostic switch is enabled.
+    const usesImprovedHand = this.requestedHandModel === IMPROVED_HAND_MODEL_ID ||
+      (this.requestedHandModel === "testing" && this.testingKeyContact);
 
     if (leftPose) {
       if (usesImprovedHand) {

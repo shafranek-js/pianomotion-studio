@@ -181,3 +181,22 @@ mode for offline comparison. A real-GLB regression asserts identical weights
 on every original non-thumb vertex for **both hands**, and the existing
 0% → 25% → 0% round-trip contract remains required. This is still experimental;
 no variant is yet approved as the anatomically correct solution.
+
+## Testing score-key contact alignment (27 October 2026 preview)
+
+A user close-up exposed an index finger intersecting the pressed key and a
+thumb floating beside its assigned pressed key. Root cause: the Testing
+model did not receive score-note contact targets, and its anatomical
+fingerpad vertex samples had been discarded. Its WebXR motion alone does not
+promise physical contact for a different anatomical surface.
+
+A reversible, persisted **Align fingerpads to pressed keys (Testing only)**
+checkbox is now enabled by default. It supplies Testing with actual score
+pitch, rendered key's depressed surface height and X/Z face bounds, and uses
+skinned anatomical fingerpad samples with the existing bounded, fixed-length
+finger-chain IK employed by Anatomical. It handles lateral and vertical pad
+misses independently of the thumb weight-calibration setting. If disabled,
+Testing uses uncorrected WebXR bone motion; WebXR/Anatomical/Improved are not
+modified. This alters Testing joint poses *only during assigned active-note
+contacts* and must be tested on real piano passages; do not claim perfect
+physical contact or unchanged WebXR bone motion while the option is enabled.

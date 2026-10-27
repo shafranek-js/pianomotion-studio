@@ -2878,9 +2878,10 @@ function buildTestingHandRig(
       skinnedMesh: mesh,
       vertexAnatomy: anatomical.vertexAnatomy,
       wristBoundaryVertexIndices: anatomical.wristBoundaryVertexIndices,
-      // Improved contact-floor correction deliberately does NOT run in Testing:
-      // it bends phalanges independently of the proven WebXR motion.
-      contactSupportVertexIndicesByFinger: undefined,
+      // These are native-anatomical vertex indices; the transferred Testing
+      // geometry retains the exact same positions and topology. Sample the
+      // actually posed WebXR-skinned surface to locate the palmar fingerpads.
+      contactSupportVertexIndicesByFinger: anatomical.contactSupportVertexIndicesByFinger,
     };
   } catch (error) {
     driver.skinnedMesh.removeFromParent();
@@ -2914,6 +2915,7 @@ export class Hand3DMeshGroup {
   private textureLease: ImprovedHandTextureLease | null = null;
   private testingMaterialMode: "original" | "no-normal" | "no-albedo" | "clay" = "original";
   private testingThumbStrength: 0 | 0.25 | 0.5 | 0.75 | 1 = 0;
+  private testingKeyContact = true;
   private readonly readyWaiters = new Set<{ resolve: () => void; reject: (error: Error) => void }>();
   private readonly forearmOpeningPointScratch: THREE.Vector3[] = [];
   private readonly improvedContactPointScratch = Array.from({ length: 24 }, () => new THREE.Vector3());
@@ -3218,7 +3220,7 @@ export class Hand3DMeshGroup {
     const isTesting = this.currentHandModel === TESTING_HAND_MODEL_ID;
     const isPhotoSurface = isImproved || isTesting;
     const isAnatomical = this.currentHandModel === "anatomical";
-    const isAnatomicalOrImproved = isImproved || isAnatomical;
+    const isAnatomicalOrImproved = isImproved || isAnatomical || (isTesting && this.testingKeyContact);
     for (let finger = 1; finger <= 5; finger++) {
       this.improvedDistalContactFrames[finger]!.active = false;
     }
@@ -3529,7 +3531,10 @@ export class Hand3DMeshGroup {
       }
     }
 
-    if (isAnatomical && contactTargets.length > 0) {
+    if ((isAnatomical || (isTesting && this.testingKeyContact)) && contactTargets.length > 0) {
+      // The same IK routine can resolve both vertical penetration and X/Z
+      // key misses; unlike a Z-only floor clamp it uses the pressed key's
+      // actual top face and the *skinned* distal pad sample.
       this.applyAnatomicalKeyContact(contactTargets, orientBone);
     } else if (isImproved && contactTargets.length > 0) {
       this.applyImprovedContactFloor(contactTargets, orientBone);
@@ -4425,6 +4430,21 @@ export class Hand3DMeshGroup {
    * atomically: keep the old hand visible until its replacement is ready.
    * No legacy model, glTF, or source WebXR bone is changed.
    */
+  /**
+   * Toggle Testing-only key contact at the currently posed transport position.
+   * Other hand models continue their existing articulation logic.
+   */
+  public setTestingKeyContact(enabled: boolean): void {
+    if (this.testingKeyContact === enabled) return;
+    this.testingKeyContact = enabled;
+    if (this.currentHandModel === TESTING_HAND_MODEL_ID && this.lastPose && this.lastSkinSettings) {
+      this.updateFromPose(
+        this.lastPose, this.lastSkinSettings, this.lastShowFingerLabels,
+        this.lastHoverLift, enabled ? this.lastContactTargets : [],
+      );
+    }
+  }
+
   public setTestingThumbStrength(strength: 0 | 0.25 | 0.5 | 0.75 | 1): void {
     if (this.isDisposed || this.testingThumbStrength === strength) return;
     this.testingThumbStrength = strength;

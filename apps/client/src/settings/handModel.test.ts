@@ -33,6 +33,15 @@ describe("hand model settings compatibility", () => {
     expect(SettingsSchema.safeParse({ testingHandMaterial: "invalid" }).success).toBe(false);
   });
 
+  it("enables opt-out Testing-only key contact correction with a persisted setting", () => {
+    expect(DEFAULT_SETTINGS.testingKeyContact).toBe(true);
+    expect(SettingsSchema.parse({}).testingKeyContact).toBe(true);
+    expect(sanitizeSettings({ testingKeyContact: false }).testingKeyContact).toBe(false);
+    expect(sanitizeSettings({ testingKeyContact: true }).testingKeyContact).toBe(true);
+    expect(sanitizeSettings({ testingKeyContact: "false" }).testingKeyContact).toBe(true);
+    expect(SettingsSchema.safeParse({ testingKeyContact: "false" }).success).toBe(false);
+  });
+
   it("defaults to unmodified Testing thumb weights and rejects unsanctioned strengths", () => {
     expect(DEFAULT_SETTINGS.testingThumbStrength).toBe(0);
     expect(SettingsSchema.parse({}).testingThumbStrength).toBe(0);

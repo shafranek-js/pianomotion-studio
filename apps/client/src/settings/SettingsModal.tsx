@@ -475,6 +475,20 @@ export function SettingsModal({ isOpen, onClose, onSettingsChanged, presentation
                     Rebuilds both Testing hand meshes using the same bone poses and original surface.
                     Research preview only: calibration is not yet anatomically approved.
                   </p>
+                  <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", margin: "0.8rem 0 0.35rem", fontSize: "0.82rem" }}>
+                    <input
+                      id="settings-testing-key-contact"
+                      type="checkbox"
+                      checked={settings.testingKeyContact}
+                      onChange={(e) => handleChange("testingKeyContact", e.target.checked)}
+                      style={{ accentColor: "var(--mint, #a9d3bb)" }}
+                    />
+                    Align fingerpads to pressed keys (Testing only)
+                  </label>
+                  <p style={{ margin: "0 0 0.4rem", fontSize: "0.76rem", color: "var(--muted, #9fac9f)" }}>
+                    Uses the depressed key-top position for fingerpad alignment.
+                    Switch off to compare uncorrected WebXR motion.
+                  </p>
                 </div>
               )}
 
