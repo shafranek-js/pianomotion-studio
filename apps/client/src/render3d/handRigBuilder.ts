@@ -3584,6 +3584,7 @@ export class Hand3DMeshGroup {
     const geometry = this.rig.skinnedMesh.geometry;
     const position = geometry.getAttribute("position") as THREE.BufferAttribute;
     const minZMargin = 0.035;
+    const isTestingContact = this.currentHandModel === TESTING_HAND_MODEL_ID;
     this.group.updateMatrixWorld(true);
     this.rig.skinnedMesh.skeleton.update();
 
@@ -3598,6 +3599,9 @@ export class Hand3DMeshGroup {
       const prefix = FINGER_PREFIX_BY_DIGIT[target.finger]!;
       const tipMeta = this.rig.bonesByName.get(`${prefix}-tip`);
       if (!tipMeta) continue;
+      // The contact vertex must not jump between pads during an IK solve.
+      // Without a stable contact anchor the thumb may overshoot the key laterally.
+      let lockedTestingPadSample: number | null = null;
 
       for (let iteration = 0; iteration < 4; iteration++) {
         this.group.updateMatrixWorld(true);
@@ -3639,6 +3643,12 @@ export class Hand3DMeshGroup {
           }
         }
 
+        if (isTestingContact && padSample >= 0) {
+          if (lockedTestingPadSample === null) lockedTestingPadSample = padSample;
+          padSample = lockedTestingPadSample;
+          const stablePad = this.improvedContactPointScratch[padSample]!;
+          padSurfaceY = target.sampleSurfaceYAt(target.pitch, stablePad.x, stablePad.z) ?? Number.NaN;
+        }
         let contactZ = padSample >= 0
           ? this.improvedContactPointScratch[padSample]!.z
           : frame.tip.z;
@@ -3679,62 +3689,85 @@ export class Hand3DMeshGroup {
         const solution = solveFixedLengthFingerChain(chain, targetTipPoint);
         if (!solution) break;
 
-        if (target.finger !== 1) frame.pip.copy(solution.points[1]!);
-        frame.dip.copy(solution.points[solution.points.length - 2]!);
-        frame.tip.copy(solution.points[solution.points.length - 1]!);
-        frame.end.copy(frame.tip);
-        frame.start.copy(frame.dip);
-        frame.tipPoint.copy(frame.tip);
+        const initialPip = frame.pip.clone();
+        const initialDip = frame.dip.clone();
+        const initialTip = frame.tip.clone();
+        const last = solution.points.length - 1;
+        // Evaluate the ACTUAL skinned vertex on the key surface, not a
+        // theoretical bone endpoint: transferred anatomical weights can
+        // amplify and even reverse a bone-only correction.
+        const applyCandidate = (factor: number): boolean => {
+          if (target.finger !== 1) {
+            frame.pip.copy(initialPip).lerp(solution.points[1]!, factor);
+          }
+          frame.dip.copy(initialDip).lerp(solution.points[last - 1]!, factor);
+          frame.tip.copy(initialTip).lerp(solution.points[last]!, factor);
+          frame.end.copy(frame.tip);
+          frame.start.copy(frame.dip);
+          frame.tipPoint.copy(frame.tip);
+          if (target.finger === 1) {
+            const proximal = orientBone(
+              "thumb-phalanx-proximal", frame.mcp, frame.dip, frame.thicknessScale, frame.hinge,
+            );
+            const distal = orientBone(
+              "thumb-phalanx-distal", frame.dip, frame.tip, frame.thicknessScale,
+              proximal?.binormal,
+            );
+            if (!distal) return false;
+            tipMeta.bone.position.copy(frame.tip);
+            tipMeta.bone.quaternion.copy(distal.quat);
+            tipMeta.bone.scale.set(frame.thicknessScale, frame.thicknessScale, frame.thicknessScale);
+          } else {
+            const proximal = orientBone(
+              `${prefix}-phalanx-proximal`, frame.mcp, frame.pip, frame.thicknessScale,
+              frame.hinge,
+            );
+            const intermediate = orientBone(
+              `${prefix}-phalanx-intermediate`, frame.pip, frame.dip,
+              frame.thicknessScale, proximal?.binormal,
+            );
+            const distal = orientBone(
+              `${prefix}-phalanx-distal`, frame.dip, frame.tip,
+              frame.thicknessScale, intermediate?.binormal,
+            );
+            if (!distal) return false;
+            tipMeta.bone.position.copy(frame.tip);
+            tipMeta.bone.quaternion.copy(distal.quat);
+            tipMeta.bone.scale.set(frame.thicknessScale, frame.thicknessScale, frame.thicknessScale);
+          }
+          this.group.updateMatrixWorld(true);
+          this.rig.skinnedMesh.skeleton.update();
+          return true;
+        };
 
-        if (target.finger === 1) {
-          const proximal = orientBone(
-            "thumb-phalanx-proximal",
-            frame.mcp,
-            frame.dip,
-            frame.thicknessScale,
-            frame.hinge,
-          );
-          const distal = orientBone(
-            "thumb-phalanx-distal",
-            frame.dip,
-            frame.tip,
-            frame.thicknessScale,
-            proximal?.binormal,
-          );
-          if (!distal) break;
-          tipMeta.bone.position.copy(frame.tip);
-          tipMeta.bone.quaternion.copy(distal.quat);
-          tipMeta.bone.scale.set(frame.thicknessScale, frame.thicknessScale, frame.thicknessScale);
-        } else {
-          const proximal = orientBone(
-            `${prefix}-phalanx-proximal`,
-            frame.mcp,
-            frame.pip,
-            frame.thicknessScale,
-            frame.hinge,
-          );
-          const intermediate = orientBone(
-            `${prefix}-phalanx-intermediate`,
-            frame.pip,
-            frame.dip,
-            frame.thicknessScale,
-            proximal?.binormal,
-          );
-          const distal = orientBone(
-            `${prefix}-phalanx-distal`,
-            frame.dip,
-            frame.tip,
-            frame.thicknessScale,
-            intermediate?.binormal,
-          );
-          if (!distal) break;
-          tipMeta.bone.position.copy(frame.tip);
-          tipMeta.bone.quaternion.copy(distal.quat);
-          tipMeta.bone.scale.set(frame.thicknessScale, frame.thicknessScale, frame.thicknessScale);
+        if (!isTestingContact) {
+          if (!applyCandidate(1)) break;
+          continue;
         }
-
-        this.group.updateMatrixWorld(true);
-        this.rig.skinnedMesh.skeleton.update();
+        const beforeHorizontal = Math.abs(padPoint.x - desiredX);
+        const beforeVertical = Math.abs(padPoint.y - (targetSurfaceY + 0.012));
+        let accepted = false;
+        for (const fraction of [1, 0.5, 0.25, 0.125]) {
+          if (!applyCandidate(fraction)) break;
+          const vertex = supportIndices[padSample]!;
+          const afterPad = new THREE.Vector3().fromBufferAttribute(position, vertex);
+          this.rig.skinnedMesh.applyBoneTransform(vertex, afterPad);
+          afterPad.applyMatrix4(this.rig.skinnedMesh.matrixWorld);
+          const afterHorizontal = Math.abs(afterPad.x - desiredX);
+          const afterVertical = Math.abs(afterPad.y - (targetSurfaceY + 0.012));
+          if (afterHorizontal <= beforeHorizontal + 1e-5 &&
+              afterVertical <= beforeVertical + 0.012 &&
+              afterHorizontal + afterVertical < beforeHorizontal + beforeVertical - 1e-5) {
+            accepted = true;
+            break;
+          }
+        }
+        if (!accepted) {
+          // Reject a correction that moves the visible pad AWAY from its key.
+          // Restoring factor 0 also restores the last valid finger pose.
+          applyCandidate(0);
+          break;
+        }
       }
     }
   }
