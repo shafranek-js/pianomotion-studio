@@ -221,3 +221,25 @@ cannot by itself certify that a surface and skeleton are registered. We
 must next show native/driver landmarks together on the 3D view and verify
 position *under several bends* before authoring corrective morph shapes.
 This audit changes no render geometry, animation, skin weights or key IK.
+
+## On-screen bind landmarks (Testing-only visual review)
+
+Preferences → Testing → **Show surface / skeleton alignment** is now an
+optional visual overlay (disabled by default). It draws **amber** original
+Anatomical Improved GLB *bone origins*, **cyan** WebXR controlling bone
+origins, pale connecting offset lines and **green** actual skinned palmar
+fingerpad sample centroids. All markers are recomputed or parented to the
+live WebXR skeleton as it animates, using the unchanged inverse bind matrices.
+Thus the amber/cyan separation is a diagnostic of the native/driver bind
+mismatch under a common driver transform, not independent source anatomy
+animation. The green points follow the real deformed surface (and contact IK).
+
+**Interpretation caveat:** bone origins are *not* manually validated knuckle
+centers, and pad markers show a centroid of a bounded palmar sample rather
+than a guaranteed key-pressure centroid. The overlay is read-only, does not
+change hit testing, skin weights, bone poses or source GLBs, and is removed
+cleanly on model/LOD switching and when disabled. In acceptance tests, both
+hands must show all matching joint markers and five pads, while turning the
+overlay on/off must leave the source POSITION buffer identical. This is the
+first combined view to guide future anatomical registration work; it is not
+itself a calibration correction.

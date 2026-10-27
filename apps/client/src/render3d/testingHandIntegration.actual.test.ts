@@ -113,6 +113,30 @@ describe("Testing hand: real anatomical shell on original WebXR skeleton", () =>
         expect(mesh).toBeDefined();
         expect(mesh!.geometry.getAttribute("position").count).toBe(manifest.hands[side].lods[2]!.vertices);
         expect(mesh!.geometry.userData.testingWebxrSkinTransfer).toBe(true);
+        // Overlay must be optional, use real GLB joint/pad landmarks, and
+        // never mutate the neutral POSITION buffer or driver bind pose.
+        const originalPositions = Array.from(mesh!.geometry.getAttribute("position").array);
+        model.setTestingBindAlignmentOverlay(true);
+        const markerNodes: THREE.Object3D[] = [];
+        model.group.traverse(node => {
+          if (node.name.startsWith("Testing alignment ")) markerNodes.push(node);
+        });
+        const nativeMarkers = markerNodes.filter(node => node.name.startsWith("Testing alignment native "));
+        const webxrMarkers = markerNodes.filter(node => node.name.startsWith("Testing alignment WebXR "));
+        const contactMarkers = markerNodes.filter(node => node.name.startsWith("Testing alignment pad "));
+        expect(nativeMarkers.length).toBeGreaterThanOrEqual(20);
+        expect(webxrMarkers).toHaveLength(nativeMarkers.length);
+        expect(contactMarkers).toHaveLength(5);
+        expect(contactMarkers.every(node =>
+          Number.isFinite(node.position.x) && Number.isFinite(node.position.y) &&
+          Number.isFinite(node.position.z))).toBe(true);
+        model.setTestingBindAlignmentOverlay(false);
+        let remaining = 0;
+        model.group.traverse(node => {
+          if (node.name.startsWith("Testing alignment ")) remaining++;
+        });
+        expect(remaining).toBe(0);
+        expect(Array.from(mesh!.geometry.getAttribute("position").array)).toEqual(originalPositions);
         const neutralSurface = measureTestingHandDeformation(mesh!);
         expect(neutralSurface.areaRatioMin).toBeGreaterThan(0.99);
         expect(neutralSurface.areaRatioMax).toBeLessThan(1.01);

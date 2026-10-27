@@ -489,6 +489,21 @@ export function SettingsModal({ isOpen, onClose, onSettingsChanged, presentation
                     Uses the depressed key-top position for fingerpad alignment.
                     Switch off to compare uncorrected WebXR motion.
                   </p>
+                  <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", margin: "0.8rem 0 0.35rem", fontSize: "0.82rem" }}>
+                    <input
+                      id="settings-testing-bind-alignment"
+                      type="checkbox"
+                      checked={settings.testingShowBindAlignment}
+                      onChange={(e) => handleChange("testingShowBindAlignment", e.target.checked)}
+                      style={{ accentColor: "var(--mint, #a9d3bb)" }}
+                    />
+                    Show surface / skeleton alignment (Testing only)
+                  </label>
+                  <p style={{ margin: "0 0 0.4rem", fontSize: "0.76rem", color: "var(--muted, #9fac9f)" }}>
+                    Amber: original anatomical bone origins. Cyan: WebXR joint origins.
+                    Green: skinned fingerpad samples. Lines show bind offset.
+                    Research diagnostics, not annotated knuckle centers.
+                  </p>
                 </div>
               )}
 

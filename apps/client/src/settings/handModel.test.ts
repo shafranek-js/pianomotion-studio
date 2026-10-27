@@ -42,6 +42,15 @@ describe("hand model settings compatibility", () => {
     expect(SettingsSchema.safeParse({ testingKeyContact: "false" }).success).toBe(false);
   });
 
+  it("keeps bind-alignment overlay opt-in and persists explicit enable/disable", () => {
+    expect(DEFAULT_SETTINGS.testingShowBindAlignment).toBe(false);
+    expect(SettingsSchema.parse({}).testingShowBindAlignment).toBe(false);
+    expect(sanitizeSettings({ testingShowBindAlignment: true }).testingShowBindAlignment).toBe(true);
+    expect(sanitizeSettings({ testingShowBindAlignment: false }).testingShowBindAlignment).toBe(false);
+    expect(sanitizeSettings({ testingShowBindAlignment: "true" }).testingShowBindAlignment).toBe(false);
+    expect(SettingsSchema.safeParse({ testingShowBindAlignment: "true" }).success).toBe(false);
+  });
+
   it("defaults to unmodified Testing thumb weights and rejects unsanctioned strengths", () => {
     expect(DEFAULT_SETTINGS.testingThumbStrength).toBe(0);
     expect(SettingsSchema.parse({}).testingThumbStrength).toBe(0);

@@ -18,6 +18,7 @@ export interface PianoSceneDisplaySettings {
   testingHandMaterial?: "original" | "no-normal" | "no-albedo" | "clay";
   testingThumbStrength?: 0 | 0.25 | 0.5 | 0.75 | 1;
   testingKeyContact?: boolean;
+  testingShowBindAlignment?: boolean;
   showHandShadow?: boolean;
   renderCapFps?: number;
 }
@@ -212,6 +213,7 @@ export class PianoScene {
     testingHandMaterial: "original",
     testingThumbStrength: 0,
     testingKeyContact: true,
+    testingShowBindAlignment: false,
   };
   private resizeObserver: ResizeObserver | null = null;
   private scene3D: PianoScene3D | null = null;

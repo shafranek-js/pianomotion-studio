@@ -536,6 +536,10 @@ export class PianoScene3D {
         ...(settings.showHandShadow !== undefined ? { shadow: settings.showHandShadow } : {}),
       });
     }
+    if (settings.testingShowBindAlignment !== undefined) {
+      this.leftHand3D.setTestingBindAlignmentOverlay(settings.testingShowBindAlignment);
+      this.rightHand3D.setTestingBindAlignmentOverlay(settings.testingShowBindAlignment);
+    }
     if (settings.testingKeyContact !== undefined) {
       this.testingKeyContact = settings.testingKeyContact;
       this.leftHand3D.setTestingKeyContact(settings.testingKeyContact);

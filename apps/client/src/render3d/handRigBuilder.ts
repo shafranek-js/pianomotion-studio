@@ -37,7 +37,8 @@ import {
 import { solveFixedLengthFingerChain } from "./anatomicalHandContact";
 import { transferWebxrSkinToAnatomicalSurface } from "./testingHandSkin";
 import { transferTestingWeightsInBoneFrames } from "./testingHandBoneFrameTransfer";
-import { measureTestingBindAlignment } from "./testingHandBindAlignment";
+import { measureTestingBindAlignment, type TestingBindAlignmentSnapshot } from "./testingHandBindAlignment";
+import { TestingHandAlignmentOverlay } from "./testingHandAlignmentOverlay";
 import { attachTestingHandMorphTargets } from "./testingHandMorphTargets";
 
 export const WHITE_KEY_WIDTH_IN = 6.5 / 7.0;
@@ -2926,6 +2927,8 @@ export class Hand3DMeshGroup {
   private testingMaterialMode: "original" | "no-normal" | "no-albedo" | "clay" = "original";
   private testingThumbStrength: 0 | 0.25 | 0.5 | 0.75 | 1 = 0;
   private testingKeyContact = true;
+  private testingShowBindAlignment = false;
+  private testingBindOverlay: TestingHandAlignmentOverlay | null = null;
   private readonly readyWaiters = new Set<{ resolve: () => void; reject: (error: Error) => void }>();
   private readonly forearmOpeningPointScratch: THREE.Vector3[] = [];
   private readonly improvedContactPointScratch = Array.from({ length: 24 }, () => new THREE.Vector3());
@@ -3572,6 +3575,7 @@ export class Hand3DMeshGroup {
 
     // 5. Update Finger Number Badges
     this.updateFingerBadges(pose, showFingerLabels);
+    this.testingBindOverlay?.update();
   }
 
   private applyAnatomicalKeyContact(
@@ -4250,6 +4254,7 @@ export class Hand3DMeshGroup {
     }
     const previousTextureLease = this.textureLease;
     this.textureLease = null;
+    this.clearTestingBindAlignmentOverlay();
 
     // 1. Detach fingernails from distal bones so they aren't removed/lost
     for (const nail of this.fingernails) {
@@ -4373,6 +4378,7 @@ export class Hand3DMeshGroup {
       }
 
       const previousLease = this.textureLease;
+      this.clearTestingBindAlignmentOverlay();
       for (const nail of this.fingernails) nail.removeFromParent();
       this.disposeRig(this.rig);
       for (const child of [...stagingGroup.children]) {
@@ -4384,6 +4390,7 @@ export class Hand3DMeshGroup {
       stagedRig.skinnedMesh.material = this.skinMaterial;
       this.rig = stagedRig;
       this.currentHandModel = requestedModel;
+      this.rebuildTestingBindAlignmentOverlay();
       this.loadedLod = lod;
       this.improvedTriangleCount = asset.lod.triangles;
       this.textureLease = lease;
@@ -4491,6 +4498,29 @@ export class Hand3DMeshGroup {
         this.lastHoverLift, enabled ? this.lastContactTargets : [],
       );
     }
+  }
+
+  /** Explicit opt-in, Testing-only bind-landmark visual QA overlay. */
+  public setTestingBindAlignmentOverlay(enabled: boolean): void {
+    if (this.testingShowBindAlignment === enabled || this.isDisposed) return;
+    this.testingShowBindAlignment = enabled;
+    this.rebuildTestingBindAlignmentOverlay();
+  }
+
+  private clearTestingBindAlignmentOverlay(): void {
+    this.testingBindOverlay?.dispose();
+    this.testingBindOverlay = null;
+  }
+
+  private rebuildTestingBindAlignmentOverlay(): void {
+    this.clearTestingBindAlignmentOverlay();
+    if (!this.testingShowBindAlignment || this.currentHandModel !== TESTING_HAND_MODEL_ID) return;
+    const report = this.rig.skinnedMesh.geometry.userData
+      .testingBindAlignment as TestingBindAlignmentSnapshot | undefined;
+    if (!report?.joints?.length) return;
+    this.testingBindOverlay = new TestingHandAlignmentOverlay(
+      this.group, this.rig.skinnedMesh, this.rig.bonesByName, report,
+    );
   }
 
   public setTestingThumbStrength(strength: 0 | 0.25 | 0.5 | 0.75 | 1): void {
@@ -4656,6 +4686,7 @@ export class Hand3DMeshGroup {
   public dispose(): void {
     if (this.isDisposed) return;
     this.isDisposed = true;
+    this.clearTestingBindAlignmentOverlay();
     this.requestGate.dispose();
     this.rejectReadyWaiters(new Error("Hand model scene was disposed while loading."));
     this.textureLease?.release();
