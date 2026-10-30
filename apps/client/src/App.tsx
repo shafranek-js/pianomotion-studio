@@ -122,6 +122,7 @@ export default function App() {
     setStartupAttempt(attempt => attempt + 1);
   }, []);
   const [fullScreenDialog, setFullScreenDialog] = useState<"preferences" | "pianist" | null>(null);
+  const [testing2RigEditorOpen, setTesting2RigEditorOpen] = useState(false);
   const midiInputRef = useRef<HTMLInputElement>(null);
   const projectInputRef = useRef<HTMLInputElement>(null);
   const saveHandlerRef = useRef<SaveHandler | null>(null);
@@ -815,8 +816,8 @@ export default function App() {
     {fullScreenDialog === "preferences" && <StudioDialog screen title={dict.header.preferences} description={dict.settings.title} onClose={() => setFullScreenDialog(null)}>
       <SettingsModal presentation="workspace" isOpen onClose={() => setFullScreenDialog(null)} />
     </StudioDialog>}
-    {fullScreenDialog === "pianist" && <StudioDialog screen title={dict.pianist.title} description={dict.pianist.subtitle} onClose={() => setFullScreenDialog(null)}>
-      <ProfileModal presentation="workspace" initialProfile={active ? sessionProfile ?? active.result.profile : undefined} isOpen onClose={() => setFullScreenDialog(null)} />
+    {fullScreenDialog === "pianist" && <StudioDialog screen title={dict.pianist.title} description={dict.pianist.subtitle} preventEscapeDismiss={testing2RigEditorOpen} onClose={() => { setTesting2RigEditorOpen(false); setFullScreenDialog(null); }}>
+      <ProfileModal presentation="workspace" initialProfile={active ? sessionProfile ?? active.result.profile : undefined} isOpen onClose={() => { setTesting2RigEditorOpen(false); setFullScreenDialog(null); }} testing2RigEditorOpen={testing2RigEditorOpen} onTesting2RigEditorOpenChange={setTesting2RigEditorOpen} />
     </StudioDialog>}
   </>;
 

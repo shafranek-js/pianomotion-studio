@@ -419,8 +419,20 @@ export function SettingsModal({ isOpen, onClose, onSettingsChanged, presentation
                   <option value="anatomical">{dict.settings.handModelAnatomical}</option>
                   <option value="anatomical-improved">{dict.settings.handModelAnatomicalImproved}</option>
                   <option value="testing">{dict.settings.handModelTesting}</option>
+                  <option value="testing2">{dict.settings.handModelTesting2}</option>
+                  <option value="rigged-experimental">Rigged hands (experimental)</option>
                   <option value="webxr">{dict.settings.handModelWebxr}</option>
                 </select>
+                {settings.handModel === "testing2" && (
+                  <p style={{ margin: "0.35rem 0 0", fontSize: "0.76rem", color: "var(--muted, #9fac9f)" }}>
+                    {dict.settings.handModelTesting2Description}
+                  </p>
+                )}
+                {settings.handModel === "rigged-experimental" && (
+                  <p style={{ margin: "0.35rem 0 0", fontSize: "0.76rem", color: "var(--muted, #9fac9f)" }}>
+                    Experimental live rig: finger placement and key contact are still under development.
+                  </p>
+                )}
               </div>
 
               {settings.handModel === "testing" && (

@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 1,
+  "evidence": {
+    "sidePairing": "Each mesh Armature modifier targets the correspondingly named Hand_Left/Hand_Right object; Hand.L targets Hand_Left and Hand.R targets Hand_Right.",
+    "longDigits": "Confirmed by /root/rig_map_analysis from bone parent chains, deformation flags, and surface placement.",
+    "thumb": "Moderate-confidence surface and vertex-weight alignment: Bone.021 -> Bone.017 -> Bone.018 -> Bone.019 runs from thumb base toward tip. Bone.018 and Bone.019 both retained as separate distal segmentation; no thumb DIP or tip bone is invented.",
+    "controls": "Four non-deforming controls are intentionally omitted by export_def_bones; they are not renamed as joints."
+  },
+  "sides": {
+    "left": {
+      "armature": "Hand_Left",
+      "mesh": "Hand.L",
+      "bones": {
+        "Bone.020": "forearm",
+        "Bone.016": "palm",
+        "Bone.012": "index.metacarpal",
+        "Bone": "index.proximal",
+        "Bone.001": "index.intermediate",
+        "Bone.002": "index.distal",
+        "Bone.013": "middle.metacarpal",
+        "Bone.003": "middle.proximal",
+        "Bone.004": "middle.intermediate",
+        "Bone.005": "middle.distal",
+        "Bone.014": "ring.metacarpal",
+        "Bone.006": "ring.proximal",
+        "Bone.007": "ring.intermediate",
+        "Bone.008": "ring.distal",
+        "Bone.015": "little.metacarpal",
+        "Bone.009": "little.proximal",
+        "Bone.010": "little.intermediate",
+        "Bone.011": "little.distal",
+        "Bone.021": "thumb.segment0.cmc-to-mcp",
+        "Bone.017": "thumb.segment1.mcp-to-ip",
+        "Bone.018": "thumb.distal-segment-a",
+        "Bone.019": "thumb.distal-segment-b"
+      }
+    },
+    "right": {
+      "armature": "Hand_Right",
+      "mesh": "Hand.R",
+      "bones": {
+        "Bone.020": "forearm",
+        "Bone.016": "palm",
+        "Bone.012": "index.metacarpal",
+        "Bone": "index.proximal",
+        "Bone.001": "index.intermediate",
+        "Bone.002": "index.distal",
+        "Bone.013": "middle.metacarpal",
+        "Bone.003": "middle.proximal",
+        "Bone.004": "middle.intermediate",
+        "Bone.005": "middle.distal",
+        "Bone.014": "ring.metacarpal",
+        "Bone.006": "ring.proximal",
+        "Bone.007": "ring.intermediate",
+        "Bone.008": "ring.distal",
+        "Bone.015": "little.metacarpal",
+        "Bone.009": "little.proximal",
+        "Bone.010": "little.intermediate",
+        "Bone.011": "little.distal",
+        "Bone.021": "thumb.segment0.cmc-to-mcp",
+        "Bone.017": "thumb.segment1.mcp-to-ip",
+        "Bone.018": "thumb.distal-segment-a",
+        "Bone.019": "thumb.distal-segment-b"
+      }
+    }
+  }
+}

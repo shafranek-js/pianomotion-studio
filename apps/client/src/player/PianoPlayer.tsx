@@ -44,6 +44,30 @@ import { recordDiagnostic } from "../diagnostics/eventLog";
 import { getActiveProfile, subscribeProfiles } from "../profiles/profileStore";
 import { PianoScene, MotionBuffer, type Camera3DPreset } from "../render";
 import {
+  type RiggedPoseEditFingerFilter,
+  type RiggedPoseEditPair,
+  type RiggedPoseEditSampleSource,
+  type RiggedPoseEditSide,
+  type RiggedPoseEditTimepoint,
+  type RiggedPoseEditTransformMode,
+} from "../render3d/pianoScene3d";
+import { RIGGED_EXPERIMENTAL_HAND_MODEL_ID } from "../render3d/improvedHandRuntime";
+import {
+  createRiggedHandPosePreset,
+  deleteRiggedHandPosePreset,
+  exportRiggedHandPosePresetJson,
+  importRiggedHandPosePresetJson,
+  listRiggedHandPosePresets,
+  loadRiggedHandPosePreset,
+  replaceRiggedHandPosePreset,
+  saveRiggedHandPosePreset,
+  RiggedHandPosePresetError,
+  RIGGED_HAND_POSE_PRESET_MAX_JSON_LENGTH,
+  type RiggedHandPoseEditorProvenance,
+  type RiggedHandPosePreset,
+  type RiggedHandPoseSourceHashes,
+} from "../render3d/riggedHandPosePreset";
+import {
   downloadFile,
   exportProjectPackageJson,
   saveProject,
@@ -60,6 +84,7 @@ import {
 } from "../settings/settingsStore";
 import { ProjectsPanel } from "../studio/ProjectsPanel";
 import { StudioInspector } from "../studio/StudioInspector";
+import type { RiggedPoseEditorPanelProps } from "../studio/RiggedPoseEditorPanel";
 import { StudioReleaseDetails, StudioShell } from "../studio/StudioShell";
 import { StudioTransport } from "../studio/StudioTransport";
 import { type InspectorTab, type StudioStatus, type StudioView, normalizeStudioView } from "../studio/types";
@@ -122,6 +147,12 @@ interface MotionBufferPauseSnapshot {
   inFlight: MotionStreamFlight | null;
 }
 
+interface RiggedPoseEditDraft {
+  hands: RiggedPoseEditPair;
+  sourceHashes: Readonly<{ left: string | null; right: string | null }>;
+  editorProvenance: RiggedHandPoseEditorProvenance;
+}
+
 declare global {
   interface Window {
     __playerSnapshot?: {
@@ -148,6 +179,58 @@ function sceneDocument(document: SongDocument, plan: FingeringPlan): SongDocumen
     const assignment = assignments.get(note.noteId);
     return assignment ? {...note, hand:assignment.hand, finger:assignment.finger} : note;
   })};
+}
+
+function formatPoseEditorTime(seconds: number): string {
+  const sign = seconds < 0 ? "−" : "";
+  const absolute = Math.abs(seconds);
+  const minutes = Math.floor(absolute / 60);
+  const remainder = absolute - minutes * 60;
+  return `${sign}${minutes}:${remainder.toFixed(2).padStart(5, "0")}`;
+}
+
+function poseEditorPositionLabel(timepoint: RiggedPoseEditTimepoint, zeroBasedIndex: number, total: number): string {
+  return timepoint.kind === "lead-in-held"
+    ? `Lead-in / ${formatPoseEditorTime(timepoint.displayedTransportTimeSeconds)} (first pose held)`
+    : `Sampled pose ${zeroBasedIndex + 1} of ${total}`;
+}
+
+function createPoseEditDraft(
+  scene: PianoScene,
+  timepoint: RiggedPoseEditTimepoint,
+  positionIndex: number,
+  totalPositions: number,
+): RiggedPoseEditDraft {
+  const sourcePoseTimeSeconds: Partial<Record<RiggedPoseEditSide, number>> = {};
+  for (const side of ["left", "right"] as const) {
+    const source = scene.getPoseEditSampleSource(timepoint, side);
+    if (source.sourcePoseTimeSeconds !== null && Number.isFinite(source.sourcePoseTimeSeconds)) {
+      sourcePoseTimeSeconds[side] = source.sourcePoseTimeSeconds;
+    }
+  }
+  return {
+    hands: scene.exportPoseEditPair(),
+    sourceHashes: scene.getPoseEditSourceHashes(),
+    editorProvenance: {
+      displayedTransportTimeSeconds: timepoint.displayedTransportTimeSeconds,
+      ...(Object.keys(sourcePoseTimeSeconds).length > 0 ? { sourcePoseTimeSeconds } : {}),
+      positionIndex,
+      positionLabel: poseEditorPositionLabel(timepoint, positionIndex, totalPositions),
+    },
+  };
+}
+
+function hasVerifiedPoseSourceHashes(value: Readonly<{ left: string | null; right: string | null }>): value is RiggedHandPoseSourceHashes {
+  return [value.left, value.right].every(hash => typeof hash === "string" && /^[a-f0-9]{64}$/i.test(hash));
+}
+
+function poseDraftMatchesSourceHashes(
+  draft: RiggedPoseEditDraft,
+  expected: Readonly<{ left: string | null; right: string | null }>,
+): boolean {
+  return draft.sourceHashes.left !== null && draft.sourceHashes.right !== null &&
+    draft.sourceHashes.left.toLowerCase() === expected.left?.toLowerCase() &&
+    draft.sourceHashes.right.toLowerCase() === expected.right?.toLowerCase();
 }
 
 function createPlaybackMotionBuffer(analysis: M1AnalyzeMidiResult): MotionBuffer {
@@ -229,6 +312,8 @@ export function PianoPlayer({
 }: PianoPlayerProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const sceneRef = useRef<PianoScene | null>(null);
+  const poseEditDraftsRef = useRef(new Map<string, RiggedPoseEditDraft>());
+  const poseEditSessionRef = useRef<{ timepointId: string; positionIndex: number; timepoint: RiggedPoseEditTimepoint; totalPositions: number } | null>(null);
   const stageDraftRef = useRef<StageAppearance | null>(null);
   const stageSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const transportRef = useRef<Transport | null>(null);
@@ -302,6 +387,23 @@ export function PianoPlayer({
   const [preparingSamples, setPreparingSamples] = useState(false);
   const [outputEpoch, setOutputEpoch] = useState(0);
   const [currentTime, setCurrentTime] = useState(settingsAtStart.leadInSeconds);
+  const [poseEditActive, setPoseEditActive] = useState(false);
+  const [poseEditBusy, setPoseEditBusy] = useState(false);
+  const [poseEditTimepoints, setPoseEditTimepoints] = useState<RiggedPoseEditTimepoint[]>([]);
+  const [poseEditTimepointId, setPoseEditTimepointId] = useState<string | null>(null);
+  const [poseEditSide, setPoseEditSide] = useState<RiggedPoseEditSide>("right");
+  const [poseEditBoneName, setPoseEditBoneName] = useState<string | null>(null);
+  const [poseEditFingerFilter, setPoseEditFingerFilter] = useState<RiggedPoseEditFingerFilter>("all");
+  const [poseEditTransformMode, setPoseEditTransformMode] = useState<RiggedPoseEditTransformMode>("rotate");
+  const [poseEditUndoAvailable, setPoseEditUndoAvailable] = useState(false);
+  const [poseEditDraftRevision, setPoseEditDraftRevision] = useState(0);
+  const [poseEditStatus, setPoseEditStatus] = useState<string | null>(null);
+  const [poseEditError, setPoseEditError] = useState<string | null>(null);
+  const [poseEditPresetName, setPoseEditPresetName] = useState("");
+  const [poseEditRenamePresetName, setPoseEditRenamePresetName] = useState("");
+  const [poseEditPresets, setPoseEditPresets] = useState<RiggedHandPosePreset[]>([]);
+  const [poseEditPresetId, setPoseEditPresetId] = useState("");
+  const [poseEditPresetBusy, setPoseEditPresetBusy] = useState(false);
   const [speed, setSpeed] = useState(settingsAtStart.playbackSpeed);
   const [volume, setVolume] = useState(settingsAtStart.masterVolume);
   const [audioRecording, setAudioRecording] = useState<DecodedAudioRecording | null>(null);
@@ -312,6 +414,31 @@ export function PianoPlayer({
   const [assignmentControlsHost, setAssignmentControlsHost] = useState<HTMLDivElement | null>(null);
   const [sceneRevision, setSceneRevision] = useState(0);
   const [forceReplan, setForceReplan] = useState(() => analysisWorker ? 0 : 1);
+
+  const refreshPoseEditTimepoints = useCallback(() => {
+    const points = sceneRef.current?.getPoseEditTimepoints(-Math.abs(settings.leadInSeconds)) ?? [];
+    setPoseEditTimepoints(points);
+    return points;
+  }, [settings.leadInSeconds]);
+
+  const saveCurrentPoseEditDraft = useCallback(() => {
+    const scene = sceneRef.current;
+    const session = poseEditSessionRef.current;
+    if (!scene || !session || !scene.isPoseEditMode()) return null;
+    try {
+      const draft = createPoseEditDraft(scene, session.timepoint, session.positionIndex, session.totalPositions);
+      poseEditDraftsRef.current.set(session.timepointId, draft);
+      setPoseEditDraftRevision(value => value + 1);
+      return draft;
+    } catch (error) {
+      setPoseEditError(`Could not keep the current pose draft: ${errorMessage(error)}`);
+      return null;
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshPoseEditTimepoints();
+  }, [refreshPoseEditTimepoints, sceneRevision, analysis.motionPlan]);
 
   const playAlongEngineRef = useRef<PlayAlongEngine | null>(null);
   const [playAlongStep, setPlayAlongStep] = useState<PlayAlongStep | null>(null);
@@ -360,6 +487,42 @@ export function PianoPlayer({
     keyStyle !== appliedKeyStyle || analysis.engineVersion !== engineVersion,
   );
   const transportBlocker = playbackBlocker({ busy, needsReplan, preparingOutput, isPlaying, isBuffering });
+  const poseEditAvailabilityById = useMemo(() => {
+    const scene = sceneRef.current;
+    if (scene) return scene.getPoseEditAvailabilityForTimepoints(poseEditTimepoints);
+    return Object.fromEntries(poseEditTimepoints.map(timepoint => [timepoint.id, {
+      available: false,
+      leftAvailable: false,
+      rightAvailable: false,
+      reason: "no-3d-scene" as const,
+    }]));
+  }, [poseEditTimepoints, sceneRevision, is3DView, viewMode, settings.handModel]);
+  const poseEditSelectedIndex = poseEditTimepoints.findIndex(point => point.id === poseEditTimepointId);
+  const poseEditSelectedTimepoint = poseEditSelectedIndex >= 0 ? poseEditTimepoints[poseEditSelectedIndex]! : null;
+  const poseEditModelMatches = settings.handModel === RIGGED_EXPERIMENTAL_HAND_MODEL_ID;
+  const poseEdit3DActive = is3DView && viewMode !== "editor" && (sceneRef.current?.is3DMode() ?? false);
+  const poseEditCanEnter = poseEditModelMatches && poseEdit3DActive && viewMode === "performance" && !needsReplan &&
+    poseEditTimepoints.some(timepoint => {
+      const availability = poseEditAvailabilityById[timepoint.id];
+      return Boolean(availability?.leftAvailable && availability.rightAvailable && availability.reason !== "sample-unavailable" && availability.reason !== "no-3d-scene" && availability.reason !== "model-mismatch");
+    });
+  const poseEditEntryMessage = !poseEditActive && poseEditModelMatches
+    ? viewMode !== "performance"
+      ? "Switch to Performance view before editing a hand."
+      : needsReplan
+        ? "Wait for the current calculation to finish before editing a hand."
+        : poseEditTimepoints.length > 0 && !poseEditTimepoints.some(timepoint => poseEditAvailabilityById[timepoint.id]?.available)
+          ? "No sampled time is available for both loaded hands yet. Confirm both hands are loaded and wait for motion coverage."
+          : null
+    : null;
+  const poseEditSourceHashes = sceneRef.current?.getPoseEditSourceHashes() ?? { left: null, right: null };
+  const poseEditSourceHashesVerified = [poseEditSourceHashes.left, poseEditSourceHashes.right].every(value => typeof value === "string" && /^[a-f0-9]{64}$/i.test(value));
+  const poseEditSampleSources: Record<RiggedPoseEditSide, RiggedPoseEditSampleSource | null> = useMemo(() => poseEditSelectedTimepoint
+    ? {
+        left: sceneRef.current?.getPoseEditSampleSource(poseEditSelectedTimepoint, "left") ?? null,
+        right: sceneRef.current?.getPoseEditSampleSource(poseEditSelectedTimepoint, "right") ?? null,
+      }
+    : { left: null, right: null }, [poseEditSelectedTimepoint, poseEditTimepoints, sceneRevision]);
   useEffect(() => {
     onPlaybackReadinessChange?.(result.requestId, transportBlocker);
   }, [onPlaybackReadinessChange, result.requestId, transportBlocker]);
@@ -552,6 +715,16 @@ export function PianoPlayer({
   const handleSettingsChanged = useCallback((next: AppSettings) => {
     // A committed older slider value must not overwrite a newer local preview.
     if (stageDraftRef.current) next = { ...next, stageAppearance: stageDraftRef.current };
+    if (poseEditActive && next.handModel !== RIGGED_EXPERIMENTAL_HAND_MODEL_ID) {
+      saveCurrentPoseEditDraft();
+      void sceneRef.current?.setPoseEditMode(false);
+      sceneRef.current?.setPoseEditSelectionListener(undefined);
+      sceneRef.current?.setPoseEditChangeListener(undefined);
+      poseEditSessionRef.current = null;
+      setPoseEditActive(false);
+      setPoseEditUndoAvailable(false);
+      setPoseEditStatus("The hand model changed. The unsaved pose was kept as an in-memory draft.");
+    }
     setSettings(next);
     setSpeed(next.playbackSpeed);
     setVolume(next.masterVolume);
@@ -570,6 +743,7 @@ export function PianoPlayer({
       testingKeyContact: next.testingKeyContact,
       testingShowBindAlignment: next.testingShowBindAlignment,
     });
+    sceneRef.current?.setLeadInDurationSeconds(Math.abs(next.leadInSeconds));
     transportRef.current?.setLeadInSeconds(Math.abs(next.leadInSeconds));
     if (next.keyStyle !== sourceContextRef.current.keyStyle) handleKeyStyleChange(next.keyStyle);
     if (next.calculationEngine !== calculationEngineRef.current) {
@@ -578,7 +752,7 @@ export function PianoPlayer({
       setWorkerEpoch(value => value + 1);
       setForceReplan(value => value + 1);
     }
-  }, [handleKeyStyleChange]);
+  }, [handleKeyStyleChange, poseEditActive, saveCurrentPoseEditDraft]);
 
   const handleStageAppearanceChange = useCallback((value: StageAppearance) => {
     const next = normalizeStageAppearance(value);
@@ -648,6 +822,8 @@ export function PianoPlayer({
         const curTime = Math.max(0, isPlayAlong ? playAlongTimeRef.current : (transport?.getCurrentTime() ?? 0));
         const duration = latestStateRef.current.analysis.document?.durationSeconds ?? 0;
         buffer.addSampleMotionResult(message, curTime);
+        const poseScene = sceneRef.current;
+        if (poseScene) setPoseEditTimepoints(poseScene.getPoseEditTimepoints(-Math.abs(settingsAtStart.leadInSeconds)));
         motionRoundTripMsRef.current = Math.max(motionRoundTripMsRef.current * 0.85, Date.now() - flight.startedAt);
         const playbackWindow = motionPlaybackWindow(
           curTime,
@@ -746,6 +922,7 @@ export function PianoPlayer({
         song: sceneDocument(result.document!, result.fingeringPlan!),
         motionPlan: result.motionPlan,
         performancePlan: result.performancePlan,
+        leadInDurationSeconds: Math.abs(settings.leadInSeconds),
         keyStyle,
         pixelsPerSecond: 180,
         displaySettings: {
@@ -910,6 +1087,16 @@ export function PianoPlayer({
   }, []);
 
   useEffect(() => {
+    if (poseEditActive && settings.handModel !== RIGGED_EXPERIMENTAL_HAND_MODEL_ID) {
+      saveCurrentPoseEditDraft();
+      void sceneRef.current?.setPoseEditMode(false);
+      sceneRef.current?.setPoseEditSelectionListener(undefined);
+      sceneRef.current?.setPoseEditChangeListener(undefined);
+      poseEditSessionRef.current = null;
+      setPoseEditActive(false);
+      setPoseEditUndoAvailable(false);
+      setPoseEditStatus("The hand model changed. The unsaved pose was kept as an in-memory draft.");
+    }
     sceneRef.current?.setDisplaySettings({
       showFingerLabels: settings.showFingerLabels,
       showNoteNames: settings.showNoteNames,
@@ -924,7 +1111,9 @@ export function PianoPlayer({
           testingShowBindAlignment: settings.testingShowBindAlignment,
     });
     transportRef.current?.setLeadInSeconds(Math.abs(settings.leadInSeconds));
-  }, [settings]);
+    sceneRef.current?.setLeadInDurationSeconds(Math.abs(settings.leadInSeconds));
+    refreshPoseEditTimepoints();
+  }, [settings, poseEditActive, saveCurrentPoseEditDraft, refreshPoseEditTimepoints]);
 
   useEffect(() => {
     if (settings.soundOutput !== "webmidi") return;
@@ -1548,6 +1737,10 @@ export function PianoPlayer({
 
   const handleViewModeChange = useCallback((next: StudioView) => {
     const normalized = normalizeStudioView(next);
+    if (poseEditActive && normalized !== "performance") {
+      setPoseEditError("Cancel hand pose editing before leaving Performance view.");
+      return;
+    }
     recordDiagnostic("studio.mode", { projectId: analysis.projectId, view: normalized });
     // Header actions can change the workspace and dimension in the same event.
     // Keep the imperative scene in sync before React's effects run.
@@ -1565,9 +1758,13 @@ export function PianoPlayer({
       sceneRef.current?.set3DMode(is3DViewRef.current);
     }
     onViewModeChange(normalized);
-  }, [onViewModeChange, analysis.projectId, isPlaying, editorBridge, draftPlan]);
+  }, [onViewModeChange, analysis.projectId, isPlaying, editorBridge, draftPlan, poseEditActive]);
 
   const togglePlay = useCallback(async () => {
+    if (poseEditActive) {
+      setPoseEditError("Cancel hand pose editing before starting playback.");
+      return;
+    }
     try {
       if (playIntentRef.current || isPlaying || bufferingPausedRef.current) {
         playIntentRef.current = false;
@@ -1598,9 +1795,13 @@ export function PianoPlayer({
       playIntentRef.current = false;
       onStatusChange({ kind: "error", message: `Playback failed: ${errorMessage(error)}` });
     }
-  }, [isPlaying, preparingOutput, onStatusChange]);
+  }, [isPlaying, preparingOutput, onStatusChange, poseEditActive]);
 
   const handleStop = useCallback(() => {
+    if (poseEditActive) {
+      setPoseEditError("Cancel hand pose editing before using Stop.");
+      return;
+    }
     playIntentRef.current = false;
     bufferingPausedRef.current = false;
     setIsBuffering(false);
@@ -1609,11 +1810,16 @@ export function PianoPlayer({
     const buffer = createPlaybackMotionBuffer(analysis);
     motionBufferRef.current = buffer;
     sceneRef.current?.setMotionBuffer(buffer);
+    refreshPoseEditTimepoints();
     motionStreamRef.current?.reset({ projectId: analysis.projectId, revision: analysis.revision, engineVersion: analysis.engineVersion }, seekEpochRef.current);
     setCurrentTime(transportRef.current?.getCurrentTime() ?? -Math.abs(settings.leadInSeconds));
-  }, [analysis, settings.leadInSeconds]);
+  }, [analysis, settings.leadInSeconds, poseEditActive, refreshPoseEditTimepoints]);
 
   const handleSeek = useCallback((time: number) => {
+    if (poseEditActive) {
+      setPoseEditError("Use the sampled pose controls to change time while hand editing.");
+      return;
+    }
     const resumeWhenReady = bufferingPausedRef.current && playIntentRef.current;
     seekEpochRef.current += 1;
     bufferingPausedRef.current = resumeWhenReady;
@@ -1622,10 +1828,602 @@ export function PianoPlayer({
     const buffer = createPlaybackMotionBuffer(analysis);
     motionBufferRef.current = buffer;
     sceneRef.current?.setMotionBuffer(buffer);
+    refreshPoseEditTimepoints();
     motionStreamRef.current?.reset({ projectId: analysis.projectId, revision: analysis.revision, engineVersion: analysis.engineVersion }, seekEpochRef.current);
     setCurrentTime(transportRef.current?.getCurrentTime() ?? time);
     sceneRef.current?.update(time);
-  }, [analysis]);
+  }, [analysis, poseEditActive, refreshPoseEditTimepoints]);
+
+  const refreshRiggedPosePresets = useCallback(async (hashes: RiggedHandPoseSourceHashes): Promise<boolean> => {
+    setPoseEditPresetBusy(true);
+    try {
+      const presets = await listRiggedHandPosePresets(hashes);
+      setPoseEditPresets(presets);
+      const nextId = presets.some(preset => preset.presetId === poseEditPresetId)
+        ? poseEditPresetId
+        : presets[0]?.presetId ?? "";
+      setPoseEditPresetId(nextId);
+      setPoseEditRenamePresetName(presets.find(preset => preset.presetId === nextId)?.name ?? "");
+      return true;
+    } catch (error) {
+      setPoseEditPresets([]);
+      setPoseEditPresetId("");
+      setPoseEditRenamePresetName("");
+      setPoseEditError(`Saved pose presets could not be read: ${errorMessage(error)}`);
+      return false;
+    } finally {
+      setPoseEditPresetBusy(false);
+    }
+  }, [poseEditPresetId]);
+
+  const installRiggedPoseEditListeners = useCallback((scene: PianoScene) => {
+    scene.setPoseEditSelectionListener((side, boneName) => {
+      setPoseEditSide(side);
+      setPoseEditBoneName(boneName);
+      if (boneName !== null) setPoseEditTransformMode("rotate");
+    });
+    scene.setPoseEditChangeListener(() => {
+      saveCurrentPoseEditDraft();
+      setPoseEditUndoAvailable(scene.hasPoseEditUndo());
+    });
+  }, [saveCurrentPoseEditDraft]);
+
+  const pauseTransportForPoseEdit = useCallback(() => {
+    playIntentRef.current = false;
+    bufferingPausedRef.current = false;
+    setIsBuffering(false);
+    transportRef.current?.pause();
+    seekEpochRef.current += 1;
+    motionStreamRef.current?.reset(
+      { projectId: analysis.projectId, revision: analysis.revision, engineVersion: analysis.engineVersion },
+      seekEpochRef.current,
+    );
+  }, [analysis.projectId, analysis.revision, analysis.engineVersion]);
+
+  const seekToRiggedPoseTimepoint = useCallback((timepoint: RiggedPoseEditTimepoint) => {
+    const transport = transportRef.current;
+    if (!transport) throw new Error("The player transport is unavailable.");
+    transport.seek(timepoint.displayedTransportTimeSeconds);
+    const actualTime = transport.getCurrentTime();
+    if (Math.abs(actualTime - timepoint.displayedTransportTimeSeconds) > 1e-4) {
+      throw new Error(`Transport could not seek to the requested sampled time (${timepoint.displayedTransportTimeSeconds.toFixed(3)}s); it stopped at ${actualTime.toFixed(3)}s.`);
+    }
+    currentTimeRef.current = actualTime;
+    setCurrentTime(actualTime);
+    return actualTime;
+  }, []);
+
+  const handlePoseEditEnter = useCallback(async () => {
+    const scene = sceneRef.current;
+    if (!scene || !scene.is3DMode()) {
+      setPoseEditError("The 3D piano scene is not active.");
+      return;
+    }
+    if (settings.handModel !== RIGGED_EXPERIMENTAL_HAND_MODEL_ID) {
+      setPoseEditError("Select Rigged Experimental as the hand model first.");
+      return;
+    }
+    if (viewMode !== "performance" || needsReplan) {
+      setPoseEditError("Finish the current calculation and switch to Performance view before editing a hand.");
+      return;
+    }
+    const currentTransportTime = transportRef.current?.getCurrentTime() ?? currentTimeRef.current;
+    setPoseEditBusy(true);
+    setPoseEditError(null);
+    setPoseEditStatus(null);
+    pauseTransportForPoseEdit();
+    try {
+      await scene.waitForHandModelReady();
+      const points = scene.getPoseEditTimepoints(-Math.abs(settings.leadInSeconds));
+      const availability = scene.getPoseEditAvailabilityForTimepoints(points);
+      const available = points
+        .map((point, index) => ({ point, index, availability: availability[point.id] }))
+        .filter(entry => entry.availability?.available);
+      setPoseEditTimepoints(points);
+      if (available.length === 0) throw new Error(points.length === 0
+        ? "No sampled poses are available. The player needs a MotionPlan or a motion buffer."
+        : "No sampled time is available for both loaded hands.");
+      const selected = available.reduce((best, candidate) =>
+        Math.abs(candidate.point.displayedTransportTimeSeconds - currentTransportTime) <
+          Math.abs(best.point.displayedTransportTimeSeconds - currentTransportTime) ? candidate : best,
+      available[0]!);
+      const timepoint = selected.point;
+      scene.setPoseEditTarget(poseEditSide, null);
+      seekToRiggedPoseTimepoint(timepoint);
+      scene.updatePoseEditAtTimepoint(timepoint);
+      poseEditSessionRef.current = {
+        timepointId: timepoint.id,
+        positionIndex: selected.index,
+        timepoint,
+        totalPositions: points.length,
+      };
+      installRiggedPoseEditListeners(scene);
+      await scene.setPoseEditMode(true);
+      const hashes = scene.getPoseEditSourceHashes();
+      const draft = poseEditDraftsRef.current.get(timepoint.id);
+      if (draft && poseDraftMatchesSourceHashes(draft, hashes)) {
+        scene.applyPoseEditPair(draft.hands);
+        setPoseEditStatus("Restored the in-memory draft for this sampled time.");
+      } else if (draft) {
+        poseEditDraftsRef.current.delete(timepoint.id);
+        setPoseEditDraftRevision(value => value + 1);
+        setPoseEditStatus("A draft from a different GLB source was discarded and the animated sample was loaded.");
+      }
+      setPoseEditTimepointId(timepoint.id);
+      setPoseEditUndoAvailable(scene.hasPoseEditUndo());
+      setPoseEditActive(true);
+      refreshPoseEditTimepoints();
+      if (hasVerifiedPoseSourceHashes(hashes)) await refreshRiggedPosePresets(hashes);
+    } catch (error) {
+      if (scene.isPoseEditMode()) await scene.setPoseEditMode(false);
+      scene.setPoseEditSelectionListener(undefined);
+      scene.setPoseEditChangeListener(undefined);
+      poseEditSessionRef.current = null;
+      setPoseEditActive(false);
+      setPoseEditError(errorMessage(error));
+    } finally {
+      setPoseEditBusy(false);
+    }
+  }, [settings.handModel, settings.leadInSeconds, viewMode, needsReplan, poseEditSide, pauseTransportForPoseEdit, seekToRiggedPoseTimepoint, installRiggedPoseEditListeners, refreshPoseEditTimepoints, refreshRiggedPosePresets]);
+
+  const handlePoseEditSeek = useCallback(async (index: number) => {
+    const scene = sceneRef.current;
+    const timepoint = poseEditTimepoints[index];
+    if (!scene || !poseEditActive || !timepoint) return;
+    const availability = scene.getPoseEditAvailability(timepoint);
+    if (!availability.available) {
+      setPoseEditError(`That sampled time is unavailable: ${availability.reason ?? "sample-unavailable"}.`);
+      return;
+    }
+    const previousSession = poseEditSessionRef.current;
+    setPoseEditBusy(true);
+    setPoseEditError(null);
+    try {
+      saveCurrentPoseEditDraft();
+      pauseTransportForPoseEdit();
+      await scene.setPoseEditMode(false);
+      seekToRiggedPoseTimepoint(timepoint);
+      scene.updatePoseEditAtTimepoint(timepoint);
+      poseEditSessionRef.current = { timepointId: timepoint.id, positionIndex: index, timepoint, totalPositions: poseEditTimepoints.length };
+      await scene.setPoseEditMode(true);
+      const hashes = scene.getPoseEditSourceHashes();
+      const draft = poseEditDraftsRef.current.get(timepoint.id);
+      if (draft && poseDraftMatchesSourceHashes(draft, hashes)) {
+        scene.applyPoseEditPair(draft.hands);
+        setPoseEditStatus("Restored the in-memory draft for this sampled time.");
+      } else if (draft) {
+        poseEditDraftsRef.current.delete(timepoint.id);
+        setPoseEditDraftRevision(value => value + 1);
+        setPoseEditStatus("A draft from a different GLB source was discarded and the animated sample was loaded.");
+      } else {
+        setPoseEditStatus(null);
+      }
+      setPoseEditTimepointId(timepoint.id);
+      setPoseEditUndoAvailable(scene.hasPoseEditUndo());
+      refreshPoseEditTimepoints();
+    } catch (error) {
+      const seekError = errorMessage(error);
+      if (previousSession) {
+        try {
+          await scene.setPoseEditMode(false);
+          seekToRiggedPoseTimepoint(previousSession.timepoint);
+          scene.updatePoseEditAtTimepoint(previousSession.timepoint);
+          poseEditSessionRef.current = previousSession;
+          await scene.setPoseEditMode(true);
+          const hashes = scene.getPoseEditSourceHashes();
+          const previousDraft = poseEditDraftsRef.current.get(previousSession.timepointId);
+          if (previousDraft && poseDraftMatchesSourceHashes(previousDraft, hashes)) {
+            scene.applyPoseEditPair(previousDraft.hands);
+          }
+          setPoseEditTimepointId(previousSession.timepointId);
+          setPoseEditUndoAvailable(scene.hasPoseEditUndo());
+          setPoseEditStatus("The requested sample could not be loaded. The previous sampled pose and its draft were restored.");
+        } catch (restoreError) {
+          await scene.setPoseEditMode(false).catch(() => undefined);
+          poseEditSessionRef.current = null;
+          setPoseEditActive(false);
+          setPoseEditTimepointId(previousSession.timepointId);
+          setPoseEditUndoAvailable(false);
+          setPoseEditError(`${seekError} The previous edit session could not be restored: ${errorMessage(restoreError)}`);
+        }
+      } else {
+        await scene.setPoseEditMode(false).catch(() => undefined);
+        poseEditSessionRef.current = null;
+        setPoseEditActive(false);
+        setPoseEditError(seekError);
+      }
+    } finally {
+      setPoseEditBusy(false);
+    }
+  }, [poseEditTimepoints, poseEditActive, saveCurrentPoseEditDraft, pauseTransportForPoseEdit, seekToRiggedPoseTimepoint, refreshPoseEditTimepoints]);
+
+  const handlePoseEditSideChange = useCallback((side: RiggedPoseEditSide) => {
+    const scene = sceneRef.current;
+    if (!poseEditActive || !scene) return;
+    try {
+      scene.setPoseEditTarget(side, null);
+      setPoseEditSide(side);
+      setPoseEditBoneName(null);
+      setPoseEditError(null);
+    } catch (error) {
+      setPoseEditError(errorMessage(error));
+    }
+  }, [poseEditActive]);
+
+  const handlePoseEditSelectWholeHand = useCallback(() => {
+    const scene = sceneRef.current;
+    if (!poseEditActive || !scene) return;
+    try {
+      scene.setPoseEditTarget(poseEditSide, null);
+      setPoseEditBoneName(null);
+      setPoseEditError(null);
+    } catch (error) {
+      setPoseEditError(errorMessage(error));
+    }
+  }, [poseEditActive, poseEditSide]);
+
+  const handlePoseEditFilterChange = useCallback((filter: RiggedPoseEditFingerFilter) => {
+    sceneRef.current?.setPoseEditFingerFilter(filter);
+    setPoseEditFingerFilter(filter);
+  }, []);
+
+  const handlePoseEditTransformModeChange = useCallback((mode: RiggedPoseEditTransformMode) => {
+    sceneRef.current?.setPoseEditTransformMode(mode);
+    setPoseEditTransformMode(mode);
+  }, []);
+
+  const handlePoseEditUndo = useCallback(() => {
+    const scene = sceneRef.current;
+    if (!scene?.undoPoseEdit()) return;
+    saveCurrentPoseEditDraft();
+    setPoseEditUndoAvailable(scene.hasPoseEditUndo());
+  }, [saveCurrentPoseEditDraft]);
+
+  const handlePoseEditReset = useCallback(() => {
+    const scene = sceneRef.current;
+    if (!scene || !poseEditActive) return;
+    try {
+      scene.resetPoseEditHand(poseEditSide);
+      saveCurrentPoseEditDraft();
+      setPoseEditUndoAvailable(scene.hasPoseEditUndo());
+      setPoseEditError(null);
+      setPoseEditStatus(`Reset the ${poseEditSide} hand to its animated sample at this time.`);
+    } catch (error) {
+      setPoseEditError(errorMessage(error));
+    }
+  }, [poseEditActive, poseEditSide, saveCurrentPoseEditDraft]);
+
+  const handlePoseEditCancel = useCallback(async () => {
+    const scene = sceneRef.current;
+    setPoseEditBusy(true);
+    pauseTransportForPoseEdit();
+    try {
+      if (scene) {
+        await scene.setPoseEditMode(false);
+        scene.setPoseEditSelectionListener(undefined);
+        scene.setPoseEditChangeListener(undefined);
+      }
+      poseEditDraftsRef.current.clear();
+      poseEditSessionRef.current = null;
+      setPoseEditDraftRevision(value => value + 1);
+      setPoseEditActive(false);
+      setPoseEditUndoAvailable(false);
+      setPoseEditStatus("Canceled. Unsaved hand pose drafts were discarded; the animated sample is restored.");
+      setPoseEditError(null);
+    } catch (error) {
+      setPoseEditError(errorMessage(error));
+    } finally {
+      setPoseEditBusy(false);
+    }
+  }, [pauseTransportForPoseEdit]);
+
+  const handlePoseEditPresetSave = useCallback(async () => {
+    const scene = sceneRef.current;
+    const timepoint = scene?.getPoseEditTimepoint();
+    const session = poseEditSessionRef.current;
+    if (!scene || !poseEditActive || !timepoint || !session) return;
+    const availability = scene.getPoseEditAvailability(timepoint);
+    if (!availability.available) {
+      setPoseEditError(`This pose cannot be saved because it is unavailable: ${availability.reason ?? "sample-unavailable"}.`);
+      return;
+    }
+    const hashes = scene.getPoseEditSourceHashes();
+    if (!hasVerifiedPoseSourceHashes(hashes)) {
+      setPoseEditError("Both loaded hand GLB files must provide verified SHA-256 values before saving.");
+      return;
+    }
+    const name = poseEditPresetName.trim();
+    if (!name) {
+      setPoseEditError("Enter a name for the new pose preset.");
+      return;
+    }
+    setPoseEditPresetBusy(true);
+    setPoseEditError(null);
+    try {
+      const draft = createPoseEditDraft(scene, timepoint, session.positionIndex, session.totalPositions);
+      const preset = createRiggedHandPosePreset({
+        presetId: crypto.randomUUID(),
+        name,
+        createdAtUnixMs: Date.now(),
+        sourceGlbSha256: hashes,
+        hands: draft.hands,
+        editorProvenance: draft.editorProvenance,
+      });
+      await saveRiggedHandPosePreset(preset);
+      setPoseEditPresetName("");
+      setPoseEditStatus(`Saved “${preset.name}” as a separate pose preset for the verified hand GLBs.`);
+      await refreshRiggedPosePresets(hashes);
+    } catch (error) {
+      setPoseEditError(`Pose preset was not saved: ${errorMessage(error)}`);
+    } finally {
+      setPoseEditPresetBusy(false);
+    }
+  }, [poseEditActive, poseEditPresetName, refreshRiggedPosePresets]);
+
+  const handlePoseEditPresetApply = useCallback(async () => {
+    const scene = sceneRef.current;
+    if (!scene || !poseEditActive || !poseEditPresetId) return;
+    const hashes = scene.getPoseEditSourceHashes();
+    if (!hasVerifiedPoseSourceHashes(hashes)) {
+      setPoseEditError("Both loaded hand GLB files must provide verified SHA-256 values before applying a preset.");
+      return;
+    }
+    setPoseEditPresetBusy(true);
+    setPoseEditError(null);
+    try {
+      const preset = await loadRiggedHandPosePreset(poseEditPresetId, hashes);
+      if (!preset) throw new Error("The selected pose preset was not found.");
+      scene.applyPoseEditPair({ left: preset.hands.left, right: preset.hands.right });
+      saveCurrentPoseEditDraft();
+      setPoseEditUndoAvailable(scene.hasPoseEditUndo());
+      setPoseEditStatus(`Applied “${preset.name}” to the current sampled pose.`);
+    } catch (error) {
+      setPoseEditError(`Pose preset could not be applied: ${errorMessage(error)}`);
+    } finally {
+      setPoseEditPresetBusy(false);
+    }
+  }, [poseEditActive, poseEditPresetId, saveCurrentPoseEditDraft]);
+
+  const handlePoseEditPresetExport = useCallback(async () => {
+    const scene = sceneRef.current;
+    if (!scene || !poseEditActive || !poseEditPresetId) return;
+    if (!poseEditPresets.some(preset => preset.presetId === poseEditPresetId)) {
+      setPoseEditError("The selected saved pose preset is no longer available.");
+      return;
+    }
+    const hashes = scene.getPoseEditSourceHashes();
+    if (!hasVerifiedPoseSourceHashes(hashes)) {
+      setPoseEditError("Both loaded hand GLB files must provide verified SHA-256 values before exporting.");
+      return;
+    }
+    setPoseEditPresetBusy(true);
+    setPoseEditError(null);
+    setPoseEditStatus("Preparing the selected pose preset JSON…");
+    try {
+      const preset = await loadRiggedHandPosePreset(poseEditPresetId, hashes);
+      if (!preset) throw new Error("The selected pose preset was not found.");
+      const json = exportRiggedHandPosePresetJson(preset);
+      const sanitizedName = Array.from(preset.name, character => {
+        const code = character.charCodeAt(0);
+        return code <= 0x1f || /[\\/:*?"<>|]/.test(character) ? "_" : character;
+      }).join("")
+        .replace(/[. ]+$/g, "")
+        .slice(0, 100) || "rigged-hand-pose";
+      const safeName = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])(?:$|\.)/i.test(sanitizedName)
+        ? `_${sanitizedName}`
+        : sanitizedName;
+      downloadFile(`${safeName}.rigged-hand-pose.json`, json, "application/json");
+      setPoseEditStatus(`Downloaded “${preset.name}” as a JSON pose preset.`);
+    } catch (error) {
+      setPoseEditStatus(null);
+      setPoseEditError(`Pose preset could not be exported: ${errorMessage(error)}`);
+    } finally {
+      setPoseEditPresetBusy(false);
+    }
+  }, [poseEditActive, poseEditPresetId, poseEditPresets]);
+
+  const handlePoseEditPresetReplace = useCallback(async () => {
+    const scene = sceneRef.current;
+    const session = poseEditSessionRef.current;
+    const selected = poseEditPresets.find(preset => preset.presetId === poseEditPresetId);
+    if (!scene || !poseEditActive || !selected || !session || poseEditPresetBusy) return;
+    if (session.timepointId !== poseEditTimepointId) {
+      setPoseEditError("The selected pose session changed. Re-select the saved preset and try again.");
+      return;
+    }
+    const timepoint = scene.getPoseEditTimepoint();
+    if (!timepoint || timepoint.id !== session.timepointId) {
+      setPoseEditError("The current sampled pose is no longer available for updating this preset.");
+      return;
+    }
+    const availability = scene.getPoseEditAvailability(timepoint);
+    if (!availability.available) {
+      setPoseEditError(`The current pose cannot update this preset because it is unavailable: ${availability.reason ?? "sample-unavailable"}.`);
+      return;
+    }
+    const hashes = scene.getPoseEditSourceHashes();
+    if (!hasVerifiedPoseSourceHashes(hashes)) {
+      setPoseEditError("Both loaded hand GLB files must provide verified SHA-256 values before updating a preset.");
+      return;
+    }
+    setPoseEditPresetBusy(true);
+    setPoseEditError(null);
+    setPoseEditStatus(`Updating “${selected.name}” (ID: ${selected.presetId}) from the current pose…`);
+    try {
+      const saved = await loadRiggedHandPosePreset(selected.presetId, hashes);
+      if (!saved) throw new Error("The selected pose preset was not found.");
+      if (saved.name !== selected.name || saved.createdAtUnixMs !== selected.createdAtUnixMs) {
+        throw new Error("The selected saved preset changed in another tab. Refresh the editor and confirm the updated record before replacing it.");
+      }
+      const latestSession = poseEditSessionRef.current;
+      const latestTimepoint = scene.getPoseEditTimepoint();
+      const latestHashes = scene.getPoseEditSourceHashes();
+      if (sceneRef.current !== scene || !poseEditActive || latestSession?.timepointId !== session.timepointId ||
+        latestTimepoint?.id !== timepoint.id || latestHashes.left !== hashes.left || latestHashes.right !== hashes.right) {
+        throw new Error("The active pose or hand GLBs changed while the preset was being prepared. No preset was replaced.");
+      }
+      const draft = createPoseEditDraft(scene, timepoint, session.positionIndex, session.totalPositions);
+      const updated = await replaceRiggedHandPosePreset(selected.presetId, {
+        ...saved,
+        sourceGlbSha256: hashes,
+        hands: draft.hands,
+        editorProvenance: draft.editorProvenance,
+      });
+      const refreshed = await refreshRiggedPosePresets(hashes);
+      setPoseEditStatus(refreshed
+        ? `Updated “${updated.name}” (ID: ${updated.presetId}) from the current pose. Its name and ID were preserved.`
+        : `Updated “${updated.name}” (ID: ${updated.presetId}); the preset list could not be refreshed.`);
+    } catch (error) {
+      setPoseEditStatus(null);
+      setPoseEditError(`Selected preset could not be updated: ${errorMessage(error)}`);
+    } finally {
+      setPoseEditPresetBusy(false);
+    }
+  }, [poseEditActive, poseEditPresetBusy, poseEditPresetId, poseEditPresets, poseEditTimepointId, refreshRiggedPosePresets]);
+
+  const handlePoseEditPresetRename = useCallback(async () => {
+    const scene = sceneRef.current;
+    const selected = poseEditPresets.find(preset => preset.presetId === poseEditPresetId);
+    if (!scene || !poseEditActive || !selected || poseEditPresetBusy) return;
+    const requestedName = poseEditRenamePresetName.trim();
+    if (!requestedName) {
+      setPoseEditError("Enter a non-empty name for the selected preset.");
+      return;
+    }
+    if (requestedName === selected.name) {
+      setPoseEditStatus(`“${selected.name}” (ID: ${selected.presetId}) already has this name.`);
+      setPoseEditError(null);
+      setPoseEditRenamePresetName(selected.name);
+      return;
+    }
+    const hashes = scene.getPoseEditSourceHashes();
+    if (!hasVerifiedPoseSourceHashes(hashes)) {
+      setPoseEditError("Both loaded hand GLB files must provide verified SHA-256 values before renaming a preset.");
+      return;
+    }
+    setPoseEditPresetBusy(true);
+    setPoseEditError(null);
+    setPoseEditStatus(`Renaming “${selected.name}” (ID: ${selected.presetId})…`);
+    try {
+      const saved = await loadRiggedHandPosePreset(selected.presetId, hashes);
+      if (!saved) throw new Error("The selected pose preset was not found.");
+      if (saved.name !== selected.name || saved.createdAtUnixMs !== selected.createdAtUnixMs) {
+        throw new Error("The selected saved preset changed in another tab. Refresh the editor and retry the rename.");
+      }
+      const renamed = await replaceRiggedHandPosePreset(selected.presetId, {
+        ...saved,
+        name: requestedName,
+      });
+      const refreshed = await refreshRiggedPosePresets(hashes);
+      setPoseEditRenamePresetName(renamed.name);
+      setPoseEditStatus(refreshed
+        ? `Renamed preset ID ${renamed.presetId} to “${renamed.name}”. Its saved pose and creation time were preserved.`
+        : `Renamed preset ID ${renamed.presetId} to “${renamed.name}”; the preset list could not be refreshed.`);
+    } catch (error) {
+      setPoseEditStatus(null);
+      if (error instanceof RiggedHandPosePresetError && error.code === "preset-name-conflict") {
+        setPoseEditError(`A saved preset already uses that normalized name. Choose a different name; no preset was changed. ${error.message}`);
+      } else {
+        setPoseEditError(`Selected preset could not be renamed: ${errorMessage(error)}`);
+      }
+    } finally {
+      setPoseEditPresetBusy(false);
+    }
+  }, [poseEditActive, poseEditPresetBusy, poseEditPresetId, poseEditPresets, poseEditRenamePresetName, refreshRiggedPosePresets]);
+
+  const handlePoseEditPresetDelete = useCallback(async () => {
+    const scene = sceneRef.current;
+    const selected = poseEditPresets.find(preset => preset.presetId === poseEditPresetId);
+    if (!scene || !poseEditActive || !selected || poseEditPresetBusy) return;
+    const hashes = scene.getPoseEditSourceHashes();
+    if (!hasVerifiedPoseSourceHashes(hashes)) {
+      setPoseEditError("Both loaded hand GLB files must provide verified SHA-256 values before deleting a preset.");
+      return;
+    }
+    setPoseEditPresetBusy(true);
+    setPoseEditError(null);
+    setPoseEditStatus(`Deleting “${selected.name}” (ID: ${selected.presetId})…`);
+    try {
+      const saved = await loadRiggedHandPosePreset(selected.presetId, hashes);
+      if (!saved) throw new Error("The selected pose preset was not found.");
+      if (saved.name !== selected.name || saved.createdAtUnixMs !== selected.createdAtUnixMs) {
+        throw new Error("The selected saved preset changed in another tab. Refresh the editor and confirm the updated record before deleting it.");
+      }
+      await deleteRiggedHandPosePreset(selected.presetId);
+      const refreshed = await refreshRiggedPosePresets(hashes);
+      setPoseEditStatus(refreshed
+        ? `Deleted “${saved.name}” (ID: ${saved.presetId}). Other presets were left unchanged.`
+        : `Deleted “${saved.name}” (ID: ${saved.presetId}); the preset list could not be refreshed.`);
+    } catch (error) {
+      setPoseEditStatus(null);
+      setPoseEditError(`Selected preset could not be deleted: ${errorMessage(error)}`);
+    } finally {
+      setPoseEditPresetBusy(false);
+    }
+  }, [poseEditActive, poseEditPresetBusy, poseEditPresetId, poseEditPresets, refreshRiggedPosePresets]);
+
+  const handlePoseEditPresetImportFile = useCallback(async (file: File) => {
+    if (!poseEditActive || poseEditPresetBusy || poseEditBusy || needsReplan) return;
+    const scene = sceneRef.current;
+    if (!scene) {
+      setPoseEditError("The 3D piano scene is not active for importing a hand pose preset.");
+      return;
+    }
+    const hashes = scene.getPoseEditSourceHashes();
+    if (!hasVerifiedPoseSourceHashes(hashes)) {
+      setPoseEditError("Both loaded hand GLB files must provide verified SHA-256 values before importing.");
+      return;
+    }
+    if (file.size > RIGGED_HAND_POSE_PRESET_MAX_JSON_LENGTH * 4) {
+      setPoseEditError(`The selected JSON file exceeds the preset import size limit (${RIGGED_HAND_POSE_PRESET_MAX_JSON_LENGTH} characters).`);
+      return;
+    }
+    setPoseEditPresetBusy(true);
+    setPoseEditError(null);
+    setPoseEditStatus(`Importing “${file.name || "pose preset JSON"}”…`);
+    let importedPreset: RiggedHandPosePreset | null = null;
+    try {
+      const json = await file.text();
+      importedPreset = importRiggedHandPosePresetJson(json, hashes);
+      const existingPresets = await listRiggedHandPosePresets(hashes);
+      const idConflict = existingPresets.some(preset => preset.presetId === importedPreset!.presetId);
+      const normalizedName = importedPreset.name.normalize("NFC").trim().toLowerCase();
+      const nameConflict = existingPresets.some(preset => preset.name.normalize("NFC").trim().toLowerCase() === normalizedName);
+      if (idConflict || nameConflict) {
+        const conflicts = [
+          idConflict ? `ID “${importedPreset.presetId}”` : null,
+          nameConflict ? `normalized name “${importedPreset.name}”` : null,
+        ].filter((value): value is string => value !== null);
+        throw new Error(`Import conflicts with an existing saved preset: ${conflicts.join(" and ")}. Change the conflicting ID and/or name in the JSON and try again. No presets were overwritten.`);
+      }
+      const saved = await saveRiggedHandPosePreset(importedPreset);
+      const refreshed = await refreshRiggedPosePresets(hashes);
+      if (refreshed) {
+        setPoseEditPresetId(saved.presetId);
+        setPoseEditRenamePresetName(saved.name);
+        setPoseEditStatus(`Imported “${saved.name}” (ID: ${saved.presetId}) as a new saved preset.`);
+      } else {
+        setPoseEditStatus(`Imported “${saved.name}” (ID: ${saved.presetId}), but the preset list could not be refreshed.`);
+      }
+    } catch (error) {
+      setPoseEditStatus(null);
+      if (error instanceof RiggedHandPosePresetError && error.code === "preset-id-conflict") {
+        setPoseEditError(`Preset ID “${importedPreset?.presetId ?? "from this file"}” already exists. Change the presetId in the JSON and import again; existing presets were not overwritten.`);
+      } else if (error instanceof RiggedHandPosePresetError && error.code === "preset-name-conflict") {
+        setPoseEditError(`A saved preset already uses the normalized name “${importedPreset?.name ?? "from this file"}”. Rename it in the JSON and import again; existing presets were not overwritten.`);
+      } else {
+        setPoseEditError(`Pose preset JSON could not be imported: ${errorMessage(error)}`);
+      }
+    } finally {
+      setPoseEditPresetBusy(false);
+    }
+  }, [poseEditActive, poseEditBusy, poseEditPresetBusy, needsReplan, refreshRiggedPosePresets]);
+
+  const handlePoseEditPresetChange = useCallback((presetId: string) => {
+    setPoseEditPresetId(presetId);
+    setPoseEditRenamePresetName(poseEditPresets.find(preset => preset.presetId === presetId)?.name ?? "");
+    setPoseEditError(null);
+  }, [poseEditPresets]);
 
   const handleJumpToBookmark = useCallback((id: string) => {
     const bookmark = practiceStateRef.current.bookmarks.find((candidate) => candidate.id === id);
@@ -1913,6 +2711,58 @@ export function PianoPlayer({
     onStatusChange({ kind: "calculating", message: "Retrying the current fingering and performance…" });
   }, [onStatusChange]);
 
+  const poseEditorPanelProps = useMemo<RiggedPoseEditorPanelProps>(() => ({
+    active: poseEditActive,
+    canEnter: poseEditCanEnter,
+    is3DMode: poseEdit3DActive,
+    modelMatches: poseEditModelMatches,
+    entryMessage: poseEditEntryMessage,
+    busy: poseEditBusy || poseEditPresetBusy || needsReplan,
+    timepoints: poseEditTimepoints,
+    availabilityById: poseEditAvailabilityById,
+    selectedTimepointId: poseEditTimepointId,
+    selectedSide: poseEditSide,
+    selectedBoneName: poseEditBoneName,
+    fingerFilter: poseEditFingerFilter,
+    transformMode: poseEditTransformMode,
+    undoAvailable: poseEditUndoAvailable,
+    draftCount: poseEditDraftsRef.current.size,
+    sampleSources: poseEditSampleSources,
+    sourceHashesVerified: poseEditSourceHashesVerified,
+    presets: poseEditPresets,
+    selectedPresetId: poseEditPresetId,
+    presetName: poseEditPresetName,
+    renamePresetName: poseEditRenamePresetName,
+    status: poseEditStatus,
+    error: poseEditError,
+    onEnter: () => { void handlePoseEditEnter(); },
+    onCancel: () => { void handlePoseEditCancel(); },
+    onSeek: index => { void handlePoseEditSeek(index); },
+    onSideChange: handlePoseEditSideChange,
+    onSelectWholeHand: handlePoseEditSelectWholeHand,
+    onFingerFilterChange: handlePoseEditFilterChange,
+    onTransformModeChange: handlePoseEditTransformModeChange,
+    onUndo: handlePoseEditUndo,
+    onReset: handlePoseEditReset,
+    onPresetNameChange: setPoseEditPresetName,
+    onPresetChange: handlePoseEditPresetChange,
+    onRenamePresetNameChange: setPoseEditRenamePresetName,
+    onSavePreset: () => { void handlePoseEditPresetSave(); },
+    onApplyPreset: () => { void handlePoseEditPresetApply(); },
+    onExportPreset: () => { void handlePoseEditPresetExport(); },
+    onImportPresetFile: handlePoseEditPresetImportFile,
+    onRenamePreset: () => { void handlePoseEditPresetRename(); },
+    onReplacePreset: () => { void handlePoseEditPresetReplace(); },
+    onDeletePreset: () => { void handlePoseEditPresetDelete(); },
+  }), [poseEditActive, poseEditCanEnter, poseEdit3DActive, poseEditModelMatches, poseEditEntryMessage, poseEditBusy, poseEditPresetBusy, needsReplan,
+    poseEditTimepoints, poseEditAvailabilityById, poseEditTimepointId, poseEditSide, poseEditBoneName, poseEditFingerFilter,
+    poseEditTransformMode, poseEditUndoAvailable, poseEditDraftRevision, poseEditSampleSources, poseEditSourceHashesVerified,
+    poseEditPresets, poseEditPresetId, poseEditPresetName, poseEditRenamePresetName, poseEditStatus, poseEditError, handlePoseEditEnter, handlePoseEditCancel,
+    handlePoseEditSeek, handlePoseEditSideChange, handlePoseEditFilterChange, handlePoseEditTransformModeChange, handlePoseEditUndo,
+    handlePoseEditSelectWholeHand, handlePoseEditPresetChange,
+    handlePoseEditReset, handlePoseEditPresetSave, handlePoseEditPresetApply, handlePoseEditPresetExport, handlePoseEditPresetImportFile,
+    handlePoseEditPresetRename, handlePoseEditPresetReplace, handlePoseEditPresetDelete]);
+
   const inspector = useCallback((tab: InspectorTab) => (
     <StudioInspector
       tab={tab}
@@ -1922,6 +2772,7 @@ export function PianoPlayer({
       keyStyle={keyStyle}
       audioRecording={audioRecording}
       audioOffset={audioOffset}
+      poseEditor={poseEditModelMatches ? poseEditorPanelProps : undefined}
       audioOutputLabel={playbackError ? `Playback unavailable: ${playbackError}` : `${preparingSamples ? "Preparing SoundFont samples; currently active: " : preparingOutput ? "Preparing selected output; currently active: " : "Active output: "}${activeOutputId === "synth" ? "Built-in synthesizer" : activeOutputId === "soundfont" ? (activeSoundfontAssetId === BUILTIN_SOUNDFONT_ID ? BUILTIN_SOUNDFONT_NAME : "Local SoundFont") : "External MIDI device"}`}
       sourceName={projectName}
       busy={needsReplan}
@@ -1950,7 +2801,7 @@ export function PianoPlayer({
       onClearAudio={handleClearAudio}
       onAudioOffsetChange={handleAudioOffsetChange}
     />
-  ), [analysis, activeProfile, settings, keyStyle, audioRecording, audioOffset, projectName, needsReplan, developerTools,
+  ), [analysis, activeProfile, settings, keyStyle, audioRecording, audioOffset, poseEditModelMatches, poseEditorPanelProps, projectName, needsReplan, developerTools,
     editorReport, handleDiagnosticNote, handleKeyStyleChange, onOpenPianist, handleAudioFileChange, handleClearAudio,
     handleAudioOffsetChange, handleRetryCalculation, handleStageAppearanceChange, onStatusChange, status, preparingOutput, preparingSamples, activeOutputId, activeSoundfontAssetId, activeCalculationEngine, playbackError]);
 
@@ -1973,6 +2824,10 @@ export function PianoPlayer({
     redo: editorBridge.redo,
   } : undefined;
   const handleToggle3DView = useCallback((enabled: boolean) => {
+    if (poseEditActive && !enabled) {
+      setPoseEditError("Cancel hand pose editing before switching to the 2D piano view.");
+      return;
+    }
     try {
       if (enabled && viewModeRef.current === "editor") {
         viewModeRef.current = "performance";
@@ -1993,7 +2848,7 @@ export function PianoPlayer({
       setIs3DView(false);
       onStatusChange({ kind: "error", message: `3D is unavailable; the 2D workspace remains active. ${errorMessage(error)}` });
     }
-  }, [isPlaying, editorBridge, draftPlan, onViewModeChange, onStatusChange]);
+  }, [isPlaying, editorBridge, draftPlan, onViewModeChange, onStatusChange, poseEditActive]);
 
   const handleCamera3DPresetChange = useCallback((preset: Camera3DPreset) => {
     camera3DPresetRef.current = preset;
@@ -2063,8 +2918,8 @@ export function PianoPlayer({
       onSeek={handleSeek}
       onSpeedChange={handleSpeedChange}
       onVolumeChange={handleVolumeChange}
-      disabled={transportBlocker === "reading" || transportBlocker === "analysis"}
-      playDisabled={transportBlocker === "audio"}
+      disabled={transportBlocker === "reading" || transportBlocker === "analysis" || poseEditActive}
+      playDisabled={transportBlocker === "audio" || poseEditActive}
     />
   );
 

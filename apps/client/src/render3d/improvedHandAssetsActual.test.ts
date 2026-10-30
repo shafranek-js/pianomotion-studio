@@ -19,6 +19,7 @@ import {
   IMPROVED_HAND_JOINT_NAMES,
   validateImprovedHandManifest,
 } from "./improvedHandAssets";
+import { TESTING2_HAND_MODEL_ID } from "./improvedHandRuntime";
 
 const manifestUrl = new URL("../../public/models/hands/improved/manifest.json", import.meta.url);
 const METERS_TO_INCHES_FOR_TEST = 39.37007874;
@@ -408,6 +409,85 @@ describe("packaged improved anatomical hand assets", () => {
     } finally {
       material.dispose();
       parent.clear();
+    }
+  });
+
+  it("loads Testing2 from both source-derived anatomical rigs and preserves their native weights", async () => {
+    const manifest = validateImprovedHandManifest(JSON.parse(readFileSync(manifestUrl, "utf8")) as unknown);
+    const modelDirectoryUrl = new URL(".", manifestUrl);
+
+    for (const hand of ["left", "right"] as const) {
+      const lod = manifest.hands[hand].lods[0]!;
+      const sourceBuffer = readArrayBuffer(new URL(lod.url, modelDirectoryUrl));
+      const textureLease: ImprovedHandTextureLease = {
+        baseColor: new THREE.Texture(),
+        normal: new THREE.Texture(),
+        roughness: new THREE.Texture(),
+        release: () => undefined,
+      };
+      const dependencies: HandModelRuntimeDependencies = {
+        assetLoader: {
+          load: async (requestedHand, level) => {
+            const requestedLod = manifest.hands[requestedHand].lods[level]!;
+            return {
+              manifest,
+              manifestUrl,
+              hand: requestedHand,
+              lod: requestedLod,
+              buffer: readArrayBuffer(new URL(requestedLod.url, modelDirectoryUrl)),
+              textureSet: manifest.textures[requestedLod.textureSet],
+            } satisfies ImprovedHandAsset;
+          },
+          getCacheStats: () => ({ count: 1, retainedGlbBytes: sourceBuffer.byteLength }),
+        },
+        textureCache: {
+          acquire: async () => textureLease,
+          getCacheStats: () => ({ count: 3, estimatedBaseBytes: 12 }),
+        },
+      };
+      const group = new Hand3DMeshGroup(hand, "anatomical", dependencies);
+      const expectedParent = new THREE.Group();
+      const expectedMaterial = new THREE.MeshPhysicalMaterial({ side: THREE.FrontSide, vertexColors: false });
+      let expectedRig: ReturnType<typeof buildImprovedHandGlbRig> | undefined;
+      try {
+        group.setHandModel(TESTING2_HAND_MODEL_ID, 0);
+        await group.waitForHandModelReady();
+        expect(group.getHandModelDiagnostics()).toMatchObject({
+          requestedModel: TESTING2_HAND_MODEL_ID,
+          loadedModel: TESTING2_HAND_MODEL_ID,
+          loadedLod: 0,
+          state: "ready",
+        });
+        const mesh = group.group.children.find(child => child instanceof THREE.SkinnedMesh) as THREE.SkinnedMesh | undefined;
+        expect(mesh).toBeDefined();
+        expect(mesh!.skeleton.bones.map(bone => bone.name)).toEqual([...IMPROVED_HAND_JOINT_NAMES]);
+        expect(mesh!.geometry.userData.improvedHandModelId).toBe("anatomical-improved");
+        expect(mesh!.geometry.userData.testingBindAlignment).toBeUndefined();
+        expect(mesh!.geometry.userData.testingContactSupportVertexIndicesByFinger).toBeUndefined();
+
+        expectedRig = buildImprovedHandGlbRig(
+          hand,
+          expectedMaterial,
+          expectedParent,
+          sourceBuffer,
+          lod,
+          IMPROVED_HAND_JOINT_NAMES,
+          manifest.extras,
+        );
+        for (const attributeName of ["position", "skinIndex", "skinWeight"] as const) {
+          expect(Array.from(mesh!.geometry.getAttribute(attributeName).array))
+            .toEqual(Array.from(expectedRig.skinnedMesh.geometry.getAttribute(attributeName).array));
+        }
+      } finally {
+        group.dispose();
+        if (expectedRig) {
+          expectedRig.skinnedMesh.geometry.dispose();
+          expectedRig.skinnedMesh.skeleton.dispose();
+          for (const bone of expectedRig.bonesByName.values()) bone.bone.removeFromParent();
+        }
+        expectedParent.clear();
+        expectedMaterial.dispose();
+      }
     }
   });
 

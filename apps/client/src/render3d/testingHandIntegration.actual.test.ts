@@ -8,6 +8,9 @@ import { transferTestingWeightsInBoneFrames } from "./testingHandBoneFrameTransf
 import { measureTestingFixedThumbRegion } from "./testingHandThumbQA";
 import { measureTestingBindAlignment, type TestingBindAlignmentSnapshot } from "./testingHandBindAlignment";
 import { locateTestingHandDeformationHotspots } from "./testingHandDeformationHotspots";
+import { startTestingHandCapture, stopTestingHandCapture, type TestingHandDiagnosticContext, type TestingThumbReachCollector } from "../diagnostics/testingHandCapture";
+import { Keyboard3DView } from "./keyboard3dView";
+import { HABANERA_49_RIGHT_SOURCE_POSE, HABANERA_49_RING_CONTACT } from "./testingHandHabanera49Fixture";
 import * as THREE from "three";
 import { describe, expect, it } from "vitest";
 import type { MotionPose } from "@handthesia/contracts";
@@ -51,6 +54,20 @@ function makeWebxrComparisonPose(hand: "left" | "right"): MotionPose {
     joints.push({ point: points.at(-1)!, kind: "tip" });
   }
   return { hand, transportTimeSeconds: 0.75, layerOrder: 0, bones, joints };
+}
+
+function signedFingerJointBends(points: readonly THREE.Vector3[]): number[] {
+  const directions = points.slice(1).map((point, index) =>
+    point.clone().sub(points[index]!).normalize(),
+  );
+  const sourcePlaneNormal = new THREE.Vector3().crossVectors(directions[0]!, directions[1]!);
+  if (sourcePlaneNormal.lengthSq() <= 1e-12) throw new Error("Captured finger chain has no stable bend plane.");
+  sourcePlaneNormal.normalize();
+  return directions.slice(1).map((direction, index) => {
+    const previous = directions[index]!;
+    const sine = sourcePlaneNormal.dot(new THREE.Vector3().crossVectors(previous, direction));
+    return Math.atan2(sine, THREE.MathUtils.clamp(previous.dot(direction), -1, 1)) * 180 / Math.PI;
+  });
 }
 
 describe("Testing hand: real anatomical shell on original WebXR skeleton", () => {
@@ -578,6 +595,31 @@ describe("Testing hand: real anatomical shell on original WebXR skeleton", () =>
         // so both thumb and index are tested for vertical penetration while
         // maintaining a small sideways (X) key-center offset.
         const playingPose = makeWebxrComparisonPose(side);
+        const diagnosticContext: TestingHandDiagnosticContext = {
+          samplingSource: "motion-plan-array",
+          handModel: {
+            requestedModel: "testing",
+            loadedModel: "testing",
+            requestedLod: 2,
+            loadedLod: 2,
+            state: "ready",
+            error: null,
+          },
+          poseSampling: {
+            requestedTransportTimeSeconds: playingPose.transportTimeSeconds,
+            sampleMode: "exact",
+            sourcePoseTimeStartSeconds: playingPose.transportTimeSeconds,
+            sourcePoseTimeEndSeconds: playingPose.transportTimeSeconds,
+            sourceTimestampMs: null,
+            freshness: "current-timeline-sample",
+          },
+          coverage: {
+            source: "static-motion-plan-no-coverage-metadata",
+            intervals: null,
+            requestedTimeCovered: null,
+            continuousCoverageEndSeconds: null,
+          },
+        };
         const actualPad = (skinnedMesh: THREE.SkinnedMesh, vertex: number) => {
           skinnedMesh.updateMatrixWorld(true);
           skinnedMesh.skeleton.update();
@@ -612,10 +654,180 @@ describe("Testing hand: real anatomical shell on original WebXR skeleton", () =>
             sampleSurfaceYAt: (_pitch, px, pz) =>
               Math.abs(px - x) <= 0.45 && Math.abs(pz - z) <= 0.45 ? y : null,
           };
+          const sampledMinimumGap = (mesh: THREE.SkinnedMesh) => {
+            const gaps = samples[finger]!.flatMap(vertex => {
+              const point = actualPad(mesh, vertex);
+              const surface = target.sampleSurfaceYAt(target.pitch!, point.x, point.z);
+              return surface === null ? [] : [point.y - surface];
+            });
+            return gaps.length ? Math.min(...gaps) : null;
+          };
+          const beforeMinimumGap = sampledMinimumGap(beforeMesh);
+          expect(beforeMinimumGap).not.toBeNull();
+          // Diagnostic-only support-frame calculation when Testing IK is off:
+          // it must expose the actual deformed pad/key gap without moving bones.
+          startTestingHandCapture({ handModel: "testing", testingKeyContact: false });
+          model.updateFromPose(playingPose, DEFAULT_SKIN_SETTINGS, false, 0, [target], diagnosticContext);
+          expect(model.getBone(tipName)!.position.distanceTo(uncorrectedTip), side + " finger " + finger + " disabled diagnostic pose")
+            .toBeLessThan(1e-5);
+          const disabledCapture = stopTestingHandCapture();
+          expect(disabledCapture?.records).toHaveLength(1);
+          const preContactScales = disabledCapture!.records[0]!.preContactBoneScale as Record<string, {
+            requestedRatio: number; appliedRatio: number; bindLengthIn: number;
+          }>;
+          for (const name of ["thumb-metacarpal", "thumb-phalanx-proximal", "thumb-phalanx-distal"]) {
+            const evidence = preContactScales[name]!;
+            expect(evidence.bindLengthIn).toBeGreaterThan(0);
+            expect(evidence.appliedRatio).toBeCloseTo(THREE.MathUtils.clamp(evidence.requestedRatio, 0.55, 1.55), 12);
+            expect(evidence.appliedRatio).toBeCloseTo(model.getBone(name)!.scale.z, 12);
+          }
+          const disabledThumbReach = disabledCapture!.records[0]!.testingThumbReach as TestingThumbReachCollector;
+          expect(disabledThumbReach).toMatchObject({
+            enabled: false,
+            status: "disabled",
+            units: "inches",
+            coordinateFrame: "solver-local-plus-world-delta-inches-v1",
+            physicalFrameCompatible: true,
+            targetRole: "desired-controlled-bone-tip-not-skinned-pad",
+            iterations: [],
+          });
+          const disabledKeyContact = disabledCapture!.records[0]!.keyContact as { enabled: boolean; targets: Array<{ status: string }> };
+          expect(disabledKeyContact.enabled).toBe(false);
+          expect(disabledKeyContact.targets[0]?.status).toBe("measured-deformed-support-vertex");
+          startTestingHandCapture({ handModel: "testing", testingKeyContact: false });
+          const away = { ...target, contactMinX: x + 50, contactMaxX: x + 51, sampleSurfaceYAt: () => null };
+          model.updateFromPose(playingPose, DEFAULT_SKIN_SETTINGS, false, 0, [away], diagnosticContext);
+          const missed = stopTestingHandCapture()!.records[0]!.keyContact as { targets: Array<{ status: string; supportFootprintStatus: string }> };
+          expect(missed.targets[0]).toMatchObject({ status: "no-key-surface-under-support-samples", supportFootprintStatus: "all-sampled-vertices-outside-key-bounds" });
+          startTestingHandCapture({ handModel: "testing", testingKeyContact: false });
+          const unknown = { ...target, contactMinX: undefined, sampleSurfaceYAt: () => null };
+          model.updateFromPose(playingPose, DEFAULT_SKIN_SETTINGS, false, 0, [unknown], diagnosticContext);
+          const unavailable = stopTestingHandCapture()!.records[0]!.keyContact as { targets: Array<{ supportFootprintStatus: string }> };
+          expect(unavailable.targets[0]?.supportFootprintStatus).toBe("insufficient-data");
+          if (finger === 1) {
+            model.setTestingKeyContact(true);
+            startTestingHandCapture({ handModel: "testing", testingKeyContact: true });
+            model.updateFromPose(playingPose, DEFAULT_SKIN_SETTINGS, false, 0, [unknown], diagnosticContext);
+            const unavailableReach = stopTestingHandCapture()!.records[0]!.testingThumbReach as TestingThumbReachCollector;
+            expect(unavailableReach).toMatchObject({ enabled: true, status: "unavailable", iterations: [
+              { finger: 1, pitch: target.pitch, status: "goal-unavailable", controlledTip: null, targetControlledTip: null },
+            ] });
+            model.setTestingKeyContact(false);
+          }
+
           model.setTestingKeyContact(true);
-          model.updateFromPose(playingPose, DEFAULT_SKIN_SETTINGS, false, 0, [target]);
+          startTestingHandCapture({ handModel: "testing", testingKeyContact: true });
+          model.updateFromPose(playingPose, DEFAULT_SKIN_SETTINGS, false, 0, [target], diagnosticContext);
+          const enabledCapture = stopTestingHandCapture();
+          const enabledThumbReach = enabledCapture!.records[0]!.testingThumbReach as TestingThumbReachCollector;
+          if (finger === 1) {
+            expect(enabledThumbReach).toMatchObject({
+              enabled: true,
+              status: "recorded",
+              units: "inches",
+              coordinateFrame: "solver-local-plus-world-delta-inches-v1",
+              physicalFrameCompatible: true,
+              targetRole: "desired-controlled-bone-tip-not-skinned-pad",
+              reachabilityMeaning: "necessary-condition-only",
+            });
+            expect(enabledThumbReach.iterations.length).toBeGreaterThan(0);
+            for (const iteration of enabledThumbReach.iterations) {
+              expect(iteration).toMatchObject({ finger: 1, pitch: target.pitch });
+              expect(iteration.controlledTip).toHaveLength(3);
+              expect(iteration.targetControlledTip).toHaveLength(3);
+              expect(iteration.mcpToIpLength).toBeGreaterThan(0);
+              expect(iteration.ipToTipLength).toBeGreaterThan(0);
+              expect(iteration.signedReachDeficit).toBeCloseTo(iteration.distance! - iteration.totalReach!, 12);
+              expect(iteration.reachDeficit).toBe(Math.max(0, iteration.signedReachDeficit!));
+              expect(iteration.invalid).toBeNull();
+            }
+
+            const thumbBoneNames = ["thumb-phalanx-proximal", "thumb-phalanx-distal", "thumb-tip"];
+            const captureThumbPose = () => thumbBoneNames.map(name => {
+              const bone = model.getBone(name)!;
+              return { name, position: bone.position.toArray(), quaternion: bone.quaternion.toArray(), scale: bone.scale.toArray() };
+            });
+            const withJournalPose = captureThumbPose();
+            model.updateFromPose(playingPose, DEFAULT_SKIN_SETTINGS, false, 0, [target]);
+            expect(captureThumbPose()).toEqual(withJournalPose);
+
+            const shiftedTarget = {
+              ...target,
+              contactCenterX: x + 0.12,
+              contactMinX: x + 0.12 - 0.45,
+              contactMaxX: x + 0.12 + 0.45,
+            };
+            startTestingHandCapture({ handModel: "testing", testingKeyContact: true });
+            model.updateFromPose(playingPose, DEFAULT_SKIN_SETTINGS, false, 0, [shiftedTarget], diagnosticContext);
+            const shiftedReach = stopTestingHandCapture()!.records[0]!.testingThumbReach as TestingThumbReachCollector;
+            expect(shiftedReach.status).toBe("recorded");
+            const firstGoal = enabledThumbReach.iterations[0]!.targetControlledTip!;
+            const shiftedGoal = shiftedReach.iterations[0]!.targetControlledTip!;
+            expect(new THREE.Vector3(...shiftedGoal).distanceTo(new THREE.Vector3(...firstGoal))).toBeGreaterThan(0.05);
+            // Translating both hand and keyboard by the same amount must not
+            // translate the local solver goal a second time. This catches an
+            // erroneous worldToLocal conversion applied to an already mixed goal.
+            const originalGroupPosition = model.group.position.clone();
+            const originalGroupRotation = model.group.rotation.clone();
+            const translation = 3;
+            model.group.position.x += translation;
+            const translatedTarget = {
+              ...target,
+              contactCenterX: target.contactCenterX! + translation,
+              contactMinX: target.contactMinX! + translation,
+              contactMaxX: target.contactMaxX! + translation,
+              sampleSurfaceYAt: (pitch: number, px: number, pz: number) =>
+                target.sampleSurfaceYAt(pitch, px - translation, pz),
+            };
+            startTestingHandCapture({ handModel: "testing", testingKeyContact: true });
+            model.updateFromPose(playingPose, DEFAULT_SKIN_SETTINGS, false, 0, [translatedTarget], diagnosticContext);
+            const translatedReach = stopTestingHandCapture()!.records[0]!.testingThumbReach as TestingThumbReachCollector;
+            expect(translatedReach.physicalFrameCompatible).toBe(true);
+            expect(new THREE.Vector3(...translatedReach.iterations[0]!.targetControlledTip!).distanceTo(
+              new THREE.Vector3(...firstGoal),
+            )).toBeLessThan(1e-6);
+            model.group.position.copy(originalGroupPosition);
+            model.group.rotation.y += 0.3;
+            startTestingHandCapture({ handModel: "testing", testingKeyContact: true });
+            model.updateFromPose(playingPose, DEFAULT_SKIN_SETTINGS, false, 0, [unknown], diagnosticContext);
+            const rotatedReach = stopTestingHandCapture()!.records[0]!.testingThumbReach as TestingThumbReachCollector;
+            expect(rotatedReach.physicalFrameCompatible).toBe(false);
+            model.group.rotation.copy(originalGroupRotation);
+            model.updateFromPose(playingPose, DEFAULT_SKIN_SETTINGS, false, 0, [target]);
+          } else {
+            expect(enabledThumbReach).toMatchObject({ enabled: true, status: "no-active-thumb-note", iterations: [] });
+          }
           const correctedTip = model.getBone(tipName)!.position;
           const afterSample = actualPad(loadedTestingMesh(), beforeSample.vertex);
+          const afterMinimumGap = sampledMinimumGap(loadedTestingMesh());
+          expect(afterMinimumGap).not.toBeNull();
+          expect(afterMinimumGap!).toBeGreaterThanOrEqual(Math.min(-0.02, beforeMinimumGap!) - 1e-4);
+          expect(enabledCapture?.records).toHaveLength(1);
+          const enabledKeyContact = enabledCapture!.records[0]!.keyContact as { enabled: boolean; targets: Array<{ status: string }> };
+          expect(enabledKeyContact.enabled).toBe(true);
+          expect(enabledKeyContact.targets[0]?.status).toBe("measured-deformed-support-vertex");
+          const disabledAnalysis = disabledCapture!.records[0]!.analysis as {
+            reconstructedLandmarks: number[][];
+          };
+          const enabledAnalysis = enabledCapture!.records[0]!.analysis as {
+            reconstructedLandmarks: number[][];
+            afterContactLandmarks: number[][];
+            afterContactUnsignedJointBends: Array<{ finger: number; joint: string; bendDegrees: number }>;
+          };
+          // Both captures start from the identical source pose. Contact must
+          // not contaminate the pre-contact tip with a post-contact value.
+          expect(enabledAnalysis.reconstructedLandmarks).toEqual(disabledAnalysis.reconstructedLandmarks);
+          const finalLandmarks = finger === 1
+            ? [[3, "thumb-phalanx-distal"], [4, "thumb-tip"]] as const
+            : [[6, "index-finger-phalanx-intermediate"], [7, "index-finger-phalanx-distal"], [8, "index-finger-tip"]] as const;
+          for (const [landmark, boneName] of finalLandmarks) {
+            const actual = model.getBone(boneName)!.position;
+            const recorded = enabledAnalysis.afterContactLandmarks[landmark]!;
+            expect(recorded[0], `${side} ${boneName} post-contact X`).toBeCloseTo(actual.x, 3);
+            expect(recorded[1], `${side} ${boneName} post-contact Y`).toBeCloseTo(actual.y, 3);
+            expect(recorded[2], `${side} ${boneName} post-contact Z`).toBeCloseTo(actual.z, 3);
+          }
+          expect(enabledAnalysis.afterContactUnsignedJointBends.some(bend => bend.finger === finger)).toBe(true);
           expect(correctedTip.distanceTo(uncorrectedTip), side + " finger " + finger)
             .toBeGreaterThan(1e-4);
           console.info("[Testing key contact A/B]", JSON.stringify({
@@ -632,6 +844,227 @@ describe("Testing hand: real anatomical shell on original WebXR skeleton", () =>
           model.setTestingKeyContact(false);
           expect(model.getBone(tipName)!.position.distanceTo(uncorrectedTip))
             .toBeLessThan(1e-5);
+          // Near-zero Testing IK must use the same proximal hinge as the
+          // original pose. Using the distal hinge here changes the proximal
+          // bone frame even when the solved joint points approach their
+          // original positions, which makes the skinned pad jump.
+          const affectedNames = finger === 1
+            ? ["thumb-phalanx-proximal", "thumb-phalanx-distal", "thumb-tip"]
+            : [`${prefix}-phalanx-proximal`, `${prefix}-phalanx-intermediate`, `${prefix}-phalanx-distal`, tipName];
+          const captureContactPose = () => {
+            const mesh = loadedTestingMesh();
+            const bones = affectedNames.map(name => {
+              const bone = model.getBone(name)!;
+              return { name, position: bone.position.clone(), quaternion: bone.quaternion.clone() };
+            });
+            return {
+              bones,
+              pad: samples[finger]!.map(vertex => actualPad(mesh, vertex)),
+            };
+          };
+          model.updateFromPose(playingPose, DEFAULT_SKIN_SETTINGS, false, 0);
+          const uncorrectedContactPose = captureContactPose();
+          for (const delta of [0.001, 0.002]) {
+            model.updateFromPose(playingPose, DEFAULT_SKIN_SETTINGS, false, 0);
+            const nearZeroTarget: ImprovedHandContactTarget = {
+              ...target,
+              contactCenterX: beforeSample.point.x + delta,
+              contactMinX: beforeSample.point.x + delta - 0.45,
+              contactMaxX: beforeSample.point.x + delta + 0.45,
+              sampleSurfaceYAt: (_pitch, px, pz) =>
+                Math.abs(px - beforeSample.point.x - delta) <= 0.45 &&
+                Math.abs(pz - beforeSample.point.z) <= 0.45
+                  ? beforeSample.point.y - 0.012 + delta
+                  : null,
+            };
+            model.setTestingKeyContact(true);
+            model.updateFromPose(playingPose, DEFAULT_SKIN_SETTINGS, false, 0, [nearZeroTarget]);
+            const nearZeroPose = captureContactPose();
+            const maximumPadDisplacement = Math.max(
+              ...nearZeroPose.pad.map((point, index) =>
+                point.distanceTo(uncorrectedContactPose.pad[index]!)),
+            );
+            expect(maximumPadDisplacement,
+              `${side} finger ${finger} delta ${delta} must apply a measurable correction`)
+              .toBeGreaterThan(1e-5);
+            for (let index = 0; index < affectedNames.length; index++) {
+              const baseline = uncorrectedContactPose.bones[index]!;
+              const corrected = nearZeroPose.bones[index]!;
+              expect(corrected.position.distanceTo(baseline.position),
+                `${side} finger ${finger} ${baseline.name} near-zero joint displacement`)
+                .toBeLessThan(0.02);
+              const quaternionDot = Math.min(1, Math.abs(corrected.quaternion.dot(baseline.quaternion)));
+              expect(2 * Math.acos(quaternionDot),
+                `${side} finger ${finger} ${baseline.name} near-zero joint rotation`)
+                .toBeLessThan(0.05);
+            }
+            for (let index = 0; index < uncorrectedContactPose.pad.length; index++) {
+              expect(nearZeroPose.pad[index]!.distanceTo(uncorrectedContactPose.pad[index]!),
+                `${side} finger ${finger} pad vertex ${samples[finger]![index]} near-zero deformation`)
+                .toBeLessThan(0.02);
+            }
+          }
+          model.setTestingKeyContact(false);
+          // An unreachable key causes all IK candidates to be rejected. The
+          // actual bone transforms must be restored, not merely reconstructed
+          // from chain points with a potentially different hinge reference.
+          model.updateFromPose(playingPose, DEFAULT_SKIN_SETTINGS, false, 0);
+          const beforeRejected = affectedNames.map(name => {
+            const bone = model.getBone(name)!;
+            return { name, position: bone.position.clone(), quaternion: bone.quaternion.clone(), scale: bone.scale.clone() };
+          });
+          const beforeRejectedPad = samples[finger]!.map(vertex => actualPad(loadedTestingMesh(), vertex));
+          const farX = x + 30;
+          const unreachable = { ...target, contactCenterX: farX, contactMinX: farX - 0.45, contactMaxX: farX + 0.45,
+            sampleSurfaceYAt: (_pitch: number, px: number, pz: number) =>
+              Math.abs(px - farX) <= 0.45 && Math.abs(pz - z) <= 0.45 ? y : null };
+          model.setTestingKeyContact(true);
+          model.updateFromPose(playingPose, DEFAULT_SKIN_SETTINGS, false, 0, [unreachable], diagnosticContext);
+          for (const old of beforeRejected) {
+            const bone = model.getBone(old.name)!;
+            expect(bone.position.distanceTo(old.position), `${side} ${old.name} rejected position`).toBeLessThan(1e-7);
+            expect(1 - Math.abs(bone.quaternion.dot(old.quaternion)), `${side} ${old.name} rejected quaternion`).toBeLessThan(1e-9);
+            expect(bone.scale.distanceTo(old.scale), `${side} ${old.name} rejected scale`).toBeLessThan(1e-7);
+          }
+          for (const [index, vertex] of samples[finger]!.entries()) {
+            expect(actualPad(loadedTestingMesh(), vertex).distanceTo(beforeRejectedPad[index]!),
+              `${side} finger ${finger} rejected support vertex ${vertex}`).toBeLessThan(1e-6);
+          }
+        }
+
+        if (side === "right") {
+          // Re-run the recorded 49s right-hand pose against the real G4 key
+          // and real Testing GLB. No-contact is the no-fallback control: its
+          // captured pad is below the -0.02in floor, so a missing/rejected
+          // fallback must fail the positive-clearance assertions below.
+          const keyboard = new Keyboard3DView();
+          try {
+            const capturePose = HABANERA_49_RIGHT_SOURCE_POSE;
+            const contactSpec = HABANERA_49_RING_CONTACT;
+            keyboard.setActiveKeys([contactSpec.pitch]);
+            keyboard.group.updateMatrixWorld(true);
+            const keyEntry = keyboard.keysByPitch.get(contactSpec.pitch);
+            expect(keyEntry).toBeDefined();
+            if (!keyEntry) throw new Error("Captured Habanera key 67 is missing from Keyboard3DView.");
+            keyEntry.mesh.updateWorldMatrix(true, false);
+            const keyBounds = new THREE.Box3().setFromObject(keyEntry.mesh);
+            expect(keyEntry.centerX).toBeCloseTo(contactSpec.keyCenterX, 3);
+            expect(keyBounds.min.x).toBeCloseTo(contactSpec.keyMinX, 2);
+            expect(keyBounds.max.x).toBeCloseTo(contactSpec.keyMaxX, 2);
+
+            const target: ImprovedHandContactTarget = {
+              finger: contactSpec.finger,
+              pitch: contactSpec.pitch,
+              sourceStartSeconds: contactSpec.sourceStartSeconds,
+              contactCenterX: keyEntry.centerX,
+              contactMinX: keyBounds.min.x,
+              contactMaxX: keyBounds.max.x,
+              contactMinZ: keyBounds.min.z,
+              contactMaxZ: keyBounds.max.z,
+              sampleSurfaceYAt: (pitch, x, z) => keyboard.sampleKeySurfaceYAt(pitch, x, z),
+            };
+            const captureContext: TestingHandDiagnosticContext = {
+              ...diagnosticContext,
+              poseSampling: {
+                ...diagnosticContext.poseSampling,
+                requestedTransportTimeSeconds: capturePose.transportTimeSeconds,
+                sourcePoseTimeStartSeconds: capturePose.transportTimeSeconds,
+                sourcePoseTimeEndSeconds: capturePose.transportTimeSeconds,
+              },
+            };
+            const captureRun = (contactEnabled: boolean) => {
+              model.setTestingKeyContact(contactEnabled);
+              startTestingHandCapture({ handModel: "testing", testingKeyContact: contactEnabled });
+              try {
+                model.updateFromPose(
+                  capturePose, DEFAULT_SKIN_SETTINGS, false, 0, [target], captureContext,
+                );
+              } catch (error) {
+                stopTestingHandCapture();
+                throw error;
+              }
+              const capture = stopTestingHandCapture();
+              expect(capture?.records).toHaveLength(1);
+              return capture!.records[0]!;
+            };
+            const sampledMinimumGap = () => {
+              const mesh = loadedTestingMesh();
+              const supportByFinger = mesh.geometry.userData
+                .testingContactSupportVertexIndicesByFinger as number[][];
+              const vertices = supportByFinger[contactSpec.finger]!;
+              const gaps = vertices.flatMap(vertex => {
+                const point = actualPad(mesh, vertex);
+                const surfaceY = keyboard.sampleKeySurfaceYAt(contactSpec.pitch, point.x, point.z);
+                return surfaceY === null ? [] : [point.y - surfaceY];
+              });
+              expect(gaps.length).toBeGreaterThan(0);
+              return Math.min(...gaps);
+            };
+            const chainFromLandmarks = (landmarks: number[][]): THREE.Vector3[] =>
+              [13, 14, 15, 16].map(index => {
+                const point = landmarks[index]!;
+                return new THREE.Vector3(point[0]!, point[1]!, point[2]!);
+              });
+
+            model.setTestingKeyContact(false);
+            const uncorrectedRecord = captureRun(false);
+            const uncorrectedGap = sampledMinimumGap();
+            expect(uncorrectedGap).toBeLessThan(-0.05);
+            const uncorrectedContact = uncorrectedRecord.keyContact as {
+              targets: Array<{ signedVerticalGap: number }>;
+            };
+            expect(uncorrectedContact.targets[0]!.signedVerticalGap)
+              .toBeLessThanOrEqual(contactSpec.previousCorrectedGapInches);
+            const uncorrectedAnalysis = uncorrectedRecord.analysis as {
+              afterContactLandmarks: number[][];
+            };
+            const sourceRing = chainFromLandmarks(uncorrectedAnalysis.afterContactLandmarks);
+
+            const fallbackRecord = captureRun(true);
+            const fallbackGap = sampledMinimumGap();
+            expect(fallbackGap).toBeGreaterThan(uncorrectedGap + 0.04);
+            expect(fallbackGap).toBeGreaterThanOrEqual(-0.02);
+            expect(fallbackGap).toBeGreaterThan(0);
+            const fallbackAnalysis = fallbackRecord.analysis as {
+              afterContactLandmarks: number[][];
+              afterContactUnsignedJointBends: Array<{ finger: number; joint: string; bendDegrees: number }>;
+            };
+            const finalRing = chainFromLandmarks(fallbackAnalysis.afterContactLandmarks);
+            const sourceDirections = sourceRing.slice(1).map((point, index) =>
+              point.clone().sub(sourceRing[index]!).normalize(),
+            );
+            const finalDirections = finalRing.slice(1).map((point, index) =>
+              point.clone().sub(finalRing[index]!).normalize(),
+            );
+            for (let index = 0; index < sourceDirections.length; index++) {
+              expect(sourceDirections[index]!.dot(finalDirections[index]!),
+                `Habanera ring segment ${index} direction`).toBeGreaterThan(0);
+            }
+            const sourceBends = signedFingerJointBends(sourceRing);
+            const finalBends = signedFingerJointBends(finalRing);
+            for (let joint = 0; joint < sourceBends.length; joint++) {
+              expect(Math.abs(sourceBends[joint]!)).toBeGreaterThan(3);
+              expect(Math.sign(finalBends[joint]!)).toBe(Math.sign(sourceBends[joint]!));
+            }
+            expect(fallbackAnalysis.afterContactUnsignedJointBends.some(
+              bend => bend.finger === contactSpec.finger && bend.joint === "DIP",
+            )).toBe(true);
+            const keyContact = fallbackRecord.keyContact as {
+              targets: Array<{ finger: number; pitch: number; signedVerticalGap: number }>;
+            };
+            expect(keyContact.targets[0]).toMatchObject({ finger: 4, pitch: 67 });
+            expect(keyContact.targets[0]!.signedVerticalGap).toBeGreaterThan(0);
+            console.info("[Habanera 49s real Testing fallback regression]", JSON.stringify({
+              uncorrectedMinimumGapInches: uncorrectedGap,
+              uncorrectedSelectedGapInches: uncorrectedContact.targets[0]!.signedVerticalGap,
+              rigidSwingMinimumGapInches: fallbackGap,
+              sourceSignedBendsDegrees: sourceBends,
+              finalSignedBendsDegrees: finalBends,
+            }));
+          } finally {
+            model.setTestingKeyContact(false);
+            keyboard.dispose();
+          }
         }
       } finally {
         model.dispose();

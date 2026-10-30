@@ -4,9 +4,19 @@ import {
   chooseImprovedHandLod,
   HandModelRequestGate,
   errorMessage,
+  isDetailedHandModel,
+  usesImprovedHandMotion,
 } from "./improvedHandRuntime";
 
 describe("improved hand runtime primitives", () => {
+  it("selects Testing2 as a detailed model on the source-derived Improved motion path", () => {
+    expect(isDetailedHandModel("testing2")).toBe(true);
+    expect(usesImprovedHandMotion("testing2")).toBe(true);
+    expect(usesImprovedHandMotion("anatomical-improved")).toBe(true);
+    expect(usesImprovedHandMotion("testing")).toBe(false);
+    expect(usesImprovedHandMotion("webxr")).toBe(false);
+  });
+
   it("selects projected-size LODs with hysteresis at tier boundaries", () => {
     expect(chooseImprovedHandLod(500)).toBe(0);
     expect(chooseImprovedHandLod(300)).toBe(1);

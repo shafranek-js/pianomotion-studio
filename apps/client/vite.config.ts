@@ -1,6 +1,7 @@
 import react from "@vitejs/plugin-react";
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
+import { testingHandDiagnosticsPlugin } from "./testingHandDiagnosticsPlugin.ts";
 
 export default defineConfig({
   root: fileURLToPath(new URL(".", import.meta.url)),
@@ -14,5 +15,5 @@ export default defineConfig({
       "@handthesia/engine-ts": fileURLToPath(new URL("../../packages/engine-ts/src/index.ts", import.meta.url)),
     },
   },
-  plugins: [react()],
+  plugins: [react(), testingHandDiagnosticsPlugin()],
 });

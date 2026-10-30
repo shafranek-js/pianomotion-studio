@@ -12,6 +12,7 @@ import type { InspectorTab } from "./types";
 import styles from "./StudioInspector.module.css";
 import { DiagnosticLogControls } from "../diagnostics/DiagnosticLogControls";
 import { formatDisplaySourceName } from "../melodies/catalog";
+import { RiggedPoseEditorPanel, type RiggedPoseEditorPanelProps } from "./RiggedPoseEditorPanel";
 
 export interface StudioInspectorProps {
   tab: InspectorTab;
@@ -22,6 +23,7 @@ export interface StudioInspectorProps {
   audioRecording: DecodedAudioRecording | null;
   audioOffset: number;
   audioOutputLabel?: string;
+  poseEditor?: RiggedPoseEditorPanelProps;
   sourceName: string;
   busy: boolean;
   developerTools?: ReactNode;
@@ -145,6 +147,7 @@ export function StudioInspector(props: StudioInspectorProps) {
         </select>
       </label>
       <p className={styles.hint}>{dict.inspector.sceneHint}</p>
+      {props.poseEditor && <RiggedPoseEditorPanel {...props.poseEditor} />}
     </section>
   );
 
@@ -261,7 +264,7 @@ export function StudioInspector(props: StudioInspectorProps) {
         diagnostics={props.planDiagnostics ?? []}
         onSelectNote={props.onSelectNote}
       />}
-      <DiagnosticLogControls />
+      <DiagnosticLogControls appliedProfile={result?.profile ?? null} />
       <details className={styles.developer}>
         <summary>{dict.inspector.developerTools}</summary>
         <div className={styles.developerContent}>{props.developerTools}</div>

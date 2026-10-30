@@ -1,12 +1,19 @@
 export const IMPROVED_HAND_MODEL_ID = "anatomical-improved" as const;
 
 export const TESTING_HAND_MODEL_ID = "testing" as const;
+export const TESTING2_HAND_MODEL_ID = "testing2" as const;
+export const RIGGED_EXPERIMENTAL_HAND_MODEL_ID = "rigged-experimental" as const;
 
-export type HandModelId = "anatomical" | "webxr" | typeof IMPROVED_HAND_MODEL_ID | typeof TESTING_HAND_MODEL_ID;
+export type HandModelId = "anatomical" | "webxr" | typeof IMPROVED_HAND_MODEL_ID | typeof TESTING_HAND_MODEL_ID | typeof TESTING2_HAND_MODEL_ID | typeof RIGGED_EXPERIMENTAL_HAND_MODEL_ID;
 
 /** Detailed PBR shell models are async-loaded; WebXR and old Anatomical remain unchanged. */
-export function isDetailedHandModel(model: HandModelId): model is typeof IMPROVED_HAND_MODEL_ID | typeof TESTING_HAND_MODEL_ID {
-  return model === IMPROVED_HAND_MODEL_ID || model === TESTING_HAND_MODEL_ID;
+export function isDetailedHandModel(model: HandModelId): model is typeof IMPROVED_HAND_MODEL_ID | typeof TESTING_HAND_MODEL_ID | typeof TESTING2_HAND_MODEL_ID {
+  return model === IMPROVED_HAND_MODEL_ID || model === TESTING_HAND_MODEL_ID || model === TESTING2_HAND_MODEL_ID;
+}
+
+/** Testing2 uses the source-derived anatomical rig with the existing Improved motion path. */
+export function usesImprovedHandMotion(model: HandModelId): boolean {
+  return model === IMPROVED_HAND_MODEL_ID || model === TESTING2_HAND_MODEL_ID;
 }
 export type ImprovedHandLod = 0 | 1 | 2;
 export type HandModelLoadState = "idle" | "loading" | "ready" | "error" | "disposed";

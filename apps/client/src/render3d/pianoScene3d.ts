@@ -8,9 +8,11 @@ import type {
 } from "@handthesia/contracts";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import { TransformControls } from "three/examples/jsm/controls/TransformControls.js";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import type { KeyPressInfo } from "../render/keyboardView";
-import { lerpPose, type MotionBuffer } from "../render/motionBuffer";
+import { describeMotionPoseSample, lerpPose, type MotionBuffer } from "../render/motionBuffer";
+import { isHandFrameCaptureActiveFor, observeHandFrameNoteBoundaries, type TestingHandDiagnosticContext } from "../diagnostics/testingHandCapture";
 import type { PianoSceneDisplaySettings } from "../render/pianoScene";
 import { normalizeSkinSettings, type SkinSettings } from "../render/skins";
 import type { StageAppearance } from "../settings/stageAppearance";
@@ -19,12 +21,48 @@ import {
   Hand3DMeshGroup,
   KEYBOARD_WIDTH_IN,
 } from "./handRigBuilder";
-import { chooseImprovedHandExportLod, chooseImprovedHandLod, IMPROVED_HAND_MODEL_ID, isDetailedHandModel, type HandModelDiagnosticsSnapshot, type HandModelId } from "./improvedHandRuntime";
+import { chooseImprovedHandExportLod, chooseImprovedHandLod, isDetailedHandModel, usesImprovedHandMotion, type HandModelDiagnosticsSnapshot, type HandModelId } from "./improvedHandRuntime";
 import { populateHandContactTargets, type ImprovedHandContactTarget } from "./improvedHandContact";
 import { Keyboard3DView } from "./keyboard3dView";
 import { PianoStage3D, type PianoStageDiagnostics } from "./pianoStage3d";
+import {
+  RIGGED_EXPERIMENTAL_POSE_BONE_SUFFIXES,
+  type RiggedExperimentalHandBoneName,
+  type RiggedExperimentalHandPose,
+} from "./riggedExperimentalHand";
+import { RIGGED_EXPERIMENTAL_HAND_MODEL_ID } from "./improvedHandRuntime";
+import { collectRiggedPoseEditTimepoints, type RiggedPoseEditTimepoint } from "./riggedPoseEditNavigation";
+import { importRiggedHandPosePresetJson } from "./riggedHandPosePreset";
+
+export type { RiggedPoseEditTimepoint } from "./riggedPoseEditNavigation";
 
 export type Camera3DPreset = "concert" | "overhead" | "pov" | "side_arch";
+export type RiggedPoseEditSide = "left" | "right";
+export type RiggedPoseEditFingerFilter = "all" | 1 | 2 | 3 | 4 | 5;
+export type RiggedPoseEditTransformMode = "rotate" | "translate";
+export type RiggedPoseEditPair = Readonly<{
+  left: RiggedExperimentalHandPose;
+  right: RiggedExperimentalHandPose;
+}>;
+export type RiggedPoseEditSelection = Readonly<{
+  side: RiggedPoseEditSide;
+  boneName: RiggedExperimentalHandBoneName | null;
+  fingerFilter: RiggedPoseEditFingerFilter;
+  transformMode: RiggedPoseEditTransformMode;
+}>;
+export type RiggedPoseEditSourceHashes = Readonly<{ left: string | null; right: string | null }>;
+export type RiggedPoseEditAvailability = Readonly<{
+  available: boolean;
+  leftAvailable: boolean;
+  rightAvailable: boolean;
+  reason: "no-3d-scene" | "model-mismatch" | "hand-not-ready" | "sample-unavailable" | null;
+}>;
+export type RiggedPoseEditSampleSource = Readonly<{
+  sampleMode: "held-first" | "exact" | "interpolated" | "unavailable";
+  sourcePoseTimeSeconds: number | null;
+  sourcePoseTimeStartSeconds: number | null;
+  sourcePoseTimeEndSeconds: number | null;
+}>;
 
 interface CameraPose {
   position: [number, number, number];
@@ -39,6 +77,8 @@ export interface PianoScene3DOptions {
   onContextRestored?: () => void;
   /** Select the initial visible model before constructing either hand rig. */
   initialHandModel?: HandModelId;
+  /** Actual configured transport lead-in duration, in seconds. */
+  leadInDurationSeconds?: number;
 }
 
 export interface PianoCameraFit {
@@ -167,6 +207,32 @@ const CAMERA_PRESETS: Record<Camera3DPreset, CameraPose> = {
   },
 };
 
+function poseEditFingerForBoneName(name: string): RiggedPoseEditFingerFilter | null {
+  if (name.includes("_thumb_")) return 1;
+  if (name.includes("_index_")) return 2;
+  if (name.includes("_middle_")) return 3;
+  if (name.includes("_ring_")) return 4;
+  if (name.includes("_little_")) return 5;
+  return null;
+}
+
+function isPoseTimeInsideRange(poses: readonly MotionPose[], timeSeconds: number): boolean {
+  return poses.length > 0 &&
+    timeSeconds >= poses[0]!.transportTimeSeconds &&
+    timeSeconds <= poses[poses.length - 1]!.transportTimeSeconds;
+}
+
+function hasPoseTimeWithinTolerance(times: readonly number[], timeSeconds: number, toleranceSeconds = 0): boolean {
+  let low = 0;
+  let high = times.length;
+  while (low < high) {
+    const middle = Math.floor((low + high) / 2);
+    if (times[middle]! < timeSeconds - toleranceSeconds) low = middle + 1;
+    else high = middle;
+  }
+  return low < times.length && Math.abs(times[low]! - timeSeconds) <= toleranceSeconds;
+}
+
 export class PianoScene3D {
   public readonly canvas: HTMLCanvasElement;
   private readonly renderer: THREE.WebGLRenderer;
@@ -199,6 +265,20 @@ export class PianoScene3D {
   private readonly fallingNotes3D: FallingNotes3DView;
   private readonly leftHand3D: Hand3DMeshGroup;
   private readonly rightHand3D: Hand3DMeshGroup;
+  private poseTransformControls: TransformControls | null = null;
+  private readonly poseMarkers = new Map<RiggedExperimentalHandBoneName, THREE.Mesh<THREE.SphereGeometry, THREE.MeshBasicMaterial>>();
+  private poseMarkerGeometry: THREE.SphereGeometry | null = null;
+  private poseMarkerMaterials: Record<RiggedPoseEditSide, THREE.MeshBasicMaterial> | null = null;
+  private poseEditActive = false;
+  private poseEditSide: RiggedPoseEditSide = "right";
+  private poseEditBoneName: RiggedExperimentalHandBoneName | null = null;
+  private poseEditFingerFilter: RiggedPoseEditFingerFilter = "all";
+  private poseEditTransformMode: RiggedPoseEditTransformMode = "rotate";
+  private poseEditSampling: { timepoint: RiggedPoseEditTimepoint; } | null = null;
+  private poseEditTimepoint: RiggedPoseEditTimepoint | null = null;
+  private readonly poseEditUndoStack: RiggedPoseEditPair[] = [];
+  private onPoseEditSelectionChange?: (side: RiggedPoseEditSide, boneName: RiggedExperimentalHandBoneName | null) => void;
+  private onPoseEditChange?: () => void;
   private stage3D: PianoStage3D | null = null;
   private readonly fixedViewport: PianoScene3DOptions["fixedViewport"];
   private readonly ownsCanvas: boolean;
@@ -221,6 +301,11 @@ export class PianoScene3D {
   private showFingerLabels = false;
   private testingKeyContact = true;
   private currentTransportTime = 0;
+  private leadInDurationSeconds = 2;
+  private bundledLeadInPoseRequest = 0;
+  private bundledLeadInPosePending = false;
+  private bundledLeadInPoseApplied = false;
+  private bundledLeadInPoseFailed = false;
   private lastActiveNotes: number[] | undefined;
   private playAlongMode = false;
   private livePhysicalPitches = new Set<number>();
@@ -263,6 +348,9 @@ export class PianoScene3D {
     options: PianoScene3DOptions = {},
   ) {
     this.requestedHandModel = options.initialHandModel ?? "anatomical";
+    this.leadInDurationSeconds = Number.isFinite(options.leadInDurationSeconds)
+      ? THREE.MathUtils.clamp(options.leadInDurationSeconds!, 0, 2)
+      : 2;
     this.fixedViewport = options.fixedViewport;
     this.ownsCanvas = options.canvas === undefined;
     this.onContextLost = options.onContextLost;
@@ -364,8 +452,11 @@ export class PianoScene3D {
       this.scene.add(this.rightHand3D.group);
 
       this.setCameraPreset("concert");
-      if (isDetailedHandModel(this.requestedHandModel)) this.applyHandModelSelection();
+      if (isDetailedHandModel(this.requestedHandModel) || this.requestedHandModel === RIGGED_EXPERIMENTAL_HAND_MODEL_ID) {
+        this.applyHandModelSelection();
+      }
       if (!this.fixedViewport) {
+        this.setupPoseTransformControls();
         this.setupPointerEvents();
         this.setupResizeObserver();
       }
@@ -378,6 +469,7 @@ export class PianoScene3D {
   private cleanupAllocatedResources(): void {
     this.resizeObserver?.disconnect();
     this.pointerListenerCleanup?.();
+    this.disposePoseEditControls();
     this.controls?.dispose();
     this.stage3D?.dispose();
     this.keyboard3D?.dispose();
@@ -525,6 +617,14 @@ export class PianoScene3D {
     this.update(this.currentTransportTime, this.lastActiveNotes);
   }
 
+  public setLeadInDurationSeconds(seconds: number): void {
+    if (!Number.isFinite(seconds)) return;
+    const next = THREE.MathUtils.clamp(seconds, 0, 2);
+    if (next === this.leadInDurationSeconds) return;
+    this.leadInDurationSeconds = next;
+    this.update(this.currentTransportTime, this.lastActiveNotes);
+  }
+
   public setDisplaySettings(settings: PianoSceneDisplaySettings): void {
     if (settings.showFingerLabels !== undefined) {
       this.showFingerLabels = settings.showFingerLabels;
@@ -637,12 +737,424 @@ export class PianoScene3D {
     ]);
   }
 
+  public getPoseEditTimepoints(leadInTimeSeconds?: number): RiggedPoseEditTimepoint[] {
+    const planTimes = this.motionPlan?.poses.map(pose => pose.transportTimeSeconds) ?? [];
+    const bufferTimes = this.motionBuffer?.poses.map(pose => pose.transportTimeSeconds) ?? [];
+    let leadIn: { displayedTransportTimeSeconds: number; sourcePoseTimeSeconds: number } | null = null;
+    if (leadInTimeSeconds !== undefined && leadInTimeSeconds < 0) {
+      const leftFirst = this.getFirstPoseSourceTime("left");
+      const rightFirst = this.getFirstPoseSourceTime("right");
+      if (leftFirst === 0 && rightFirst === 0 &&
+          leadInTimeSeconds < leftFirst - 1e-6) {
+        leadIn = { displayedTransportTimeSeconds: leadInTimeSeconds, sourcePoseTimeSeconds: leftFirst };
+      }
+    }
+    return collectRiggedPoseEditTimepoints(planTimes, bufferTimes, leadIn);
+  }
+
+  public getPoseEditAvailability(timepoint: RiggedPoseEditTimepoint): RiggedPoseEditAvailability {
+    return this.getPoseEditAvailabilityForTimepoints([timepoint])[timepoint.id]!;
+  }
+
+  public getPoseEditAvailabilityForTimepoints(timepoints: readonly RiggedPoseEditTimepoint[]): Record<string, RiggedPoseEditAvailability> {
+    const modelReady = [this.leftHand3D, this.rightHand3D].every(hand => {
+      const model = hand.getHandModelDiagnostics();
+      return model.requestedModel === RIGGED_EXPERIMENTAL_HAND_MODEL_ID &&
+        model.loadedModel === RIGGED_EXPERIMENTAL_HAND_MODEL_ID && model.state === "ready";
+    });
+    const bufferTimes = {
+      left: this.motionBuffer?.poses.filter(pose => pose.hand === "left").map(pose => pose.transportTimeSeconds) ?? [],
+      right: this.motionBuffer?.poses.filter(pose => pose.hand === "right").map(pose => pose.transportTimeSeconds) ?? [],
+    };
+    const result: Record<string, RiggedPoseEditAvailability> = {};
+    for (const timepoint of timepoints) {
+      const hasSide = (side: RiggedPoseEditSide): boolean => {
+        if (timepoint.kind === "lead-in-held") {
+          const first = this.getFirstPoseSourceTime(side);
+          return first !== null && Math.abs(first - timepoint.sourcePoseTimeSeconds) <= 1e-6;
+        }
+        const timeSeconds = timepoint.displayedTransportTimeSeconds;
+        const exactBufferFrame = hasPoseTimeWithinTolerance(bufferTimes[side], timeSeconds);
+        const covered = this.motionBuffer?.getHandCoverageIntervals(side).some(interval =>
+          interval.start <= timeSeconds && interval.end >= timeSeconds) ?? false;
+        return exactBufferFrame || (covered && Boolean(this.motionBuffer?.samplePose(timeSeconds, side))) ||
+          isPoseTimeInsideRange(this.getPlanPoses(side), timeSeconds);
+      };
+      const leftAvailable = hasSide("left");
+      const rightAvailable = hasSide("right");
+      const base = { leftAvailable, rightAvailable };
+      if (!this.isVisible()) result[timepoint.id] = { ...base, available: false, reason: "no-3d-scene" };
+      else if (this.requestedHandModel !== RIGGED_EXPERIMENTAL_HAND_MODEL_ID) {
+        result[timepoint.id] = { ...base, available: false, reason: "model-mismatch" };
+      } else if (!modelReady) result[timepoint.id] = { ...base, available: false, reason: "hand-not-ready" };
+      else if (!leftAvailable || !rightAvailable) result[timepoint.id] = { ...base, available: false, reason: "sample-unavailable" };
+      else result[timepoint.id] = { ...base, available: true, reason: null };
+    }
+    return result;
+  }
+
+  public getPoseEditSampleSource(timepoint: RiggedPoseEditTimepoint, side: RiggedPoseEditSide): RiggedPoseEditSampleSource {
+    if (timepoint.kind === "lead-in-held") {
+      const firstPoseTime = this.getFirstPoseSourceTime(side);
+      if (firstPoseTime !== null && Math.abs(firstPoseTime - timepoint.sourcePoseTimeSeconds) <= 1e-6) {
+        return {
+          sampleMode: "held-first",
+          sourcePoseTimeSeconds: firstPoseTime,
+          sourcePoseTimeStartSeconds: firstPoseTime,
+          sourcePoseTimeEndSeconds: firstPoseTime,
+        };
+      }
+      return { sampleMode: "unavailable", sourcePoseTimeSeconds: null, sourcePoseTimeStartSeconds: null, sourcePoseTimeEndSeconds: null };
+    }
+
+    const sourcePoses = this.getPoseSourcePosesAt(timepoint.displayedTransportTimeSeconds, side);
+    const exactPose = sourcePoses.find(pose => pose.transportTimeSeconds === timepoint.displayedTransportTimeSeconds);
+    if (exactPose) {
+      return {
+        sampleMode: "exact",
+        sourcePoseTimeSeconds: exactPose.transportTimeSeconds,
+        sourcePoseTimeStartSeconds: exactPose.transportTimeSeconds,
+        sourcePoseTimeEndSeconds: exactPose.transportTimeSeconds,
+      };
+    }
+    const sample = describeMotionPoseSample(sourcePoses, timepoint.displayedTransportTimeSeconds);
+    if (sample.sampleMode === "unknown") {
+      return { sampleMode: "unavailable", sourcePoseTimeSeconds: null, sourcePoseTimeStartSeconds: null, sourcePoseTimeEndSeconds: null };
+    }
+    return {
+      sampleMode: sample.sampleMode === "exact" || sample.sampleMode === "lower-frame" ? "exact" : "interpolated",
+      sourcePoseTimeSeconds: sample.sampleMode === "exact" || sample.sampleMode === "lower-frame" ? sample.sourcePoseTimeStartSeconds : null,
+      sourcePoseTimeStartSeconds: sample.sourcePoseTimeStartSeconds,
+      sourcePoseTimeEndSeconds: sample.sourcePoseTimeEndSeconds,
+    };
+  }
+
+  public getPoseEditSourceHashes(): RiggedPoseEditSourceHashes {
+    return {
+      left: this.leftHand3D.getPoseEditSourceAssetSha256(),
+      right: this.rightHand3D.getPoseEditSourceAssetSha256(),
+    };
+  }
+
+  public getPoseEditTimepoint(): RiggedPoseEditTimepoint | null {
+    return this.poseEditTimepoint;
+  }
+
+  public getPoseEditSelection(): RiggedPoseEditSelection {
+    return {
+      side: this.poseEditSide,
+      boneName: this.poseEditBoneName,
+      fingerFilter: this.poseEditFingerFilter,
+      transformMode: this.poseEditTransformMode,
+    };
+  }
+
+  public setPoseEditSelectionListener(listener: ((side: RiggedPoseEditSide, boneName: RiggedExperimentalHandBoneName | null) => void) | undefined): void {
+    this.onPoseEditSelectionChange = listener;
+  }
+
+  public setPoseEditChangeListener(listener: (() => void) | undefined): void {
+    this.onPoseEditChange = listener;
+  }
+
+  public async setPoseEditMode(enabled: boolean): Promise<void> {
+    if (!enabled) {
+      if (!this.poseEditActive) return;
+      this.poseTransformControls?.detach();
+      if (this.poseTransformControls) this.poseTransformControls.getHelper().visible = false;
+      this.hidePoseMarkers();
+      this.leftHand3D.restoreAnimatedPose();
+      this.rightHand3D.restoreAnimatedPose();
+      this.poseEditActive = false;
+      this.poseEditTimepoint = null;
+      this.poseEditUndoStack.length = 0;
+      this.renderFrame();
+      return;
+    }
+    if (this.poseEditActive) return;
+    if (!this.poseEditTimepoint) throw new Error("Choose an available sampled pose before entering pose edit mode.");
+    const availability = this.getPoseEditAvailability(this.poseEditTimepoint);
+    if (!availability.available) throw new Error(`Pose editing is unavailable: ${availability.reason ?? "sample-unavailable"}.`);
+    await this.waitForHandModelReady();
+    if (this.requestedHandModel !== RIGGED_EXPERIMENTAL_HAND_MODEL_ID) {
+      throw new Error("The selected hand model changed before pose editing could start.");
+    }
+    this.leftHand3D.setPoseEditMode(true);
+    try {
+      this.rightHand3D.setPoseEditMode(true);
+    } catch (error) {
+      this.leftHand3D.restoreAnimatedPose();
+      throw error;
+    }
+    this.poseEditActive = true;
+    this.poseEditUndoStack.length = 0;
+    this.setPoseEditTarget(this.poseEditSide, this.poseEditBoneName);
+    this.syncPoseMarkers();
+    this.renderFrame();
+  }
+
+  public isPoseEditMode(): boolean {
+    return this.poseEditActive;
+  }
+
+  /** Samples both hands at a real plan/buffer time without boundary clamping. */
+  public updatePoseEditAtTimepoint(timepoint: RiggedPoseEditTimepoint): void {
+    const availability = this.getPoseEditAvailability(timepoint);
+    if (!availability.available) throw new Error(`Pose ${timepoint.displayedTransportTimeSeconds.toFixed(3)}s is unavailable: ${availability.reason ?? "sample-unavailable"}.`);
+    this.poseEditTimepoint = timepoint;
+    this.poseEditSampling = { timepoint };
+    try {
+      this.update(timepoint.displayedTransportTimeSeconds, undefined);
+    } finally {
+      this.poseEditSampling = null;
+    }
+  }
+
+  public exportPoseEditPair(): RiggedPoseEditPair {
+    if (!this.poseEditActive) throw new Error("Pose snapshots are available only while pose edit mode is active.");
+    return { left: this.leftHand3D.exportPose(), right: this.rightHand3D.exportPose() };
+  }
+
+  public applyPoseEditPair(pair: RiggedPoseEditPair): void {
+    if (!this.poseEditActive) throw new Error("Pose snapshots can be applied only while pose edit mode is active.");
+    if (pair.left.side !== "left" || pair.right.side !== "right") throw new Error("Pose snapshots must contain one left and one right hand.");
+    const previous = this.exportPoseEditPair();
+    try {
+      this.leftHand3D.applyPose(pair.left);
+      this.rightHand3D.applyPose(pair.right);
+    } catch (error) {
+      const rollbackErrors: unknown[] = [];
+      try {
+        this.leftHand3D.applyPose(previous.left);
+      } catch (rollbackError) {
+        rollbackErrors.push(rollbackError);
+      }
+      try {
+        this.rightHand3D.applyPose(previous.right);
+      } catch (rollbackError) {
+        rollbackErrors.push(rollbackError);
+      }
+      if (rollbackErrors.length > 0) {
+        const cause = error instanceof Error ? error.message : String(error);
+        const rollbackCause = rollbackErrors.map(item => item instanceof Error ? item.message : String(item)).join("; ");
+        throw new Error(`Could not apply the two-hand pose atomically (${cause}); rollback also failed (${rollbackCause}).`);
+      }
+      this.leftHand3D.refreshPoseEdit();
+      this.rightHand3D.refreshPoseEdit();
+      throw error;
+    }
+    this.leftHand3D.refreshPoseEdit();
+    this.rightHand3D.refreshPoseEdit();
+    this.syncPoseMarkers();
+    this.renderFrame();
+  }
+
+  public setPoseEditSide(side: RiggedPoseEditSide): void {
+    this.setPoseEditTarget(side, null);
+  }
+
+  public setPoseEditTarget(side: RiggedPoseEditSide, boneName: RiggedExperimentalHandBoneName | null): void {
+    this.poseEditSide = side;
+    if (boneName !== null && !boneName.startsWith(`${side}_`)) {
+      throw new Error(`Pose edit bone ${boneName} does not belong to the ${side} hand.`);
+    }
+    this.poseEditBoneName = boneName;
+    if (!this.poseEditActive || !this.poseTransformControls) {
+      this.onPoseEditSelectionChange?.(side, boneName);
+      return;
+    }
+    const hand = this.getHand3D(side);
+    const target = boneName === null ? hand.getEditableHandGroup() : hand.getEditableBone(boneName);
+    this.poseTransformControls.attach(target);
+    this.poseTransformControls.setSpace("local");
+    this.poseTransformControls.setMode(boneName === null ? this.poseEditTransformMode : "rotate");
+    this.poseTransformControls.getHelper().visible = true;
+    this.syncPoseMarkers();
+    this.onPoseEditSelectionChange?.(side, boneName);
+    this.renderFrame();
+  }
+
+  public setPoseEditFingerFilter(filter: RiggedPoseEditFingerFilter): void {
+    this.poseEditFingerFilter = filter;
+    this.syncPoseMarkers();
+    this.renderFrame();
+  }
+
+  public setPoseEditTransformMode(mode: RiggedPoseEditTransformMode): void {
+    this.poseEditTransformMode = mode;
+    if (this.poseEditActive && this.poseEditBoneName === null) {
+      this.poseTransformControls?.setMode(mode);
+    }
+  }
+
+  public hasPoseEditUndo(): boolean {
+    return this.poseEditUndoStack.length > 0;
+  }
+
+  public undoPoseEdit(): boolean {
+    if (!this.poseEditActive) return false;
+    const previous = this.poseEditUndoStack.pop();
+    if (!previous) return false;
+    this.applyPoseEditPair(previous);
+    this.onPoseEditChange?.();
+    return true;
+  }
+
+  public resetPoseEditHand(side: RiggedPoseEditSide): void {
+    if (!this.poseEditActive) throw new Error("Reset is available only while pose edit mode is active.");
+    this.pushPoseEditUndoSnapshot();
+    const hand = this.getHand3D(side);
+    hand.setPoseEditMode(false);
+    hand.setPoseEditMode(true);
+    hand.refreshPoseEdit();
+    this.syncPoseMarkers();
+    this.renderFrame();
+    this.onPoseEditChange?.();
+  }
+
+  private getHand3D(side: RiggedPoseEditSide): Hand3DMeshGroup {
+    return side === "left" ? this.leftHand3D : this.rightHand3D;
+  }
+
+  private getPlanPoses(side: RiggedPoseEditSide): MotionPose[] {
+    return side === "left" ? this.leftPoses : this.rightPoses;
+  }
+
+  private getPoseSourcePosesAt(timeSeconds: number, side: RiggedPoseEditSide): MotionPose[] {
+    if (this.motionBuffer) {
+      const exactBufferFrame = this.motionBuffer.poses.some(pose => pose.hand === side && pose.transportTimeSeconds === timeSeconds);
+      const covered = this.motionBuffer.getHandCoverageIntervals(side).some(interval =>
+        interval.start <= timeSeconds && interval.end >= timeSeconds);
+      if (exactBufferFrame || covered) return this.motionBuffer.poses.filter(pose => pose.hand === side);
+    }
+    return this.getPlanPoses(side);
+  }
+
+  private getFirstPoseSourceTime(side: RiggedPoseEditSide): number | null {
+    const firstPlan = this.getPlanPoses(side)[0]?.transportTimeSeconds;
+    const firstBuffer = this.motionBuffer?.getFirstPose(side)?.transportTimeSeconds;
+    if (firstPlan === undefined) return firstBuffer ?? null;
+    if (firstBuffer === undefined) return firstPlan;
+    return Math.min(firstPlan, firstBuffer);
+  }
+
+  private samplePoseForPoseEdit(timepoint: RiggedPoseEditTimepoint, side: RiggedPoseEditSide): MotionPose | null {
+    if (timepoint.kind === "lead-in-held") {
+      const planned = this.getPlanPoses(side)[0];
+      const buffered = this.motionBuffer?.getFirstPose(side) ?? undefined;
+      const candidates = [planned, buffered].filter((pose): pose is MotionPose => pose !== undefined);
+      return candidates.sort((a, b) => a.transportTimeSeconds - b.transportTimeSeconds)[0] ?? null;
+    }
+    if (this.motionBuffer) {
+      const exactBufferFrame = this.motionBuffer.poses.some(pose => pose.hand === side &&
+        pose.transportTimeSeconds === timepoint.displayedTransportTimeSeconds);
+      const covered = this.motionBuffer.getHandCoverageIntervals(side).some(interval =>
+        interval.start <= timepoint.displayedTransportTimeSeconds && interval.end >= timepoint.displayedTransportTimeSeconds);
+      if (exactBufferFrame || covered) {
+        const exactPose = this.motionBuffer.poses.find(pose => pose.hand === side && pose.transportTimeSeconds === timepoint.displayedTransportTimeSeconds);
+        if (exactPose) return exactPose;
+        return this.motionBuffer.samplePose(timepoint.displayedTransportTimeSeconds, side);
+      }
+    }
+    return this.interpolatePoseFromArray(this.getPlanPoses(side), timepoint.displayedTransportTimeSeconds);
+  }
+
+  private pushPoseEditUndoSnapshot(): void {
+    if (!this.poseEditActive) return;
+    this.poseEditUndoStack.push(this.exportPoseEditPair());
+    if (this.poseEditUndoStack.length > 64) this.poseEditUndoStack.shift();
+  }
+
+  private setupPoseTransformControls(): void {
+    if (this.fixedViewport) return;
+    const controls = new TransformControls(this.camera, this.canvas);
+    controls.setMode("rotate");
+    controls.setSpace("local");
+    controls.size = 0.78;
+    const helper = controls.getHelper();
+    helper.visible = false;
+    this.scene.add(helper);
+    controls.addEventListener("dragging-changed", (event) => {
+      if (this.controls) this.controls.enabled = event.value !== true;
+    });
+    controls.addEventListener("mouseDown", () => this.pushPoseEditUndoSnapshot());
+    controls.addEventListener("objectChange", () => {
+      if (!this.poseEditActive) return;
+      this.getHand3D(this.poseEditSide).refreshPoseEdit();
+      this.syncPoseMarkers();
+      this.renderFrame();
+    });
+    controls.addEventListener("mouseUp", () => {
+      if (!this.poseEditActive) return;
+      this.onPoseEditChange?.();
+      this.renderFrame();
+    });
+    this.poseTransformControls = controls;
+  }
+
+  private disposePoseEditControls(): void {
+    this.poseTransformControls?.detach();
+    if (this.poseTransformControls) {
+      this.scene.remove(this.poseTransformControls.getHelper());
+      this.poseTransformControls.dispose();
+      this.poseTransformControls = null;
+    }
+    this.hidePoseMarkers();
+    this.poseMarkerGeometry?.dispose();
+    this.poseMarkerGeometry = null;
+    this.poseMarkerMaterials?.left.dispose();
+    this.poseMarkerMaterials?.right.dispose();
+    this.poseMarkerMaterials = null;
+  }
+
+  private syncPoseMarkers(): void {
+    if (!this.poseEditActive) return this.hidePoseMarkers();
+    this.hidePoseMarkers();
+    if (!this.poseMarkerGeometry) this.poseMarkerGeometry = new THREE.SphereGeometry(0.16, 12, 8);
+    if (!this.poseMarkerMaterials) {
+      this.poseMarkerMaterials = {
+        left: new THREE.MeshBasicMaterial({ color: 0x45b7ff, depthTest: false, depthWrite: false }),
+        right: new THREE.MeshBasicMaterial({ color: 0x69e1a8, depthTest: false, depthWrite: false }),
+      };
+    }
+    for (const suffix of RIGGED_EXPERIMENTAL_POSE_BONE_SUFFIXES) {
+      const name = `${this.poseEditSide}_${suffix}` as RiggedExperimentalHandBoneName;
+      const finger = poseEditFingerForBoneName(name);
+      const visible = this.poseEditFingerFilter === "all" || finger === this.poseEditFingerFilter;
+      let marker = this.poseMarkers.get(name);
+      if (!marker) {
+        marker = new THREE.Mesh(this.poseMarkerGeometry, this.poseMarkerMaterials[this.poseEditSide]);
+        marker.name = `pose-joint-marker:${name}`;
+        marker.userData.poseEditBoneName = name;
+        marker.renderOrder = 1000;
+        marker.frustumCulled = false;
+        this.poseMarkers.set(name, marker);
+        this.scene.add(marker);
+      }
+      marker.visible = visible;
+      if (!visible) continue;
+      const bone = this.getHand3D(this.poseEditSide).getEditableBone(name);
+      bone.getWorldPosition(marker.position);
+      marker.scale.setScalar(name === this.poseEditBoneName ? 1.45 : 1);
+    }
+  }
+
+  private hidePoseMarkers(): void {
+    for (const marker of this.poseMarkers.values()) marker.visible = false;
+  }
+
   private applyHandModelSelection(): void {
     if (!isDetailedHandModel(this.requestedHandModel)) {
       this.leftHand3D.setHandModel(this.requestedHandModel);
       this.rightHand3D.setHandModel(this.requestedHandModel);
+      if (this.requestedHandModel === RIGGED_EXPERIMENTAL_HAND_MODEL_ID) {
+        this.ensureBundledLeadInPose();
+      } else {
+        this.clearBundledLeadInPose();
+      }
       return;
     }
+    this.clearBundledLeadInPose();
     this.leftHand3D.setHandModel(
       this.requestedHandModel,
       this.selectImprovedLod(this.leftHand3D),
@@ -651,6 +1163,54 @@ export class PianoScene3D {
       this.requestedHandModel,
       this.selectImprovedLod(this.rightHand3D),
     );
+  }
+
+  private clearBundledLeadInPose(): void {
+    if (!this.bundledLeadInPosePending && !this.bundledLeadInPoseApplied && !this.bundledLeadInPoseFailed) return;
+    this.bundledLeadInPoseRequest += 1;
+    this.bundledLeadInPosePending = false;
+    this.bundledLeadInPoseApplied = false;
+    this.bundledLeadInPoseFailed = false;
+    this.leftHand3D.setLeadInStartPose(null);
+    this.rightHand3D.setLeadInStartPose(null);
+  }
+
+  private ensureBundledLeadInPose(): void {
+    if (this.isDestroyed || this.bundledLeadInPosePending || this.bundledLeadInPoseApplied || this.bundledLeadInPoseFailed) return;
+    const request = ++this.bundledLeadInPoseRequest;
+    this.bundledLeadInPosePending = true;
+    void (async () => {
+      try {
+        await Promise.all([this.leftHand3D.waitForHandModelReady(), this.rightHand3D.waitForHandModelReady()]);
+        if (this.isDestroyed || request !== this.bundledLeadInPoseRequest || this.requestedHandModel !== RIGGED_EXPERIMENTAL_HAND_MODEL_ID) return;
+        const leftRig = this.leftHand3D.getRiggedExperimentalHand();
+        const rightRig = this.rightHand3D.getRiggedExperimentalHand();
+        const leftHash = leftRig?.sourceAssetSha256;
+        const rightHash = rightRig?.sourceAssetSha256;
+        if (!leftRig || !rightRig || !leftHash || !rightHash) return;
+
+        const response = await fetch(`${import.meta.env.BASE_URL}models/hands/rigged-experimental/right_hand_starting_pose.rigged-hand-pose.json`);
+        if (!response.ok) throw new Error(`Bundled start pose could not be loaded (${response.status}).`);
+        const preset = importRiggedHandPosePresetJson(await response.text(), { left: leftHash, right: rightHash });
+        if (this.isDestroyed || request !== this.bundledLeadInPoseRequest || this.requestedHandModel !== RIGGED_EXPERIMENTAL_HAND_MODEL_ID) return;
+
+        const rightStartPose = this.rightHand3D.retargetLeadInStartPoseFrom(this.rightHand3D, preset.hands.right, false);
+        const leftStartPose = this.leftHand3D.retargetLeadInStartPoseFrom(this.rightHand3D, preset.hands.right, true);
+        this.rightHand3D.setLeadInStartPose(rightStartPose);
+        this.leftHand3D.setLeadInStartPose(leftStartPose);
+        this.bundledLeadInPoseApplied = true;
+        this.update(this.currentTransportTime, this.lastActiveNotes);
+      } catch {
+        // A missing, invalid, or GLB-mismatched optional preset must not block normal playback.
+        if (request === this.bundledLeadInPoseRequest) {
+          this.leftHand3D.setLeadInStartPose(null);
+          this.rightHand3D.setLeadInStartPose(null);
+          this.bundledLeadInPoseFailed = true;
+        }
+      } finally {
+        if (request === this.bundledLeadInPoseRequest) this.bundledLeadInPosePending = false;
+      }
+    })();
   }
 
   private selectImprovedLod(hand: Hand3DMeshGroup): 0 | 1 | 2 {
@@ -768,35 +1328,98 @@ export class PianoScene3D {
     const startedAt = typeof performance !== "undefined" ? performance.now() : Date.now();
     let leftPose: MotionPose | null = null;
     let rightPose: MotionPose | null = null;
+    let leftSamplingSource: TestingHandDiagnosticContext["samplingSource"] = "motion-plan-array";
+    let rightSamplingSource: TestingHandDiagnosticContext["samplingSource"] = "motion-plan-array";
 
-    if (this.motionBuffer) {
+    if (this.poseEditSampling) {
+      leftPose = this.samplePoseForPoseEdit(this.poseEditSampling.timepoint, "left");
+      rightPose = this.samplePoseForPoseEdit(this.poseEditSampling.timepoint, "right");
+      leftSamplingSource = this.motionBuffer ? "motion-buffer" : "motion-plan-array";
+      rightSamplingSource = this.motionBuffer ? "motion-buffer" : "motion-plan-array";
+    } else if (this.motionBuffer) {
       leftPose = this.motionBuffer.samplePoseClamped(timeSeconds, "left");
       rightPose = this.motionBuffer.samplePoseClamped(timeSeconds, "right");
+      leftSamplingSource = "motion-buffer";
+      rightSamplingSource = "motion-buffer";
     } else if (this.motionPlan) {
       leftPose = this.interpolatePoseFromArray(this.leftPoses, timeSeconds);
       rightPose = this.interpolatePoseFromArray(this.rightPoses, timeSeconds);
     }
 
     // Fall back to motionPlan poses if buffer did not yield a pose for that hand
-    if (!leftPose && this.leftPoses.length > 0) {
+    if (!this.poseEditSampling && !leftPose && this.leftPoses.length > 0) {
       leftPose = this.interpolatePoseFromArray(this.leftPoses, timeSeconds);
+      leftSamplingSource = "motion-plan-fallback";
     }
-    if (!rightPose && this.rightPoses.length > 0) {
+    if (!this.poseEditSampling && !rightPose && this.rightPoses.length > 0) {
       rightPose = this.interpolatePoseFromArray(this.rightPoses, timeSeconds);
+      rightSamplingSource = "motion-plan-fallback";
     }
 
+    const captureModel = this.requestedHandModel === "testing" || this.requestedHandModel === "rigged-experimental"
+      ? this.requestedHandModel
+      : null;
+    const captureHandDiagnostics = captureModel !== null && isHandFrameCaptureActiveFor(captureModel);
     const rendered = this.fallingNotes3D.getRenderedNoteTimings();
     const noteSource = this.performancePlan ? rendered : this.notes;
+    const boundaryEvents = captureHandDiagnostics ? {
+      left: observeHandFrameNoteBoundaries("left", noteSource, timeSeconds),
+      right: observeHandFrameNoteBoundaries("right", noteSource, timeSeconds),
+    } : { left: [], right: [] };
+    const sampleContext = (
+      hand: "left" | "right",
+      source: TestingHandDiagnosticContext["samplingSource"],
+    ): TestingHandDiagnosticContext | undefined => {
+      if (!captureHandDiagnostics) return undefined;
+      const fallbackPoses = hand === "left" ? this.leftPoses : this.rightPoses;
+      const sourcePoses = source === "motion-buffer" && this.motionBuffer
+        ? this.motionBuffer.poses.filter(pose => pose.hand === hand)
+        : fallbackPoses;
+      const model = (hand === "left" ? this.leftHand3D : this.rightHand3D).getHandModelDiagnostics();
+      const intervals = this.motionBuffer?.getHandCoverageIntervals(hand) ?? null;
+      const isCovered = intervals === null ? null : intervals.some(interval =>
+        interval.start <= timeSeconds + 1e-4 && interval.end >= timeSeconds - 1e-4);
+      return {
+        displayedTransportTimeSeconds: timeSeconds,
+        noteBoundaryEvents: boundaryEvents[hand],
+        samplingSource: source,
+        motionPlanIdentity: this.motionPlan ? {
+          planId: this.motionPlan.planId,
+          inputRevision: this.motionPlan.inputRevision,
+          profileId: this.motionPlan.profileId,
+          profileRevision: this.motionPlan.profileRevision,
+          engineVersion: this.motionPlan.engineVersion,
+        } : null,
+        handModel: {
+          requestedModel: model.requestedModel,
+          loadedModel: model.loadedModel,
+          requestedLod: model.requestedLod,
+          loadedLod: model.loadedLod,
+          state: model.state,
+          error: model.error,
+        },
+        poseSampling: describeMotionPoseSample(sourcePoses, timeSeconds),
+        coverage: {
+          source: intervals === null ? "static-motion-plan-no-coverage-metadata" : "verified-motion-buffer",
+          intervals,
+          requestedTimeCovered: isCovered,
+          continuousCoverageEndSeconds: this.motionBuffer?.getHandContinuousCoverageUntil(hand, timeSeconds) ?? null,
+        },
+      };
+    };
 
     const leftHoverLift = calculateHandHoverLift("left", timeSeconds, noteSource);
     const rightHoverLift = calculateHandHoverLift("right", timeSeconds, noteSource);
-    // Testing also needs the *actual depressed key top* under the fingertips.
-    // Only pass these contacts for Testing when its diagnostic switch is enabled.
-    const usesImprovedHand = this.requestedHandModel === IMPROVED_HAND_MODEL_ID ||
-      (this.requestedHandModel === "testing" && this.testingKeyContact);
+    // Testing contact correction and Rigged Experimental capture both need the
+    // current key target data. The experimental update records this context only;
+    // it does not run the Testing solver or alter the rendered rig.
+    const usesImprovedHand = usesImprovedHandMotion(this.requestedHandModel) ||
+      (this.requestedHandModel === "testing" && (this.testingKeyContact || captureHandDiagnostics));
+    const capturesRiggedTargets = this.requestedHandModel === "rigged-experimental" && captureHandDiagnostics;
+    const shouldProvideContactTargets = usesImprovedHand || capturesRiggedTargets;
 
     if (leftPose) {
-      if (usesImprovedHand) {
+      if (shouldProvideContactTargets) {
         const contactTargets = populateHandContactTargets(
           noteSource,
           "left",
@@ -811,16 +1434,19 @@ export class PianoScene3D {
           this.showFingerLabels,
           leftHoverLift,
           contactTargets,
+          sampleContext("left", leftSamplingSource),
+          timeSeconds,
+          this.leadInDurationSeconds,
         );
       } else {
-        this.leftHand3D.updateFromPose(leftPose, this.skinSettings, this.showFingerLabels, leftHoverLift);
+        this.leftHand3D.updateFromPose(leftPose, this.skinSettings, this.showFingerLabels, leftHoverLift, [], sampleContext("left", leftSamplingSource), timeSeconds, this.leadInDurationSeconds);
       }
     } else {
       this.leftHand3D.clear();
     }
 
     if (rightPose) {
-      if (usesImprovedHand) {
+      if (shouldProvideContactTargets) {
         const contactTargets = populateHandContactTargets(
           noteSource,
           "right",
@@ -835,9 +1461,12 @@ export class PianoScene3D {
           this.showFingerLabels,
           rightHoverLift,
           contactTargets,
+          sampleContext("right", rightSamplingSource),
+          timeSeconds,
+          this.leadInDurationSeconds,
         );
       } else {
-        this.rightHand3D.updateFromPose(rightPose, this.skinSettings, this.showFingerLabels, rightHoverLift);
+        this.rightHand3D.updateFromPose(rightPose, this.skinSettings, this.showFingerLabels, rightHoverLift, [], sampleContext("right", rightSamplingSource), timeSeconds, this.leadInDurationSeconds);
       }
     } else {
       this.rightHand3D.clear();
@@ -871,6 +1500,25 @@ export class PianoScene3D {
   }
 
   private setupPointerEvents(): void {
+    const poseMarkerPointerDown = (e: PointerEvent) => {
+      if (!this.poseEditActive || e.button !== 0 || this.poseMarkers.size === 0) return;
+      const rect = this.canvas.getBoundingClientRect();
+      if (rect.width <= 0 || rect.height <= 0) return;
+      this.pointerNdc.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      this.pointerNdc.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+      this.raycaster.setFromCamera(this.pointerNdc, this.camera);
+      const visibleMarkers = [...this.poseMarkers.values()].filter(marker => marker.visible);
+      const marker = this.raycaster.intersectObjects(visibleMarkers, false)[0]?.object as THREE.Mesh | undefined;
+      const boneName = marker?.userData.poseEditBoneName as RiggedExperimentalHandBoneName | undefined;
+      if (!boneName) return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      this.setPoseEditTarget(this.poseEditSide, boneName);
+    };
+    // Capture before OrbitControls and TransformControls so clicking a joint
+    // marker selects it without starting a camera drag or piano note.
+    this.canvas.addEventListener("pointerdown", poseMarkerPointerDown, true);
+
     const getPitchAtEvent = (e: PointerEvent): number | null => {
       const rect = this.canvas.getBoundingClientRect();
       if (rect.width <= 0 || rect.height <= 0) return null;
@@ -881,6 +1529,7 @@ export class PianoScene3D {
     };
 
     const pointerDown = (e: PointerEvent) => {
+      if (this.poseEditActive) return;
       if (e.button !== 0) return;
       const pitch = getPitchAtEvent(e);
       if (pitch !== null) {
@@ -927,6 +1576,7 @@ export class PianoScene3D {
       ["pointercancel", releasePointer as EventListener],
     ];
     this.pointerListenerCleanup = () => {
+      this.canvas.removeEventListener("pointerdown", poseMarkerPointerDown, true);
       for (const [type, listener] of listeners) this.canvas.removeEventListener(type, listener);
       this.pointerListenerCleanup = null;
     };
@@ -935,6 +1585,7 @@ export class PianoScene3D {
 
   private renderFrame(): void {
     if (this.isDestroyed || !this.isVisible()) return;
+    if (this.poseEditActive) this.syncPoseMarkers();
     if (isDetailedHandModel(this.requestedHandModel)) {
       this.applyHandModelSelection();
     }
@@ -949,6 +1600,7 @@ export class PianoScene3D {
     this.canvas.removeEventListener("webglcontextrestored", this.handleContextRestored);
     this.resizeObserver?.disconnect();
     this.pointerListenerCleanup?.();
+    this.disposePoseEditControls();
     this.controls?.dispose();
     this.stage3D?.dispose();
     this.keyboard3D.dispose();

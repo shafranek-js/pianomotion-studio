@@ -9,6 +9,7 @@ import { HandsView } from "./handsView";
 import { KeyboardLayout, LOWEST_PIANO_KEY } from "./keyboardView";
 import {
   MotionBuffer,
+  describeMotionPoseSample,
   getDistalTipPosition,
   lerpPose,
   verifyTouchContact,
@@ -89,6 +90,26 @@ function sampleResult(
 }
 
 describe("MotionBuffer", () => {
+  it("describes source transport frames and clamped/interpolated freshness without claiming wall-clock time", () => {
+    const poses = [createSyntheticPose({ time: 1 }), createSyntheticPose({ time: 2 })];
+    expect(describeMotionPoseSample(poses, 0)).toMatchObject({
+      sampleMode: "clamped-first", sourcePoseTimeStartSeconds: 1, sourceTimestampMs: null,
+      freshness: "held-before-coverage",
+    });
+    expect(describeMotionPoseSample(poses, 1.5)).toMatchObject({
+      sampleMode: "interpolated", sourcePoseTimeStartSeconds: 1, sourcePoseTimeEndSeconds: 2,
+      sourceTimestampMs: null, freshness: "current-timeline-sample",
+    });
+    expect(describeMotionPoseSample(poses, 1)).toMatchObject({
+      sampleMode: "clamped-first", sourcePoseTimeStartSeconds: 1,
+    });
+    expect(describeMotionPoseSample(poses, 3)).toMatchObject({
+      sampleMode: "clamped-last", sourcePoseTimeStartSeconds: 2,
+      freshness: "held-after-coverage",
+    });
+    expect(describeMotionPoseSample([], 1).sampleMode).toBe("unknown");
+  });
+
   describe("Sliding lookahead buffer", () => {
     it("inserts poses and maintains sort order by time and hand", () => {
       const buffer = new MotionBuffer();

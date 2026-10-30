@@ -57,4 +57,22 @@ describe("transactional 3D activation", () => {
 
     expect(mocks.init).toHaveBeenCalledWith({}, { initialHandModel: "anatomical-improved" });
   });
+
+  it("reports pose editing unavailable when no 3D scene exists", () => {
+    const { scene } = sceneHarness();
+    const timepoint = {
+      id: "sample:1",
+      kind: "sampled" as const,
+      displayedTransportTimeSeconds: 1,
+      sourcePoseTimeSeconds: 1,
+    };
+
+    expect(scene.getPoseEditTimepoints()).toEqual([]);
+    expect(scene.getPoseEditAvailability(timepoint)).toEqual({
+      available: false,
+      leftAvailable: false,
+      rightAvailable: false,
+      reason: "no-3d-scene",
+    });
+  });
 });

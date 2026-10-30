@@ -28,6 +28,76 @@ export interface MotionBufferRange {
   end: number;
 }
 
+/** Describes the source frames behind a rendered pose without inventing wall-clock freshness. */
+export interface MotionPoseSampleInfo {
+  requestedTransportTimeSeconds: number;
+  sampleMode: "clamped-first" | "clamped-last" | "exact" | "interpolated" | "lower-frame" | "unknown";
+  sourcePoseTimeStartSeconds: number | null;
+  sourcePoseTimeEndSeconds: number | null;
+  /** MotionPose has no source capture timestamp, so this remains explicitly unknown. */
+  sourceTimestampMs: null;
+  freshness: "held-before-coverage" | "held-after-coverage" | "current-timeline-sample" | "unknown";
+}
+
+/** Reports the source transport-time frames used for a rendered sample. */
+export function describeMotionPoseSample(
+  poses: readonly MotionPose[],
+  requestedTransportTimeSeconds: number,
+): MotionPoseSampleInfo {
+  const unknown: MotionPoseSampleInfo = {
+    requestedTransportTimeSeconds,
+    sampleMode: "unknown",
+    sourcePoseTimeStartSeconds: null,
+    sourcePoseTimeEndSeconds: null,
+    sourceTimestampMs: null,
+    freshness: "unknown",
+  };
+  if (!Number.isFinite(requestedTransportTimeSeconds) || poses.length === 0) return unknown;
+
+  const first = poses[0]!;
+  const last = poses[poses.length - 1]!;
+  if (requestedTransportTimeSeconds <= first.transportTimeSeconds) {
+    return {
+      ...unknown,
+      sampleMode: "clamped-first",
+      sourcePoseTimeStartSeconds: first.transportTimeSeconds,
+      sourcePoseTimeEndSeconds: first.transportTimeSeconds,
+      freshness: "held-before-coverage",
+    };
+  }
+  if (requestedTransportTimeSeconds >= last.transportTimeSeconds) {
+    return {
+      ...unknown,
+      sampleMode: "clamped-last",
+      sourcePoseTimeStartSeconds: last.transportTimeSeconds,
+      sourcePoseTimeEndSeconds: last.transportTimeSeconds,
+      freshness: "held-after-coverage",
+    };
+  }
+
+  let lo = 0;
+  let hi = poses.length - 1;
+  while (lo <= hi) {
+    const mid = Math.floor((lo + hi) / 2);
+    if (poses[mid]!.transportTimeSeconds <= requestedTransportTimeSeconds) lo = mid + 1;
+    else hi = mid - 1;
+  }
+  const lower = poses[Math.max(0, lo - 1)]!;
+  const upper = poses[Math.min(poses.length - 1, lo)]!;
+  const sourceStart = lower.transportTimeSeconds;
+  const sourceEnd = upper.transportTimeSeconds;
+  const mode = Math.abs(requestedTransportTimeSeconds - sourceStart) <= 1e-9
+    ? "exact"
+    : sourceEnd - sourceStart <= 1e-6 ? "lower-frame" : "interpolated";
+  return {
+    ...unknown,
+    sampleMode: mode,
+    sourcePoseTimeStartSeconds: sourceStart,
+    sourcePoseTimeEndSeconds: mode === "exact" || mode === "lower-frame" ? sourceStart : sourceEnd,
+    freshness: "current-timeline-sample",
+  };
+}
+
 export interface HandCoverageInterval {
   start: number;
   end: number;

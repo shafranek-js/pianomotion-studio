@@ -12,8 +12,13 @@ describe("hand model settings compatibility", () => {
   it("accepts and preserves the improved ID through schema and sanitization", () => {
     expect(HandModelSchema.parse("anatomical-improved")).toBe("anatomical-improved");
     expect(HandModelSchema.parse("testing")).toBe("testing");
+    expect(HandModelSchema.parse("testing2")).toBe("testing2");
+    expect(HandModelSchema.parse("rigged-experimental")).toBe("rigged-experimental");
     expect(sanitizeSettings({ handModel: "testing" }).handModel).toBe("testing");
+    expect(sanitizeSettings({ handModel: "testing2" }).handModel).toBe("testing2");
+    expect(sanitizeSettings({ handModel: "rigged-experimental" }).handModel).toBe("rigged-experimental");
     expect(SettingsSchema.parse({ handModel: "anatomical-improved" }).handModel).toBe("anatomical-improved");
+    expect(SettingsSchema.parse({ handModel: "testing2" }).handModel).toBe("testing2");
     expect(sanitizeSettings({ handModel: "anatomical-improved" }).handModel).toBe("anatomical-improved");
   });
 

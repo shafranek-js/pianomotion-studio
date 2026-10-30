@@ -17,7 +17,7 @@ import {
   type ImprovedHandManifest,
   type ImprovedHandTextureLease,
 } from "./improvedHandAssets";
-import { IMPROVED_HAND_MODEL_ID } from "./improvedHandRuntime";
+import { IMPROVED_HAND_MODEL_ID, TESTING2_HAND_MODEL_ID } from "./improvedHandRuntime";
 
 const baseTextureSet = {
   baseColor: "textures/base.png",
@@ -732,6 +732,52 @@ describe("improved anatomical hand integration", () => {
     }
 
     group.dispose();
+  });
+
+  it("routes Testing2 through the source rig with Improved motion and no Testing transfer metadata", async () => {
+    const testing2 = new Hand3DMeshGroup("right", "anatomical", makeDependencies(async () => makeAsset()));
+    const improved = new Hand3DMeshGroup("right", "anatomical", makeDependencies(async () => makeAsset()));
+    try {
+      testing2.setHandModel(TESTING2_HAND_MODEL_ID, 0);
+      improved.setHandModel(IMPROVED_HAND_MODEL_ID, 0);
+      await Promise.all([testing2.waitForHandModelReady(), improved.waitForHandModelReady()]);
+
+      expect(testing2.getHandModelDiagnostics()).toMatchObject({
+        requestedModel: TESTING2_HAND_MODEL_ID,
+        loadedModel: TESTING2_HAND_MODEL_ID,
+        state: "ready",
+      });
+      const testing2Mesh = testing2.group.children.find(child => child instanceof THREE.SkinnedMesh) as THREE.SkinnedMesh | undefined;
+      const improvedMesh = improved.group.children.find(child => child instanceof THREE.SkinnedMesh) as THREE.SkinnedMesh | undefined;
+      expect(testing2Mesh).toBeDefined();
+      expect(testing2Mesh!.geometry.userData.improvedHandModelId).toBe("anatomical-improved");
+      expect(testing2Mesh!.geometry.userData.testingBindAlignment).toBeUndefined();
+      expect(testing2Mesh!.geometry.userData.testingContactSupportVertexIndicesByFinger).toBeUndefined();
+      for (const attributeName of ["skinIndex", "skinWeight"] as const) {
+        expect(Array.from(testing2Mesh!.geometry.getAttribute(attributeName).array))
+          .toEqual(Array.from(improvedMesh!.geometry.getAttribute(attributeName).array));
+      }
+
+      const pose = createMotionPose();
+      testing2.updateFromPose(pose, DEFAULT_SKIN_SETTINGS, false, 0.65);
+      improved.updateFromPose(pose, DEFAULT_SKIN_SETTINGS, false, 0.65);
+      testing2.group.updateMatrixWorld(true);
+      improved.group.updateMatrixWorld(true);
+      for (const name of IMPROVED_HAND_JOINT_NAMES) {
+        const testing2Bone = testing2.getBone(name)!;
+        const improvedBone = improved.getBone(name)!;
+        for (const transform of [
+          [testing2Bone.position.toArray(), improvedBone.position.toArray()],
+          [testing2Bone.quaternion.toArray(), improvedBone.quaternion.toArray()],
+          [testing2Bone.scale.toArray(), improvedBone.scale.toArray()],
+        ] as const) {
+          expect(transform[0]).toEqual(transform[1]);
+        }
+      }
+    } finally {
+      testing2.dispose();
+      improved.dispose();
+    }
   });
 
   it("rejects readiness on asset failure and keeps the current fallback explicitly reported", async () => {

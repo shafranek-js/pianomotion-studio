@@ -1,7 +1,19 @@
 import type { FingeringPlan, M1KeyStyle, MotionPlan, Note, PerformancePlan, SongDocument } from "@handthesia/contracts";
 import { Application, Container, Graphics } from "pixi.js";
 import { PianoScene3D, type Camera3DPreset } from "../render3d";
-import type { HandModelDiagnosticsSnapshot } from "../render3d/improvedHandRuntime";
+import type {
+  RiggedPoseEditAvailability,
+  RiggedPoseEditFingerFilter,
+  RiggedPoseEditPair,
+  RiggedPoseEditSampleSource,
+  RiggedPoseEditSelection,
+  RiggedPoseEditSide,
+  RiggedPoseEditSourceHashes,
+  RiggedPoseEditTimepoint,
+  RiggedPoseEditTransformMode,
+} from "../render3d/pianoScene3d";
+import type { RiggedExperimentalHandBoneName } from "../render3d/riggedExperimentalHand";
+import type { HandModelDiagnosticsSnapshot, HandModelId } from "../render3d/improvedHandRuntime";
 import { FallingNotesView } from "./fallingNotesView";
 import { HandsView } from "./handsView";
 import { KeyboardView, type KeyPressInfo } from "./keyboardView";
@@ -14,7 +26,7 @@ export interface PianoSceneDisplaySettings {
   showFingerLabels?: boolean;
   showNoteNames?: boolean;
   skinStyle?: SkinStyle;
-  handModel?: "anatomical" | "anatomical-improved" | "webxr" | "testing";
+  handModel?: HandModelId;
   testingHandMaterial?: "original" | "no-normal" | "no-albedo" | "clay";
   testingThumbStrength?: 0 | 0.25 | 0.5 | 0.75 | 1;
   testingKeyContact?: boolean;
@@ -35,6 +47,8 @@ export interface PianoSceneOptions {
   motionPlan?: MotionPlan | null;
   performancePlan?: PerformancePlan | null;
   displaySettings?: PianoSceneDisplaySettings;
+  /** Actual configured transport lead-in duration, in seconds. */
+  leadInDurationSeconds?: number;
   backgroundColor?: number;
   motionBuffer?: MotionBuffer | null;
   onContextLost?: (error: Error) => void;
@@ -220,6 +234,7 @@ export class PianoScene {
   private mode3D = false;
   private camera3DPreset: Camera3DPreset = "concert";
   private isDestroyed = false;
+  private leadInDurationSeconds = 2;
 
   private constructor(app: Application, options: PianoSceneOptions) {
     this.app = app;
@@ -230,6 +245,9 @@ export class PianoScene {
     this.keyStyle = options.keyStyle ?? "realistic";
     this.pixelsPerSecond = options.pixelsPerSecond ?? 200;
     this.keyboardHeight = options.keyboardHeight;
+    this.leadInDurationSeconds = Number.isFinite(options.leadInDurationSeconds)
+      ? Math.max(0, Math.min(2, options.leadInDurationSeconds!))
+      : 2;
 
     this.keyboardView = new KeyboardView();
     this.fallingNotesView = new FallingNotesView({ pixelsPerSecond: this.pixelsPerSecond });
@@ -508,6 +526,7 @@ export class PianoScene {
           onContextLost: this.onContextLost,
           onContextRestored: this.onContextRestored,
           initialHandModel: this.displaySettings.handModel,
+          leadInDurationSeconds: this.leadInDurationSeconds,
         });
         candidate.setNotes(this.notes);
         candidate.setMotionPlan(this.motionPlan);
@@ -887,6 +906,102 @@ export class PianoScene {
     await this.scene3D?.waitForHandModelReady();
   }
 
+  public getPoseEditTimepoints(leadInTimeSeconds?: number): RiggedPoseEditTimepoint[] {
+    return this.scene3D?.getPoseEditTimepoints(leadInTimeSeconds) ?? [];
+  }
+
+  public getPoseEditAvailability(timepoint: RiggedPoseEditTimepoint): RiggedPoseEditAvailability {
+    return this.getPoseEditAvailabilityForTimepoints([timepoint])[timepoint.id]!;
+  }
+
+  public getPoseEditAvailabilityForTimepoints(timepoints: readonly RiggedPoseEditTimepoint[]): Record<string, RiggedPoseEditAvailability> {
+    if (this.scene3D) return this.scene3D.getPoseEditAvailabilityForTimepoints(timepoints);
+    return Object.fromEntries(timepoints.map(timepoint => [timepoint.id, {
+      available: false,
+      leftAvailable: false,
+      rightAvailable: false,
+      reason: "no-3d-scene" as const,
+    }]));
+  }
+
+  public getPoseEditSampleSource(timepoint: RiggedPoseEditTimepoint, side: RiggedPoseEditSide): RiggedPoseEditSampleSource {
+    return this.scene3D?.getPoseEditSampleSource(timepoint, side) ?? {
+      sampleMode: "unavailable",
+      sourcePoseTimeSeconds: null,
+      sourcePoseTimeStartSeconds: null,
+      sourcePoseTimeEndSeconds: null,
+    };
+  }
+
+  public getPoseEditSourceHashes(): RiggedPoseEditSourceHashes {
+    return this.scene3D?.getPoseEditSourceHashes() ?? { left: null, right: null };
+  }
+
+  public getPoseEditTimepoint(): RiggedPoseEditTimepoint | null {
+    return this.scene3D?.getPoseEditTimepoint() ?? null;
+  }
+
+  public getPoseEditSelection(): RiggedPoseEditSelection | null {
+    return this.scene3D?.getPoseEditSelection() ?? null;
+  }
+
+  public isPoseEditMode(): boolean {
+    return this.scene3D?.isPoseEditMode() ?? false;
+  }
+
+  public async setPoseEditMode(enabled: boolean): Promise<void> {
+    await this.scene3D?.setPoseEditMode(enabled);
+  }
+
+  public updatePoseEditAtTimepoint(timepoint: RiggedPoseEditTimepoint): void {
+    if (!this.scene3D) throw new Error("Pose editing requires an active 3D piano scene.");
+    this.currentTransportTime = timepoint.displayedTransportTimeSeconds;
+    this.scene3D.updatePoseEditAtTimepoint(timepoint);
+  }
+
+  public exportPoseEditPair(): RiggedPoseEditPair {
+    if (!this.scene3D) throw new Error("Pose editing requires an active 3D piano scene.");
+    return this.scene3D.exportPoseEditPair();
+  }
+
+  public applyPoseEditPair(pair: RiggedPoseEditPair): void {
+    if (!this.scene3D) throw new Error("Pose editing requires an active 3D piano scene.");
+    this.scene3D.applyPoseEditPair(pair);
+  }
+
+  public setPoseEditTarget(side: RiggedPoseEditSide, boneName: RiggedExperimentalHandBoneName | null): void {
+    this.scene3D?.setPoseEditTarget(side, boneName);
+  }
+
+  public setPoseEditFingerFilter(filter: RiggedPoseEditFingerFilter): void {
+    this.scene3D?.setPoseEditFingerFilter(filter);
+  }
+
+  public setPoseEditTransformMode(mode: RiggedPoseEditTransformMode): void {
+    this.scene3D?.setPoseEditTransformMode(mode);
+  }
+
+  public hasPoseEditUndo(): boolean {
+    return this.scene3D?.hasPoseEditUndo() ?? false;
+  }
+
+  public undoPoseEdit(): boolean {
+    return this.scene3D?.undoPoseEdit() ?? false;
+  }
+
+  public resetPoseEditHand(side: RiggedPoseEditSide): void {
+    if (!this.scene3D) throw new Error("Pose editing requires an active 3D piano scene.");
+    this.scene3D.resetPoseEditHand(side);
+  }
+
+  public setPoseEditSelectionListener(listener: ((side: RiggedPoseEditSide, boneName: RiggedExperimentalHandBoneName | null) => void) | undefined): void {
+    this.scene3D?.setPoseEditSelectionListener(listener);
+  }
+
+  public setPoseEditChangeListener(listener: (() => void) | undefined): void {
+    this.scene3D?.setPoseEditChangeListener(listener);
+  }
+
   public setDisplaySettings(settings: PianoSceneDisplaySettings): void {
     const requestedCap = settings.renderCapFps;
     this.displaySettings = {
@@ -926,6 +1041,12 @@ export class PianoScene {
     this.fallingNotesView.setPixelsPerSecond(this.pixelsPerSecond);
     this.scene3D?.setPixelsPerSecond(this.pixelsPerSecond);
     this.update(this.currentTransportTime, this.lastActiveNotes);
+  }
+
+  public setLeadInDurationSeconds(seconds: number): void {
+    if (!Number.isFinite(seconds)) return;
+    this.leadInDurationSeconds = Math.max(0, Math.min(2, seconds));
+    this.scene3D?.setLeadInDurationSeconds(this.leadInDurationSeconds);
   }
 
   public getApp(): Application {

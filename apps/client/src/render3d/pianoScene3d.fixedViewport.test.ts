@@ -1,12 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+// @ts-expect-error Actual-asset scene test reads checked-in GLBs with Node fs.
+import { readFileSync } from "node:fs";
 import * as THREE from "three";
-import type { MotionPlan, Note, PerformancePlan } from "@handthesia/contracts";
+import type { MotionPlan, MotionPose, Note, PerformancePlan } from "@handthesia/contracts";
 import { FallingNotes3DView } from "./fallingNotes3dView";
 import * as handRigBuilder from "./handRigBuilder";
 import { Hand3DMeshGroup } from "./handRigBuilder";
 import { Keyboard3DView } from "./keyboard3dView";
 import { IMPROVED_HAND_MODEL_ID, type HandModelId } from "./improvedHandRuntime";
-import { PianoScene3D, type Camera3DPreset } from "./pianoScene3d";
+import { PianoScene3D, type Camera3DPreset, type RiggedPoseEditPair } from "./pianoScene3d";
+import { RiggedExperimentalHand } from "./riggedExperimentalHand";
+import { HABANERA_49_RIGHT_SOURCE_POSE } from "./testingHandHabanera49Fixture";
 
 const mocks = vi.hoisted(() => {
   const canvas = {
@@ -148,6 +152,24 @@ function isKeyPressed(scene: PianoScene3D, pitch: number): boolean {
   return keyboard.keysByPitch.get(pitch)!.pivotGroup.rotation.x !== 0;
 }
 
+function actualHandBuffer(side: "left" | "right"): ArrayBuffer {
+  const bytes = readFileSync(new URL(`../../public/models/hands/rigged-experimental/${side}.glb`, import.meta.url));
+  return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
+}
+
+function mirroredHabaneraPose(): MotionPose {
+  const pose = structuredClone(HABANERA_49_RIGHT_SOURCE_POSE);
+  const mirror = (point: [number, number, number]): [number, number, number] => [
+    handRigBuilder.KEYBOARD_WIDTH_IN - point[0], point[1], point[2],
+  ];
+  return {
+    ...pose,
+    hand: "left",
+    joints: pose.joints.map(joint => ({ ...joint, point: mirror(joint.point) })),
+    bones: pose.bones.map(bone => ({ ...bone, a: mirror(bone.a), b: mirror(bone.b) })),
+  };
+}
+
 function leftHandUpdate(scene: PianoScene3D): ReturnType<typeof vi.spyOn> {
   const leftHand = (scene as unknown as { leftHand3D: Hand3DMeshGroup }).leftHand3D;
   return vi.spyOn(leftHand, "updateFromPose").mockImplementation(() => {});
@@ -219,6 +241,53 @@ describe("PianoScene3D fixed viewport", () => {
       improvedScene.destroy();
       webxrScene?.destroy();
       builtinModuleSpy.mockRestore();
+    }
+  });
+
+  it("installs the optional starting pose and refreshes a paused scene after the asset arrives", async () => {
+    const presetJson = readFileSync(new URL("../../public/models/hands/rigged-experimental/right_hand_starting_pose.rigged-hand-pose.json", import.meta.url), "utf8");
+    let resolvePoseFetch!: (response: Response) => void;
+    const fetchMock = vi.fn(() => new Promise<Response>(resolve => {
+      resolvePoseFetch = resolve;
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+    const loadSpy = vi.spyOn(RiggedExperimentalHand, "load").mockImplementation(async side =>
+      RiggedExperimentalHand.fromBuffer(side, actualHandBuffer(side)),
+    );
+    const scene = new PianoScene3D(
+      { clientWidth: 480, clientHeight: 270 } as HTMLElement,
+      {
+        canvas: mocks.canvas as unknown as HTMLCanvasElement,
+        fixedViewport: viewports,
+        initialHandModel: "rigged-experimental",
+        leadInDurationSeconds: 2,
+      },
+    );
+    const sceneUpdate = vi.spyOn(scene, "update");
+    try {
+      const plan = motionPlan();
+      scene.setMotionPlan({
+        ...plan,
+        poses: [mirroredHabaneraPose(), structuredClone(HABANERA_49_RIGHT_SOURCE_POSE)],
+      });
+      scene.update(-2);
+      await scene.waitForHandModelReady();
+      await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
+
+      const updatesBeforePresetLoad = sceneUpdate.mock.calls.length;
+      resolvePoseFetch({ ok: true, status: 200, text: async () => presetJson } as Response);
+      const hands = scene as unknown as { leftHand3D: Hand3DMeshGroup; rightHand3D: Hand3DMeshGroup };
+      await vi.waitFor(() => {
+        expect((hands.rightHand3D as unknown as { leadInStartPose: unknown }).leadInStartPose).not.toBeNull();
+        expect((hands.leftHand3D as unknown as { leadInStartPose: unknown }).leadInStartPose).not.toBeNull();
+      });
+      expect(sceneUpdate.mock.calls.length).toBeGreaterThan(updatesBeforePresetLoad);
+      expect(scene.getHandModelDiagnostics().left.loadedModel).toBe("rigged-experimental");
+      expect(scene.getHandModelDiagnostics().right.loadedModel).toBe("rigged-experimental");
+    } finally {
+      scene.destroy();
+      loadSpy.mockRestore();
+      vi.unstubAllGlobals();
     }
   });
 
@@ -297,6 +366,10 @@ describe("PianoScene3D fixed viewport", () => {
       expect.anything(),
       expect.anything(),
       1,
+      [],
+      undefined,
+      5,
+      2,
     );
 
     scene.setLivePressedPitches([]);
@@ -321,10 +394,53 @@ describe("PianoScene3D fixed viewport", () => {
         expect.anything(),
         expect.anything(),
         expect.arrayContaining([expect.objectContaining({ finger: 1, pitch: 60 })]),
+        undefined,
+        5,
+        2,
       );
     } finally {
       scene.destroy();
     }
+  });
+
+  it("reports sampled pose editing unavailable for a non-experimental hand model", () => {
+    const scene = makeScene("anatomical");
+    try {
+      scene.setMotionPlan(motionPlan());
+      const [timepoint] = scene.getPoseEditTimepoints();
+      expect(timepoint).toBeDefined();
+      expect(scene.getPoseEditAvailability(timepoint!)).toMatchObject({
+        available: false,
+        reason: "model-mismatch",
+      });
+    } finally {
+      scene.destroy();
+    }
+  });
+
+  it("rolls both hands back when applying a two-hand pose fails on the second hand", () => {
+    const previous = {
+      left: { side: "left" },
+      right: { side: "right" },
+    } as unknown as RiggedPoseEditPair;
+    const next = {
+      left: { side: "left", marker: "next" },
+      right: { side: "right", marker: "next" },
+    } as unknown as RiggedPoseEditPair;
+    const leftApply = vi.fn();
+    const rightApply = vi.fn((pose: unknown) => {
+      if (pose === next.right) throw new Error("invalid right hand pose");
+    });
+    const fakeScene = {
+      poseEditActive: true,
+      exportPoseEditPair: () => previous,
+      leftHand3D: { applyPose: leftApply, refreshPoseEdit: vi.fn() },
+      rightHand3D: { applyPose: rightApply, refreshPoseEdit: vi.fn() },
+    } as unknown as PianoScene3D;
+
+    expect(() => PianoScene3D.prototype.applyPoseEditPair.call(fakeScene, next)).toThrow("invalid right hand pose");
+    expect(leftApply.mock.calls.map(([pose]) => pose)).toEqual([next.left, previous.left]);
+    expect(rightApply.mock.calls.map(([pose]) => pose)).toEqual([next.right, previous.right]);
   });
 
   it("uses performed intervals for rolled timing, early release, hover, and backward seeks", () => {
@@ -342,13 +458,13 @@ describe("PianoScene3D fixed viewport", () => {
     scene.update(2.5);
     expect(isKeyPressed(scene, 60)).toBe(true);
     expect(handUpdate).toHaveBeenLastCalledWith(
-      expect.anything(), expect.anything(), expect.anything(), 0,
+      expect.anything(), expect.anything(), expect.anything(), 0, [], undefined, 2.5, 2,
     );
 
     scene.update(3.5);
     expect(isKeyPressed(scene, 60)).toBe(false);
     expect(handUpdate).toHaveBeenLastCalledWith(
-      expect.anything(), expect.anything(), expect.anything(), 1,
+      expect.anything(), expect.anything(), expect.anything(), 1, [], undefined, 3.5, 2,
     );
 
     scene.update(2.5);

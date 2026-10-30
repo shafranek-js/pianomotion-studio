@@ -25,7 +25,10 @@ import {
   HandModelRequestGate,
   IMPROVED_HAND_MODEL_ID,
   TESTING_HAND_MODEL_ID,
+  TESTING2_HAND_MODEL_ID,
+  RIGGED_EXPERIMENTAL_HAND_MODEL_ID,
   isDetailedHandModel,
+  usesImprovedHandMotion,
   type HandModelDiagnostics,
   type HandModelId,
   type ImprovedHandLod,
@@ -35,11 +38,26 @@ import {
   type ImprovedHandContactTarget,
 } from "./improvedHandContact";
 import { solveFixedLengthFingerChain } from "./anatomicalHandContact";
+import { checkTestingFingerChainCorrection } from "./testingFingerKinematics";
+import { interpolateTestingFingerChainFixedLength } from "./testingFingerChainInterpolation";
+import { createTestingFingerRigidSwingCandidates } from "./testingFingerRigidSwing";
 import { transferWebxrSkinToAnatomicalSurface } from "./testingHandSkin";
 import { transferTestingWeightsInBoneFrames } from "./testingHandBoneFrameTransfer";
 import { measureTestingBindAlignment, type TestingBindAlignmentSnapshot } from "./testingHandBindAlignment";
 import { TestingHandAlignmentOverlay } from "./testingHandAlignmentOverlay";
 import { attachTestingHandMorphTargets } from "./testingHandMorphTargets";
+import { permitsTestingContactCandidate } from "./testingHandContactGuard";
+import { extractPianistHandLandmarks, measurePianistJointBends } from "./testingHandPianistBenchmark";
+import { snapshotTestingHandPoseStages } from "./testingHandPoseStages";
+import { isTestingHandCaptureActive, recordHandFrameSample, recordTestingHandSample, shouldRecordHandFrameSample, shouldRecordTestingHandSample, type TestingHandDiagnosticContext, type TestingThumbReachCollector, type TestingThumbReachIteration } from "../diagnostics/testingHandCapture";
+import { measureTestingThumbControlledTipReach } from "./testingThumbReach";
+import {
+  RiggedExperimentalHand,
+  riggedHandStartPoseLiveAlpha,
+  type RiggedExperimentalHandBoneName,
+  type RiggedExperimentalHandPoseBlend,
+  type RiggedExperimentalHandPose,
+} from "./riggedExperimentalHand";
 
 export const WHITE_KEY_WIDTH_IN = 6.5 / 7.0;
 export const KEYBOARD_WHITE_KEYS = 52;
@@ -61,6 +79,10 @@ export function posePointToWorld(
   target = new THREE.Vector3(),
 ): THREE.Vector3 {
   return target.set(pt[0] - KEYBOARD_WIDTH_IN * 0.5, pt[2], -pt[1]);
+}
+
+function roundTestingDiagnosticNumber(value: number): number {
+  return Number.isFinite(value) ? Math.round(value * 1000) / 1000 : value;
 }
 
 export interface ReconstructedHand3D {
@@ -632,6 +654,8 @@ interface ImprovedDistalContactFrame {
   start: THREE.Vector3;
   end: THREE.Vector3;
   hinge: THREE.Vector3;
+  proximalHinge: THREE.Vector3;
+  hasProximalHinge: boolean;
   tipPoint: THREE.Vector3;
   thicknessScale: number;
   active: boolean;
@@ -2916,6 +2940,10 @@ export class Hand3DMeshGroup {
   private currentHandModel: HandModelId;
   private requestedHandModel: HandModelId;
   private rig: ParsedHandGlbRig;
+  private experimentalRig: RiggedExperimentalHand | null = null;
+  private leadInStartPose: RiggedExperimentalHandPose | null = null;
+  private lastDisplayedTransportTimeSeconds = 0;
+  private lastLeadInDurationSeconds = 0;
   private readonly requestGate = new HandModelRequestGate();
   private readonly assetLoader: HandModelRuntimeDependencies["assetLoader"];
   private readonly textureCache: HandModelRuntimeDependencies["textureCache"];
@@ -2945,6 +2973,8 @@ export class Hand3DMeshGroup {
       start: new THREE.Vector3(),
       end: new THREE.Vector3(),
       hinge: new THREE.Vector3(),
+      proximalHinge: new THREE.Vector3(),
+      hasProximalHinge: false,
       tipPoint: new THREE.Vector3(),
       thicknessScale: 1,
       active: false,
@@ -2979,7 +3009,7 @@ export class Hand3DMeshGroup {
 
   public constructor(
     hand: "left" | "right",
-    handModel: Exclude<HandModelId, typeof IMPROVED_HAND_MODEL_ID | typeof TESTING_HAND_MODEL_ID> = "anatomical",
+    handModel: Exclude<HandModelId, typeof IMPROVED_HAND_MODEL_ID | typeof TESTING_HAND_MODEL_ID | typeof TESTING2_HAND_MODEL_ID | typeof RIGGED_EXPERIMENTAL_HAND_MODEL_ID> = "anatomical",
     dependencies?: HandModelRuntimeDependencies,
   ) {
     this.hand = hand;
@@ -3222,23 +3252,119 @@ export class Hand3DMeshGroup {
     showFingerLabels: boolean,
     hoverLift = 0,
     contactTargets: readonly ImprovedHandContactTarget[] = [],
+    diagnosticContext?: TestingHandDiagnosticContext,
+    displayedTransportTimeSeconds = this.lastDisplayedTransportTimeSeconds,
+    leadInDurationSeconds = this.lastLeadInDurationSeconds,
   ): void {
     if (this.isDisposed) return;
+    this.lastDisplayedTransportTimeSeconds = Number.isFinite(displayedTransportTimeSeconds) ? displayedTransportTimeSeconds : 0;
+    this.lastLeadInDurationSeconds = Number.isFinite(leadInDurationSeconds) ? Math.max(0, Math.min(2, leadInDurationSeconds)) : 0;
     this.lastPose = pose;
     this.lastSkinSettings = skinSettings;
     this.lastShowFingerLabels = showFingerLabels;
     this.lastHoverLift = hoverLift;
     this.lastContactTargets = contactTargets;
-    const isImproved = this.currentHandModel === IMPROVED_HAND_MODEL_ID;
+    if (this.currentHandModel === RIGGED_EXPERIMENTAL_HAND_MODEL_ID && this.experimentalRig) {
+      this.group.visible = true;
+      this.rig.skinnedMesh.visible = false;
+      this.forearmMesh.visible = false;
+      this.cuffMesh.visible = false;
+      this.sleeveMesh.visible = false;
+      for (const nail of this.fingernails) nail.visible = false;
+      for (const shadow of this.contactShadows) shadow.visible = false;
+      for (const sprite of this.badgeSprites.values()) sprite.visible = false;
+      const captureRiggedFrame = diagnosticContext !== undefined &&
+        shouldRecordHandFrameSample("rigged-experimental", pose.hand, Boolean(diagnosticContext.noteBoundaryEvents?.length));
+      const leadInLiveAlpha = riggedHandStartPoseLiveAlpha(this.lastDisplayedTransportTimeSeconds, this.lastLeadInDurationSeconds);
+      const leadInBlend: RiggedExperimentalHandPoseBlend | undefined = this.leadInStartPose && leadInLiveAlpha < 1 &&
+        !this.experimentalRig.isPoseEditMode
+        ? { pose: this.leadInStartPose, liveAlpha: leadInLiveAlpha }
+        : undefined;
+      this.experimentalRig.update(reconstructHand3D(pose, 0), leadInBlend);
+      if (captureRiggedFrame && diagnosticContext) {
+        const live = this.experimentalRig.sampleLiveDiagnostics();
+        const sourcePoseTimeSeconds = pose.transportTimeSeconds;
+        const riggedTargets = contactTargets.map(target => {
+          if (target.pitch === null) return { finger: target.finger, status: "no-active-note" };
+          const targetSurfaceSamples = live.fixedDistalSkinSampleRows
+            .filter(row => row[0] === target.finger)
+            .map(row => {
+              const surfaceY = target.sampleSurfaceYAt(target.pitch!, row[4]!, row[6]!);
+              return [
+                row[1]!,
+                row[2]!,
+                surfaceY === null ? null : roundTestingDiagnosticNumber(surfaceY),
+                surfaceY === null ? null : roundTestingDiagnosticNumber(row[5]! - surfaceY),
+              ];
+            });
+          const keyBoundsAvailable = [target.contactCenterX, target.contactMinX, target.contactMaxX, target.contactMinZ, target.contactMaxZ].every(Number.isFinite);
+          return {
+            finger: target.finger,
+            status: targetSurfaceSamples.length ? "target-sampled" : "skin-samples-unavailable",
+            pitch: target.pitch,
+            noteStartSeconds: roundTestingDiagnosticNumber(target.sourceStartSeconds),
+            keyBounds: keyBoundsAvailable ? {
+              centerX: roundTestingDiagnosticNumber(target.contactCenterX!),
+              minX: roundTestingDiagnosticNumber(target.contactMinX!),
+              maxX: roundTestingDiagnosticNumber(target.contactMaxX!),
+              minZ: roundTestingDiagnosticNumber(target.contactMinZ!),
+              maxZ: roundTestingDiagnosticNumber(target.contactMaxZ!),
+            } : null,
+            // [sampleId, sourceVertexId, sampledKeyTopY, skinVertexY - keyTopY].
+            // This is a sparse vertical reference, not a collision test.
+            targetSurfaceSamples,
+          };
+        });
+        const hasActiveRiggedTarget = riggedTargets.some(target => target.status === "target-sampled" || target.status === "skin-samples-unavailable");
+        recordHandFrameSample("rigged-experimental", pose.hand, {
+          sampling: diagnosticContext,
+          displayedTransportTimeSeconds: diagnosticContext.displayedTransportTimeSeconds ?? diagnosticContext.poseSampling.requestedTransportTimeSeconds,
+          sourcePoseTimeSeconds: roundTestingDiagnosticNumber(sourcePoseTimeSeconds),
+          profileIdentity: diagnosticContext.motionPlanIdentity
+            ? { profileId: diagnosticContext.motionPlanIdentity.profileId, profileRevision: diagnosticContext.motionPlanIdentity.profileRevision }
+            : null,
+          sampleReason: diagnosticContext.noteBoundaryEvents?.some(event => event.kind === "timeline-discontinuity")
+            ? "timeline-discontinuity-observed-on-render-frame"
+            : diagnosticContext.noteBoundaryEvents?.length ? "note-boundary-observed-on-render-frame" : "periodic",
+          sourceMotionPose: {
+            transportTimeSeconds: roundTestingDiagnosticNumber(sourcePoseTimeSeconds),
+            layerOrder: pose.layerOrder,
+            joints: pose.joints.map(joint => [joint.kind, ...joint.point.map(roundTestingDiagnosticNumber)]),
+            bones: pose.bones.map(bone => [bone.kind, ...bone.a.map(roundTestingDiagnosticNumber), ...bone.b.map(roundTestingDiagnosticNumber)]),
+          },
+          riggedExperimental: {
+            frameSchemaVersion: 2,
+            sourceAssetSha256: this.experimentalRig.sourceAssetSha256,
+            boneWorldTransformRows: live.boneWorldTransformRows,
+            fixedDistalSkinSampleRows: live.fixedDistalSkinSampleRows,
+            unavailableFingerSamples: live.unavailableFingerSamples,
+            targets: riggedTargets,
+            targetStatus: contactTargets.length === 0
+              ? "unavailable-no-key-targets-passed"
+              : hasActiveRiggedTarget ? "sampled-key-top-at-fixed-skin-vertices" : "no-active-note",
+            collisionStatus: "not-computed",
+          },
+        }, Boolean(diagnosticContext.noteBoundaryEvents?.length));
+      }
+      return;
+    }
+    const usesImprovedMotion = usesImprovedHandMotion(this.currentHandModel);
     const isTesting = this.currentHandModel === TESTING_HAND_MODEL_ID;
-    const isPhotoSurface = isImproved || isTesting;
+    const isPhotoSurface = usesImprovedMotion || isTesting;
     const isAnatomical = this.currentHandModel === "anatomical";
-    const isAnatomicalOrImproved = isImproved || isAnatomical || (isTesting && this.testingKeyContact);
+    const isTestingDiagnosticCapture = isTesting && diagnosticContext !== undefined && isTestingHandCaptureActive();
+    const hasNoteBoundary = Boolean(diagnosticContext?.noteBoundaryEvents?.length);
+    const captureTestingSample = isTestingDiagnosticCapture &&
+      shouldRecordTestingHandSample(pose.hand, hasNoteBoundary);
+    const preContactScaleEvidence = captureTestingSample
+      ? new Map<string, { requestedRatio: number; appliedRatio: number; bindLengthIn: number }>()
+      : null;
+    const isAnatomicalOrImproved = usesImprovedMotion || isAnatomical || (isTesting && this.testingKeyContact) || isTestingDiagnosticCapture;
     for (let finger = 1; finger <= 5; finger++) {
       this.improvedDistalContactFrames[finger]!.active = false;
     }
-    const h3d = reconstructHand3D(pose, isImproved ? 0 : hoverLift);
-    if (isImproved && hoverLift > 0) {
+    const h3d = reconstructHand3D(pose, usesImprovedMotion ? 0 : hoverLift);
+    if (usesImprovedMotion && hoverLift > 0) {
       // Keep the improved mesh rigid under hover instead of changing axial bone
       // scales as the legacy pose reconstruction lifts individual finger points.
       const rigidLift = 0.22 * Math.min(1, hoverLift);
@@ -3339,15 +3465,15 @@ export class Hand3DMeshGroup {
       // Elevate wrist bone slightly toward dorsal surface to match GLB bind-pose wrist height
       wristMeta.bone.position
         .copy(h3d.wristCenter)
-        .addScaledVector(palmUp, isImproved ? 0 : 0.16);
+        .addScaledVector(palmUp, usesImprovedMotion ? 0 : 0.16);
       wristMeta.bone.quaternion.copy(wristWorldQuat);
-      const lenRatio = isImproved
+      const lenRatio = usesImprovedMotion
         ? 1
         : Math.max(0.65, Math.min(1.35, wristToMetaIn / wristMeta.bindLengthIn));
       wristMeta.bone.scale.set(widthScale, widthScale, lenRatio);
     }
 
-    if (isImproved && wristMeta) {
+    if (usesImprovedMotion && wristMeta) {
       const wristPosition = wristMeta.bone.position;
       const wristQuaternion = wristMeta.bone.quaternion;
       const wristScale = wristMeta.bone.scale;
@@ -3382,7 +3508,7 @@ export class Hand3DMeshGroup {
       const segVec = new THREE.Vector3().subVectors(endPt, startPt);
       const measuredSegLen = segVec.length();
       const isAnatomical = this.currentHandModel === "anatomical";
-      const usesMeasuredSegmentLength = isImproved || isAnatomical;
+      const usesMeasuredSegmentLength = usesImprovedMotion || isAnatomical;
       const segLen = usesMeasuredSegmentLength ? measuredSegLen : Math.max(0.15, measuredSegLen);
       const forward = measuredSegLen > 1e-6
         ? segVec.clone().divideScalar(measuredSegLen)
@@ -3429,6 +3555,15 @@ export class Hand3DMeshGroup {
         ? segLen / meta.bindLengthIn
         : Math.max(0.55, Math.min(1.55, segLen / meta.bindLengthIn));
       meta.bone.scale.set(thicknessScale, thicknessScale, lenRatio);
+      // Keep only the initial MotionPose-driven scale. Contact IK may call this
+      // again with a candidate that is subsequently rejected and rolled back.
+      if (preContactScaleEvidence && !preContactScaleEvidence.has(boneName)) {
+        preContactScaleEvidence.set(boneName, {
+          requestedRatio: segLen / meta.bindLengthIn,
+          appliedRatio: lenRatio,
+          bindLengthIn: meta.bindLengthIn,
+        });
+      }
 
       return { quat, normalUp: yAxis, binormal: xAxis };
     };
@@ -3447,7 +3582,7 @@ export class Hand3DMeshGroup {
       const tipOriginal = chain[chain.length - 1]!;
       const dipPt = chain[chain.length - 2]!;
       const isAnatomical = this.currentHandModel === "anatomical";
-      const tipPadLift = (isImproved || isAnatomical) ? 0 : Math.max(0, 0.13 - Math.max(0, tipOriginal.y) * 0.5);
+      const tipPadLift = (usesImprovedMotion || isAnatomical) ? 0 : Math.max(0, 0.13 - Math.max(0, tipOriginal.y) * 0.5);
       const tipPt = new THREE.Vector3(
         tipOriginal.x,
         tipOriginal.y + tipPadLift,
@@ -3455,6 +3590,7 @@ export class Hand3DMeshGroup {
       );
 
       let distalResult: { quat: THREE.Quaternion; normalUp: THREE.Vector3; binormal: THREE.Vector3 } | null;
+      let proximalHinge: THREE.Vector3 | undefined;
 
       if (f === 1) {
         // Thumb has 4 points: [cmc, mcp, ip, tip]
@@ -3463,6 +3599,7 @@ export class Hand3DMeshGroup {
         const ip = dipPt;
 
         const metaResult = orientBone("thumb-metacarpal", cmc, mcp, widthScale);
+        proximalHinge = metaResult?.binormal;
         const proxResult = orientBone(
           "thumb-phalanx-proximal",
           mcp,
@@ -3482,7 +3619,7 @@ export class Hand3DMeshGroup {
         if (tipMeta && distalResult) {
           tipMeta.bone.position.copy(tipPt);
           tipMeta.bone.quaternion.copy(distalResult.quat);
-          tipMeta.bone.scale.set(widthScale, widthScale, isImproved ? 1 : widthScale);
+          tipMeta.bone.scale.set(widthScale, widthScale, usesImprovedMotion ? 1 : widthScale);
         }
       } else {
         // Fingers 2..5 have 5 points: [base, mcp, pip, dip, tip]
@@ -3493,9 +3630,10 @@ export class Hand3DMeshGroup {
 
         // In GLB bind pose, pinky-finger-metacarpal sits slightly closer to MCP
         const metaStart =
-          !isImproved && f === 5 ? new THREE.Vector3().lerpVectors(base, mcp, 0.22) : base;
+          !usesImprovedMotion && f === 5 ? new THREE.Vector3().lerpVectors(base, mcp, 0.22) : base;
 
         const metaResult = orientBone(`${prefix}-metacarpal`, metaStart, mcp, widthScale);
+        proximalHinge = metaResult?.binormal;
         const proxResult = orientBone(
           `${prefix}-phalanx-proximal`,
           mcp,
@@ -3522,7 +3660,7 @@ export class Hand3DMeshGroup {
         if (tipMeta && distalResult) {
           tipMeta.bone.position.copy(tipPt);
           tipMeta.bone.quaternion.copy(distalResult.quat);
-          tipMeta.bone.scale.set(widthScale, widthScale, isImproved ? 1 : widthScale);
+          tipMeta.bone.scale.set(widthScale, widthScale, usesImprovedMotion ? 1 : widthScale);
         }
       }
 
@@ -3538,18 +3676,53 @@ export class Hand3DMeshGroup {
         contactFrame.start.copy(dipPt);
         contactFrame.end.copy(tipPt);
         contactFrame.hinge.copy(distalResult.binormal);
+        contactFrame.hasProximalHinge = proximalHinge !== undefined;
+        if (proximalHinge) contactFrame.proximalHinge.copy(proximalHinge);
         contactFrame.tipPoint = tipOriginal;
         contactFrame.thicknessScale = widthScale;
         contactFrame.active = true;
       }
     }
 
+    // Contact frames can mutate the original tip through a shared vector.
+    // Preserve the entire pre-contact chain before evaluating any candidate.
+    const beforeContact = captureTestingSample
+      ? snapshotTestingHandPoseStages(h3d, []).beforeContact
+      : null;
+    const hasActiveThumbNote = contactTargets.some(target => target.finger === 1 && target.pitch !== null);
+    const thumbSupportFrameAvailable = Boolean(
+      this.rig.contactSupportVertexIndicesByFinger?.[1]?.length &&
+      this.improvedDistalContactFrames[1]?.active,
+    );
+    if (captureTestingSample) this.group.updateWorldMatrix(true, false);
+    const worldMatrix = this.group.matrixWorld.elements;
+    const physicalFrameCompatible = captureTestingSample && [0, 1, 2, 4, 5, 6, 8, 9, 10].every(index =>
+      Math.abs(worldMatrix[index]! - (index === 0 || index === 5 || index === 10 ? 1 : 0)) < 1e-6,
+    );
+    const thumbReachCollector: TestingThumbReachCollector | null = captureTestingSample && isTesting ? {
+      enabled: this.testingKeyContact,
+      status: !this.testingKeyContact
+        ? "disabled"
+        : !hasActiveThumbNote
+          ? "no-active-thumb-note"
+          : "unavailable",
+      unavailableReason: this.testingKeyContact && hasActiveThumbNote && !thumbSupportFrameAvailable
+        ? "thumb-support-frame-unavailable"
+        : null,
+      units: "inches",
+      coordinateFrame: "solver-local-plus-world-delta-inches-v1",
+      physicalFrameCompatible,
+      targetRole: "desired-controlled-bone-tip-not-skinned-pad",
+      reachabilityMeaning: "necessary-condition-only",
+      iterations: [],
+    } : null;
+
     if ((isAnatomical || (isTesting && this.testingKeyContact)) && contactTargets.length > 0) {
       // The same IK routine can resolve both vertical penetration and X/Z
       // key misses; unlike a Z-only floor clamp it uses the pressed key's
       // actual top face and the *skinned* distal pad sample.
-      this.applyAnatomicalKeyContact(contactTargets, orientBone);
-    } else if (isImproved && contactTargets.length > 0) {
+      this.applyAnatomicalKeyContact(contactTargets, orientBone, thumbReachCollector ?? undefined);
+    } else if (usesImprovedMotion && contactTargets.length > 0) {
       this.applyImprovedContactFloor(contactTargets, orientBone);
     }
 
@@ -3576,6 +3749,152 @@ export class Hand3DMeshGroup {
     // 5. Update Finger Number Badges
     this.updateFingerBadges(pose, showFingerLabels);
     this.testingBindOverlay?.update();
+
+    if (beforeContact && diagnosticContext && captureTestingSample) {
+      const sourceJointCounts = Object.fromEntries(["wrist", "knuckle", "tip"].map(kind => [
+        kind, pose.joints.filter(joint => joint.kind === kind).length,
+      ]));
+      const inputIsFinite = pose.joints.every(joint => joint.point.every(Number.isFinite)) &&
+        pose.bones.every(bone => [...bone.a, ...bone.b].every(Number.isFinite));
+      const afterContact = snapshotTestingHandPoseStages(beforeContact, this.improvedDistalContactFrames).afterContact;
+      const bendMeasurements = measurePianistJointBends(beforeContact).map(({ finger, joint, bendDegrees }) => ({ finger, joint, unsignedBendDegrees: bendDegrees }));
+      const afterBendMeasurements = measurePianistJointBends(afterContact);
+      const rendererNodes = [...this.rig.bonesByName.entries()].map(([nodeLabel, meta]) => ({
+        nodeLabel,
+        positionInHandGroup: [meta.bone.position.x, meta.bone.position.y, meta.bone.position.z],
+        quaternionXYZW: [meta.bone.quaternion.x, meta.bone.quaternion.y, meta.bone.quaternion.z, meta.bone.quaternion.w],
+        scale: [meta.bone.scale.x, meta.bone.scale.y, meta.bone.scale.z],
+      }));
+      recordTestingHandSample(pose.hand, {
+        sampling: diagnosticContext,
+        sampleReason: diagnosticContext.noteBoundaryEvents?.some(event => event.kind === "timeline-discontinuity")
+          ? "timeline-discontinuity-observed-on-render-frame"
+          : hasNoteBoundary ? "note-boundary-observed-on-render-frame" : "periodic",
+        bindAlignment: this.rig.skinnedMesh.geometry.userData.testingBindAlignment
+          ? { lod: this.loadedLod, report: this.rig.skinnedMesh.geometry.userData.testingBindAlignment }
+          : undefined,
+        sourceMotionPose: {
+          transportTimeSeconds: roundTestingDiagnosticNumber(pose.transportTimeSeconds),
+          layerOrder: pose.layerOrder,
+          joints: pose.joints.map(joint => [joint.kind, ...joint.point.map(roundTestingDiagnosticNumber)]),
+          bones: pose.bones.map(bone => [bone.kind, ...bone.a.map(roundTestingDiagnosticNumber), ...bone.b.map(roundTestingDiagnosticNumber)]),
+        },
+        analysis: {
+          inputPoseFinite: inputIsFinite,
+          sourceJointCounts,
+          sourceBoneSegmentCount: pose.bones.length,
+          reconstructedLandmarks: extractPianistHandLandmarks(beforeContact).map(point => point.map(roundTestingDiagnosticNumber)),
+          unsignedJointBends: bendMeasurements.map(measurement => ({
+            finger: measurement.finger,
+            joint: measurement.joint,
+            bendDegrees: roundTestingDiagnosticNumber(measurement.unsignedBendDegrees),
+          })),
+          afterContactLandmarks: extractPianistHandLandmarks(afterContact).map(point => point.map(roundTestingDiagnosticNumber)),
+          afterContactUnsignedJointBends: afterBendMeasurements.map(({ finger, joint, bendDegrees }) => ({
+            finger, joint, bendDegrees: roundTestingDiagnosticNumber(bendDegrees),
+          })),
+        },
+        rendererRig: {
+          nodeLabels: rendererNodes.map(node => node.nodeLabel),
+          transforms: rendererNodes.map(node => [
+            ...node.positionInHandGroup,
+            ...node.quaternionXYZW,
+            ...node.scale,
+          ].map(roundTestingDiagnosticNumber)),
+        },
+        preContactBoneScale: Object.fromEntries(preContactScaleEvidence ?? []),
+        testingThumbReach: thumbReachCollector ?? undefined,
+        keyContact: this.measureTestingContactTargets(contactTargets),
+      }, hasNoteBoundary);
+    }
+  }
+
+  /** Measures the final skinned support vertices under pitch-specific key surfaces. */
+  private measureTestingContactTargets(targets: readonly ImprovedHandContactTarget[]): Record<string, unknown> {
+    const supportByFinger = this.rig.contactSupportVertexIndicesByFinger;
+    const position = this.rig.skinnedMesh.geometry.getAttribute("position") as THREE.BufferAttribute | undefined;
+    const measurements: Record<string, unknown>[] = [];
+    if (!supportByFinger?.length || !position) {
+      return { enabled: this.testingKeyContact, status: "support-vertex-data-unavailable", targets: measurements };
+    }
+
+    for (const target of targets) {
+      if (target.pitch === null || target.finger < 1 || target.finger > 5) continue;
+      const supportIndices = supportByFinger[target.finger];
+      const frame = this.improvedDistalContactFrames[target.finger];
+      if (!supportIndices?.length || !frame?.active) {
+        measurements.push({ finger: target.finger, pitch: target.pitch, status: "finger-support-frame-unavailable" });
+        continue;
+      }
+      let padPoint: THREE.Vector3 | null = null;
+      let padSurfaceY: number | null = null;
+      let padDistance = Number.POSITIVE_INFINITY;
+      let surfaceSampleCount = 0;
+      let selectedVertexIndex: number | null = null;
+      let finiteSupportCount = 0;
+      let supportWithinBounds = 0;
+      const boundsKnown = [target.contactMinX, target.contactMaxX, target.contactMinZ, target.contactMaxZ].every(Number.isFinite) &&
+        target.contactMinX! <= target.contactMaxX! && target.contactMinZ! <= target.contactMaxZ!;
+      for (const vertexIndex of supportIndices) {
+        const point = new THREE.Vector3().fromBufferAttribute(position, vertexIndex);
+        this.rig.skinnedMesh.applyBoneTransform(vertexIndex, point);
+        point.applyMatrix4(this.rig.skinnedMesh.matrixWorld);
+        if (![point.x, point.y, point.z].every(Number.isFinite)) continue;
+        finiteSupportCount++;
+        if (boundsKnown && point.x >= target.contactMinX! && point.x <= target.contactMaxX! &&
+            point.z >= target.contactMinZ! && point.z <= target.contactMaxZ!) supportWithinBounds++;
+        const surfaceY = target.sampleSurfaceYAt(target.pitch, point.x, point.z);
+        if (surfaceY === null || !Number.isFinite(surfaceY)) continue;
+        surfaceSampleCount++;
+        const distance = point.distanceToSquared(frame.tip);
+        if (!padPoint || point.y < padPoint.y - 1e-5 || (Math.abs(point.y - padPoint.y) < 1e-5 && distance < padDistance)) {
+          padPoint = point;
+          padSurfaceY = surfaceY;
+          padDistance = distance;
+          selectedVertexIndex = vertexIndex;
+        }
+      }
+      const minX = target.contactMinX;
+      const maxX = target.contactMaxX;
+      const minZ = target.contactMinZ;
+      const maxZ = target.contactMaxZ;
+      const insideXBounds = padPoint && Number.isFinite(minX) && Number.isFinite(maxX)
+        ? padPoint.x >= minX! && padPoint.x <= maxX! : null;
+      const insideZBounds = padPoint && Number.isFinite(minZ) && Number.isFinite(maxZ)
+        ? padPoint.z >= minZ! && padPoint.z <= maxZ! : null;
+      measurements.push({
+        finger: target.finger,
+        pitch: target.pitch,
+        noteStartTransportTimeSeconds: target.sourceStartSeconds,
+        targetKeyBounds: {
+          centerX: Number.isFinite(target.contactCenterX) ? roundTestingDiagnosticNumber(target.contactCenterX!) : null,
+          minX: Number.isFinite(minX) ? roundTestingDiagnosticNumber(minX!) : null,
+          maxX: Number.isFinite(maxX) ? roundTestingDiagnosticNumber(maxX!) : null,
+          minZ: Number.isFinite(minZ) ? roundTestingDiagnosticNumber(minZ!) : null,
+          maxZ: Number.isFinite(maxZ) ? roundTestingDiagnosticNumber(maxZ!) : null,
+        },
+        status: padPoint ? "measured-deformed-support-vertex" : "no-key-surface-under-support-samples",
+        supportFootprintStatus: !boundsKnown || finiteSupportCount !== supportIndices.length || finiteSupportCount === 0
+          ? "insufficient-data" : supportWithinBounds === 0 ? "all-sampled-vertices-outside-key-bounds" : "sampled-vertices-overlap-key-bounds",
+        finiteSupportCount,
+        supportVerticesInsideKeyBounds: boundsKnown ? supportWithinBounds : null,
+        supportVertexCount: supportIndices.length,
+        surfaceSampleCount,
+        selectedVertexIndex,
+        padWorldPosition: padPoint ? [padPoint.x, padPoint.y, padPoint.z].map(roundTestingDiagnosticNumber) : null,
+        keyTopYAtPad: padSurfaceY === null ? null : roundTestingDiagnosticNumber(padSurfaceY),
+        signedVerticalGap: padPoint && padSurfaceY !== null ? roundTestingDiagnosticNumber(padPoint.y - padSurfaceY) : null,
+        horizontalOffsetFromKeyCenterX: padPoint && Number.isFinite(target.contactCenterX)
+          ? roundTestingDiagnosticNumber(padPoint.x - target.contactCenterX!) : null,
+        insideKeyXBounds: insideXBounds,
+        insideKeyZBounds: insideZBounds,
+      });
+    }
+    return {
+      enabled: this.testingKeyContact,
+      status: measurements.length > 0 ? "measured" : targets.length === 0 ? "no-active-key-contact-targets" : "no-measurable-contact-targets",
+      targets: measurements,
+    };
   }
 
   private applyAnatomicalKeyContact(
@@ -3587,9 +3906,17 @@ export class Hand3DMeshGroup {
       thicknessScale: number,
       parentHingeAxis?: THREE.Vector3,
     ) => { quat: THREE.Quaternion; normalUp: THREE.Vector3; binormal: THREE.Vector3 } | null,
+    thumbReachCollector?: TestingThumbReachCollector,
   ): void {
     const supportByFinger = this.rig.contactSupportVertexIndicesByFinger;
-    if (!supportByFinger?.length || targets.length === 0) return;
+    if (!supportByFinger?.length || targets.length === 0) {
+      if (thumbReachCollector?.status === "unavailable") {
+        thumbReachCollector.unavailableReason = !supportByFinger?.length
+          ? "contact-support-vertex-data-unavailable"
+          : "no-contact-targets";
+      }
+      return;
+    }
 
     const geometry = this.rig.skinnedMesh.geometry;
     const position = geometry.getAttribute("position") as THREE.BufferAttribute;
@@ -3599,19 +3926,69 @@ export class Hand3DMeshGroup {
     this.rig.skinnedMesh.skeleton.update();
 
     for (const target of targets) {
-      if (target.pitch === null || target.finger < 1 || target.finger > 5) continue;
+      const pitch = target.pitch;
+      if (pitch === null || target.finger < 1 || target.finger > 5) continue;
       const frame = this.improvedDistalContactFrames[target.finger];
       const supportIndices = supportByFinger[target.finger];
-      if (!frame?.active || !supportIndices?.length) continue;
+      if (!frame?.active || !supportIndices?.length) {
+        if (thumbReachCollector?.status === "unavailable" && target.finger === 1) {
+          thumbReachCollector.unavailableReason = "thumb-support-frame-unavailable";
+        }
+        continue;
+      }
       const sampleCount = Math.min(supportIndices.length, this.improvedContactPointScratch.length);
-      if (sampleCount === 0) continue;
+      if (sampleCount === 0) {
+        if (thumbReachCollector?.status === "unavailable" && target.finger === 1) {
+          thumbReachCollector.unavailableReason = "thumb-support-samples-unavailable";
+        }
+        continue;
+      }
 
       const prefix = FINGER_PREFIX_BY_DIGIT[target.finger]!;
       const tipMeta = this.rig.bonesByName.get(`${prefix}-tip`);
-      if (!tipMeta) continue;
+      if (!tipMeta) {
+        if (thumbReachCollector?.status === "unavailable" && target.finger === 1) {
+          thumbReachCollector.unavailableReason = "thumb-tip-bone-unavailable";
+        }
+        continue;
+      }
       // The contact vertex must not jump between pads during an IK solve.
       // Without a stable contact anchor the thumb may overshoot the key laterally.
       let lockedTestingPadSample: number | null = null;
+      // Keep one pre-IK reference for all iterations. Candidates are still
+      // built from the current chain, but tolerance and bend direction cannot
+      // drift by accumulating small accepted corrections over repeated passes.
+      const sourceChainAtTargetStart = target.finger === 1
+        ? [frame.mcp.clone(), frame.dip.clone(), frame.tip.clone()]
+        : [frame.mcp.clone(), frame.pip.clone(), frame.dip.clone(), frame.tip.clone()];
+      const recordUnavailableThumbIteration = (iteration: number, reason: string): void => {
+        if (!thumbReachCollector || target.finger !== 1) return;
+        thumbReachCollector.iterations.push({
+          finger: 1,
+          pitch,
+          iteration: iteration + 1,
+          status: "goal-unavailable",
+          reason,
+          controlledTip: null,
+          targetControlledTip: null,
+          mcpToIpLength: null,
+          ipToTipLength: null,
+          totalReach: null,
+          distance: null,
+          signedReachDeficit: null,
+          reachDeficit: null,
+          invalid: null,
+        });
+        if (thumbReachCollector.unavailableReason === null) {
+          thumbReachCollector.unavailableReason = reason;
+        }
+      };
+      const recordThumbIteration = (measurement: TestingThumbReachIteration | null): void => {
+        if (!thumbReachCollector || target.finger !== 1 || !measurement) return;
+        thumbReachCollector.iterations.push(measurement);
+        thumbReachCollector.status = "recorded";
+        thumbReachCollector.unavailableReason = null;
+      };
 
       for (let iteration = 0; iteration < 4; iteration++) {
         this.group.updateMatrixWorld(true);
@@ -3639,7 +4016,7 @@ export class Hand3DMeshGroup {
         let padDistance = Number.POSITIVE_INFINITY;
         for (let sample = 0; sample < sampleCount; sample++) {
           const point = this.improvedContactPointScratch[sample]!;
-          const surfaceY = target.sampleSurfaceYAt(target.pitch, point.x, point.z);
+          const surfaceY = target.sampleSurfaceYAt(pitch, point.x, point.z);
           if (surfaceY === null || !Number.isFinite(surfaceY)) continue;
           const distance = point.distanceToSquared(frame.tip);
           if (padSample < 0 || point.y < this.improvedContactPointScratch[padSample]!.y - 1e-5) {
@@ -3657,7 +4034,7 @@ export class Hand3DMeshGroup {
           if (lockedTestingPadSample === null) lockedTestingPadSample = padSample;
           padSample = lockedTestingPadSample;
           const stablePad = this.improvedContactPointScratch[padSample]!;
-          padSurfaceY = target.sampleSurfaceYAt(target.pitch, stablePad.x, stablePad.z) ?? Number.NaN;
+          padSurfaceY = target.sampleSurfaceYAt(pitch, stablePad.x, stablePad.z) ?? Number.NaN;
         }
         let contactZ = padSample >= 0
           ? this.improvedContactPointScratch[padSample]!.z
@@ -3665,16 +4042,19 @@ export class Hand3DMeshGroup {
         if (zMin !== undefined && zMax !== undefined && zMin <= zMax) {
           contactZ = THREE.MathUtils.clamp(contactZ, zMin, zMax);
         }
-        let targetSurfaceY = target.sampleSurfaceYAt(target.pitch, desiredX, contactZ);
+        let targetSurfaceY = target.sampleSurfaceYAt(pitch, desiredX, contactZ);
         if (targetSurfaceY === null && zMin !== undefined && zMax !== undefined) {
           contactZ = (zMin + zMax) * 0.5;
-          targetSurfaceY = target.sampleSurfaceYAt(target.pitch, desiredX, contactZ);
+          targetSurfaceY = target.sampleSurfaceYAt(pitch, desiredX, contactZ);
         }
         if (targetSurfaceY === null && padSample >= 0) {
           contactZ = this.improvedContactPointScratch[padSample]!.z;
           targetSurfaceY = padSurfaceY;
         }
-        if (targetSurfaceY === null || !Number.isFinite(targetSurfaceY)) break;
+        if (targetSurfaceY === null || !Number.isFinite(targetSurfaceY)) {
+          recordUnavailableThumbIteration(iteration, "key-surface-unavailable");
+          break;
+        }
 
         if (padSample < 0) {
           let closestDistance = Number.POSITIVE_INFINITY;
@@ -3687,37 +4067,86 @@ export class Hand3DMeshGroup {
             }
           }
         }
-        if (padSample < 0) break;
+        if (padSample < 0) {
+          recordUnavailableThumbIteration(iteration, "support-pad-unavailable");
+          break;
+        }
 
         const padPoint = this.improvedContactPointScratch[padSample]!;
         const padOffset = padPoint.clone().sub(frame.tip);
         const targetPadPoint = new THREE.Vector3(desiredX, targetSurfaceY + 0.012, contactZ);
         const targetTipPoint = targetPadPoint.sub(padOffset);
+        let thumbReachIteration: TestingThumbReachIteration | null = null;
+        if (thumbReachCollector && target.finger === 1) {
+          // Use exactly the point passed to the solver. It combines a local
+          // chain point with a world-space delta; the collector marks whether
+          // the group frame makes that combination physically consistent.
+          const targetControlledTip = targetTipPoint.clone();
+          const controlledTip = frame.tip.clone();
+          const reach = measureTestingThumbControlledTipReach(
+            frame.mcp, frame.dip, controlledTip, targetControlledTip,
+          );
+          const vectorTuple = (point: THREE.Vector3): [number, number, number] | null =>
+            point.toArray().every(Number.isFinite) ? [point.x, point.y, point.z] : null;
+          thumbReachIteration = {
+            finger: 1,
+            pitch,
+            iteration: iteration + 1,
+            status: "solver-unavailable",
+            reason: null,
+            controlledTip: vectorTuple(controlledTip),
+            targetControlledTip: vectorTuple(targetControlledTip),
+            mcpToIpLength: reach.mcpToIpLength,
+            ipToTipLength: reach.ipToTipLength,
+            totalReach: reach.totalReach,
+            distance: reach.distance,
+            signedReachDeficit: reach.signedReachDeficit,
+            reachDeficit: reach.reachDeficit,
+            invalid: reach.invalid,
+          };
+        }
         const chain = target.finger === 1
           ? [frame.mcp, frame.dip, frame.tip]
           : [frame.mcp, frame.pip, frame.dip, frame.tip];
         const solution = solveFixedLengthFingerChain(chain, targetTipPoint);
-        if (!solution) break;
+        if (!solution) {
+          if (thumbReachIteration) thumbReachIteration.reason = "fixed-length-chain-solution-unavailable";
+          recordThumbIteration(thumbReachIteration);
+          break;
+        }
 
         const initialPip = frame.pip.clone();
         const initialDip = frame.dip.clone();
         const initialTip = frame.tip.clone();
-        const last = solution.points.length - 1;
+        const interpolationSourceChain = target.finger === 1
+          ? [frame.mcp.clone(), initialDip.clone(), initialTip.clone()]
+          : [frame.mcp.clone(), initialPip.clone(), initialDip.clone(), initialTip.clone()];
+        const initialStart = isTestingContact ? frame.start.clone() : null;
+        const initialEnd = isTestingContact ? frame.end.clone() : null;
+        const initialTipPoint = isTestingContact ? frame.tipPoint.clone() : null;
+        const testingProximalHinge = frame.hasProximalHinge ? frame.proximalHinge : undefined;
+        const affectedBones = isTestingContact
+          ? (target.finger === 1
+              ? ["thumb-phalanx-proximal", "thumb-phalanx-distal", "thumb-tip"]
+              : [`${prefix}-phalanx-proximal`, `${prefix}-phalanx-intermediate`, `${prefix}-phalanx-distal`, `${prefix}-tip`])
+            .flatMap(name => {
+              const bone = this.rig.bonesByName.get(name)?.bone;
+              return bone ? [{ bone, position: bone.position.clone(), quaternion: bone.quaternion.clone(), scale: bone.scale.clone() }] : [];
+            })
+          : [];
         // Evaluate the ACTUAL skinned vertex on the key surface, not a
         // theoretical bone endpoint: transferred anatomical weights can
         // amplify and even reverse a bone-only correction.
-        const applyCandidate = (factor: number): boolean => {
-          if (target.finger !== 1) {
-            frame.pip.copy(initialPip).lerp(solution.points[1]!, factor);
-          }
-          frame.dip.copy(initialDip).lerp(solution.points[last - 1]!, factor);
-          frame.tip.copy(initialTip).lerp(solution.points[last]!, factor);
-          frame.end.copy(frame.tip);
-          frame.start.copy(frame.dip);
-          frame.tipPoint.copy(frame.tip);
+        const orientCandidateFrame = (): boolean => {
+          // Reuse the same parent frame used to construct the original pose.
+          // The distal hinge can differ substantially and causes a discontinuity
+          // even when the proposed correction approaches zero.
+          const proximalHinge = isTestingContact
+            ? (frame.hasProximalHinge ? frame.proximalHinge : undefined)
+            : frame.hinge;
           if (target.finger === 1) {
             const proximal = orientBone(
-              "thumb-phalanx-proximal", frame.mcp, frame.dip, frame.thicknessScale, frame.hinge,
+              "thumb-phalanx-proximal", frame.mcp, frame.dip, frame.thicknessScale, proximalHinge,
             );
             const distal = orientBone(
               "thumb-phalanx-distal", frame.dip, frame.tip, frame.thicknessScale,
@@ -3730,7 +4159,7 @@ export class Hand3DMeshGroup {
           } else {
             const proximal = orientBone(
               `${prefix}-phalanx-proximal`, frame.mcp, frame.pip, frame.thicknessScale,
-              frame.hinge,
+              proximalHinge,
             );
             const intermediate = orientBone(
               `${prefix}-phalanx-intermediate`, frame.pip, frame.dip,
@@ -3749,6 +4178,43 @@ export class Hand3DMeshGroup {
           this.rig.skinnedMesh.skeleton.update();
           return true;
         };
+        const applyCandidate = (factor: number): boolean => {
+          if (target.finger !== 1) {
+            frame.pip.copy(initialPip).lerp(solution.points[1]!, factor);
+          }
+          frame.dip.copy(initialDip).lerp(
+            solution.points[target.finger === 1 ? 1 : 2]!, factor,
+          );
+          frame.tip.copy(initialTip).lerp(solution.points[solution.points.length - 1]!, factor);
+          frame.end.copy(frame.tip);
+          frame.start.copy(frame.dip);
+          frame.tipPoint.copy(frame.tip);
+          return orientCandidateFrame();
+        };
+        const applyCandidateChain = (candidateChain: readonly THREE.Vector3[]): boolean => {
+          if (target.finger !== 1) frame.pip.copy(candidateChain[1]!);
+          frame.dip.copy(candidateChain[target.finger === 1 ? 1 : 2]!);
+          frame.tip.copy(candidateChain[candidateChain.length - 1]!);
+          frame.end.copy(frame.tip);
+          frame.start.copy(frame.dip);
+          frame.tipPoint.copy(frame.tip);
+          return orientCandidateFrame();
+        };
+        const restoreTestingContactPose = (): void => {
+          frame.pip.copy(initialPip);
+          frame.dip.copy(initialDip);
+          frame.tip.copy(initialTip);
+          if (initialStart) frame.start.copy(initialStart);
+          if (initialEnd) frame.end.copy(initialEnd);
+          if (initialTipPoint) frame.tipPoint.copy(initialTipPoint);
+          for (const saved of affectedBones) {
+            saved.bone.position.copy(saved.position);
+            saved.bone.quaternion.copy(saved.quaternion);
+            saved.bone.scale.copy(saved.scale);
+          }
+          this.group.updateMatrixWorld(true);
+          this.rig.skinnedMesh.skeleton.update();
+        };
 
         if (!isTestingContact) {
           if (!applyCandidate(1)) break;
@@ -3756,9 +4222,25 @@ export class Hand3DMeshGroup {
         }
         const beforeHorizontal = Math.abs(padPoint.x - desiredX);
         const beforeVertical = Math.abs(padPoint.y - (targetSurfaceY + 0.012));
+        let beforeMinGap: number | null = null;
+        for (let sample = 0; sample < sampleCount; sample++) {
+          const point = this.improvedContactPointScratch[sample]!;
+          const y = target.sampleSurfaceYAt(pitch, point.x, point.z);
+          if (y === null || !Number.isFinite(y) || !Number.isFinite(point.y)) continue;
+          const gap = point.y - y;
+          beforeMinGap = beforeMinGap === null ? gap : Math.min(beforeMinGap, gap);
+        }
         let accepted = false;
-        for (const fraction of [1, 0.5, 0.25, 0.125]) {
-          if (!applyCandidate(fraction)) break;
+        const evaluateTestingCandidate = (candidateChain: readonly THREE.Vector3[]): boolean => {
+          // Test the exact candidate chain before orientBone mutates Testing
+          // rig transforms. The source pose defines its safe flexion plane.
+          const kinematics = checkTestingFingerChainCorrection(sourceChainAtTargetStart, candidateChain, {
+            hingeAxis: testingProximalHinge,
+            thumb: target.finger === 1,
+          });
+          if (!kinematics.safe) return false;
+          if (!applyCandidateChain(candidateChain)) return false;
+
           const vertex = supportIndices[padSample]!;
           const afterPad = new THREE.Vector3().fromBufferAttribute(position, vertex);
           this.rig.skinnedMesh.applyBoneTransform(vertex, afterPad);
@@ -3766,22 +4248,75 @@ export class Hand3DMeshGroup {
           // A bone move can bring the pad closer in X yet push it off the
           // playable key top in Z. The source keyboard raycast is authoritative:
           // never accept a correction if the visible pad misses the real key.
-          const actualKeyY = target.sampleSurfaceYAt(target.pitch, afterPad.x, afterPad.z);
-          if (actualKeyY === null || !Number.isFinite(actualKeyY)) continue;
+          const actualKeyY = target.sampleSurfaceYAt(pitch, afterPad.x, afterPad.z);
+          if (actualKeyY === null || !Number.isFinite(actualKeyY)) return false;
           const afterHorizontal = Math.abs(afterPad.x - desiredX);
           const afterVertical = Math.abs(afterPad.y - (actualKeyY + 0.012));
-          if (afterHorizontal <= beforeHorizontal + 1e-5 &&
-              afterVertical <= beforeVertical + 0.012 &&
-              afterHorizontal + afterVertical < beforeHorizontal + beforeVertical - 1e-5) {
+          const improvesContact = afterHorizontal <= beforeHorizontal + 1e-5 &&
+            afterVertical <= beforeVertical + 0.012 &&
+            afterHorizontal + afterVertical < beforeHorizontal + beforeVertical - 1e-5;
+          if (!improvesContact) return false;
+
+          // The selected anchor can land correctly while another vertex in the
+          // same pad goes through the key. Check each valid sample and stop as
+          // soon as its gap proves the monotone minimum cannot pass the guard.
+          let hasSampledPadGap = false;
+          const probe = new THREE.Vector3();
+          for (let sample = 0; sample < sampleCount; sample++) {
+            probe.fromBufferAttribute(position, supportIndices[sample]!);
+            this.rig.skinnedMesh.applyBoneTransform(supportIndices[sample]!, probe);
+            probe.applyMatrix4(this.rig.skinnedMesh.matrixWorld);
+            const y = target.sampleSurfaceYAt(pitch, probe.x, probe.z);
+            if (y === null || !Number.isFinite(y) || !Number.isFinite(probe.y)) continue;
+            hasSampledPadGap = true;
+            const gap = probe.y - y;
+            if (!permitsTestingContactCandidate(beforeMinGap, gap)) return false;
+          }
+          return hasSampledPadGap;
+        };
+
+        for (const fraction of [1, 0.5, 0.25, 0.125]) {
+          const interpolation = interpolateTestingFingerChainFixedLength(
+            interpolationSourceChain,
+            solution.points,
+            fraction,
+          );
+          if (!interpolation.ok) continue;
+          if (evaluateTestingCandidate(interpolation.points)) {
             accepted = true;
             break;
           }
         }
         if (!accepted) {
-          // Reject a correction that moves the visible pad AWAY from its key.
-          // Restoring factor 0 also restores the last valid finger pose.
-          applyCandidate(0);
+          // FABRIK may improve contact only by changing a PIP/DIP bend. Try a
+          // small whole-chain swing around MCP from the fixed pre-contact pose;
+          // the same kinematic, actual-skin, clearance and objective checks apply.
+          const rigidSwingCandidates = createTestingFingerRigidSwingCandidates(
+            sourceChainAtTargetStart,
+            targetTipPoint,
+          );
+          for (const candidate of rigidSwingCandidates) {
+            if (evaluateTestingCandidate(candidate.points)) {
+              accepted = true;
+              break;
+            }
+          }
+        }
+        if (!accepted) {
+          if (thumbReachIteration) {
+            thumbReachIteration.status = "candidate-rejected";
+            thumbReachIteration.reason = "no-candidate-passed-kinematic-and-skin-contact-guards";
+          }
+          recordThumbIteration(thumbReachIteration);
+          // Re-orienting with factor zero is not an exact rollback: its hinge
+          // reference can rotate the original skinned surface. Restore the
+          // actual transforms and all mutable contact-frame points instead.
+          restoreTestingContactPose();
           break;
+        }
+        if (thumbReachIteration) {
+          thumbReachIteration.status = "candidate-accepted";
+          recordThumbIteration(thumbReachIteration);
         }
       }
     }
@@ -3851,7 +4386,7 @@ export class Hand3DMeshGroup {
         frame.end.copy(frame.tip);
         frame.tipPoint.copy(frame.tip);
 
-        const isImproved = this.currentHandModel === IMPROVED_HAND_MODEL_ID;
+        const usesImprovedMotion = usesImprovedHandMotion(this.currentHandModel);
         if (target.finger === 1) {
           const proxResult = orientBone(
             "thumb-phalanx-proximal",
@@ -3870,7 +4405,7 @@ export class Hand3DMeshGroup {
           if (!distalResult) break;
           tipMeta.bone.position.copy(frame.tip);
           tipMeta.bone.quaternion.copy(distalResult.quat);
-          tipMeta.bone.scale.set(frame.thicknessScale, frame.thicknessScale, isImproved ? 1 : frame.thicknessScale);
+          tipMeta.bone.scale.set(frame.thicknessScale, frame.thicknessScale, usesImprovedMotion ? 1 : frame.thicknessScale);
         } else {
           const proxResult = orientBone(
             `${prefix}-phalanx-proximal`,
@@ -3896,7 +4431,7 @@ export class Hand3DMeshGroup {
           if (!distalResult) break;
           tipMeta.bone.position.copy(frame.tip);
           tipMeta.bone.quaternion.copy(distalResult.quat);
-          tipMeta.bone.scale.set(frame.thicknessScale, frame.thicknessScale, isImproved ? 1 : frame.thicknessScale);
+          tipMeta.bone.scale.set(frame.thicknessScale, frame.thicknessScale, usesImprovedMotion ? 1 : frame.thicknessScale);
         }
 
         this.group.updateMatrixWorld(true);
@@ -4095,10 +4630,10 @@ export class Hand3DMeshGroup {
 
       // The shirt cuff wraps generously over the wrist interface (-0.80 in forward toward hand),
       // completely enclosing the opening seam so both WebXR and anatomical hands emerge cleanly with zero visible cut.
-      const isImproved = this.currentHandModel === IMPROVED_HAND_MODEL_ID;
+      const usesImprovedMotion = usesImprovedHandMotion(this.currentHandModel);
       const isAnatomical = this.currentHandModel === "anatomical";
-      const cuffStart = isImproved ? -0.14 : (isAnatomical ? -0.14 : -0.80);
-      const cuffLen = isImproved ? 0.92 : 1.40;
+      const cuffStart = usesImprovedMotion ? -0.14 : (isAnatomical ? -0.14 : -0.80);
+      const cuffLen = usesImprovedMotion ? 0.92 : 1.40;
       const cuffMid = new THREE.Vector3()
         .copy(openingCenter)
         .addScaledVector(armDir, cuffStart + cuffLen * 0.5);
@@ -4161,10 +4696,44 @@ export class Hand3DMeshGroup {
     return this.currentHandModel;
   }
 
+  public getRiggedExperimentalHand(): RiggedExperimentalHand | null {
+    return this.currentHandModel === RIGGED_EXPERIMENTAL_HAND_MODEL_ID ? this.experimentalRig : null;
+  }
+
+  public retargetLeadInStartPoseFrom(
+    source: Hand3DMeshGroup,
+    sourcePose: RiggedExperimentalHandPose,
+    reflectAcrossPalm: boolean,
+  ): RiggedExperimentalHandPose {
+    const sourceRig = source.getRiggedExperimentalHand();
+    const targetRig = this.getRiggedExperimentalHand();
+    if (!sourceRig || !targetRig) throw new Error("Both Rigged Experimental GLBs must be ready before retargeting a lead-in pose.");
+    return sourceRig.retargetPoseToHand(sourcePose, targetRig, reflectAcrossPalm);
+  }
+
+  public setLeadInStartPose(pose: RiggedExperimentalHandPose | null): void {
+    if (pose && pose.side !== this.hand) throw new Error(`Lead-in pose must belong to the ${this.hand} hand.`);
+    this.leadInStartPose = pose;
+    if (this.lastPose && this.lastSkinSettings) {
+      this.updateFromPose(
+        this.lastPose,
+        this.lastSkinSettings,
+        this.lastShowFingerLabels,
+        this.lastHoverLift,
+        this.lastContactTargets,
+        undefined,
+        this.lastDisplayedTransportTimeSeconds,
+        this.lastLeadInDurationSeconds,
+      );
+    }
+  }
+
   public getHandModelDiagnostics(): HandModelDiagnostics {
     const glbStats = this.assetLoader.getCacheStats();
     const textureStats = this.textureCache.getCacheStats();
-    const triangles = isDetailedHandModel(this.currentHandModel)
+    const triangles = this.currentHandModel === RIGGED_EXPERIMENTAL_HAND_MODEL_ID
+      ? this.experimentalRig?.triangleCount ?? 0
+      : isDetailedHandModel(this.currentHandModel)
       ? this.improvedTriangleCount
       : ((this.rig.skinnedMesh.geometry.index?.count ?? 0) / 3);
     const diagnostics: HandModelDiagnostics = {
@@ -4191,6 +4760,11 @@ export class Hand3DMeshGroup {
 
   public waitForHandModelReady(): Promise<void> {
     if (this.isDisposed) return Promise.reject(new Error("Hand model scene is disposed."));
+    if (this.requestedHandModel === RIGGED_EXPERIMENTAL_HAND_MODEL_ID) {
+      if (this.loadState === "error") return Promise.reject(new Error(this.loadError ?? "Experimental hand failed to load."));
+      if (this.loadState === "ready" && this.currentHandModel === this.requestedHandModel) return Promise.resolve();
+      return new Promise((resolve, reject) => this.readyWaiters.add({ resolve, reject }));
+    }
     if (!isDetailedHandModel(this.requestedHandModel) ||
         (this.loadState === "ready" && this.currentHandModel === this.requestedHandModel &&
          this.loadedLod === this.requestedLod)) {
@@ -4208,6 +4782,16 @@ export class Hand3DMeshGroup {
 
   public setHandModel(handModel: HandModelId, lod: ImprovedHandLod = 0): void {
     if (this.isDisposed) return;
+    if (handModel === RIGGED_EXPERIMENTAL_HAND_MODEL_ID) {
+      if (this.requestedHandModel === handModel && (this.loadState === "loading" || this.loadState === "error" || this.currentHandModel === handModel)) return;
+      this.requestedHandModel = handModel;
+      void this.requestExperimentalHand();
+      return;
+    }
+    this.leadInStartPose = null;
+    if (this.requestedHandModel === RIGGED_EXPERIMENTAL_HAND_MODEL_ID && this.loadState === "loading") {
+      this.rejectReadyWaiters(new Error("Experimental hand request was superseded by another model selection."));
+    }
     if (isDetailedHandModel(handModel)) {
       // Camera-driven LOD checks call this from each rendered frame. Keep a
       // failed selection sticky until the user switches away/back or retries.
@@ -4230,6 +4814,10 @@ export class Hand3DMeshGroup {
   }
 
   public retryHandModelLoad(): void {
+    if (!this.isDisposed && this.requestedHandModel === RIGGED_EXPERIMENTAL_HAND_MODEL_ID && this.loadState === "error") {
+      void this.requestExperimentalHand();
+      return;
+    }
     if (this.isDisposed || !isDetailedHandModel(this.requestedHandModel) || this.loadState !== "error") return;
     const lod = this.requestedLod ?? 0;
     this.loadState = "idle";
@@ -4237,10 +4825,61 @@ export class Hand3DMeshGroup {
     this.requestImprovedHandLod(lod);
   }
 
+  private async requestExperimentalHand(): Promise<void> {
+    const token = this.requestGate.begin();
+    this.loadState = "loading";
+    this.loadError = null;
+    this.requestedLod = null;
+    this.publishHandModelDiagnostics();
+    try {
+      const candidate = await RiggedExperimentalHand.load(this.hand);
+      if (!this.requestGate.isCurrent(token) || this.requestedHandModel !== RIGGED_EXPERIMENTAL_HAND_MODEL_ID) {
+        candidate.dispose();
+        return;
+      }
+      this.disposeExperimentalHand();
+      this.clearTestingBindAlignmentOverlay();
+      this.experimentalRig = candidate;
+      this.group.add(candidate.group);
+      this.rig.skinnedMesh.visible = false;
+      this.currentHandModel = RIGGED_EXPERIMENTAL_HAND_MODEL_ID;
+      this.loadedLod = null;
+      this.loadState = "ready";
+      this.loadError = null;
+      if (this.lastPose && this.lastSkinSettings) {
+        this.updateFromPose(
+          this.lastPose,
+          this.lastSkinSettings,
+          this.lastShowFingerLabels,
+          this.lastHoverLift,
+          this.lastContactTargets,
+          undefined,
+          this.lastDisplayedTransportTimeSeconds,
+          this.lastLeadInDurationSeconds,
+        );
+      }
+      this.resolveReadyWaiters();
+      this.publishHandModelDiagnostics();
+    } catch (error) {
+      if (!this.requestGate.isCurrent(token)) return;
+      this.loadState = "error";
+      this.loadError = errorMessage(error);
+      this.rejectReadyWaiters(new Error(this.loadError));
+      this.publishHandModelDiagnostics();
+    }
+  }
+
+  private disposeExperimentalHand(): void {
+    this.experimentalRig?.dispose();
+    this.experimentalRig = null;
+    this.rig.skinnedMesh.visible = true;
+  }
+
   private setLegacyHandModel(handModel: "anatomical" | "webxr"): void {
     const wasWaitingForImproved = isDetailedHandModel(this.requestedHandModel) &&
       this.loadState === "loading";
     this.requestGate.invalidate();
+    this.disposeExperimentalHand();
     this.requestedHandModel = handModel;
     this.requestedLod = null;
     this.loadError = null;
@@ -4356,6 +4995,8 @@ export class Hand3DMeshGroup {
       }
 
       stagingMaterial = this.createImprovedHandMaterial(lease);
+      // Testing2 intentionally uses the source-derived GLB weights and rig;
+      // only Testing opts into WebXR skin transfer and its experimental helpers.
       stagedRig = requestedModel === TESTING_HAND_MODEL_ID
         ? buildTestingHandRig(
           this.hand, stagingMaterial, stagingGroup, asset.buffer,
@@ -4380,6 +5021,7 @@ export class Hand3DMeshGroup {
       const previousLease = this.textureLease;
       this.clearTestingBindAlignmentOverlay();
       for (const nail of this.fingernails) nail.removeFromParent();
+      this.disposeExperimentalHand();
       this.disposeRig(this.rig);
       for (const child of [...stagingGroup.children]) {
         stagingGroup.remove(child);
@@ -4683,9 +5325,55 @@ export class Hand3DMeshGroup {
     return this.rig.bonesByName.get(name)?.bone;
   }
 
+  private requireExperimentalPoseRig(): RiggedExperimentalHand {
+    if (this.currentHandModel !== RIGGED_EXPERIMENTAL_HAND_MODEL_ID || !this.experimentalRig) {
+      throw new Error(`The ${this.hand} hand is not loaded as Rigged Experimental.`);
+    }
+    return this.experimentalRig;
+  }
+
+  public get isPoseEditMode(): boolean {
+    return this.experimentalRig?.isPoseEditMode ?? false;
+  }
+
+  public getPoseEditSourceAssetSha256(): string | null {
+    return this.experimentalRig?.sourceAssetSha256 ?? null;
+  }
+
+  public setPoseEditMode(enabled: boolean): void {
+    this.requireExperimentalPoseRig().setPoseEditMode(enabled);
+  }
+
+  public exportPose(): RiggedExperimentalHandPose {
+    return this.requireExperimentalPoseRig().exportPose();
+  }
+
+  public applyPose(pose: RiggedExperimentalHandPose): void {
+    this.requireExperimentalPoseRig().applyPose(pose);
+  }
+
+  public getEditableBone(name: RiggedExperimentalHandBoneName): THREE.Bone {
+    return this.requireExperimentalPoseRig().getEditableBone(name);
+  }
+
+  public getEditableHandGroup(): THREE.Group {
+    const rig = this.requireExperimentalPoseRig();
+    if (!rig.isPoseEditMode) throw new Error("Experimental hand groups are editable only in pose edit mode.");
+    return rig.group;
+  }
+
+  public refreshPoseEdit(): void {
+    this.requireExperimentalPoseRig().refreshPoseEdit();
+  }
+
+  public restoreAnimatedPose(): void {
+    this.experimentalRig?.restoreAnimatedPose();
+  }
+
   public dispose(): void {
     if (this.isDisposed) return;
     this.isDisposed = true;
+    this.disposeExperimentalHand();
     this.clearTestingBindAlignmentOverlay();
     this.requestGate.dispose();
     this.rejectReadyWaiters(new Error("Hand model scene was disposed while loading."));
