@@ -22,10 +22,11 @@ import {
   KEYBOARD_WIDTH_IN,
 } from "./handRigBuilder";
 import { chooseImprovedHandExportLod, chooseImprovedHandLod, isDetailedHandModel, usesImprovedHandMotion, type HandModelDiagnosticsSnapshot, type HandModelId } from "./improvedHandRuntime";
-import { populateHandContactTargets, type ImprovedHandContactTarget } from "./improvedHandContact";
+import { IMPROVED_HAND_CONTACT_RELEASE_SECONDS, KEY_RELEASE_DURATION_SECONDS, computeKeyDepressionWeight, populateHandContactTargets, type ImprovedHandContactTarget } from "./improvedHandContact";
 import { Keyboard3DView } from "./keyboard3dView";
 import { PianoStage3D, type PianoStageDiagnostics } from "./pianoStage3d";
 import {
+  RiggedExperimentalHand,
   RIGGED_EXPERIMENTAL_POSE_BONE_SUFFIXES,
   type RiggedExperimentalHandBoneName,
   type RiggedExperimentalHandPose,
@@ -1308,7 +1309,80 @@ export class PianoScene3D {
       }
       const built = buildActiveKeysForFrame(activeScoreNotes, activeNotes);
       for (const [pitch, info] of built) {
+        if (info) {
+          let activeNote: Note | undefined;
+          for (const candidate of activeScoreNotes) {
+            if (candidate.pitch === pitch && (!activeNote || candidate.startSeconds >= activeNote.startSeconds)) {
+              activeNote = candidate;
+            }
+          }
+          if (activeNote) {
+            let prevEnd = Number.NEGATIVE_INFINITY;
+            let nextStart = Number.POSITIVE_INFINITY;
+            for (const candidate of noteSource) {
+              if (candidate.pitch !== pitch) continue;
+              if (
+                candidate.startSeconds < activeNote.startSeconds - 1e-5 &&
+                candidate.endSeconds <= activeNote.startSeconds + 1e-4 &&
+                activeNote.startSeconds - candidate.endSeconds <= IMPROVED_HAND_CONTACT_RELEASE_SECONDS + 1e-4
+              ) {
+                if (candidate.endSeconds > prevEnd) prevEnd = candidate.endSeconds;
+              }
+              if (
+                candidate.startSeconds > activeNote.startSeconds + 1e-5 &&
+                candidate.startSeconds >= activeNote.endSeconds - 1e-4 &&
+                candidate.startSeconds - activeNote.endSeconds <= IMPROVED_HAND_CONTACT_RELEASE_SECONDS + 1e-4
+              ) {
+                if (candidate.startSeconds < nextStart) nextStart = candidate.startSeconds;
+              }
+            }
+            const weight = computeKeyDepressionWeight(
+              timeSeconds,
+              activeNote.startSeconds,
+              activeNote.endSeconds,
+              Number.isFinite(prevEnd) ? prevEnd : undefined,
+              Number.isFinite(nextStart) ? nextStart : undefined,
+            );
+            if (weight < 1) {
+              activeMap.set(pitch, { ...info, depressionWeight: Math.max(0.02, weight) });
+              continue;
+            }
+          }
+        }
         activeMap.set(pitch, info);
+      }
+      for (const candidate of noteSource) {
+        if (activeMap.has(candidate.pitch)) continue;
+        if (
+          candidate.endSeconds <= timeSeconds &&
+          timeSeconds < candidate.endSeconds + KEY_RELEASE_DURATION_SECONDS
+        ) {
+          let nextStart = Number.POSITIVE_INFINITY;
+          for (const other of noteSource) {
+            if (other.pitch !== candidate.pitch) continue;
+            if (
+              other.startSeconds > candidate.startSeconds + 1e-5 &&
+              other.startSeconds >= candidate.endSeconds - 1e-4 &&
+              other.startSeconds - candidate.endSeconds <= IMPROVED_HAND_CONTACT_RELEASE_SECONDS + 1e-4
+            ) {
+              if (other.startSeconds < nextStart) nextStart = other.startSeconds;
+            }
+          }
+          const weight = computeKeyDepressionWeight(
+            timeSeconds,
+            candidate.startSeconds,
+            candidate.endSeconds,
+            undefined,
+            Number.isFinite(nextStart) ? nextStart : undefined,
+          );
+          if (weight > 0.01) {
+            activeMap.set(candidate.pitch, {
+              hand: candidate.hand ?? (candidate.pitch < 60 ? "left" : "right"),
+              ...(candidate.finger != null ? { finger: candidate.finger } : {}),
+              depressionWeight: weight,
+            });
+          }
+        }
       }
     }
 
@@ -1415,7 +1489,7 @@ export class PianoScene3D {
     // it does not run the Testing solver or alter the rendered rig.
     const usesImprovedHand = usesImprovedHandMotion(this.requestedHandModel) ||
       (this.requestedHandModel === "testing" && (this.testingKeyContact || captureHandDiagnostics));
-    const capturesRiggedTargets = this.requestedHandModel === "rigged-experimental" && captureHandDiagnostics;
+    const capturesRiggedTargets = this.requestedHandModel === "rigged-experimental";
     const shouldProvideContactTargets = usesImprovedHand || capturesRiggedTargets;
 
     if (leftPose) {
@@ -1470,6 +1544,18 @@ export class PianoScene3D {
       }
     } else {
       this.rightHand3D.clear();
+    }
+    if (leftPose && rightPose && this.requestedHandModel === RIGGED_EXPERIMENTAL_HAND_MODEL_ID && !this.poseEditActive) {
+      const leftRig = this.leftHand3D.getRiggedExperimentalHand();
+      const rightRig = this.rightHand3D.getRiggedExperimentalHand();
+      if (leftRig && rightRig) {
+        RiggedExperimentalHand.resolveHandPairCollisions(
+          leftRig,
+          rightRig,
+          this.leftHandContactTargets,
+          this.rightHandContactTargets,
+        );
+      }
     }
     const finishedAt = typeof performance !== "undefined" ? performance.now() : Date.now();
     this.recordHandUpdate(Math.max(0, finishedAt - startedAt));

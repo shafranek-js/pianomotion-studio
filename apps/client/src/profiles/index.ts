@@ -42,6 +42,7 @@ export {
   SMALL_HANDS_PROFILE,
   VIRTUOSO_PROFILE,
   LEFT_DOMINANT_PROFILE,
+  RIGGED_HAND_MEASURED_BASELINE_PROFILE,
   getDefaultProfiles,
   getDefaultProfile,
 } from "./defaultProfiles.ts";
@@ -65,8 +66,13 @@ export {
   deleteProfile,
   cloneProfile,
   isCanonicalProfile,
+  isBuiltinProfileAvailable,
+  getProfileStoreDiagnostics,
   subscribe,
   subscribeProfiles,
+  subscribeProfileEvents,
+  type ProfileStoreEvent,
+  type ProfileStoreDiagnostic,
 } from "./profileStore.ts";
 
 export { ProfileModal, type ProfileModalProps } from "./ProfileModal.tsx";

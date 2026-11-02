@@ -1,10 +1,12 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import {
   PianistProfileSchema,
+  type PianistProfile,
   DEFAULT_PROFILE,
   SMALL_HANDS_PROFILE,
   VIRTUOSO_PROFILE,
   LEFT_DOMINANT_PROFILE,
+  RIGGED_HAND_MEASURED_BASELINE_PROFILE,
   getDefaultProfiles,
   getDefaultProfile,
   ANATOMY_BONES,
@@ -15,6 +17,8 @@ import {
   importLegacyPianistJson,
   exportProfileToJson,
   getActiveProfile,
+  ACTIVE_PROFILE_STORAGE_KEY,
+  PROFILES_STORAGE_KEY,
   setActiveProfile,
   listProfiles,
   saveProfile,
@@ -23,7 +27,12 @@ import {
   subscribe,
   resetProfileStore,
   setProfileStorage,
+  subscribeProfileEvents,
+  getProfileStoreDiagnostics,
+  isBuiltinProfileAvailable,
+  isCanonicalProfile,
 } from "./index.ts";
+import { RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID } from "./riggedHandProfileCalibration.ts";
 
 const DESKTOP_DEFAULT_COPY_JSON = JSON.stringify({
   name: "Default copy",
@@ -207,7 +216,7 @@ describe("Pianist Profiles - Types & Definitions", () => {
 describe("Canonical Default Profiles", () => {
   it("all built-in profiles strictly satisfy PianistProfileSchema", () => {
     const defaults = getDefaultProfiles();
-    expect(defaults).toHaveLength(4);
+    expect(defaults).toHaveLength(5);
 
     for (const profile of defaults) {
       const parsed = PianistProfileSchema.safeParse(profile);
@@ -223,6 +232,12 @@ describe("Canonical Default Profiles", () => {
         expect(val).toBeGreaterThan(0);
       }
     }
+    expect(defaults.some((profile) => profile.profileId === RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID)).toBe(true);
+    expect(RIGGED_HAND_MEASURED_BASELINE_PROFILE.revision).toBe(0);
+    expect(RIGGED_HAND_MEASURED_BASELINE_PROFILE.createdAtUnixSeconds).toBe(0);
+    expect(RIGGED_HAND_MEASURED_BASELINE_PROFILE.modifiedAtUnixSeconds).toBe(0);
+    expect(Object.isFrozen(RIGGED_HAND_MEASURED_BASELINE_PROFILE)).toBe(true);
+    expect(Object.isFrozen(RIGGED_HAND_MEASURED_BASELINE_PROFILE.anatomy)).toBe(true);
   });
 
   it("getDefaultProfile returns deep clone of default profile", () => {
@@ -271,6 +286,21 @@ describe("Canonical Default Profiles", () => {
     expect(LEFT_DOMINANT_PROFILE.profileId).toBe("left-dominant");
     expect(LEFT_DOMINANT_PROFILE.behavior.left_dominant).toBe(true);
     expect(LEFT_DOMINANT_PROFILE.behavior.hand_dominance).toBe("left");
+  });
+
+  it("builds the Rigged hands baseline from Default without mutating either canonical profile", () => {
+    const baseline = getDefaultProfiles().find((profile) => profile.profileId === RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID)!;
+    expect(baseline).toEqual(RIGGED_HAND_MEASURED_BASELINE_PROFILE);
+    expect(baseline.name).toBe("Rigged hands — measured baseline");
+    expect(baseline.profileId).toBe(RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID);
+    expect(baseline.revision).toBe(0);
+    expect(baseline.anatomy.pp2).not.toBe(DEFAULT_PROFILE.anatomy.pp2);
+    expect(baseline.behavior).toEqual(DEFAULT_PROFILE.behavior);
+    expect(baseline.skin).toEqual(DEFAULT_PROFILE.skin);
+    expect(getDefaultProfiles().find((profile) => profile.profileId === RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID)).toEqual(baseline);
+    baseline.anatomy.pp2 += 1;
+    expect(RIGGED_HAND_MEASURED_BASELINE_PROFILE.anatomy.pp2).not.toBe(baseline.anatomy.pp2);
+    expect(DEFAULT_PROFILE.anatomy.pp2).not.toBe(baseline.anatomy.pp2);
   });
 });
 
@@ -418,11 +448,12 @@ describe("Profile Store", () => {
     expect(active.name).toBe("Virtuoso / Large Reach");
 
     const all = listProfiles();
-    expect(all).toHaveLength(4);
+    expect(all).toHaveLength(5);
     expect(all.map((p) => p.profileId)).toContain("default");
     expect(all.map((p) => p.profileId)).toContain("small-hands");
     expect(all.map((p) => p.profileId)).toContain("virtuoso");
     expect(all.map((p) => p.profileId)).toContain("left-dominant");
+    expect(all.map((p) => p.profileId)).toContain(RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID);
   });
 
   it("switches active profile with setActiveProfile and throws for non-existent id", async () => {
@@ -473,6 +504,7 @@ describe("Profile Store", () => {
     const deleted = await deleteProfile("default");
     expect(deleted).toBe(false);
     expect(await deleteProfile("small-hands")).toBe(false);
+    expect(await deleteProfile(RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID)).toBe(false);
 
     const active = getActiveProfile();
     expect(active.profileId).toBe("virtuoso");
@@ -563,5 +595,106 @@ describe("Profile Store", () => {
     const defaultProfileInStore = list.find((p) => p.profileId === "default");
     expect(defaultProfileInStore).toBeDefined();
     expect(defaultProfileInStore?.name).toBe("Default copy");
+
+    const builtin = getDefaultProfiles().find((profile) => profile.profileId === RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID)!;
+    await expect(saveProfile(builtin)).rejects.toThrow(/Canonical built-in profile/);
+    expect(listProfiles().find((profile) => profile.profileId === RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID)).toEqual(builtin);
+  });
+
+  it("preserves a measured-ID legacy collision in place and reports it without rewriting storage", async () => {
+    const builtin = getDefaultProfiles().find((profile) => profile.profileId === RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID)!;
+    const collision = structuredClone(builtin);
+    collision.name = "My saved Rigged profile";
+    collision.revision = 7;
+    collision.createdAtUnixSeconds = 100;
+    collision.modifiedAtUnixSeconds = 200;
+    collision.anatomy.pp2 += 0.25;
+    const original = structuredClone(collision);
+    mockStorage.setItem(PROFILES_STORAGE_KEY, JSON.stringify([collision]));
+    mockStorage.setItem(ACTIVE_PROFILE_STORAGE_KEY, RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID);
+
+    setProfileStorage(mockStorage);
+    const active = getActiveProfile();
+    const collisionProfile = listProfiles().find((profile) => profile.profileId === RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID)!;
+
+    expect(collisionProfile).toEqual(original);
+    expect(active.profileId).toBe(RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID);
+    expect(isCanonicalProfile(RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID)).toBe(true);
+    expect(isBuiltinProfileAvailable(RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID)).toBe(false);
+    expect(getProfileStoreDiagnostics()).toEqual([expect.objectContaining({
+      code: "measured-builtin-id-collision",
+      profileId: RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID,
+    })]);
+    expect(listProfiles().filter((profile) => profile.profileId === RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID)).toHaveLength(1);
+    expect(listProfiles().find((profile) => profile.profileId === "default")).toEqual(getDefaultProfile());
+    expect(JSON.parse(mockStorage.getItem(PROFILES_STORAGE_KEY)!)).toEqual([original]);
+    expect(mockStorage.getItem(ACTIVE_PROFILE_STORAGE_KEY)).toBe(RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID);
+    expect(builtin.profileId).toBe(RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID);
+    await expect(saveProfile({ ...collisionProfile, revision: collisionProfile.revision + 1 }))
+      .rejects.toThrow(/conflicts with a protected built-in identity/);
+    expect(await deleteProfile(RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID)).toBe(false);
+    expect(isBuiltinProfileAvailable(RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID)).toBe(false);
+    expect(getProfileStoreDiagnostics()).toHaveLength(1);
+    expect(listProfiles().find((profile) => profile.profileId === RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID))
+      .toEqual(original);
+  });
+
+  it("keeps legacy canonical overrides compatible for all existing built-in IDs", () => {
+    const legacyDefault = {
+      ...structuredClone(getDefaultProfile()),
+      name: "Legacy Default override",
+      revision: 4,
+      createdAtUnixSeconds: 100,
+      modifiedAtUnixSeconds: 200,
+    };
+    mockStorage.setItem(PROFILES_STORAGE_KEY, JSON.stringify([legacyDefault]));
+    mockStorage.setItem(ACTIVE_PROFILE_STORAGE_KEY, "default");
+    setProfileStorage(mockStorage);
+
+    expect(getActiveProfile().profileId).toBe("default");
+    expect(listProfiles().find((profile) => profile.profileId === "default")).toEqual(legacyDefault);
+    expect(isCanonicalProfile("default")).toBe(true);
+    expect(getProfileStoreDiagnostics()).toEqual([]);
+    expect(JSON.parse(mockStorage.getItem(PROFILES_STORAGE_KEY)!)).toEqual([legacyDefault]);
+    expect(mockStorage.getItem(ACTIVE_PROFILE_STORAGE_KEY)).toBe("default");
+  });
+
+  it("emits committed profile events for explicit selections, same-ID selections, saves, and active deletion", async () => {
+    const events: { type: string; profile: { profileId: string } }[] = [];
+    const unsubscribe = subscribeProfileEvents((event) => events.push(event));
+
+    await setActiveProfile("virtuoso"); // Explicit selection still emits when already active.
+    const copy = await cloneProfile("default", "Event Copy");
+    await setActiveProfile("small-hands");
+    await setActiveProfile("small-hands");
+    const savedCopy = await saveProfile({ ...copy, name: "Event Copy Updated" });
+    await setActiveProfile(savedCopy.profileId);
+    await deleteProfile(savedCopy.profileId);
+    const afterActiveDelete = events.length;
+    const inactiveCopy = await cloneProfile("default", "Inactive Delete");
+    await deleteProfile(inactiveCopy.profileId);
+
+    unsubscribe();
+    expect(events).toEqual([
+      { type: "active-selection", profile: expect.objectContaining({ profileId: "virtuoso" }) },
+      { type: "profile-updated", profile: expect.objectContaining({ profileId: copy.profileId }) },
+      { type: "active-selection", profile: expect.objectContaining({ profileId: "small-hands" }) },
+      { type: "active-selection", profile: expect.objectContaining({ profileId: "small-hands" }) },
+      { type: "profile-updated", profile: expect.objectContaining({ profileId: copy.profileId, name: "Event Copy Updated" }) },
+      { type: "active-selection", profile: expect.objectContaining({ profileId: savedCopy.profileId }) },
+      { type: "active-selection", profile: expect.objectContaining({ profileId: "virtuoso" }) },
+      { type: "profile-updated", profile: expect.objectContaining({ profileId: inactiveCopy.profileId }) },
+    ]);
+    expect(events).toHaveLength(afterActiveDelete + 1);
+  });
+
+  it("isolates event DTOs from subscriber mutation", async () => {
+    const unsubscribe = subscribeProfileEvents((event) => {
+      event.profile.name = "Mutated by listener";
+    });
+    await setActiveProfile("virtuoso");
+    unsubscribe();
+
+    expect(getActiveProfile().name).toBe("Virtuoso / Large Reach");
   });
 });

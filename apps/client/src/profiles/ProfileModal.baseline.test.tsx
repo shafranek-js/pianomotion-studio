@@ -1,7 +1,7 @@
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { DEFAULT_PROFILE } from "./defaultProfiles";
+import { DEFAULT_PROFILE, RIGGED_HAND_MEASURED_BASELINE_PROFILE } from "./defaultProfiles";
 import {
   getActiveProfile,
   listProfiles,
@@ -12,6 +12,8 @@ import {
 } from "./profileStore";
 import { ProfileModal } from "./ProfileModal";
 import { createTesting2DefaultBaselineProfile } from "./testing2BaselineProfile";
+import { RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID } from "./riggedHandProfileCalibration";
+import { ACTIVE_PROFILE_STORAGE_KEY, PROFILES_STORAGE_KEY } from "./profileStore";
 
 class MemoryStorage implements Storage {
   private values = new Map<string, string>();
@@ -105,5 +107,82 @@ describe("Testing2 default baseline profile creation", () => {
     expect(markup).toContain("Default profile for baseline edits; GLB anatomy remains uncalibrated");
     expect(markup).toContain('data-testid="inspect-testing2-measurements"');
     expect(markup).not.toContain('data-testid="testing2-measurements-table"');
+  });
+});
+
+describe("Rigged hands built-in baseline profile", () => {
+  beforeEach(() => {
+    setProfileStorage(new MemoryStorage());
+    resetProfileStore();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    setProfileStorage(null);
+  });
+
+  it("is available with a distinct built-in label while same-name saved copies remain unchanged", async () => {
+    await setActiveProfile("small-hands");
+    const oldCopy = await saveProfile({
+      ...structuredClone(RIGGED_HAND_MEASURED_BASELINE_PROFILE),
+      profileId: "old-rigged-copy-uuid",
+      revision: 6,
+      createdAtUnixSeconds: 100,
+      modifiedAtUnixSeconds: 200,
+    });
+    const oldCopySnapshot = structuredClone(oldCopy);
+
+    const markup = renderToStaticMarkup(
+      <ProfileModal
+        isOpen
+        onClose={() => {}}
+        initialProfile={RIGGED_HAND_MEASURED_BASELINE_PROFILE}
+      />,
+    );
+
+    expect(markup).toContain(`value="${RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID}"`);
+    expect(markup).toContain("Rigged hands — measured baseline (Built-in)");
+    expect(markup).toContain("Rigged hands — measured baseline (Copy)");
+    expect(markup).toContain("Create editable Rigged hands copy");
+    expect(markup).toContain('data-testid="apply-measured-baseline"');
+    expect(markup).toContain('aria-label="Apply built-in Rigged hands measured baseline and close"');
+    expect(markup).toContain("disabled=\"\" title=\"Duplicate this preset before editing and saving it\"");
+    expect(markup).not.toContain("Delete profile");
+    expect(getActiveProfile().profileId).toBe("small-hands");
+    expect(listProfiles().find((profile) => profile.profileId === oldCopy.profileId)).toEqual(oldCopySnapshot);
+    expect(listProfiles().find((profile) => profile.profileId === RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID))
+      .toEqual(RIGGED_HAND_MEASURED_BASELINE_PROFILE);
+  });
+
+  it("labels a colliding saved row as a conflict and presents a non-destructive diagnostic", () => {
+    const storage = new MemoryStorage();
+    const collision = {
+      ...structuredClone(RIGGED_HAND_MEASURED_BASELINE_PROFILE),
+      name: RIGGED_HAND_MEASURED_BASELINE_PROFILE.name,
+      revision: 5,
+      createdAtUnixSeconds: 100,
+      modifiedAtUnixSeconds: 200,
+      anatomy: {
+        ...RIGGED_HAND_MEASURED_BASELINE_PROFILE.anatomy,
+        pp2: RIGGED_HAND_MEASURED_BASELINE_PROFILE.anatomy.pp2 + 0.25,
+      },
+    };
+    storage.setItem(PROFILES_STORAGE_KEY, JSON.stringify([collision]));
+    storage.setItem(ACTIVE_PROFILE_STORAGE_KEY, RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID);
+    setProfileStorage(storage);
+
+    const markup = renderToStaticMarkup(<ProfileModal isOpen onClose={() => {}} />);
+
+    expect(markup).toContain("Rigged hands — measured baseline (Saved ID conflict)");
+    expect(markup).not.toContain("Rigged hands — measured baseline (Built-in)");
+    expect(markup).toContain('data-testid="profile-store-diagnostic"');
+    expect(markup).toContain("Its data and ID are preserved in read-only mode");
+    expect(markup).toContain('data-testid="create-rigged-hand-profile"');
+    expect(markup).not.toContain('data-testid="apply-measured-baseline"');
+    expect(markup).toContain('disabled="" title="Duplicate this preset before editing and saving it"');
+    expect(markup).not.toContain("Delete profile");
+    expect(listProfiles().find((profile) => profile.profileId === RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID))
+      .toEqual(collision);
+    expect(getActiveProfile().profileId).toBe(RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID);
   });
 });

@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 import { Keyboard3DView } from "./keyboard3dView";
 import {
   IMPROVED_HAND_CONTACT_RELEASE_SECONDS,
+  computeKeyDepressionWeight,
+  computeNoteRearticulationWeight,
   computePenetrationOnlyCorrection,
   populateHandContactTargets,
   type ImprovedHandContactTarget,
@@ -84,5 +86,47 @@ describe("improved hand contact floor", () => {
     } finally {
       keyboard.dispose();
     }
+  });
+
+  it("populates neighbor boundaries and computes a C1 re-articulation lift across back-to-back repeated notes", () => {
+    const sampler = vi.fn(() => 0);
+    const targets: ImprovedHandContactTarget[] = [];
+    const notes = [
+      { pitch: 69, hand: "right" as const, finger: 5, startSeconds: 49.2, endSeconds: 49.5 },
+      { pitch: 69, hand: "right" as const, finger: 5, startSeconds: 49.5, endSeconds: 49.8 },
+    ];
+
+    populateHandContactTargets(notes, "right", 49.35, targets, sampler);
+    expect(targets[4]).toMatchObject({
+      finger: 5,
+      pitch: 69,
+      sourceStartSeconds: 49.2,
+      sourceEndSeconds: 49.5,
+      nextStartSeconds: 49.5,
+    });
+    expect(targets[4]?.prevEndSeconds).toBeUndefined();
+    expect(computeNoteRearticulationWeight(49.35, 49.2, 49.5, undefined, 49.5)).toBe(1);
+    expect(computeNoteRearticulationWeight(49.47, 49.2, 49.5, undefined, 49.5)).toBeLessThan(0.4);
+    expect(computeNoteRearticulationWeight(49.5, 49.2, 49.5, undefined, 49.5)).toBe(0);
+
+    populateHandContactTargets(notes, "right", 49.52, targets, sampler);
+    expect(targets[4]).toMatchObject({
+      finger: 5,
+      pitch: 69,
+      sourceStartSeconds: 49.5,
+      sourceEndSeconds: 49.8,
+      prevEndSeconds: 49.5,
+    });
+    expect(computeNoteRearticulationWeight(49.5, 49.5, 49.8, 49.5, undefined)).toBe(0);
+    expect(computeNoteRearticulationWeight(49.52, 49.5, 49.8, 49.5, undefined)).toBeGreaterThan(0.2);
+    expect(computeNoteRearticulationWeight(49.6, 49.5, 49.8, 49.5, undefined)).toBe(1);
+
+    // Smooth key attack (0.15 -> 1.0 over 32 ms) and smooth key release (1.0 -> 0.0 over 90 ms)
+    expect(computeKeyDepressionWeight(1.0, 1.0, 2.0)).toBeCloseTo(0.15, 5);
+    expect(computeKeyDepressionWeight(1.016, 1.0, 2.0)).toBeCloseTo(0.575, 2);
+    expect(computeKeyDepressionWeight(1.04, 1.0, 2.0)).toBe(1);
+    expect(computeKeyDepressionWeight(2.0, 1.0, 2.0)).toBe(1);
+    expect(computeKeyDepressionWeight(2.045, 1.0, 2.0)).toBeCloseTo(0.5, 2);
+    expect(computeKeyDepressionWeight(2.09, 1.0, 2.0)).toBe(0);
   });
 });

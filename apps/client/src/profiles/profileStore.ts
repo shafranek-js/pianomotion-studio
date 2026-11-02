@@ -11,6 +11,7 @@ import {
   saveProfile as saveDbProfile,
 } from "../storage/projectDb.ts";
 import { getDefaultProfiles, getDefaultProfile } from "./defaultProfiles.ts";
+import { RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID } from "./riggedHandProfileCalibration.ts";
 
 export const PROFILES_STORAGE_KEY = "handthesia:profiles";
 export const ACTIVE_PROFILE_STORAGE_KEY = "handthesia:active_profile_id";
@@ -25,6 +26,19 @@ let defaultsSeeded = false;
 const profilesMap = new Map<string, PianistProfile>();
 let activeProfileId = DEFAULT_ACTIVE_PROFILE_ID;
 const listeners = new Set<() => void>();
+const profileEventListeners = new Set<(event: ProfileStoreEvent) => void>();
+const unavailableBuiltinIds = new Set<string>();
+const profileStoreDiagnostics = new Map<string, ProfileStoreDiagnostic>();
+
+export type ProfileStoreEvent =
+  | { type: "active-selection"; profile: PianistProfile }
+  | { type: "profile-updated"; profile: PianistProfile };
+
+export interface ProfileStoreDiagnostic {
+  code: "measured-builtin-id-collision";
+  profileId: string;
+  message: string;
+}
 
 function getStorage(): Storage | null {
   if (customStorage !== null) return customStorage;
@@ -40,6 +54,8 @@ export function setProfileStorage(storage: Storage | null): void {
   initializationPromise = null;
   defaultsSeeded = false;
   profilesMap.clear();
+  unavailableBuiltinIds.clear();
+  profileStoreDiagnostics.clear();
   activeProfileId = DEFAULT_ACTIVE_PROFILE_ID;
 }
 
@@ -51,6 +67,45 @@ function notifyListeners(): void {
       console.error("Profile store listener error:", err);
     }
   }
+}
+
+function emitProfileEvent(event: ProfileStoreEvent): void {
+  for (const listener of profileEventListeners) {
+    try {
+      listener(structuredClone(event));
+    } catch (err) {
+      console.error("Profile store event listener error:", err);
+    }
+  }
+}
+
+function profilesEqualExceptId(left: PianistProfile, right: PianistProfile): boolean {
+  const leftCopy = structuredClone(left);
+  const rightCopy = structuredClone(right);
+  leftCopy.profileId = "__profile_id__";
+  rightCopy.profileId = "__profile_id__";
+  return JSON.stringify(leftCopy) === JSON.stringify(rightCopy);
+}
+
+function getMeasuredBuiltin(): PianistProfile | undefined {
+  return getDefaultProfiles().find((profile) => profile.profileId === RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID);
+}
+
+function applyMeasuredBuiltinCollision(profile: PianistProfile): boolean {
+  if (profile.profileId !== RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID) return false;
+  const builtin = getMeasuredBuiltin();
+  if (!builtin || profilesEqualExceptId(profile, builtin)) return false;
+
+  // Keep the colliding record at its stored identity. Never alias/delete it or
+  // rewrite active selections/project snapshots to make room for the builtin.
+  profilesMap.set(profile.profileId, structuredClone(profile));
+  unavailableBuiltinIds.add(profile.profileId);
+  profileStoreDiagnostics.set(profile.profileId, {
+    code: "measured-builtin-id-collision",
+    profileId: profile.profileId,
+    message: "A saved profile uses the measured baseline built-in ID. Its data and ID are preserved in read-only mode; use Duplicate to make an editable copy. The built-in remains unavailable until the conflict is resolved.",
+  });
+  return true;
 }
 
 function seedDefaults(): void {
@@ -98,7 +153,16 @@ function persistLegacyState(nextProfiles: Map<string, PianistProfile>, nextActiv
 function initializeLegacyOverride(): void {
   seedDefaults();
   const legacy = readLegacyProfiles();
-  for (const profile of legacy.profiles) profilesMap.set(profile.profileId, profile);
+  for (const profile of legacy.profiles) {
+    if (profile.profileId === RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID) {
+      if (!applyMeasuredBuiltinCollision(profile) && !unavailableBuiltinIds.has(profile.profileId)) {
+        profilesMap.set(profile.profileId, profile);
+      }
+    } else {
+      // Preserve the established localStorage override behavior for existing IDs.
+      profilesMap.set(profile.profileId, profile);
+    }
+  }
   if (legacy.activeProfileId && profilesMap.has(legacy.activeProfileId)) {
     activeProfileId = legacy.activeProfileId;
   }
@@ -122,15 +186,51 @@ export function initializeProfiles(): Promise<void> {
   initializationPromise = (async () => {
     seedDefaults();
     const legacy = readLegacyProfiles();
-    const persisted = (await listCustomProfiles()).flatMap((profile) => {
+    const rawPersisted = await listCustomProfiles();
+    const persistedValid = rawPersisted.flatMap((profile) => {
       const validated = PianistProfileSchema.safeParse(profile);
-      return validated.success && !isCanonicalProfile(validated.data.profileId) ? [validated.data] : [];
+      return validated.success ? [validated.data] : [];
     });
-    const persistedIds = new Set(persisted.map((profile) => profile.profileId));
+    const measuredBuiltin = getMeasuredBuiltin();
+    const persistedMeasured = persistedValid.find((profile) =>
+      profile.profileId === RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID,
+    );
+    const legacyMeasured = [...legacy.profiles].reverse().find((profile) =>
+      profile.profileId === RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID,
+    );
+    let measuredCollision: PianistProfile | undefined;
+
+    if (persistedMeasured && measuredBuiltin && !profilesEqualExceptId(persistedMeasured, measuredBuiltin)) {
+      measuredCollision = persistedMeasured;
+    } else if (legacyMeasured && measuredBuiltin && !profilesEqualExceptId(legacyMeasured, measuredBuiltin)) {
+      // A matching IndexedDB default row is only a redundant builtin copy. Preserve
+      // the legacy collision in memory, but never overwrite an existing DB row here.
+      measuredCollision = legacyMeasured;
+      if (!persistedMeasured) {
+        await saveDbProfile(legacyMeasured);
+        persistedValid.push(legacyMeasured);
+      }
+    }
+
+    if (measuredCollision) applyMeasuredBuiltinCollision(measuredCollision);
+
+    const persisted = persistedValid.filter((profile) => {
+      if (profile.profileId === RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID) {
+        return Boolean(measuredCollision && !profilesEqualExceptId(profile, measuredBuiltin!));
+      }
+      return !canonicalProfileIds.has(profile.profileId);
+    });
+    const persistedIdsAfterMigration = new Set(persisted.map((profile) => profile.profileId));
     for (const profile of legacy.profiles) {
-      if (isCanonicalProfile(profile.profileId) || persistedIds.has(profile.profileId)) continue;
+      if (profile.profileId === RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID) {
+        if (measuredCollision && !persistedIdsAfterMigration.has(profile.profileId)) {
+          profilesMap.set(profile.profileId, structuredClone(measuredCollision));
+        }
+        continue;
+      }
+      if (canonicalProfileIds.has(profile.profileId) || persistedIdsAfterMigration.has(profile.profileId)) continue;
       await saveDbProfile(profile);
-      persistedIds.add(profile.profileId);
+      persistedIdsAfterMigration.add(profile.profileId);
       persisted.push(profile);
     }
     for (const profile of persisted) {
@@ -172,6 +272,8 @@ export function resetProfileStore(): void {
     }
   }
   profilesMap.clear();
+  unavailableBuiltinIds.clear();
+  profileStoreDiagnostics.clear();
   defaultsSeeded = false;
   initialized = false;
   initializationPromise = null;
@@ -182,6 +284,16 @@ export function resetProfileStore(): void {
 
 export function isCanonicalProfile(profileId: string): boolean {
   return canonicalProfileIds.has(profileId);
+}
+
+/** True when an ID currently resolves to the shipped built-in instead of a saved collision. */
+export function isBuiltinProfileAvailable(profileId: string): boolean {
+  return canonicalProfileIds.has(profileId) && !unavailableBuiltinIds.has(profileId);
+}
+
+/** Returns non-destructive diagnostics discovered while loading persisted profiles. */
+export function getProfileStoreDiagnostics(): ProfileStoreDiagnostic[] {
+  return Array.from(profileStoreDiagnostics.values(), (diagnostic) => structuredClone(diagnostic));
 }
 
 /** Returns a cloned copy of the active profile. Call after initializeProfiles during app startup. */
@@ -205,7 +317,9 @@ export async function setActiveProfile(profileId: string): Promise<PianistProfil
     activeProfileId = profileId;
     notifyListeners();
   }
-  return getActiveProfile();
+  const committed = getActiveProfile();
+  emitProfileEvent({ type: "active-selection", profile: committed });
+  return committed;
 }
 
 /** Returns a cloned list of built-in and persisted pianist profiles. */
@@ -218,7 +332,12 @@ export function listProfiles(): PianistProfile[] {
 export async function saveProfile(profile: PianistProfile): Promise<PianistProfile> {
   await initializeProfiles();
   const toSave = structuredClone(PianistProfileSchema.parse(profile));
-  if (isCanonicalProfile(toSave.profileId)) {
+  if (canonicalProfileIds.has(toSave.profileId)) {
+    if (unavailableBuiltinIds.has(toSave.profileId)) {
+      throw new Error(
+        `Saved profile '${toSave.profileId}' conflicts with a protected built-in identity and cannot be modified in place. Please clone or save as a copy.`,
+      );
+    }
     throw new Error(
       `Canonical built-in profile '${toSave.profileId}' cannot be modified or overwritten. Please clone or save as a copy.`,
     );
@@ -238,14 +357,16 @@ export async function saveProfile(profile: PianistProfile): Promise<PianistProfi
   }
   profilesMap.set(validated.profileId, validated);
   notifyListeners();
+  emitProfileEvent({ type: "profile-updated", profile: validated });
   return structuredClone(validated);
 }
 
 /** Deletes a custom profile; canonical profiles are protected from removal. */
 export async function deleteProfile(profileId: string): Promise<boolean> {
   await initializeProfiles();
-  if (isCanonicalProfile(profileId) || !profilesMap.has(profileId)) return false;
+  if (canonicalProfileIds.has(profileId) || !profilesMap.has(profileId)) return false;
   const nextActiveId = activeProfileId === profileId ? DEFAULT_ACTIVE_PROFILE_ID : activeProfileId;
+  const deletedActiveProfile = nextActiveId !== activeProfileId;
   if (customStorage !== null) {
     const nextProfiles = new Map(profilesMap);
     nextProfiles.delete(profileId);
@@ -258,6 +379,9 @@ export async function deleteProfile(profileId: string): Promise<boolean> {
   profilesMap.delete(profileId);
   activeProfileId = nextActiveId;
   notifyListeners();
+  if (deletedActiveProfile) {
+    emitProfileEvent({ type: "active-selection", profile: getActiveProfile() });
+  }
   return true;
 }
 
@@ -288,6 +412,12 @@ export async function cloneProfile(profileId: string, newName: string): Promise<
 export function subscribe(listener: () => void): () => void {
   listeners.add(listener);
   return () => listeners.delete(listener);
+}
+
+/** Subscribes to committed profile changes and explicit active-profile selections. */
+export function subscribeProfileEvents(listener: (event: ProfileStoreEvent) => void): () => void {
+  profileEventListeners.add(listener);
+  return () => profileEventListeners.delete(listener);
 }
 
 export const subscribeProfiles = subscribe;

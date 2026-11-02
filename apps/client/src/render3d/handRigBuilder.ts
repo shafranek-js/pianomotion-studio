@@ -3280,7 +3280,17 @@ export class Hand3DMeshGroup {
         !this.experimentalRig.isPoseEditMode
         ? { pose: this.leadInStartPose, liveAlpha: leadInLiveAlpha }
         : undefined;
-      this.experimentalRig.update(reconstructHand3D(pose, 0), leadInBlend);
+      this.experimentalRig.update(
+        reconstructHand3D(pose, 0),
+        leadInBlend,
+        this.leadInStartPose && !this.experimentalRig.isPoseEditMode
+          ? {
+              referencePose: this.leadInStartPose,
+              contactTargets,
+              displayedTransportTimeSeconds: this.lastDisplayedTransportTimeSeconds,
+            }
+          : undefined,
+      );
       if (captureRiggedFrame && diagnosticContext) {
         const live = this.experimentalRig.sampleLiveDiagnostics();
         const sourcePoseTimeSeconds = pose.transportTimeSeconds;

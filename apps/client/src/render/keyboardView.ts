@@ -28,6 +28,8 @@ export interface LaneRect {
 export interface KeyPressInfo {
   hand: "left" | "right";
   finger?: number | null;
+  /** Optional 0..1 physical depression weight for smooth key attack/release. */
+  depressionWeight?: number;
 }
 
 export class KeyboardLayout {

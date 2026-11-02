@@ -213,13 +213,56 @@ describe("rigged experimental hand pose edit runtime on actual GLBs", () => {
     }
   });
 
+  it("reconstructs both hands independently of earlier lead-in and seek history", async () => {
+    const preset = bundledStartingPose();
+    const right = await RiggedExperimentalHand.fromBuffer("right", bufferFor("right"));
+    const left = await RiggedExperimentalHand.fromBuffer("left", bufferFor("left"));
+    const cleanRight = await RiggedExperimentalHand.fromBuffer("right", bufferFor("right"));
+    const cleanLeft = await RiggedExperimentalHand.fromBuffer("left", bufferFor("left"));
+    try {
+      for (const [side, hand, clean] of [["right", right, cleanRight], ["left", left, cleanLeft]] as const) {
+        const start = right.retargetPoseToHand(preset.hands.right, hand, side === "left");
+        const frame = reconstructHand3D(sourcePose(side));
+        hand.update(frame, { pose: start, liveAlpha: 0 });
+        hand.update(frame, { pose: start, liveAlpha: 0.5 });
+        hand.update(frame);
+        clean.update(frame);
+        expectPoseClose(hand.exportPose(), clean.exportPose());
+        expect(hand.sampleLiveDiagnostics().fixedDistalSkinSampleRows).toEqual(clean.sampleLiveDiagnostics().fixedDistalSkinSampleRows);
+
+        hand.update(frame, { pose: start, liveAlpha: 0.8 });
+        hand.update(frame, { pose: start, liveAlpha: 0.3 });
+        clean.update(frame, { pose: start, liveAlpha: 0.3 });
+        expectPoseClose(hand.exportPose(), clean.exportPose());
+
+        hand.update(frame, { pose: start, liveAlpha: riggedHandStartPoseLiveAlpha(-1e-4, 2) });
+        clean.update(frame);
+        const nearEnd = hand.exportPose();
+        const afterLeadIn = clean.exportPose();
+        for (const [index, bone] of nearEnd.bones.entries()) {
+          const liveBone = afterLeadIn.bones[index]!;
+          expect(new THREE.Vector3(...bone.position).distanceTo(new THREE.Vector3(...liveBone.position))).toBeLessThan(1e-6);
+          expect(new THREE.Quaternion(...bone.quaternion).angleTo(new THREE.Quaternion(...liveBone.quaternion))).toBeLessThan(1e-4);
+        }
+      }
+    } finally {
+      right.dispose();
+      left.dispose();
+      cleanRight.dispose();
+      cleanLeft.dispose();
+    }
+  });
+
   it("matches the edit preset's actual right-hand bones and skinned samples at its Habanera group anchor", async () => {
     const preset = bundledStartingPose();
     const runtime = await RiggedExperimentalHand.fromBuffer("right", bufferFor("right"));
     const edited = await RiggedExperimentalHand.fromBuffer("right", bufferFor("right"));
     try {
       const sourceMotionPose = sourcePose("right");
-      runtime.update(reconstructHand3D(sourceMotionPose));
+      const startPose = runtime.retargetPoseToHand(preset.hands.right, runtime, false);
+      // Prepare the group anchor using the same stationary lead-in state as
+      // the final preset comparison; alpha 0 intentionally applies no axis correction.
+      runtime.update(reconstructHand3D(sourceMotionPose), { pose: startPose, liveAlpha: 0 });
       const dynamicBaseGroup = runtime.exportPose().group;
       const rotationDelta = new THREE.Quaternion(...preset.hands.right.group.quaternion)
         .multiply(new THREE.Quaternion(...dynamicBaseGroup.quaternion).invert());
@@ -227,11 +270,10 @@ describe("rigged experimental hand pose edit runtime on actual GLBs", () => {
         sourceMotionPose,
         new THREE.Matrix4().makeRotationFromQuaternion(rotationDelta),
       );
-      runtime.update(reconstructHand3D(rotatedMotionPose));
+      runtime.update(reconstructHand3D(rotatedMotionPose), { pose: startPose, liveAlpha: 0 });
       const rotatedGroup = runtime.exportPose().group;
       const positionDelta = preset.hands.right.group.position.map((value, axis) => value - rotatedGroup.position[axis]!) as [number, number, number];
       const anchoredMotionPose = offsetMotionPose(rotatedMotionPose, positionDelta);
-      const startPose = runtime.retargetPoseToHand(preset.hands.right, runtime, false);
       runtime.update(reconstructHand3D(anchoredMotionPose), { pose: startPose, liveAlpha: 0 });
       edited.applyPose(preset.hands.right);
 

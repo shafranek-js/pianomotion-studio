@@ -21,6 +21,7 @@ import {
   getProfile,
   listCustomProfiles,
   getDbSetting,
+  saveDbSetting,
   deleteProfile,
   clearAllProfiles,
   StorageQuotaExceededError,
@@ -50,12 +51,21 @@ import {
   ACTIVE_PROFILE_DB_KEY,
   ACTIVE_PROFILE_STORAGE_KEY,
   PROFILES_STORAGE_KEY,
+  deleteProfile as deleteProfileThroughStore,
   getActiveProfile,
+  getProfileStoreDiagnostics,
   initializeProfiles,
+  isBuiltinProfileAvailable,
+  isCanonicalProfile,
   listProfiles,
   saveProfile as saveProfileThroughStore,
+  setActiveProfile,
+  subscribeProfileEvents,
+  type ProfileStoreEvent,
   setProfileStorage,
 } from "../profiles/index.ts";
+import { getDefaultProfiles, RIGGED_HAND_MEASURED_BASELINE_PROFILE } from "../profiles/defaultProfiles.ts";
+import { RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID } from "../profiles/riggedHandProfileCalibration.ts";
 
 function createValidSongDocument(projectId = "proj_test_1"): SongDocument {
   return {
@@ -522,17 +532,94 @@ describe("Milestone M5 Storage & Persistence", () => {
   describe("Application persistence migration", () => {
     it("migrates legacy profiles and active ID to IndexedDB while retaining localStorage data", async () => {
       const legacyProfile = createValidProfile("legacy-pianist");
+      const legacyRiggedCopy = {
+        ...structuredClone(RIGGED_HAND_MEASURED_BASELINE_PROFILE),
+        profileId: "7e8ac43f-6844-45a8-aee8-2abbe92e3210",
+        revision: 7,
+        createdAtUnixSeconds: 100,
+        modifiedAtUnixSeconds: 200,
+      };
+      const oldCopySnapshot = structuredClone(legacyRiggedCopy);
       vi.stubGlobal("localStorage", mockLocalStorage);
-      mockLocalStorage.setItem(PROFILES_STORAGE_KEY, JSON.stringify([legacyProfile]));
-      mockLocalStorage.setItem(ACTIVE_PROFILE_STORAGE_KEY, legacyProfile.profileId);
+      mockLocalStorage.setItem(PROFILES_STORAGE_KEY, JSON.stringify([legacyProfile, legacyRiggedCopy]));
+      mockLocalStorage.setItem(ACTIVE_PROFILE_STORAGE_KEY, legacyRiggedCopy.profileId);
 
       await initializeProfiles();
 
       expect((await getProfile(legacyProfile.profileId))?.name).toBe(legacyProfile.name);
-      expect(getActiveProfile().profileId).toBe(legacyProfile.profileId);
-      expect(await getDbSetting(ACTIVE_PROFILE_DB_KEY)).toBe(legacyProfile.profileId);
-      expect(mockLocalStorage.getItem(PROFILES_STORAGE_KEY)).toBe(JSON.stringify([legacyProfile]));
-      expect(mockLocalStorage.getItem(ACTIVE_PROFILE_STORAGE_KEY)).toBe(legacyProfile.profileId);
+      expect(await getProfile(legacyRiggedCopy.profileId)).toEqual(oldCopySnapshot);
+      expect(getActiveProfile().profileId).toBe(legacyRiggedCopy.profileId);
+      expect(await getDbSetting(ACTIVE_PROFILE_DB_KEY)).toBe(legacyRiggedCopy.profileId);
+      expect(listProfiles().find((profile) => profile.profileId === RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID))
+        .toEqual(RIGGED_HAND_MEASURED_BASELINE_PROFILE);
+      expect(await getProfile(RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID)).toBeNull();
+      expect(mockLocalStorage.getItem(PROFILES_STORAGE_KEY)).toBe(JSON.stringify([legacyProfile, legacyRiggedCopy]));
+      expect(mockLocalStorage.getItem(ACTIVE_PROFILE_STORAGE_KEY)).toBe(legacyRiggedCopy.profileId);
+    });
+
+    it("migrates a measured-ID legacy collision under the original ID without aliasing or changing active selection", async () => {
+      const collision = {
+        ...structuredClone(RIGGED_HAND_MEASURED_BASELINE_PROFILE),
+        revision: 8,
+        createdAtUnixSeconds: 100,
+        modifiedAtUnixSeconds: 200,
+        anatomy: {
+          ...RIGGED_HAND_MEASURED_BASELINE_PROFILE.anatomy,
+          pp2: RIGGED_HAND_MEASURED_BASELINE_PROFILE.anatomy.pp2 + 0.4,
+        },
+      };
+      const originalLegacyJson = JSON.stringify([collision]);
+      vi.stubGlobal("localStorage", mockLocalStorage);
+      mockLocalStorage.setItem(PROFILES_STORAGE_KEY, originalLegacyJson);
+      mockLocalStorage.setItem(ACTIVE_PROFILE_STORAGE_KEY, RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID);
+
+      await initializeProfiles();
+
+      expect(await getProfile(RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID)).toEqual(collision);
+      expect(listProfiles().filter((profile) => profile.profileId === RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID))
+        .toEqual([collision]);
+      expect(getActiveProfile().profileId).toBe(RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID);
+      expect(await getDbSetting(ACTIVE_PROFILE_DB_KEY)).toBe(RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID);
+      expect(isCanonicalProfile(RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID)).toBe(true);
+      expect(isBuiltinProfileAvailable(RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID)).toBe(false);
+      expect(getProfileStoreDiagnostics()).toHaveLength(1);
+      expect(mockLocalStorage.getItem(PROFILES_STORAGE_KEY)).toBe(originalLegacyJson);
+      expect(mockLocalStorage.getItem(ACTIVE_PROFILE_STORAGE_KEY)).toBe(RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID);
+
+      closeProjectDb();
+      setProfileStorage(null);
+      await initializeProfiles();
+      expect(await getProfile(RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID)).toEqual(collision);
+      expect(getActiveProfile().profileId).toBe(RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID);
+      expect(listProfiles().filter((profile) => profile.profileId === RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID))
+        .toEqual([collision]);
+    });
+
+    it("does not reinterpret old canonical profile revisions as user ID collisions", async () => {
+      const existingBuiltins = getDefaultProfiles().filter((profile) =>
+        ["default", "small-hands", "virtuoso", "left-dominant"].includes(profile.profileId),
+      );
+      const legacyOverrides = existingBuiltins.map((profile) => ({
+        ...structuredClone(profile),
+        name: `${profile.name} (legacy override)`,
+        revision: profile.revision + 12,
+        anatomy: { ...profile.anatomy, pp2: profile.anatomy.pp2 + 0.3 },
+      }));
+      const originalJson = JSON.stringify(legacyOverrides);
+      vi.stubGlobal("localStorage", mockLocalStorage);
+      mockLocalStorage.setItem(PROFILES_STORAGE_KEY, originalJson);
+      mockLocalStorage.setItem(ACTIVE_PROFILE_STORAGE_KEY, "small-hands");
+
+      await initializeProfiles();
+
+      for (const builtin of existingBuiltins) {
+        expect(listProfiles().find((profile) => profile.profileId === builtin.profileId)).toEqual(builtin);
+        expect(await getProfile(builtin.profileId)).toBeNull();
+      }
+      expect(getActiveProfile().profileId).toBe("small-hands");
+      expect(await getDbSetting(ACTIVE_PROFILE_DB_KEY)).toBe("small-hands");
+      expect(mockLocalStorage.getItem(PROFILES_STORAGE_KEY)).toBe(originalJson);
+      expect(mockLocalStorage.getItem(ACTIVE_PROFILE_STORAGE_KEY)).toBe("small-hands");
     });
 
     it("merges profiles left by an interrupted migration without replacing IndexedDB or canonical data", async () => {
@@ -557,13 +644,128 @@ describe("Milestone M5 Storage & Persistence", () => {
       expect(listProfiles().find((profile) => profile.profileId === "default")?.name).not.toBe("Legacy default override");
     });
 
+    it("preserves a measured-builtin ID collision in place without changing active IDs or project snapshots", async () => {
+      const userCollision = {
+        ...createValidProfile(RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID),
+        name: "Rigged hands — measured baseline",
+        revision: 11,
+        createdAtUnixSeconds: 100,
+        modifiedAtUnixSeconds: 200,
+        anatomy: {
+          ...createValidProfile(RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID).anatomy,
+          pp2: 4.35,
+        },
+      };
+      await saveProfile(userCollision);
+      await saveDbSetting(ACTIVE_PROFILE_DB_KEY, RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID);
+      const projectDocument = createValidSongDocument("proj_measured_id_collision");
+      const project: SavedProject = {
+        projectId: projectDocument.projectId,
+        name: "Project with retained collision snapshot",
+        updatedAt: 1700000000,
+        document: projectDocument,
+        profile: structuredClone(userCollision),
+      };
+      await saveProject(project);
+      const persistedProfilesBefore = await listCustomProfiles();
+
+      await initializeProfiles();
+
+      expect(listProfiles().filter((profile) => profile.profileId === RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID))
+        .toEqual([userCollision]);
+      expect(await getProfile(RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID)).toEqual(userCollision);
+      expect(await listCustomProfiles()).toEqual(persistedProfilesBefore);
+      expect(getActiveProfile().profileId).toBe(RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID);
+      expect(await getDbSetting(ACTIVE_PROFILE_DB_KEY)).toBe(RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID);
+      expect(isCanonicalProfile(RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID)).toBe(true);
+      expect(isBuiltinProfileAvailable(RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID)).toBe(false);
+      expect(getProfileStoreDiagnostics()).toEqual([expect.objectContaining({
+        code: "measured-builtin-id-collision",
+        profileId: RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID,
+      })]);
+      expect(listProfiles().some((profile) => profile.profileId !== RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID &&
+        profile.name === userCollision.name)).toBe(false);
+      expect((await getProject(project.projectId))?.profile).toEqual(userCollision);
+      await expect(saveProfileThroughStore({ ...userCollision, revision: userCollision.revision + 1 }))
+        .rejects.toThrow(/conflicts with a protected built-in identity/);
+      expect(await deleteProfileThroughStore(RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID)).toBe(false);
+      expect(await getProfile(RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID)).toEqual(userCollision);
+
+      closeProjectDb();
+      setProfileStorage(null);
+      await initializeProfiles();
+
+      expect(getActiveProfile().profileId).toBe(RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID);
+      expect(listProfiles().filter((profile) => profile.profileId === RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID))
+        .toEqual([userCollision]);
+      expect(await getProfile(RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID)).toEqual(userCollision);
+      expect(await getDbSetting(ACTIVE_PROFILE_DB_KEY)).toBe(RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID);
+      expect((await getProject(project.projectId))?.profile).toEqual(userCollision);
+      expect(getProfileStoreDiagnostics()).toHaveLength(1);
+    });
+
     it("does not report a profile save or change memory when IndexedDB rejects the write", async () => {
       await initializeProfiles();
       const profile = { ...getActiveProfile(), profileId: "quota-test-profile", revision: 0 };
       mockFactory.databases.get(DB_NAME)!.stores.get(PROFILES_STORE)!.simulateQuotaError = true;
+      const events: ProfileStoreEvent[] = [];
+      const unsubscribe = subscribeProfileEvents((event) => events.push(event));
 
       await expect(saveProfileThroughStore(profile)).rejects.toBeInstanceOf(StorageQuotaExceededError);
       expect(listProfiles().some((entry) => entry.profileId === profile.profileId)).toBe(false);
+      expect(events).toEqual([]);
+
+      mockFactory.databases.get(DB_NAME)!.stores.get(PROFILES_STORE)!.simulateQuotaError = false;
+      mockFactory.databases.get(DB_NAME)!.stores.get(SETTINGS_STORE)!.simulateQuotaError = true;
+      await expect(setActiveProfile("small-hands")).rejects.toBeInstanceOf(StorageQuotaExceededError);
+      expect(getActiveProfile().profileId).toBe("virtuoso");
+      expect(events).toEqual([]);
+      unsubscribe();
+    });
+
+    it("persists the built-in active selection across reload without changing a saved project profile", async () => {
+      await initializeProfiles();
+      const oldCopy = {
+        ...structuredClone(RIGGED_HAND_MEASURED_BASELINE_PROFILE),
+        profileId: "e9d659ce-b0ca-46a0-84f9-586bcf3791c3",
+        revision: 9,
+        createdAtUnixSeconds: 100,
+        modifiedAtUnixSeconds: 200,
+      };
+      const committedOldCopy = await saveProfileThroughStore(oldCopy);
+      const beforeSnapshot = structuredClone(committedOldCopy);
+      const document = createValidSongDocument("proj_rigged_profile_selection");
+      const project: SavedProject = {
+        projectId: document.projectId,
+        name: "Saved source-rig profile",
+        updatedAt: 1700000000,
+        document,
+        profile: committedOldCopy,
+      };
+      await saveProject(project);
+
+      const events: ProfileStoreEvent[] = [];
+      const unsubscribe = subscribeProfileEvents((event) => events.push(event));
+      const firstChoice = await setActiveProfile(RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID);
+      const sameChoice = await setActiveProfile(RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID);
+      expect(firstChoice).toEqual(RIGGED_HAND_MEASURED_BASELINE_PROFILE);
+      expect(sameChoice).toEqual(RIGGED_HAND_MEASURED_BASELINE_PROFILE);
+      expect(events.map((event) => event.type)).toEqual(["active-selection", "active-selection"]);
+      expect(await getProfile(beforeSnapshot.profileId)).toEqual(beforeSnapshot);
+      expect((await getProject(project.projectId))?.profile).toEqual(beforeSnapshot);
+      expect(await getProfile(RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID)).toBeNull();
+      unsubscribe();
+
+      closeProjectDb();
+      setProfileStorage(null);
+      await initializeProfiles();
+
+      expect(getActiveProfile().profileId).toBe(RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID);
+      expect(listProfiles().find((profile) => profile.profileId === beforeSnapshot.profileId)).toEqual(beforeSnapshot);
+      expect(await getProfile(beforeSnapshot.profileId)).toEqual(beforeSnapshot);
+      expect((await getProject(project.projectId))?.profile).toEqual(beforeSnapshot);
+      await expect(saveProfileThroughStore(RIGGED_HAND_MEASURED_BASELINE_PROFILE)).rejects.toThrow(/Canonical built-in profile/);
+      expect(await deleteProfileThroughStore(RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID)).toBe(false);
     });
   });
 

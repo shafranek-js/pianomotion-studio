@@ -41,7 +41,7 @@ import {
 } from "../editor";
 import { postM1ExportMidiRequest, postM1ReplanDocumentRequest, createM1AnalysisWorker, getM1AnalysisWorkerEngine } from "../m1WorkerClient";
 import { recordDiagnostic } from "../diagnostics/eventLog";
-import { getActiveProfile, subscribeProfiles } from "../profiles/profileStore";
+import { subscribeProfileEvents, type ProfileStoreEvent } from "../profiles/profileStore";
 import { PianoScene, MotionBuffer, type Camera3DPreset } from "../render";
 import {
   type RiggedPoseEditFingerFilter,
@@ -137,6 +137,25 @@ export interface PianoPlayerProps {
   onProfileStateChange?(profile: PianistProfile): void;
   analysisWorker?: Worker;
   footerAddon?: ReactNode;
+}
+
+/** Returns the profile changes that should affect this project session. */
+export function profileFromStoreEvent(
+  event: ProfileStoreEvent,
+  currentProfile: PianistProfile,
+): PianistProfile | null {
+  if (event.type === "active-selection") {
+    return event.profile.profileId === currentProfile.profileId &&
+      event.profile.revision === currentProfile.revision
+      ? null
+      : event.profile;
+  }
+  if (event.type === "profile-updated" &&
+      event.profile.profileId === currentProfile.profileId &&
+      event.profile.revision !== currentProfile.revision) {
+    return event.profile;
+  }
+  return null;
 }
 
 interface MotionBufferPauseSnapshot {
@@ -781,8 +800,11 @@ export function PianoPlayer({
   }, []);
 
   const handleProfileChanged = useCallback((profile: PianistProfile) => {
-    const current = latestStateRef.current.profile;
+    const latest = latestStateRef.current;
+    const current = latest.profile;
     if (current.profileId === profile.profileId && current.revision === profile.revision) return;
+    // Store events may repeat before React commits the previous update.
+    latestStateRef.current = { ...latest, profile };
     setActiveProfile(profile);
     onProfileStateChange?.(profile);
     setDraftPlan(plan => ({
@@ -802,7 +824,10 @@ export function PianoPlayer({
   }, []);
 
   useEffect(() => subscribeSettings(handleSettingsChanged), [handleSettingsChanged]);
-  useEffect(() => subscribeProfiles(() => handleProfileChanged(getActiveProfile())), [handleProfileChanged]);
+  useEffect(() => subscribeProfileEvents((event) => {
+    const profile = profileFromStoreEvent(event, latestStateRef.current.profile);
+    if (profile) handleProfileChanged(profile);
+  }), [handleProfileChanged]);
 
   useEffect(() => {
     const hasPreparedContext = workerEpoch === 0 && Boolean(analysisWorker);

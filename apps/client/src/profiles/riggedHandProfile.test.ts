@@ -6,7 +6,7 @@ import {
   resetProfileStore,
   setProfileStorage,
 } from "./profileStore.ts";
-import { getDefaultProfile } from "./defaultProfiles.ts";
+import { getDefaultProfile, RIGGED_HAND_MEASURED_BASELINE_PROFILE } from "./defaultProfiles.ts";
 import { ANATOMY_BONES, PianistProfileSchema } from "./types.ts";
 import {
   createRiggedHandProfile,
@@ -40,6 +40,14 @@ describe("rigged experimental hand profile", () => {
     expect(created.name).toBe("Rigged hands — measured baseline");
     expect(created.profileId).not.toBe("default");
     expect(created.revision).toBe(0);
+    expect({
+      ...created,
+      profileId: RIGGED_HAND_MEASURED_BASELINE_PROFILE.profileId,
+      revision: RIGGED_HAND_MEASURED_BASELINE_PROFILE.revision,
+      name: RIGGED_HAND_MEASURED_BASELINE_PROFILE.name,
+      createdAtUnixSeconds: RIGGED_HAND_MEASURED_BASELINE_PROFILE.createdAtUnixSeconds,
+      modifiedAtUnixSeconds: RIGGED_HAND_MEASURED_BASELINE_PROFILE.modifiedAtUnixSeconds,
+    }).toEqual(RIGGED_HAND_MEASURED_BASELINE_PROFILE);
     expect(listProfiles()).toHaveLength(existing.length + 1);
     expect(new Set(listProfiles().map((profile) => profile.profileId)).size).toBe(existing.length + 1);
     for (const profile of existing) {

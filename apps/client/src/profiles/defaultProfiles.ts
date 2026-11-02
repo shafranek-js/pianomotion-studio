@@ -4,6 +4,11 @@ import {
   SCHEMA_VERSION,
 } from "@handthesia/contracts";
 import { DEFAULT_ANATOMY, DEFAULT_BEHAVIOR } from "./types.ts";
+import {
+  buildRiggedHandProfileFromBase,
+  RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID,
+  RIGGED_HAND_MEASURED_BASELINE_PROFILE_NAME,
+} from "./riggedHandProfileCalibration.ts";
 
 const DEFAULT_SKIN: Readonly<Record<string, unknown>> = Object.freeze({
   style: "gloves",
@@ -56,6 +61,23 @@ export const DEFAULT_PROFILE: PianistProfile = PianistProfileSchema.parse({
   createdAtUnixSeconds: 0,
   modifiedAtUnixSeconds: 0,
 });
+
+function deepFreeze<T>(value: T): T {
+  if (typeof value !== "object" || value === null || Object.isFrozen(value)) return value;
+  for (const nested of Object.values(value as Record<string, unknown>)) deepFreeze(nested);
+  return Object.freeze(value) as T;
+}
+
+/** Immutable built-in source-rig baseline; increment revision when its values change. */
+export const RIGGED_HAND_MEASURED_BASELINE_PROFILE: PianistProfile = deepFreeze(PianistProfileSchema.parse(
+  buildRiggedHandProfileFromBase(DEFAULT_PROFILE, {
+    profileId: RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID,
+    name: RIGGED_HAND_MEASURED_BASELINE_PROFILE_NAME,
+    revision: 0,
+    createdAtUnixSeconds: 0,
+    modifiedAtUnixSeconds: 0,
+  }),
+));
 
 /**
  * Built-in profile for small hands / youth pianists:
@@ -199,6 +221,7 @@ export function getDefaultProfiles(): PianistProfile[] {
     structuredClone(SMALL_HANDS_PROFILE),
     structuredClone(VIRTUOSO_PROFILE),
     structuredClone(LEFT_DOMINANT_PROFILE),
+    structuredClone(RIGGED_HAND_MEASURED_BASELINE_PROFILE),
   ];
 }
 

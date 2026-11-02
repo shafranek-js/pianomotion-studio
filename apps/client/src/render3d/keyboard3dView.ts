@@ -937,11 +937,8 @@ export class Keyboard3DView {
       const targetInfo = this.targetPitches.get(pitch);
 
       // Physical downward key rotation around the rear balance pin when pressed
-      entry.pivotGroup.rotation.x = isPressed
-        ? entry.isBlack
-          ? 0.064
-          : 0.056
-        : 0;
+      const depressionWeight = isPressed ? THREE.MathUtils.clamp(pressInfo?.depressionWeight ?? 1, 0, 1) : 0;
+      entry.pivotGroup.rotation.x = depressionWeight * (entry.isBlack ? 0.064 : 0.056);
 
       if (isWrong) {
         entry.material.color.setHex(0xef4444);
@@ -951,16 +948,25 @@ export class Keyboard3DView {
         if (pressInfo?.hand === "left") {
           entry.material.color.setHex(entry.isBlack ? 0x2563eb : 0x60a5fa);
           entry.material.emissive.setHex(0x1d4ed8);
-          entry.material.emissiveIntensity = 0.35;
+          entry.material.emissiveIntensity = 0.35 * (0.15 + 0.85 * depressionWeight);
+          if (depressionWeight < 0.999) {
+            entry.material.color.lerp(new THREE.Color(entry.isBlack ? 0x111216 : 0xf2efe6), 1 - depressionWeight);
+          }
         } else if (pressInfo?.hand === "right") {
           entry.material.color.setHex(entry.isBlack ? 0x059669 : 0x34d399);
           entry.material.emissive.setHex(0x047857);
-          entry.material.emissiveIntensity = 0.35;
+          entry.material.emissiveIntensity = 0.35 * (0.15 + 0.85 * depressionWeight);
+          if (depressionWeight < 0.999) {
+            entry.material.color.lerp(new THREE.Color(entry.isBlack ? 0x111216 : 0xf2efe6), 1 - depressionWeight);
+          }
         } else {
           // Physical MIDI or mouse live press
           entry.material.color.setHex(entry.isBlack ? 0xd97706 : 0xfbbf24);
           entry.material.emissive.setHex(0xb45309);
-          entry.material.emissiveIntensity = 0.4;
+          entry.material.emissiveIntensity = 0.4 * (0.15 + 0.85 * depressionWeight);
+          if (depressionWeight < 0.999) {
+            entry.material.color.lerp(new THREE.Color(entry.isBlack ? 0x111216 : 0xf2efe6), 1 - depressionWeight);
+          }
         }
       } else if (targetInfo) {
         // Play Along target cue: highlighted top without physical depression

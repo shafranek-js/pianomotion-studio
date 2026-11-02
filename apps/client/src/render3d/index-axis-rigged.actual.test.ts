@@ -378,7 +378,10 @@ describe("fixed per-hand index axes on the actual rigged Experimental GLBs", () 
           expect(Math.abs(flexAngle(zeroIndex[2]!, zeroIndex[3]!, zeroIndex[4]!, zeroPose.palmNormal, 50))).toBeLessThan(1e-12);
           hand.update(zeroPose);
           for (const [name, quaternion] of bind) {
-            if (isLongFingerMcp(side, name)) continue;
+            // Axis correction counter-rotates only the palm locally so the
+            // world palm frame stays fixed; the dedicated arm-axis actual test
+            // checks that world invariant. Other non-MCP joints remain at bind.
+            if (name === `${side}_palm` || isLongFingerMcp(side, name)) continue;
             expect(quaternionComponentDrift(requireBone(bones, name).quaternion, quaternion), `${name} must retain its bind quaternion for a straight zero-flex pose.`).toBeLessThan(1e-12);
           }
 
@@ -399,6 +402,10 @@ describe("fixed per-hand index axes on the actual rigged Experimental GLBs", () 
             for (const bone of mesh.skeleton.bones) {
               const actual = bone.quaternion;
               expect(actual.toArray().every(Number.isFinite), `${bone.name} quaternion must stay finite at ${timeSeconds}s.`).toBe(true);
+              // The rig-root axis step preserves palm world pose via a local
+              // palm counter-rotation; finger-local and forearm-local frames
+              // still obey the unchanged bind/axis expectations below.
+              if (bone.name === `${side}_palm`) continue;
               if (isLongFingerMcp(side, bone.name)) {
                 const expectedMcpFlex = expectedCandidate.get(bone.name)!;
                 expect(actual.angleTo(expectedMcpFlex), `${bone.name} MCP side alignment stays within its 15 degree bound.`).toBeLessThanOrEqual(MAX_MCP_SIDE_ANGLE + THREE.MathUtils.degToRad(0.01));

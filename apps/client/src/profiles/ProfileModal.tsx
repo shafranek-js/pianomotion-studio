@@ -11,6 +11,10 @@ import {
 import { createTesting2DefaultBaselineProfile } from "./testing2BaselineProfile";
 import { createRiggedHandProfile } from "./riggedHandProfile";
 import {
+  RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID,
+  RIGGED_HAND_MEASURED_BASELINE_PROFILE_NAME,
+} from "./riggedHandProfileCalibration";
+import {
   getActiveProfile,
   setActiveProfile,
   listProfiles,
@@ -18,6 +22,8 @@ import {
   deleteProfile,
   subscribeProfiles,
   isCanonicalProfile,
+  isBuiltinProfileAvailable,
+  getProfileStoreDiagnostics,
 } from "./profileStore";
 import { importLegacyPianistJson, exportProfileToJson } from "./legacyImporter";
 import { useI18n, type TranslationDictionary } from "../i18n";
@@ -45,7 +51,7 @@ function projectProfileChoices(profile?: PianistProfile): PianistProfile[] {
     : [...stored, profile];
 }
 
-function getProfilePresetName(profile: PianistProfile, dict: TranslationDictionary): string {
+function getProfilePresetName(profile: PianistProfile, dict: TranslationDictionary, isBuiltin: boolean): string {
   switch (profile.profileId) {
     case "default":
       return dict.pianist.defaultPreset;
@@ -56,6 +62,14 @@ function getProfilePresetName(profile: PianistProfile, dict: TranslationDictiona
     case "left-dominant":
       return dict.pianist.leftDominantPreset;
     default:
+      if (profile.profileId === RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID) {
+        return isBuiltin
+          ? `${RIGGED_HAND_MEASURED_BASELINE_PROFILE_NAME} (Built-in)`
+          : `${profile.name || RIGGED_HAND_MEASURED_BASELINE_PROFILE_NAME} (Saved ID conflict)`;
+      }
+      if (profile.name === RIGGED_HAND_MEASURED_BASELINE_PROFILE_NAME) {
+        return `${RIGGED_HAND_MEASURED_BASELINE_PROFILE_NAME} (Copy)`;
+      }
       return profile.name || dict.pianist.customPreset;
   }
 }
@@ -95,6 +109,7 @@ export function ProfileModal({ isOpen, onClose, onProfileChanged, presentation =
   const [importError, setImportError] = useState<string | null>(null);
   const [saveFeedback, setSaveFeedback] = useState<string | null>(null);
   const [operationError, setOperationError] = useState<string | null>(null);
+  const [profileDiagnostics, setProfileDiagnostics] = useState(() => getProfileStoreDiagnostics());
   const [isSaving, setIsSaving] = useState(false);
   const [isCreatingRiggedHandProfile, setIsCreatingRiggedHandProfile] = useState(false);
   const riggedHandCreationInFlight = useRef(false);
@@ -113,6 +128,7 @@ export function ProfileModal({ isOpen, onClose, onProfileChanged, presentation =
   useEffect(() => {
     const unsubscribe = subscribeProfiles(() => {
       setProfiles(projectProfileChoices(initialProfile));
+      setProfileDiagnostics(getProfileStoreDiagnostics());
     });
     return unsubscribe;
   }, [initialProfile]);
@@ -128,6 +144,9 @@ export function ProfileModal({ isOpen, onClose, onProfileChanged, presentation =
   if (!isOpen) return null;
 
   const isDefaultProfile = isCanonicalProfile(editingProfile.profileId);
+  const isMeasuredBaselineBuiltin = isDefaultProfile &&
+    isBuiltinProfileAvailable(editingProfile.profileId) &&
+    editingProfile.profileId === RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID;
 
   const handleSelectProfile = async (id: string) => {
     setOperationError(null);
@@ -176,6 +195,19 @@ export function ProfileModal({ isOpen, onClose, onProfileChanged, presentation =
       setOperationError(error instanceof Error ? error.message : String(error));
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleApplyMeasuredBuiltin = async () => {
+    if (!isMeasuredBaselineBuiltin) return;
+    setOperationError(null);
+    try {
+      const committed = await setActiveProfile(RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID);
+      setSelectedProfileId(committed.profileId);
+      onProfileChanged?.(committed);
+      onClose();
+    } catch (error) {
+      setOperationError(error instanceof Error ? error.message : String(error));
     }
   };
 
@@ -454,7 +486,7 @@ export function ProfileModal({ isOpen, onClose, onProfileChanged, presentation =
             >
               {profiles.map((p) => (
                 <option key={p.profileId} value={p.profileId}>
-                  {getProfilePresetName(p, dict)}
+                  {getProfilePresetName(p, dict, isBuiltinProfileAvailable(p.profileId))}
                 </option>
               ))}
             </select>
@@ -502,7 +534,7 @@ export function ProfileModal({ isOpen, onClose, onProfileChanged, presentation =
                 data-testid="create-rigged-hand-profile"
                 onClick={() => void handleCreateRiggedHandProfile()}
                 disabled={isSaving}
-                title="Creates and adds a Rigged hands profile to the profile list without activating it."
+                title="Creates a separate editable Rigged hands copy. It does not change the active profile."
                 style={{
                   padding: "0.3rem 0.6rem",
                   borderRadius: "0.35rem",
@@ -514,7 +546,7 @@ export function ProfileModal({ isOpen, onClose, onProfileChanged, presentation =
                 }}
                 aria-busy={isCreatingRiggedHandProfile}
               >
-                {isCreatingRiggedHandProfile ? "Creating Rigged hands profile…" : "Create Rigged hands profile"}
+                {isCreatingRiggedHandProfile ? "Creating editable copy…" : "Create editable Rigged hands copy"}
               </button>
               <span
                 data-testid="rigged-hand-profile-calibration-note"
@@ -690,6 +722,25 @@ export function ProfileModal({ isOpen, onClose, onProfileChanged, presentation =
               Profile change was not saved: {operationError}
             </div>
           )}
+
+          {profileDiagnostics.map((diagnostic) => (
+            <div
+              key={diagnostic.code}
+              role="alert"
+              data-testid="profile-store-diagnostic"
+              style={{
+                padding: "0.6rem 0.8rem",
+                borderRadius: "0.4rem",
+                background: "rgba(245, 158, 11, 0.12)",
+                border: "1px solid rgba(245, 158, 11, 0.45)",
+                color: "#fbbf24",
+                fontSize: "0.82rem",
+                marginBottom: "1rem",
+              }}
+            >
+              {diagnostic.message}
+            </div>
+          ))}
 
           {/* Anatomy Tab */}
           {activeTab === "anatomy" && (
@@ -1205,6 +1256,27 @@ export function ProfileModal({ isOpen, onClose, onProfileChanged, presentation =
             >
               {dict.common.cancel}
             </button>
+            {isMeasuredBaselineBuiltin && (
+              <button
+                type="button"
+                data-testid="apply-measured-baseline"
+                aria-label="Apply built-in Rigged hands measured baseline and close"
+                onClick={() => void handleApplyMeasuredBuiltin()}
+                disabled={isSaving}
+                title="Apply this built-in to the current project and close this editor."
+                style={{
+                  padding: "0.45rem 0.9rem",
+                  borderRadius: "0.4rem",
+                  background: "rgba(169, 211, 187, 0.12)",
+                  border: "1px solid var(--mint, #a9d3bb)",
+                  color: "#edf2ed",
+                  fontSize: "0.82rem",
+                  cursor: "pointer",
+                }}
+              >
+                Apply built-in &amp; close
+              </button>
+            )}
             <button
               type="button"
               onClick={handleSave}
