@@ -223,7 +223,7 @@ export class PianoScene {
     skinStyle: "cartoon",
     showHandShadow: true,
     renderCapFps: 60,
-    handModel: "anatomical",
+    handModel: "rigged-experimental",
     testingHandMaterial: "original",
     testingThumbStrength: 0,
     testingKeyContact: true,

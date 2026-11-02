@@ -2,7 +2,7 @@ import type { M1KeyStyle } from "@handthesia/contracts";
 import { PianoScene } from "../render";
 import type { MotionBuffer } from "../render/motionBuffer";
 import { PianoScene3D } from "../render3d";
-import { isDetailedHandModel } from "../render3d/improvedHandRuntime";
+import { isDetailedHandModel, RIGGED_EXPERIMENTAL_HAND_MODEL_ID } from "../render3d/improvedHandRuntime";
 import { materializeImprovedHandExportDocument } from "./improvedHandExportDocument";
 import type { FrozenVideoExportSnapshot } from "./videoExportSnapshot";
 
@@ -28,7 +28,7 @@ export async function createVideoFrameScene(
     renderCapFps: 0,
     handModel: snapshot.settings.handModel,
   };
-  const sceneDocument = isDetailedHandModel(snapshot.settings.handModel)
+  const sceneDocument = isDetailedHandModel(snapshot.settings.handModel) || snapshot.settings.handModel === RIGGED_EXPERIMENTAL_HAND_MODEL_ID
     ? materializeImprovedHandExportDocument(snapshot.document, snapshot.sourceIdentity.fingeringPlan)
     : snapshot.document;
   if (snapshot.sceneView.dimension === "3d") {

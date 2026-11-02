@@ -107,7 +107,7 @@ export const SettingsSchema = z.object({
     })
     .default(60),
   skinStyle: SkinStyleSchema.default("realistic"),
-  handModel: HandModelSchema.default("anatomical"),
+  handModel: HandModelSchema.default("rigged-experimental"),
   testingHandMaterial: TestingHandMaterialSchema.default("original"),
   testingThumbStrength: TestingThumbStrengthSchema.default(0),
   testingKeyContact: z.boolean().default(true),
@@ -133,7 +133,7 @@ export const DEFAULT_SETTINGS: Settings = {
   soundTimbre: "acoustic",
   renderCapFps: 60,
   skinStyle: "realistic",
-  handModel: "anatomical",
+  handModel: "rigged-experimental",
   testingHandMaterial: "original",
   testingThumbStrength: 0,
   testingKeyContact: true,
@@ -231,7 +231,7 @@ export function sanitizeSettings(input: Partial<Settings> | unknown): Settings {
     ? "realistic" : storedSkinStyle;
 
   const handModel: HandModel =
-    raw.handModel === "webxr" || raw.handModel === "anatomical" || raw.handModel === "anatomical-improved" || raw.handModel === "testing" || raw.handModel === "testing2" || raw.handModel === "rigged-experimental"
+    raw.handModel === "webxr" || raw.handModel === "rigged-experimental"
       ? raw.handModel
       : DEFAULT_SETTINGS.handModel;
 

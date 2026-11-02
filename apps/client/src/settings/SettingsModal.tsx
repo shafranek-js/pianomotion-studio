@@ -416,108 +416,10 @@ export function SettingsModal({ isOpen, onClose, onSettingsChanged, presentation
                     fontSize: "0.85rem",
                   }}
                 >
-                  <option value="anatomical">{dict.settings.handModelAnatomical}</option>
-                  <option value="anatomical-improved">{dict.settings.handModelAnatomicalImproved}</option>
-                  <option value="testing">{dict.settings.handModelTesting}</option>
-                  <option value="testing2">{dict.settings.handModelTesting2}</option>
-                  <option value="rigged-experimental">Rigged hands (experimental)</option>
+                  <option value="rigged-experimental">Rigged hands</option>
                   <option value="webxr">{dict.settings.handModelWebxr}</option>
                 </select>
-                {settings.handModel === "testing2" && (
-                  <p style={{ margin: "0.35rem 0 0", fontSize: "0.76rem", color: "var(--muted, #9fac9f)" }}>
-                    {dict.settings.handModelTesting2Description}
-                  </p>
-                )}
-                {settings.handModel === "rigged-experimental" && (
-                  <p style={{ margin: "0.35rem 0 0", fontSize: "0.76rem", color: "var(--muted, #9fac9f)" }}>
-                    Experimental live rig: finger placement and key contact are still under development.
-                  </p>
-                )}
               </div>
-
-              {settings.handModel === "testing" && (
-                <div>
-                  <label htmlFor="settings-testing-hand-material" style={{ display: "block", fontSize: "0.8rem", color: "var(--muted, #9fac9f)", marginBottom: "0.3rem" }}>
-                    Testing — material comparison (experimental):
-                  </label>
-                  <select
-                    id="settings-testing-hand-material"
-                    value={settings.testingHandMaterial}
-                    onChange={(e) => handleChange("testingHandMaterial", e.target.value as AppSettings["testingHandMaterial"])}
-                    style={{
-                      background: "#19211d",
-                      color: "#edf2ed",
-                      border: "1px solid var(--border, #33423a)",
-                      borderRadius: "0.35rem",
-                      padding: "0.4rem 0.6rem",
-                      fontSize: "0.85rem",
-                    }}
-                  >
-                    <option value="original">Original skin — all textures</option>
-                    <option value="no-normal">Original color — no normal map</option>
-                    <option value="no-albedo">Neutral color — retain normal map</option>
-                    <option value="clay">Neutral clay — no textures</option>
-                  </select>
-                  <p style={{ margin: "0.35rem 0 0", fontSize: "0.76rem", color: "var(--muted, #9fac9f)" }}>
-                    Changes both Testing hands instantly without changing motion or geometry.
-                  </p>
-                  <label htmlFor="settings-testing-thumb-strength" style={{ display: "block", fontSize: "0.8rem", color: "var(--muted, #9fac9f)", margin: "0.85rem 0 0.3rem" }}>
-                    Testing — thumb bind calibration A/B:
-                  </label>
-                  <select
-                    id="settings-testing-thumb-strength"
-                    value={settings.testingThumbStrength}
-                    onChange={(e) => handleChange("testingThumbStrength", Number(e.target.value) as AppSettings["testingThumbStrength"])}
-                    style={{
-                      background: "#19211d",
-                      color: "#edf2ed",
-                      border: "1px solid var(--border, #33423a)",
-                      borderRadius: "0.35rem",
-                      padding: "0.4rem 0.6rem",
-                      fontSize: "0.85rem",
-                    }}
-                  >
-                    <option value={0}>0% — Original Testing (baseline)</option>
-                    <option value={0.25}>25% — Experimental</option>
-                    <option value={0.5}>50% — Experimental</option>
-                    <option value={0.75}>75% — Experimental</option>
-                    <option value={1}>100% — Experimental (known stretch regression)</option>
-                  </select>
-                  <p style={{ margin: "0.35rem 0 0", fontSize: "0.76rem", color: "var(--muted, #9fac9f)" }}>
-                    Rebuilds both Testing hand meshes using the same bone poses and original surface.
-                    Research preview only: calibration is not yet anatomically approved.
-                  </p>
-                  <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", margin: "0.8rem 0 0.35rem", fontSize: "0.82rem" }}>
-                    <input
-                      id="settings-testing-key-contact"
-                      type="checkbox"
-                      checked={settings.testingKeyContact}
-                      onChange={(e) => handleChange("testingKeyContact", e.target.checked)}
-                      style={{ accentColor: "var(--mint, #a9d3bb)" }}
-                    />
-                    Align fingerpads to pressed keys (Testing only)
-                  </label>
-                  <p style={{ margin: "0 0 0.4rem", fontSize: "0.76rem", color: "var(--muted, #9fac9f)" }}>
-                    Uses the depressed key-top position for fingerpad alignment.
-                    Switch off to compare uncorrected WebXR motion.
-                  </p>
-                  <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", margin: "0.8rem 0 0.35rem", fontSize: "0.82rem" }}>
-                    <input
-                      id="settings-testing-bind-alignment"
-                      type="checkbox"
-                      checked={settings.testingShowBindAlignment}
-                      onChange={(e) => handleChange("testingShowBindAlignment", e.target.checked)}
-                      style={{ accentColor: "var(--mint, #a9d3bb)" }}
-                    />
-                    Show surface / skeleton alignment (Testing only)
-                  </label>
-                  <p style={{ margin: "0 0 0.4rem", fontSize: "0.76rem", color: "var(--muted, #9fac9f)" }}>
-                    Amber: original anatomical bone origins. Cyan: WebXR joint origins.
-                    Green: skinned fingerpad samples. Lines show bind offset.
-                    Research diagnostics, not annotated knuckle centers.
-                  </p>
-                </div>
-              )}
 
               <div style={{ display: "flex", gap: "1.5rem", flexWrap: "wrap", marginTop: "0.2rem" }}>
                 <label style={{ display: "flex", alignItems: "center", gap: "0.4rem", fontSize: "0.82rem", cursor: "pointer" }}>

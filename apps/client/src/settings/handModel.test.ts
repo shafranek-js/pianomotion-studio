@@ -2,24 +2,21 @@ import { describe, expect, it } from "vitest";
 import { DEFAULT_SETTINGS, HandModelSchema, TestingHandMaterialSchema, TestingThumbStrengthSchema, sanitizeSettings, SettingsSchema } from "./types";
 
 describe("hand model settings compatibility", () => {
-  it("keeps anatomical as the default for new and legacy settings", () => {
-    expect(DEFAULT_SETTINGS.handModel).toBe("anatomical");
-    expect(SettingsSchema.parse({}).handModel).toBe("anatomical");
-    expect(sanitizeSettings({ language: "cs" }).handModel).toBe("anatomical");
-    expect(sanitizeSettings({ handModel: "anatomical" }).handModel).toBe("anatomical");
+  it("uses Rigged hands as the default and migrates legacy model IDs to Rigged hands", () => {
+    expect(DEFAULT_SETTINGS.handModel).toBe("rigged-experimental");
+    expect(SettingsSchema.parse({}).handModel).toBe("rigged-experimental");
+    expect(sanitizeSettings({ language: "cs" }).handModel).toBe("rigged-experimental");
+    expect(sanitizeSettings({ handModel: "anatomical" }).handModel).toBe("rigged-experimental");
+    expect(sanitizeSettings({ handModel: "anatomical-improved" }).handModel).toBe("rigged-experimental");
+    expect(sanitizeSettings({ handModel: "testing" }).handModel).toBe("rigged-experimental");
+    expect(sanitizeSettings({ handModel: "testing2" }).handModel).toBe("rigged-experimental");
   });
 
-  it("accepts and preserves the improved ID through schema and sanitization", () => {
-    expect(HandModelSchema.parse("anatomical-improved")).toBe("anatomical-improved");
-    expect(HandModelSchema.parse("testing")).toBe("testing");
-    expect(HandModelSchema.parse("testing2")).toBe("testing2");
+  it("accepts and preserves Rigged hands and WebXR through schema and sanitization", () => {
     expect(HandModelSchema.parse("rigged-experimental")).toBe("rigged-experimental");
-    expect(sanitizeSettings({ handModel: "testing" }).handModel).toBe("testing");
-    expect(sanitizeSettings({ handModel: "testing2" }).handModel).toBe("testing2");
+    expect(HandModelSchema.parse("webxr")).toBe("webxr");
     expect(sanitizeSettings({ handModel: "rigged-experimental" }).handModel).toBe("rigged-experimental");
-    expect(SettingsSchema.parse({ handModel: "anatomical-improved" }).handModel).toBe("anatomical-improved");
-    expect(SettingsSchema.parse({ handModel: "testing2" }).handModel).toBe("testing2");
-    expect(sanitizeSettings({ handModel: "anatomical-improved" }).handModel).toBe("anatomical-improved");
+    expect(sanitizeSettings({ handModel: "webxr" }).handModel).toBe("webxr");
   });
 
   it("preserves WebXR and falls back safely for unknown imported IDs", () => {

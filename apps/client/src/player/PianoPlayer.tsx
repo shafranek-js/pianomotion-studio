@@ -1925,7 +1925,7 @@ export function PianoPlayer({
       return;
     }
     if (settings.handModel !== RIGGED_EXPERIMENTAL_HAND_MODEL_ID) {
-      setPoseEditError("Select Rigged Experimental as the hand model first.");
+      setPoseEditError("Select Rigged hands as the hand model first.");
       return;
     }
     if (viewMode !== "performance" || needsReplan) {
@@ -3027,7 +3027,7 @@ export function PianoPlayer({
     workspace={workspace}
     transport={transport}
     headerAddon={<div ref={setAssignmentControlsHost} className="studio-fingering-assignment-host" />}
-    footerAddon={footerAddon ?? <StudioReleaseDetails description="0.1.0-dev.22 preview: Practice panel with A/B repeat across playback and PlayAlong, plus named time bookmarks saved, recoverable, and JSON-bound to the source SHA; menu/library fixes and the 3D stage are retained." />}
+    footerAddon={footerAddon ?? <StudioReleaseDetails description="v2.0.0: Realistic 3D Rigged hands with anatomical fingering, proximity V-fanning collision solver, smooth key travel, multi-format score import (MIDI, KAR, MusicXML, MuseScore, Guitar Pro), and practice tools." />}
     dialogs={<>
       {dialogs}
       <VideoExportModal

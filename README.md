@@ -26,9 +26,9 @@ and the built site installs as an offline PWA.
 ![PianoMotion Studio: 3D concert stage with falling notes and animated hands](docs/images/concert-stage.png)
 
 *Concert camera on the 3D stage: falling notes coloured by hand, a lit floor and the procedural
-hands over an 88-key keyboard (v0.1.0-dev.23).*
+hands over an 88-key keyboard (v2.0.0).*
 
-> **Status: preview.** The current build is `0.1.0-dev.23`. It is developed in public and verified
+> **Status: preview.** The current build is `2.0.0`. It is developed in public and verified
 > by the suites below, but it is not a tagged release; see [Limitations](#limitations).
 
 ## Contents
@@ -104,12 +104,12 @@ hands over an 88-key keyboard (v0.1.0-dev.23).*
 ![Fingering mode showing hand and finger assignment controls](docs/images/fingering-mode.png)
 
 *Fingering mode on the shared scene: left/right hand, fingers 1–5, clear, unplayable, glissando and
-auto-advance (v0.1.0-dev.23).*
+auto-advance (v2.0.0).*
 
 ![Practice panel with A–B repeat and named bookmarks](docs/images/practice-panel.png)
 
 *Practice panel over the 3D stage: A–B loop points, repeat toggle, named bookmarks and Play-along
-(v0.1.0-dev.23).*
+(v2.0.0).*
 
 ## How the fingering engine works
 
@@ -342,7 +342,7 @@ project to be committed, and a reload restores the last autosaved session.
 
 ## Limitations
 
-- **Preview software.** `0.1.0-dev.23` has no release tag. Behaviour and UI still change between
+- **Preview software.** `2.0.0` has no release tag. Behaviour and UI still change between
   development builds; see [release notes](docs/RELEASE_NOTES.md).
 - **Chromium-based browsers are what is verified.** The browser suites run locally on Windows against
   Chrome (`PIANOMOTION_BROWSER_CHANNEL=msedge` selects Edge). Firefox and Safari are untested, and

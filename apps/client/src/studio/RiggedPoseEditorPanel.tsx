@@ -79,11 +79,11 @@ export function RiggedPoseEditorPanel(props: RiggedPoseEditorPanelProps) {
         {props.active && <span className={styles.liveBadge}>Paused</span>}
       </div>
       <p className={styles.description}>
-        Edit the Rigged Experimental hand on the piano. Saved presets are separate reference poses; playback continues to use the MotionPlan.
+        Edit the Rigged hands on the piano. Saved presets are separate reference poses; playback continues to use the MotionPlan.
       </p>
 
       {!props.is3DMode && <p className={styles.notice} role="status">Switch to the 3D piano view to edit a hand.</p>}
-      {props.is3DMode && !props.modelMatches && <p className={styles.notice} role="status">Select Rigged Experimental as the hand model to use pose editing.</p>}
+      {props.is3DMode && !props.modelMatches && <p className={styles.notice} role="status">Select Rigged hands as the hand model to use pose editing.</p>}
       {props.is3DMode && props.modelMatches && props.timepoints.length === 0 && (
         <p className={styles.notice} role="status">No sampled poses are available yet. A MotionPlan or motion buffer is required.</p>
       )}
@@ -347,8 +347,8 @@ function formatSource(source: RiggedPoseEditSampleSource | null): string {
 function availabilityText(reason: RiggedPoseEditAvailability["reason"]): string {
   switch (reason) {
     case "no-3d-scene": return "the 3D piano scene is not active";
-    case "model-mismatch": return "Rigged Experimental is not selected";
-    case "hand-not-ready": return "both Rigged Experimental hands are still loading";
+    case "model-mismatch": return "Rigged hands is not selected";
+    case "hand-not-ready": return "both Rigged hands are still loading";
     case "sample-unavailable": return "the MotionPlan or buffer has no sample for both hands";
     default: return "the sample is unavailable";
   }
