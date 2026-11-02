@@ -4,9 +4,11 @@
   "private": true,
   "type": "module",
   "dependencies": {
+    "@coderline/alphatab": "^1.9.0",
     "@handthesia/contracts": "0.1.0-dev.23",
     "@handthesia/engine-ts": "0.1.0-dev.23",
     "@radix-ui/react-dialog": "1.3.1",
+    "fflate": "^0.8.3",
     "hash-wasm": "4.12.0",
     "lucide-react": "1.57.0",
     "mediabunny": "1.61.4",

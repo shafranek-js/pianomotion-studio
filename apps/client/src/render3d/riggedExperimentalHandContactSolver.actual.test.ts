@@ -466,6 +466,192 @@ describe("RiggedExperimentalHand continuous reference pose and real-time key con
     expect(liftY34 - holdY3).toBeGreaterThan(0.45);
     expect(liftY34 - holdY4).toBeGreaterThan(0.45);
 
+    // 8. Verify two-tier over-hand / under-hand bridging when both hands actively play in the same register
+    // (reproducing the shared-register / crossing passage at 0:25 in The Four Seasons - Autumn where
+    // left hand plays pitch 65 (F4) with finger 3 and right hand plays pitch 64 (E4) with finger 2).
+    const baseLeftMotion = structuredClone(sample195.motionPoses.find((p) => p.hand === "left")!);
+    const baseRightMotion = structuredClone(sample195.motionPoses.find((p) => p.hand === "right")!);
+    const f4BoundsInit = new THREE.Box3().setFromObject(keyboard.keysByPitch.get(65)!.mesh);
+    const e4BoundsInit = new THREE.Box3().setFromObject(keyboard.keysByPitch.get(64)!.mesh);
+    const key65X = (f4BoundsInit.min.x + f4BoundsInit.max.x) * 0.5;
+    const key64X = (e4BoundsInit.min.x + e4BoundsInit.max.x) * 0.5;
+    const keyboardHalfW = 24.14285714;
+    const leftF3TipX = baseLeftMotion.joints.filter((j) => j.kind === "tip")[1]!.point[0];
+    const rightF2TipX = baseRightMotion.joints.filter((j) => j.kind === "tip")[0]!.point[0];
+    const leftDeltaX = (key65X + keyboardHalfW) - leftF3TipX;
+    const rightDeltaX = (key64X + keyboardHalfW) - rightF2TipX;
+    for (const j of baseLeftMotion.joints) j.point[0] += leftDeltaX;
+    for (const b of baseLeftMotion.bones) {
+      b.a[0] += leftDeltaX;
+      b.b[0] += leftDeltaX;
+    }
+    for (const j of baseRightMotion.joints) j.point[0] += rightDeltaX;
+    for (const b of baseRightMotion.bones) {
+      b.a[0] += rightDeltaX;
+      b.b[0] += rightDeltaX;
+    }
+    const autumnNotes = [
+      { hand: "left" as const, finger: 3, pitch: 65, startSeconds: 24.8, endSeconds: 25.3 },
+      { hand: "right" as const, finger: 2, pitch: 64, startSeconds: 24.8, endSeconds: 25.3 },
+    ];
+    keyboard.setActiveKeys(
+      new Map([
+        [65, { hand: "left" as const, finger: 3, depressionWeight: 1 }],
+        [64, { hand: "right" as const, finger: 2, depressionWeight: 1 }],
+      ]),
+    );
+    keyboard.group.updateMatrixWorld(true);
+    const autumnLeftTargets = populateHandContactTargets(autumnNotes, "left", 25.0, [], sampleSurface);
+    const autumnRightTargets = populateHandContactTargets(autumnNotes, "right", 25.0, [], sampleSurface);
+    enrichTargetsWithKeyboardBounds(keyboard, autumnLeftTargets);
+    enrichTargetsWithKeyboardBounds(keyboard, autumnRightTargets);
+
+    leftHand.update(reconstructHand3D(baseLeftMotion, 0), undefined, {
+      referencePose: leftStartPose,
+      contactTargets: autumnLeftTargets,
+      displayedTransportTimeSeconds: 25.0,
+    });
+    rightHand.update(reconstructHand3D(baseRightMotion, 0), undefined, {
+      referencePose: rightStartPose,
+      contactTargets: autumnRightTargets,
+      displayedTransportTimeSeconds: 25.0,
+    });
+    RiggedExperimentalHand.resolveHandPairCollisions(
+      leftHand,
+      rightHand,
+      autumnLeftTargets,
+      autumnRightTargets,
+    );
+
+    const autumnLeftSnap = leftHand.sampleLiveDiagnostics();
+    const autumnRightSnap = rightHand.sampleLiveDiagnostics();
+    const leftPalmPos = autumnLeftSnap.boneWorldTransformRows[21]!;
+    const rightPalmPos = autumnRightSnap.boneWorldTransformRows[21]!;
+    // One hand must clearly bridge above the other and echelon in depth (Z)
+    expect(Math.abs(leftPalmPos[2]! - rightPalmPos[2]!)).toBeGreaterThan(0.45);
+    expect(Math.abs(leftPalmPos[3]! - rightPalmPos[3]!)).toBeGreaterThan(0.15);
+
+    // Both active fingers (left finger 3 on F4=65, right finger 2 on E4=64) must remain seated on their keys
+    const leftF3Rows = autumnLeftSnap.fixedDistalSkinSampleRows.filter((r) => r[0] === 3);
+    const rightF2Rows = autumnRightSnap.fixedDistalSkinSampleRows.filter((r) => r[0] === 2);
+    const f4Bounds = new THREE.Box3().setFromObject(keyboard.keysByPitch.get(65)!.mesh);
+    const e4Bounds = new THREE.Box3().setFromObject(keyboard.keysByPitch.get(64)!.mesh);
+    const leftF3MeanX = leftF3Rows.reduce((s, r) => s + r[4]!, 0) / leftF3Rows.length;
+    const rightF2MeanX = rightF2Rows.reduce((s, r) => s + r[4]!, 0) / rightF2Rows.length;
+    expect(leftF3MeanX).toBeGreaterThan(f4Bounds.min.x);
+    expect(leftF3MeanX).toBeLessThan(f4Bounds.max.x);
+    expect(rightF2MeanX).toBeGreaterThan(e4Bounds.min.x);
+    expect(rightF2MeanX).toBeLessThan(e4Bounds.max.x);
+
+    // Every finger/palm joint (boneId != 20 forearm) of the upper hand that overlaps in X/Z with a joint of the lower hand must clear it vertically
+    const upperSnap = leftPalmPos[2]! >= rightPalmPos[2]! ? autumnLeftSnap : autumnRightSnap;
+    const lowerSnap = leftPalmPos[2]! >= rightPalmPos[2]! ? autumnRightSnap : autumnLeftSnap;
+    for (const uBone of upperSnap.boneWorldTransformRows) {
+      if (uBone[0] === 20) continue;
+      for (const lBone of lowerSnap.boneWorldTransformRows) {
+        if (lBone[0] === 20) continue;
+        if (Math.abs(uBone[1]! - lBone[1]!) < 0.40 && Math.abs(uBone[3]! - lBone[3]!) < 0.65) {
+          expect(uBone[2]!).toBeGreaterThan(lBone[2]! + 0.30);
+        }
+      }
+    }
+
+    // 9. Verify outward wrist/forearm V-fanning and anatomical PIP hinge preservation when uncrossed hands play close together
+    // (e.g. Left hand finger 2 on E4=64 and Right hand finger 2 on F4=65)
+    const uncrossedLeftMotion = structuredClone(sample195.motionPoses.find((p) => p.hand === "left")!);
+    const uncrossedRightMotion = structuredClone(sample195.motionPoses.find((p) => p.hand === "right")!);
+    const uLeftDeltaX = (key64X + keyboardHalfW) - uncrossedLeftMotion.joints.filter((j) => j.kind === "tip")[0]!.point[0];
+    const uRightDeltaX = (key65X + keyboardHalfW) - uncrossedRightMotion.joints.filter((j) => j.kind === "tip")[0]!.point[0];
+    for (const j of uncrossedLeftMotion.joints) j.point[0] += uLeftDeltaX;
+    for (const b of uncrossedLeftMotion.bones) {
+      b.a[0] += uLeftDeltaX;
+      b.b[0] += uLeftDeltaX;
+    }
+    for (const j of uncrossedRightMotion.joints) j.point[0] += uRightDeltaX;
+    for (const b of uncrossedRightMotion.bones) {
+      b.a[0] += uRightDeltaX;
+      b.b[0] += uRightDeltaX;
+    }
+    const closeNotes = [
+      { hand: "left" as const, finger: 2, pitch: 64, startSeconds: 30.0, endSeconds: 30.5 },
+      { hand: "right" as const, finger: 2, pitch: 65, startSeconds: 30.0, endSeconds: 30.5 },
+    ];
+    keyboard.setActiveKeys(
+      new Map([
+        [64, { hand: "left" as const, finger: 2, depressionWeight: 1 }],
+        [65, { hand: "right" as const, finger: 2, depressionWeight: 1 }],
+      ]),
+    );
+    keyboard.group.updateMatrixWorld(true);
+    const closeLeftTargets = populateHandContactTargets(closeNotes, "left", 30.1, [], sampleSurface);
+    const closeRightTargets = populateHandContactTargets(closeNotes, "right", 30.1, [], sampleSurface);
+    enrichTargetsWithKeyboardBounds(keyboard, closeLeftTargets);
+    enrichTargetsWithKeyboardBounds(keyboard, closeRightTargets);
+
+    leftHand.update(reconstructHand3D(uncrossedLeftMotion, 0), undefined, {
+      referencePose: leftStartPose,
+      contactTargets: closeLeftTargets,
+      displayedTransportTimeSeconds: 30.1,
+    });
+    rightHand.update(reconstructHand3D(uncrossedRightMotion, 0), undefined, {
+      referencePose: rightStartPose,
+      contactTargets: closeRightTargets,
+      displayedTransportTimeSeconds: 30.1,
+    });
+    const beforeFanLeftForearmX = leftHand.sampleLiveDiagnostics().boneWorldTransformRows[20]![1]!;
+    const beforeFanRightForearmX = rightHand.sampleLiveDiagnostics().boneWorldTransformRows[20]![1]!;
+
+    RiggedExperimentalHand.resolveHandPairCollisions(leftHand, rightHand, closeLeftTargets, closeRightTargets);
+
+    const afterFanLeftForearmX = leftHand.sampleLiveDiagnostics().boneWorldTransformRows[20]![1]!;
+    const afterFanRightForearmX = rightHand.sampleLiveDiagnostics().boneWorldTransformRows[20]![1]!;
+    // Outward V-fanning swings the left forearm further left (-X) and the right forearm further right (+X)
+    expect(afterFanLeftForearmX).toBeLessThan(beforeFanLeftForearmX);
+    expect(afterFanRightForearmX).toBeGreaterThan(beforeFanRightForearmX);
+
+    // 10. Verify zero frame-to-frame oscillation (no flickering) across consecutive 60fps frames
+    // when two hands operate in close proximity
+    let prevLeftPalm: [number, number, number] | null = null;
+    let prevRightPalm: [number, number, number] | null = null;
+    for (let frame = 1; frame <= 15; frame++) {
+      const tSec = 30.1 + frame * (1 / 60);
+      const fLeftTargets = populateHandContactTargets(closeNotes, "left", tSec, [], sampleSurface);
+      const fRightTargets = populateHandContactTargets(closeNotes, "right", tSec, [], sampleSurface);
+      enrichTargetsWithKeyboardBounds(keyboard, fLeftTargets);
+      enrichTargetsWithKeyboardBounds(keyboard, fRightTargets);
+      leftHand.update(reconstructHand3D(uncrossedLeftMotion, 0), undefined, {
+        referencePose: leftStartPose,
+        contactTargets: fLeftTargets,
+        displayedTransportTimeSeconds: tSec,
+      });
+      rightHand.update(reconstructHand3D(uncrossedRightMotion, 0), undefined, {
+        referencePose: rightStartPose,
+        contactTargets: fRightTargets,
+        displayedTransportTimeSeconds: tSec,
+      });
+      RiggedExperimentalHand.resolveHandPairCollisions(leftHand, rightHand, fLeftTargets, fRightTargets);
+      const lRow = leftHand.sampleLiveDiagnostics().boneWorldTransformRows[0]!;
+      const rRow = rightHand.sampleLiveDiagnostics().boneWorldTransformRows[0]!;
+      const curLeftPalm: [number, number, number] = [lRow[1]!, lRow[2]!, lRow[3]!];
+      const curRightPalm: [number, number, number] = [rRow[1]!, rRow[2]!, rRow[3]!];
+      if (prevLeftPalm && prevRightPalm && frame >= 3) {
+        const dLeft = Math.hypot(
+          curLeftPalm[0] - prevLeftPalm[0],
+          curLeftPalm[1] - prevLeftPalm[1],
+          curLeftPalm[2] - prevLeftPalm[2],
+        );
+        const dRight = Math.hypot(
+          curRightPalm[0] - prevRightPalm[0],
+          curRightPalm[1] - prevRightPalm[1],
+          curRightPalm[2] - prevRightPalm[2],
+        );
+        expect(dLeft).toBeLessThan(0.02);
+        expect(dRight).toBeLessThan(0.02);
+      }
+      prevLeftPalm = curLeftPalm;
+      prevRightPalm = curRightPalm;
+    }
+
     leftHand.dispose();
     rightHand.dispose();
     keyboard.dispose();

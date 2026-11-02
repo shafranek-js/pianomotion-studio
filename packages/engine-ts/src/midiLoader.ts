@@ -1525,6 +1525,37 @@ export function load_midi(
   report.push(...rNotes);
   rawNotes = sanitizedNotes;
 
+  if (marked.size > 0 && tracks.length === 2 && rawNotes.every((n) => !n.gliss)) {
+    const hasMarkedInterHandCrowding = rawNotes.some(
+      (ln) =>
+        ln.hand === LEFT &&
+        rawNotes.some(
+          (rn) =>
+            rn.hand === RIGHT &&
+            Math.min(ln.end, rn.end) - Math.max(ln.start, rn.start) >= 0.16 &&
+            rn.pitch - ln.pitch >= 0 &&
+            rn.pitch - ln.pitch <= 5,
+        ),
+    );
+    if (hasMarkedInterHandCrowding) {
+      marked.clear();
+      rawNotes = rawNotes.map(
+        (n) =>
+          new Note(
+            n.pitch,
+            n.start,
+            n.end,
+            n.velocity,
+            n.track,
+            n.hand,
+            null,
+            n.gliss,
+            n.source_ids,
+            n.source_events,
+          ),
+      );
+    }
+  }
   const loose = rawNotes.filter((n) => !marked.has(`${n.start}:${n.pitch}`));
   if (loose.length > 0) {
     const preferMap = new Map<number, string>();

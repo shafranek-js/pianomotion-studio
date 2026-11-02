@@ -3,6 +3,24 @@ export const MAX_AUDIO_FILE_SIZE_BYTES = 100 * 1024 * 1024; // 100 MiB = 104,857
 export const MAX_PACKAGE_FILE_SIZE_BYTES = 32 * 1024 * 1024; // 32 MiB = 33,554,432 bytes
 
 export const ALLOWED_MIDI_EXTENSIONS = [".mid", ".midi"] as const;
+export const ALLOWED_SCORE_EXTENSIONS = [
+  ".mid",
+  ".midi",
+  ".kar",
+  ".musicxml",
+  ".xml",
+  ".mxl",
+  ".mlx",
+  ".mscz",
+  ".gtp",
+  ".gp3",
+  ".gp4",
+  ".gp5",
+  ".gpx",
+  ".gp",
+] as const;
+export const SCORE_FILE_INPUT_ACCEPT =
+  ".mid,.midi,.kar,.musicxml,.xml,.mxl,.mlx,.mscz,.gtp,.gp3,.gp4,.gp5,.gpx,.gp,audio/midi,audio/x-midi,application/vnd.recordare.musicxml+xml,application/vnd.recordare.musicxml";
 export const ALLOWED_AUDIO_EXTENSIONS = [".wav", ".mp3", ".ogg", ".flac"] as const;
 export const ALLOWED_PACKAGE_EXTENSIONS = [".json"] as const;
 
@@ -47,6 +65,16 @@ export function getFileExtension(filename: string): string {
 export function hasMidiExtension(filename: string): boolean {
   const ext = getFileExtension(filename);
   return ext === ".mid" || ext === ".midi";
+}
+
+/**
+ * Checks whether a filename ends with any recognized musical score or MIDI extension
+ * (.mid, .midi, .kar, .musicxml, .xml, .mxl, .mlx, .mscz, .gtp, .gp3, .gp4, .gp5, .gpx, .gp),
+ * case-insensitively.
+ */
+export function hasScoreExtension(filename: string): boolean {
+  const ext = getFileExtension(filename);
+  return (ALLOWED_SCORE_EXTENSIONS as readonly string[]).includes(ext);
 }
 
 /**
@@ -226,6 +254,83 @@ export function validateMidiFile(
     sizeBytes: file.size,
     extension: getFileExtension(name),
   };
+}
+
+/**
+ * Validates any supported musical score or MIDI file (.mid, .midi, .kar, .musicxml, .xml,
+ * .mxl, .mlx, .mscz, .gtp, .gp3, .gp4, .gp5, .gpx, .gp) from input or drag-and-drop.
+ */
+export function validateScoreFile(
+  file: File | Blob | null | undefined,
+  filename?: string,
+): FileValidationResult {
+  if (!file) {
+    return {
+      valid: false,
+      error: "No file was selected or dropped.",
+      code: "NO_FILE_PROVIDED",
+    };
+  }
+
+  const name = filename ?? (file instanceof File ? file.name : "unnamed.mid");
+
+  if (!hasScoreExtension(name)) {
+    const ext = getFileExtension(name);
+    const displayExt = ext ? `"${ext}"` : "(none)";
+    return {
+      valid: false,
+      error: `Invalid file extension ${displayExt}. Expected a MIDI, MusicXML, MuseScore, or Guitar Pro file (${ALLOWED_SCORE_EXTENSIONS.join(", ")}).`,
+      code: "INVALID_EXTENSION",
+      file,
+      filename: name,
+    };
+  }
+
+  if (file.size === 0) {
+    return {
+      valid: false,
+      error: `File "${name}" is empty (0 bytes).`,
+      code: "EMPTY_FILE",
+      file,
+      filename: name,
+    };
+  }
+
+  if (file.size > MAX_MIDI_FILE_SIZE_BYTES) {
+    const sizeMiB = (file.size / (1024 * 1024)).toFixed(2);
+    return {
+      valid: false,
+      error: `File "${name}" (${sizeMiB} MiB) exceeds the maximum allowed size of 16 MiB.`,
+      code: "FILE_TOO_LARGE",
+      file,
+      filename: name,
+    };
+  }
+
+  return {
+    valid: true,
+    file,
+    filename: name,
+    sizeBytes: file.size,
+    extension: getFileExtension(name),
+  };
+}
+
+/**
+ * Validates multiple score files (e.g. from a multi-file selection or drop).
+ */
+export function validateScoreFileList(files: FileList | File[] | Iterable<File>): FileValidationResult[] {
+  const list = Array.from(files);
+  if (list.length === 0) {
+    return [
+      {
+        valid: false,
+        error: "No files provided.",
+        code: "NO_FILE_PROVIDED",
+      },
+    ];
+  }
+  return list.map((f) => validateScoreFile(f));
 }
 
 /**

@@ -272,11 +272,17 @@ export function _track_weights<T extends NoteLike>(
     [LEFT]: new _Hand(48.0),
   };
   const bad: number[] = [];
+  const softNoteIds = new Set<number>();
   const wide: Record<string, number[]> = { [RIGHT]: [], [LEFT]: [] };
 
   for (const [t, ns] of groups) {
+    const rMine = ns.filter((n) => getPrefer(objId(n)) === RIGHT);
+    const lMine = ns.filter((n) => getPrefer(objId(n)) === LEFT);
+    const prevR = hands[RIGHT]!;
+    const prevL = hands[LEFT]!;
+
     for (const side of [RIGHT, LEFT] as const) {
-      const mine = ns.filter((n) => getPrefer(objId(n)) === side);
+      const mine = side === RIGHT ? rMine : lMine;
       if (mine.length === 0) continue;
       const ps = mine.map((n) => n.pitch);
       const h = hands[side]!;
@@ -298,6 +304,90 @@ export function _track_weights<T extends NoteLike>(
       }
       hands[side] = h.after(t, mine);
     }
+
+    // Allow single-hand takeover when both tracks crowd into a narrow single-hand cluster
+    // (such as orchestral violin/viola parts converging onto a 3-to-5-key interval with no bass notes).
+    const rActiveEntries = hands[RIGHT]!.held.filter(
+      (h) => h[0] > t + HELD_TOL && h[0] - Math.max(t, h[2]) >= 0.16,
+    );
+    const lActiveEntries = hands[LEFT]!.held.filter(
+      (h) => h[0] > t + HELD_TOL && h[0] - Math.max(t, h[2]) >= 0.16,
+    );
+    if (rActiveEntries.length > 0 && lActiveEntries.length > 0) {
+      const rActive = rActiveEntries.map((h) => h[1]);
+      const lActive = lActiveEntries.map((h) => h[1]);
+      const minR = Math.min(...rActive);
+      const maxL = Math.max(...lActive);
+      const minAll = Math.min(...rActive, ...lActive);
+      const maxAll = Math.max(...rActive, ...lActive);
+      const windowStart = Math.min(
+        t,
+        ...rActiveEntries.map((h) => h[2]),
+        ...lActiveEntries.map((h) => h[2]),
+      );
+      const windowEnd = Math.max(
+        ...rActiveEntries.map((h) => h[0]),
+        ...lActiveEntries.map((h) => h[0]),
+      );
+      let windowLo = prevL.last_lo !== null && t - prevL.last_t <= 0.45 ? Math.min(minAll, prevL.last_lo) : minAll;
+      let windowHi = prevR.last_hi !== null && t - prevR.last_t <= 0.45 ? Math.max(maxAll, prevR.last_hi) : maxAll;
+      for (const [gt, gns] of groups) {
+        if (gt >= windowEnd - HELD_TOL) break;
+        if (gt + HELD_TOL >= windowStart) {
+          for (const gn of gns) {
+            if (gn.end > windowStart + HELD_TOL) {
+              if (gn.pitch < windowLo) windowLo = gn.pitch;
+              if (gn.pitch > windowHi) windowHi = gn.pitch;
+            }
+          }
+        }
+      }
+      const gap = minR - maxL;
+      const combinedSpan = windowHi - windowLo;
+      const maxAllowedSpan = minAll >= 72 ? 12 : 8;
+      if (lActive.length === 1 && windowEnd - windowStart >= 1.0 && gap >= 0 && gap <= CROWD_GAP && combinedSpan <= maxAllowedSpan && rActive.length + lActive.length <= 4) {
+        bad.push(t);
+      }
+      if (lMine.length >= 2) {
+        const topLNote = lMine[lMine.length - 1]!;
+        const secondLNote = lMine[lMine.length - 2]!;
+        const topLPitch = topLNote.pitch;
+        const secondMaxL = secondLNote.pitch;
+        if (topLPitch >= 55 && topLPitch - secondMaxL >= 3) {
+          let minROverlap = Infinity;
+          let maxROverlap = -Infinity;
+          let maxRSimultaneous = 0;
+          let minRNearby = Infinity;
+          for (const [gt, gns] of groups) {
+            if (gt > topLNote.end + 1.65) break;
+            if (gt + 2.5 < topLNote.start) continue;
+            const rInGroup = gns.filter((gn) => getPrefer(objId(gn)) === RIGHT);
+            let simCount = 0;
+            for (const rn of rInGroup) {
+              const overlap = Math.min(topLNote.end, rn.end) - Math.max(topLNote.start, rn.start);
+              if (overlap >= 0.12) {
+                simCount += 1;
+                if (rn.pitch < minROverlap) minROverlap = rn.pitch;
+                if (rn.pitch > maxROverlap) maxROverlap = rn.pitch;
+              }
+              if (rn.end > topLNote.start - 1.65 && rn.start < topLNote.end + 1.65) {
+                if (rn.pitch > topLPitch && rn.pitch < minRNearby) minRNearby = rn.pitch;
+              }
+            }
+            if (simCount > maxRSimultaneous) maxRSimultaneous = simCount;
+          }
+          if (
+            Number.isFinite(minROverlap) &&
+            minROverlap > topLPitch &&
+            maxROverlap - topLPitch <= 8 &&
+            maxRSimultaneous <= 2 &&
+            minRNearby - topLPitch <= CROWD_GAP
+          ) {
+            softNoteIds.add(objId(topLNote));
+          }
+        }
+      }
+    }
   }
 
   bad.sort((a, b) => a - b);
@@ -306,24 +396,53 @@ export function _track_weights<T extends NoteLike>(
     const i = bisectLeft(bad, t - TRACK_FREE_T);
     const near = i < bad.length && bad[i]! <= t + TRACK_FREE_T;
     for (const n of ns) {
-      out.set(objId(n), near ? TRACK_PRIOR_SOFT : TRACK_PRIOR);
+      out.set(objId(n), near || softNoteIds.has(objId(n)) ? TRACK_PRIOR_SOFT : TRACK_PRIOR);
     }
   }
   return out;
 }
 
 export function _crowding<T extends NoteLike>(
-  _rh: _Hand,
-  _lh: _Hand,
-  _t: number,
+  rh: _Hand,
+  lh: _Hand,
+  t: number,
   rn: readonly T[],
   ln: readonly T[],
 ): number {
+  let base = 0.0;
   if (rn.length === 1 && ln.length === 1) {
     const gap = rn[0]!.pitch - ln[0]!.pitch;
-    return CROWD * Math.max(0, CROWD_GAP - gap);
+    base = CROWD * Math.max(0, CROWD_GAP - gap);
   }
-  return 0.0;
+  const rHeld = rh.held.filter((h) => h[0] > t + HELD_TOL && h[0] - Math.max(t, h[2]) >= 0.16).map((h) => h[1]);
+  const lHeld = lh.held.filter((h) => h[0] > t + HELD_TOL && h[0] - Math.max(t, h[2]) >= 0.16).map((h) => h[1]);
+  const rAll = [...rn.filter((n) => n.end - t >= 0.16).map((n) => n.pitch), ...rHeld];
+  const lAll = [...ln.filter((n) => n.end - t >= 0.16).map((n) => n.pitch), ...lHeld];
+  if (rAll.length > 0 && lAll.length > 0) {
+    const minR = Math.min(...rAll);
+    const maxL = Math.max(...lAll);
+    const minAll = Math.min(...rAll, ...lAll);
+    const maxAll = Math.max(...rAll, ...lAll);
+    const recentLo = lh.last_lo !== null && t - lh.last_t <= 0.45 ? Math.min(minAll, lh.last_lo) : minAll;
+    const recentHi = rh.last_hi !== null && t - rh.last_t <= 0.45 ? Math.max(maxAll, rh.last_hi) : maxAll;
+    const gap = minR - maxL;
+    const combinedSpan = recentHi - recentLo;
+    const windowStart = Math.min(t, ...rh.held.filter((h) => h[0] > t + HELD_TOL).map((h) => h[2]), ...lh.held.filter((h) => h[0] > t + HELD_TOL).map((h) => h[2]));
+    const windowEnd = Math.max(...rn.map((n) => n.end), ...ln.map((n) => n.end), ...rh.held.filter((h) => h[0] > t + HELD_TOL).map((h) => h[0]), ...lh.held.filter((h) => h[0] > t + HELD_TOL).map((h) => h[0]));
+    const maxAllowedSpan = minAll >= 72 ? 12 : 8;
+    const maxR = Math.max(...rAll);
+    if (lAll.length >= 2 && rAll.length <= 2) {
+      const sortedL = [...lAll].sort((a, b) => a - b);
+      const secondMaxL = sortedL[sortedL.length - 2]!;
+      if (maxL >= 55 && maxL - secondMaxL >= 3 && minR > maxL && maxR - maxL <= 8 && gap <= 8) {
+        return Math.max(base, 6.0 + CROWD * Math.max(0, 9 - gap));
+      }
+    }
+    if (lAll.length === 1 && windowEnd - windowStart >= 1.0 && gap >= 0 && gap <= CROWD_GAP && combinedSpan <= maxAllowedSpan && rAll.length + lAll.length <= 4) {
+      return Math.max(base, 8.0 + 2.0 * (CROWD_GAP + 1 - gap));
+    }
+  }
+  return base;
 }
 
 export function _inside<T extends NoteLike>(

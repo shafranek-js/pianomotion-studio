@@ -280,9 +280,18 @@ export class RiggedExperimentalHand {
   private readonly solverPipWorld = new THREE.Vector3();
   private readonly solverDipWorld = new THREE.Vector3();
   private readonly solverMidPhalanxWorld = new THREE.Vector3();
+  private readonly solverWorldX = new THREE.Vector3(1, 0, 0);
+  private readonly fingerRootYawRad = new Map<number, number>();
+  private readonly fingerRootPitchRad = new Map<number, number>();
+  private readonly fingerMidPitchRad = new Map<number, number>();
   private smoothedTransportTimeSeconds: number | null = null;
+  private lastPlaybackDtSeconds = Infinity;
   private smoothedPalmWorldPosition = new THREE.Vector3();
   private readonly smoothedBoneQuaternions = new Map<string, THREE.Quaternion>();
+  private readonly smoothedCollisionOffset = new THREE.Vector3();
+  private smoothedCollisionYawRad = 0;
+  private preferredUpperBridgeSide: Side | null = null;
+  private preferredUpperBridgeTimeSeconds: number | null = null;
 
   private constructor(private readonly side: Side, scene: THREE.Group, sourceAssetSha256: string | null) {
     this.sourceAssetSha256 = sourceAssetSha256;
@@ -917,6 +926,72 @@ export class RiggedExperimentalHand {
     this.group.updateMatrixWorld(true);
   }
 
+  private rotateGroupAroundWorldPoint(
+    pivotWorld: THREE.Vector3,
+    worldAxis: THREE.Vector3,
+    angleRad: number,
+  ): void {
+    if (Math.abs(angleRad) < 1e-6) return;
+    this.solverDeltaWorldQ.setFromAxisAngle(worldAxis, angleRad);
+    this.group.position.sub(pivotWorld).applyQuaternion(this.solverDeltaWorldQ).add(pivotWorld);
+    this.group.quaternion.premultiply(this.solverDeltaWorldQ).normalize();
+    this.group.updateMatrixWorld(true);
+    this.mesh.skeleton.update();
+  }
+
+  private applyClampedRootYaw(finger: number, rootBone: THREE.Bone, desiredDeltaYaw: number): number {
+    if (Math.abs(desiredDeltaYaw) < 1e-6) return 0;
+    const maxYaw = finger === 1 ? 0.35 : 0.30;
+    const prev = this.fingerRootYawRad.get(finger) ?? 0;
+    const next = THREE.MathUtils.clamp(prev + desiredDeltaYaw, -maxYaw, maxYaw);
+    const applied = next - prev;
+    if (Math.abs(applied) > 1e-6) {
+      this.rotateBoneAroundWorldAxis(rootBone, this.solverWorldY, applied);
+      this.fingerRootYawRad.set(finger, next);
+    }
+    return applied;
+  }
+
+  private applyClampedFingerPitch(
+    finger: number,
+    rootBone: THREE.Bone,
+    midBone: THREE.Bone,
+    hingeAxis: THREE.Vector3,
+    desiredRootDelta: number,
+    desiredMidDelta: number,
+    allowDorsalBridgeClearance = false,
+  ): { appliedRoot: number; appliedMid: number } {
+    const maxRootUp = allowDorsalBridgeClearance ? 1.42 : 0.65;
+    const maxMidUp = allowDorsalBridgeClearance ? 0.42 : 0.08;
+    if (finger === 1) {
+      const prevRoot = this.fingerRootPitchRad.get(1) ?? 0;
+      const nextRoot = THREE.MathUtils.clamp(prevRoot + desiredRootDelta, -0.75, maxRootUp);
+      const appliedRoot = nextRoot - prevRoot;
+      if (Math.abs(appliedRoot) > 1e-6) {
+        this.rotateBoneAroundWorldAxis(rootBone, hingeAxis, appliedRoot);
+        this.fingerRootPitchRad.set(1, nextRoot);
+      }
+      return { appliedRoot, appliedMid: 0 };
+    }
+    const prevRoot = this.fingerRootPitchRad.get(finger) ?? 0;
+    const nextRoot = THREE.MathUtils.clamp(prevRoot + desiredRootDelta, -0.85, maxRootUp);
+    const appliedRoot = nextRoot - prevRoot;
+    if (Math.abs(appliedRoot) > 1e-6) {
+      this.rotateBoneAroundWorldAxis(rootBone, hingeAxis, appliedRoot);
+      this.fingerRootPitchRad.set(finger, nextRoot);
+    }
+    const prevMid = this.fingerMidPitchRad.get(finger) ?? 0;
+    // PIP (midBone) is a 1-DOF hinge that must keep its natural pianist curve:
+    // prevent extreme downward collapse (min -0.38 rad) and upward hyper-extension (max +0.08 rad).
+    const nextMid = THREE.MathUtils.clamp(prevMid + desiredMidDelta, -0.38, maxMidUp);
+    const appliedMid = nextMid - prevMid;
+    if (Math.abs(appliedMid) > 1e-6) {
+      this.rotateBoneAroundWorldAxis(midBone, hingeAxis, appliedMid);
+      this.fingerMidPitchRad.set(finger, nextMid);
+    }
+    return { appliedRoot, appliedMid };
+  }
+
   private sampleFingerDistalPoints(finger: number): number {
     const positionAttribute = this.mesh.geometry.getAttribute("position");
     if (!positionAttribute) return 0;
@@ -948,6 +1023,9 @@ export class RiggedExperimentalHand {
     // across all transport times (both t < 0 and t >= 0), eliminating the reset to bind at t = 0.
     this.applyLeadInPoseBlend({ pose: referencePose, liveAlpha: 0 });
     this.alignForearmAxisToMotionPose(pose, liveAlpha);
+    this.fingerRootYawRad.clear();
+    this.fingerRootPitchRad.clear();
+    this.fingerMidPitchRad.clear();
 
     // Scale from the shrunken 6.08 in (154 mm) baseline to normal adult pianist proportions
     // (1.23x -> 7.48 in / 190 mm hand length, 0.90 in / 22.8 mm MCP knuckle spacing matching
@@ -1057,6 +1135,50 @@ export class RiggedExperimentalHand {
     };
 
     // 2. Horizontal X alignment for active fingers toward their assigned key center.
+    // First, gently align the hand/wrist X toward the active key(s) so fingers sit straight
+    // behind their keys rather than skewing diagonally; then apply fine MCP (rootBone) yaw
+    // within anatomical limits (±0.25 rad) — never rotating the middle PIP (midBone) 1-DOF hinge.
+    if (activeTargets.size > 0) {
+      this.mesh.skeleton.update();
+      let sumResidualX = 0;
+      let residualCount = 0;
+      let minHandShiftX = -0.55;
+      let maxHandShiftX = 0.55;
+      for (const [finger, target] of activeTargets.entries()) {
+        const weight = computeEngagementWeight(target);
+        const isRearticulating = target.nextStartSeconds !== undefined || target.prevEndSeconds !== undefined;
+        if (weight <= 1e-4 && !isRearticulating) continue;
+        const horizWeight = isRearticulating
+          ? Math.max(0.65, THREE.MathUtils.clamp(weight * 1.45, 0, 1))
+          : THREE.MathUtils.clamp(weight * 1.45, 0, 1);
+        const count = this.sampleFingerDistalPoints(finger);
+        if (count === 0) continue;
+        this.solverMeanPoint.set(0, 0, 0);
+        let minTipX = Infinity;
+        let maxTipX = -Infinity;
+        for (let i = 0; i < count; i++) {
+          const pt = this.solverSamplePoints[i]!;
+          this.solverMeanPoint.add(pt);
+          if (pt.x < minTipX) minTipX = pt.x;
+          if (pt.x > maxTipX) maxTipX = pt.x;
+        }
+        this.solverMeanPoint.divideScalar(count);
+        const centerX = resolveEffectiveCenterX(target, this.solverMeanPoint.z);
+        sumResidualX += (centerX - this.solverMeanPoint.x) * horizWeight * 0.55;
+        residualCount++;
+        const margin = (target.contactMaxZ! - target.contactMinZ!) < 4.5 ? 0.015 : 0.03;
+        minHandShiftX = Math.max(minHandShiftX, (target.contactMinX! + margin) - minTipX);
+        maxHandShiftX = Math.min(maxHandShiftX, (target.contactMaxX! - margin) - maxTipX);
+      }
+      if (residualCount > 0 && minHandShiftX <= maxHandShiftX) {
+        const shiftX = THREE.MathUtils.clamp(sumResidualX / residualCount, minHandShiftX, maxHandShiftX);
+        if (Math.abs(shiftX) > 0.002) {
+          this.group.position.x += shiftX;
+          this.group.updateMatrixWorld(true);
+          this.mesh.skeleton.update();
+        }
+      }
+    }
     for (const [finger, target] of activeTargets.entries()) {
       const weight = computeEngagementWeight(target);
       const isRearticulating = target.nextStartSeconds !== undefined || target.prevEndSeconds !== undefined;
@@ -1066,7 +1188,7 @@ export class RiggedExperimentalHand {
       const horizWeight = isRearticulating
         ? Math.max(0.65, THREE.MathUtils.clamp(weight * 1.45, 0, 1))
         : THREE.MathUtils.clamp(weight * 1.45, 0, 1);
-      const { rootBone, midBone } = fingerBoneChain(finger);
+      const { rootBone } = fingerBoneChain(finger);
       for (let iter = 0; iter < 2; iter++) {
         this.mesh.skeleton.update();
         const count = this.sampleFingerDistalPoints(finger);
@@ -1084,29 +1206,8 @@ export class RiggedExperimentalHand {
         if (rHoriz > 0.2) {
           const curAngle = Math.atan2(-vx, -vz);
           const desAngle = Math.asin(THREE.MathUtils.clamp(-tx / rHoriz, -0.95, 0.95));
-          const dYaw = THREE.MathUtils.clamp(desAngle - curAngle, -0.45, 0.45);
-          this.rotateBoneAroundWorldAxis(rootBone, this.solverWorldY, dYaw);
-        }
-
-        this.mesh.skeleton.update();
-        const countAfter = this.sampleFingerDistalPoints(finger);
-        if (countAfter === 0) break;
-        this.solverMeanPoint.set(0, 0, 0);
-        for (let i = 0; i < countAfter; i++) this.solverMeanPoint.add(this.solverSamplePoints[i]!);
-        this.solverMeanPoint.divideScalar(countAfter);
-
-        const centerXAfter = resolveEffectiveCenterX(target, this.solverMeanPoint.z);
-        const blendedCenterX = this.solverMeanPoint.x + (centerXAfter - this.solverMeanPoint.x) * horizWeight;
-        if (finger !== 1 && Math.abs(blendedCenterX - this.solverMeanPoint.x) > 0.015) {
-          midBone.getWorldPosition(this.solverMidPivotWorld);
-          const mvx = this.solverMeanPoint.x - this.solverMidPivotWorld.x;
-          const mvz = this.solverMeanPoint.z - this.solverMidPivotWorld.z;
-          const mrH = Math.hypot(mvx, mvz);
-          if (mrH > 0.15) {
-            const mcA = Math.atan2(-mvx, -mvz);
-            const mdA = Math.asin(THREE.MathUtils.clamp(-(blendedCenterX - this.solverMidPivotWorld.x) / mrH, -0.95, 0.95));
-            this.rotateBoneAroundWorldAxis(midBone, this.solverWorldY, THREE.MathUtils.clamp(mdA - mcA, -0.35, 0.35));
-          }
+          const dYaw = THREE.MathUtils.clamp(desAngle - curAngle, -0.32, 0.32);
+          this.applyClampedRootYaw(finger, rootBone, dYaw);
         }
       }
     }
@@ -1362,7 +1463,7 @@ export class RiggedExperimentalHand {
         const rH = Math.hypot(vx, vz);
         if (rH > 0.2) {
           const dYaw = THREE.MathUtils.clamp(-errX / rH, -0.32, 0.32);
-          this.rotateBoneAroundWorldAxis(rootBone, this.solverWorldY, dYaw);
+          this.applyClampedRootYaw(finger, rootBone, dYaw);
         }
       }
 
@@ -1424,10 +1525,16 @@ export class RiggedExperimentalHand {
           if (finger === 1) {
             // Preserve the thumb's internal phalanx alignment (first and second phalanges)
             // 100% from the authored starting pose by pivoting only at the base CMC joint.
-            this.rotateBoneAroundWorldAxis(rootBone, this.solverHingeAxis, dPitch);
+            this.applyClampedFingerPitch(1, rootBone, midBone, this.solverHingeAxis, dPitch, 0);
           } else {
-            this.rotateBoneAroundWorldAxis(rootBone, this.solverHingeAxis, dPitch * 0.7);
-            this.rotateBoneAroundWorldAxis(midBone, this.solverHingeAxis, dPitch * 0.3);
+            this.applyClampedFingerPitch(
+              finger,
+              rootBone,
+              midBone,
+              this.solverHingeAxis,
+              dPitch * 0.7,
+              dPitch * 0.3,
+            );
           }
         }
       }
@@ -1480,6 +1587,7 @@ export class RiggedExperimentalHand {
     extraHoverIn: number,
     sampleSurface: ImprovedHandContactTarget["sampleSurfaceYAt"] | undefined,
     iterations: number,
+    extraObstacleFloorYAt?: (worldX: number, worldZ: number) => number,
   ): void {
     const positionAttribute = this.mesh.geometry.getAttribute("position");
     const digitName = DIGITS.find(d => d.number === finger)?.name ?? "index";
@@ -1496,6 +1604,13 @@ export class RiggedExperimentalHand {
     const phalanxHull = this.fingerPhalanxHullSamples.get(finger) ?? [];
     let worstDistalVIdx = -1;
     let worstPhalanxVIdx = -1;
+      const evaluateStationFloor = (worldX: number, worldZ: number, baseFloor: number): number => {
+      if (!extraObstacleFloorYAt) return baseFloor;
+      return Math.max(baseFloor, extraObstacleFloorYAt(worldX, worldZ));
+    };
+    const maxRootStepRad = extraObstacleFloorYAt ? 0.85 : 0.55;
+    const maxMidStepRad = extraObstacleFloorYAt ? 0.55 : 0.35;
+    const maxThumbStepRad = extraObstacleFloorYAt ? 0.65 : 0.35;
 
     for (let iter = 0; iter < iterations; iter++) {
       this.mesh.skeleton.update();
@@ -1526,20 +1641,29 @@ export class RiggedExperimentalHand {
       // Check PIP, mid-phalanx, and DIP bottom skin stations (skip thumb MCP base web)
       if (finger !== 1) {
         const pipRH = Math.max(0.22, Math.hypot(this.solverPipWorld.x - this.solverPivotWorld.x, this.solverPipWorld.z - this.solverPivotWorld.z));
-        const pipFloor = this.computeFreeFingerRequiredFloorY(this.solverPipWorld.x, this.solverPipWorld.z, extraHoverIn, sampleSurface);
+        const pipFloor = evaluateStationFloor(
+          this.solverPipWorld.x,
+          this.solverPipWorld.z,
+          this.computeFreeFingerRequiredFloorY(this.solverPipWorld.x, this.solverPipWorld.z, extraHoverIn, sampleSurface),
+        );
         const pipDeficit = pipFloor - (this.solverPipWorld.y - 0.17);
         if (pipDeficit > 0) maxRequiredPitch = Math.max(maxRequiredPitch, pipDeficit / pipRH);
 
         const midRH = Math.max(0.25, Math.hypot(this.solverMidPhalanxWorld.x - this.solverPivotWorld.x, this.solverMidPhalanxWorld.z - this.solverPivotWorld.z));
-        const midFloor = this.computeFreeFingerRequiredFloorY(this.solverMidPhalanxWorld.x, this.solverMidPhalanxWorld.z, extraHoverIn, sampleSurface);
+        const midFloor = evaluateStationFloor(
+          this.solverMidPhalanxWorld.x,
+          this.solverMidPhalanxWorld.z,
+          this.computeFreeFingerRequiredFloorY(this.solverMidPhalanxWorld.x, this.solverMidPhalanxWorld.z, extraHoverIn, sampleSurface),
+        );
         const midDeficit = midFloor - (this.solverMidPhalanxWorld.y - 0.16);
         if (midDeficit > 0) maxRequiredPitch = Math.max(maxRequiredPitch, midDeficit / midRH);
       }
 
       const dipRH = Math.max(0.30, Math.hypot(this.solverDipWorld.x - this.solverPivotWorld.x, this.solverDipWorld.z - this.solverPivotWorld.z));
-      const dipFloor = finger === 1 && this.solverDipWorld.z > -1.85
+      const baseDipFloor = finger === 1 && this.solverDipWorld.z > -1.85
         ? 0.045 + extraHoverIn
         : this.computeFreeFingerRequiredFloorY(this.solverDipWorld.x, this.solverDipWorld.z, extraHoverIn, sampleSurface);
+      const dipFloor = evaluateStationFloor(this.solverDipWorld.x, this.solverDipWorld.z, baseDipFloor);
       const dipDeficit = dipFloor - (this.solverDipWorld.y - 0.15);
       if (dipDeficit > 0) {
         maxRequiredPitch = Math.max(maxRequiredPitch, dipDeficit / dipRH);
@@ -1550,7 +1674,11 @@ export class RiggedExperimentalHand {
       for (let i = 0; i < count; i++) {
         const pt = this.solverSamplePoints[i]!;
         const sampleRH = Math.max(0.35, Math.hypot(pt.x - this.solverPivotWorld.x, pt.z - this.solverPivotWorld.z));
-        const sampleFloor = this.computeFreeFingerRequiredFloorY(pt.x, pt.z, extraHoverIn, sampleSurface);
+        const sampleFloor = evaluateStationFloor(
+          pt.x,
+          pt.z,
+          this.computeFreeFingerRequiredFloorY(pt.x, pt.z, extraHoverIn, sampleSurface),
+        );
         const sampleDeficit = sampleFloor - pt.y;
         if (sampleDeficit > 0) {
           maxRequiredPitch = Math.max(maxRequiredPitch, sampleDeficit / sampleRH);
@@ -1559,8 +1687,10 @@ export class RiggedExperimentalHand {
       }
 
       const evaluateHullFloor = (x: number, z: number): number => {
-        if (finger === 1 && z > -1.85) return 0.045 + extraHoverIn;
-        return this.computeFreeFingerRequiredFloorY(x, z, extraHoverIn, undefined);
+        const base = finger === 1 && z > -1.85
+          ? 0.045 + extraHoverIn
+          : this.computeFreeFingerRequiredFloorY(x, z, extraHoverIn, undefined);
+        return evaluateStationFloor(x, z, base);
       };
 
       // Check complete 3D distal and phalanx skin hulls using the analytical obstacle floor
@@ -1645,16 +1775,16 @@ export class RiggedExperimentalHand {
       if (maxRequiredPitch <= 0.0005) break;
 
       this.solverHingeAxis.copy(this.solverDirXZ).cross(this.solverWorldY).normalize();
+      const allowBridge = Boolean(extraObstacleFloorYAt);
       if (finger === 1) {
         // Lift the free thumb as a single natural anatomical unit from its CMC base joint
         // without bending its first or second phalanges.
-        const dPitch = THREE.MathUtils.clamp(maxRequiredPitch, 0, 0.35);
-        this.rotateBoneAroundWorldAxis(rootBone, this.solverHingeAxis, dPitch);
+        const dPitch = THREE.MathUtils.clamp(maxRequiredPitch, 0, maxThumbStepRad);
+        this.applyClampedFingerPitch(1, rootBone, midBone, this.solverHingeAxis, dPitch, 0, allowBridge);
       } else {
-        const dPitch = THREE.MathUtils.clamp(maxRequiredPitch, 0, 0.55);
-        const dMidPitch = THREE.MathUtils.clamp(maxDistalPitch * 0.42, 0, 0.35);
-        this.rotateBoneAroundWorldAxis(rootBone, this.solverHingeAxis, dPitch * 0.78);
-        this.rotateBoneAroundWorldAxis(midBone, this.solverHingeAxis, dMidPitch);
+        const dPitch = THREE.MathUtils.clamp(maxRequiredPitch * (allowBridge ? 0.82 : 1.05), 0, maxRootStepRad);
+        const dMidPitch = THREE.MathUtils.clamp(maxDistalPitch * (allowBridge ? 0.48 : 0.08), 0, maxMidStepRad);
+        this.applyClampedFingerPitch(finger, rootBone, midBone, this.solverHingeAxis, dPitch, dMidPitch, allowBridge);
       }
     }
   }
@@ -1703,6 +1833,9 @@ export class RiggedExperimentalHand {
       const rootBone = finger === 1
         ? this.bone("thumb_segment0_cmc-to-mcp")
         : this.bone(`${digitName}_proximal`);
+      const midBone = finger === 1
+        ? this.bone("thumb_segment1_mcp-to-ip")
+        : this.bone(`${digitName}_intermediate`);
       const tip = tipMeans.get(finger);
       if (!tip) return;
       rootBone.getWorldPosition(this.solverPivotWorld);
@@ -1710,14 +1843,14 @@ export class RiggedExperimentalHand {
       const vz = tip.z - this.solverPivotWorld.z;
       const rH = Math.hypot(vx, vz);
       if (rH > 0.2 && Math.abs(deltaX) > 1e-4) {
-        const dYaw = THREE.MathUtils.clamp(-deltaX / rH, -0.24, 0.24);
-        this.rotateBoneAroundWorldAxis(rootBone, this.solverWorldY, dYaw);
+        const dYaw = THREE.MathUtils.clamp(-deltaX / rH, -0.22, 0.22);
+        this.applyClampedRootYaw(finger, rootBone, dYaw);
       }
       if (liftY > 1e-4 && rH > 0.2) {
         this.solverDirXZ.set(vx, 0, vz);
         this.solverHingeAxis.copy(this.solverDirXZ).cross(this.solverWorldY).normalize();
         const dPitch = THREE.MathUtils.clamp(liftY / rH, 0, 0.25);
-        this.rotateBoneAroundWorldAxis(rootBone, this.solverHingeAxis, dPitch);
+        this.applyClampedFingerPitch(finger, rootBone, midBone, this.solverHingeAxis, dPitch, 0);
       }
     };
 
@@ -1790,24 +1923,190 @@ export class RiggedExperimentalHand {
     const rightActive = new Set<number>();
     for (const t of rightTargets) if (t.pitch !== null && t.finger >= 1 && t.finger <= 5) rightActive.add(t.finger);
 
-    const collectHandStations = (hand: RiggedExperimentalHand): Array<{ finger: number; point: THREE.Vector3 }> => {
-      const stations: Array<{ finger: number; point: THREE.Vector3 }> = [];
+    type HandStation = {
+      finger: number;
+      kind: "finger" | "palm" | "wrist" | "forearm";
+      point: THREE.Vector3;
+      radius: number;
+    };
+    const collectHandStations = (hand: RiggedExperimentalHand): HandStation[] => {
+      const stations: HandStation[] = [];
       for (let f = 1; f <= 5; f++) {
         const count = hand.sampleFingerDistalPoints(f);
         for (let i = 0; i < count; i++) {
-          stations.push({ finger: f, point: hand.solverSamplePoints[i]!.clone() });
+          stations.push({ finger: f, kind: "finger", point: hand.solverSamplePoints[i]!.clone(), radius: 0.24 });
         }
         const digitName = DIGITS.find(d => d.number === f)?.name ?? "index";
+        const mcpBone = f === 1 ? hand.bone("thumb_segment0_cmc-to-mcp") : hand.bone(`${digitName}_proximal`);
         const pipBone = f === 1 ? hand.bone("thumb_segment1_mcp-to-ip") : hand.bone(`${digitName}_intermediate`);
         const dipBone = f === 1 ? hand.bone("thumb_distal-segment-a") : hand.bone(`${digitName}_distal`);
-        stations.push({ finger: f, point: pipBone.getWorldPosition(new THREE.Vector3()) });
-        stations.push({ finger: f, point: dipBone.getWorldPosition(new THREE.Vector3()) });
+        const mcpPt = mcpBone.getWorldPosition(new THREE.Vector3());
+        const pipPt = pipBone.getWorldPosition(new THREE.Vector3());
+        const dipPt = dipBone.getWorldPosition(new THREE.Vector3());
+        stations.push({ finger: f, kind: "finger", point: mcpPt, radius: 0.28 });
+        stations.push({ finger: f, kind: "finger", point: mcpPt.clone().add(pipPt).multiplyScalar(0.5), radius: 0.26 });
+        stations.push({ finger: f, kind: "finger", point: pipPt, radius: 0.26 });
+        stations.push({ finger: f, kind: "finger", point: pipPt.clone().add(dipPt).multiplyScalar(0.5), radius: 0.25 });
+        stations.push({ finger: f, kind: "finger", point: dipPt, radius: 0.24 });
       }
-      stations.push({ finger: 0, point: hand.bone("palm").getWorldPosition(new THREE.Vector3()) });
+      // Full palm & metacarpal body capsules
+      const thumbCmcPt = hand.bone("thumb_segment0_cmc-to-mcp").getWorldPosition(new THREE.Vector3());
+      const thumbMcpPt = hand.bone("thumb_segment1_mcp-to-ip").getWorldPosition(new THREE.Vector3());
+      stations.push({ finger: 0, kind: "palm", point: thumbCmcPt, radius: 0.32 });
+      stations.push({ finger: 0, kind: "palm", point: thumbCmcPt.clone().lerp(thumbMcpPt, 0.5), radius: 0.30 });
+
+      const midMetaPts: THREE.Vector3[] = [];
+      let indexMetaPt: THREE.Vector3 | null = null;
+      let littleMetaPt: THREE.Vector3 | null = null;
+      for (const { name } of DIGITS) {
+        const metaPt = hand.bone(`${name}_metacarpal`).getWorldPosition(new THREE.Vector3());
+        const proxPt = hand.bone(`${name}_proximal`).getWorldPosition(new THREE.Vector3());
+        const midMetaPt = metaPt.clone().lerp(proxPt, 0.55);
+        stations.push({ finger: 0, kind: "palm", point: metaPt, radius: 0.34 });
+        stations.push({ finger: 0, kind: "palm", point: midMetaPt, radius: 0.35 });
+        midMetaPts.push(midMetaPt);
+        if (name === "index") indexMetaPt = metaPt;
+        if (name === "little") littleMetaPt = metaPt;
+      }
+      for (let i = 0; i < midMetaPts.length - 1; i++) {
+        stations.push({
+          finger: 0,
+          kind: "palm",
+          point: midMetaPts[i]!.clone().lerp(midMetaPts[i + 1]!, 0.5),
+          radius: 0.36,
+        });
+      }
+
+      // Wrist & forearm capsules
+      const palmPt = hand.bone("palm").getWorldPosition(new THREE.Vector3());
+      stations.push({ finger: 0, kind: "wrist", point: palmPt, radius: 0.38 });
+      if (indexMetaPt) {
+        stations.push({ finger: 0, kind: "wrist", point: palmPt.clone().lerp(indexMetaPt, 0.35), radius: 0.35 });
+      }
+      if (littleMetaPt) {
+        stations.push({ finger: 0, kind: "wrist", point: palmPt.clone().lerp(littleMetaPt, 0.35), radius: 0.35 });
+      }
+      const forearmPt = hand.bone("forearm").getWorldPosition(new THREE.Vector3());
+      for (const t of [0.28, 0.55, 0.82, 1.0]) {
+        stations.push({
+          finger: 0,
+          kind: "forearm",
+          point: palmPt.clone().lerp(forearmPt, t),
+          radius: 0.40 + t * 0.06,
+        });
+      }
       return stations;
     };
 
-    const minHandSeparationX = 0.48;
+    const computeActiveTipCentroid = (
+      hand: RiggedExperimentalHand,
+      activeSet: ReadonlySet<number>,
+    ): THREE.Vector3 => {
+      const centroid = new THREE.Vector3();
+      let total = 0;
+      for (const f of activeSet) {
+        const count = hand.sampleFingerDistalPoints(f);
+        for (let i = 0; i < count; i++) {
+          centroid.add(hand.solverSamplePoints[i]!);
+          total++;
+        }
+      }
+      if (total > 0) return centroid.divideScalar(total);
+      return hand.bone("palm").getWorldPosition(centroid);
+    };
+
+    const computeSafeXDeltaRange = (
+      hand: RiggedExperimentalHand,
+      targets: readonly ImprovedHandContactTarget[],
+    ): { minDeltaX: number; maxDeltaX: number } => {
+      let minDeltaX = -0.35;
+      let maxDeltaX = 0.35;
+      for (const t of targets) {
+        if (t.pitch === null || t.finger < 1 || t.finger > 5) continue;
+        if (!Number.isFinite(t.contactMinX) || !Number.isFinite(t.contactMaxX)) continue;
+        const count = hand.sampleFingerDistalPoints(t.finger);
+        if (count === 0) continue;
+        let minSampleX = Infinity;
+        let maxSampleX = -Infinity;
+        for (let i = 0; i < count; i++) {
+          const x = hand.solverSamplePoints[i]!.x;
+          if (x < minSampleX) minSampleX = x;
+          if (x > maxSampleX) maxSampleX = x;
+        }
+        const isBlackTarget = (t.contactMaxZ! - t.contactMinZ!) < 4.5;
+        const margin = isBlackTarget ? 0.02 : 0.04;
+        minDeltaX = Math.max(minDeltaX, (t.contactMinX! + margin) - minSampleX);
+        maxDeltaX = Math.min(maxDeltaX, (t.contactMaxX! - margin) - maxSampleX);
+      }
+      return { minDeltaX: Math.min(0, minDeltaX), maxDeltaX: Math.max(0, maxDeltaX) };
+    };
+
+    const resolveCenterXForTarget = (target: ImprovedHandContactTarget, tipZ: number): number => {
+      const fullCenterX = target.contactCenterX!;
+      const isBlackTarget = (target.contactMaxZ! - target.contactMinZ!) < 4.5;
+      if (isBlackTarget || tipZ > -1.70 || target.pitch === null) return fullCenterX;
+      const mod12 = ((target.pitch % 12) + 12) % 12;
+      let laneShiftX = 0;
+      if (mod12 === 0 || mod12 === 5) laneShiftX = -0.12;
+      else if (mod12 === 4 || mod12 === 11) laneShiftX = 0.12;
+      else if (mod12 === 7) laneShiftX = -0.04;
+      else if (mod12 === 9) laneShiftX = 0.04;
+      if (laneShiftX === 0) return fullCenterX;
+      const t = THREE.MathUtils.clamp((-1.70 - tipZ) / 0.22, 0, 1);
+      const blend = t * t * (3 - 2 * t);
+      return THREE.MathUtils.clamp(
+        fullCenterX + laneShiftX * blend,
+        target.contactMinX! + 0.04,
+        target.contactMaxX! - 0.04,
+      );
+    };
+
+    const computeEngagementForTarget = (hand: RiggedExperimentalHand, target: ImprovedHandContactTarget): number => {
+      const tSec = hand.smoothedTransportTimeSeconds;
+      if (tSec === null || !Number.isFinite(tSec)) return 1;
+      return computeNoteRearticulationWeight(
+        tSec,
+        target.sourceStartSeconds,
+        target.sourceEndSeconds,
+        target.prevEndSeconds,
+        target.nextStartSeconds,
+      );
+    };
+
+    const computeSafeZDeltaRange = (
+      hand: RiggedExperimentalHand,
+      targets: readonly ImprovedHandContactTarget[],
+    ): { minDeltaZ: number; maxDeltaZ: number } => {
+      let minDeltaZ = -0.65;
+      let maxDeltaZ = 0.65;
+      const targetMap = new Map<number, ImprovedHandContactTarget>();
+      for (const t of targets) {
+        if (t.pitch !== null && t.finger >= 1 && t.finger <= 5) targetMap.set(t.finger, t);
+      }
+      for (let finger = 1; finger <= 5; finger++) {
+        const count = hand.sampleFingerDistalPoints(finger);
+        if (count === 0) continue;
+        let maxSampleZ = -Infinity;
+        let minSampleZ = Infinity;
+        for (let i = 0; i < count; i++) {
+          const z = hand.solverSamplePoints[i]!.z;
+          if (z > maxSampleZ) maxSampleZ = z;
+          if (z < minSampleZ) minSampleZ = z;
+        }
+        maxDeltaZ = Math.min(maxDeltaZ, -0.06 - maxSampleZ);
+        const target = targetMap.get(finger);
+        if (target && Number.isFinite(target.contactMinZ) && Number.isFinite(target.contactMaxZ)) {
+          const isBlackTarget = (target.contactMaxZ! - target.contactMinZ!) < 4.5;
+          const safeMaxZ = isBlackTarget ? target.contactMaxZ! - 0.40 : target.contactMaxZ! - 0.10;
+          const safeMinZ = target.contactMinZ! + 0.14;
+          maxDeltaZ = Math.min(maxDeltaZ, safeMaxZ - maxSampleZ);
+          minDeltaZ = Math.max(minDeltaZ, safeMinZ - minSampleZ);
+        }
+      }
+      return { minDeltaZ, maxDeltaZ };
+    };
+
+    const minHandSeparationX = 1.15;
     let leftStations = collectHandStations(leftHand);
     let rightStations = collectHandStations(rightHand);
 
@@ -1816,22 +2115,36 @@ export class RiggedExperimentalHand {
     let minRightX = Infinity;
     for (const s of rightStations) if (s.point.x < minRightX) minRightX = s.point.x;
 
+    const dt = Math.min(leftHand.lastPlaybackDtSeconds, rightHand.lastPlaybackDtSeconds);
+    const isContinuousPlayback = dt > 1e-4 && dt <= 0.09;
+    const smoothAlpha = isContinuousPlayback ? 1 - Math.exp(-dt * 24) : 1;
+    const releaseDecay = isContinuousPlayback ? Math.exp(-dt * 18) : 0;
+
     // Fast path when hands are well separated horizontally
-    if (maxLeftX + minHandSeparationX <= minRightX) return;
+    if (maxLeftX + minHandSeparationX <= minRightX) {
+      leftHand.preferredUpperBridgeSide = null;
+      rightHand.preferredUpperBridgeSide = null;
+      leftHand.smoothedCollisionOffset.multiplyScalar(releaseDecay);
+      rightHand.smoothedCollisionOffset.multiplyScalar(releaseDecay);
+      leftHand.smoothedCollisionYawRad *= releaseDecay;
+      rightHand.smoothedCollisionYawRad *= releaseDecay;
+      return;
+    }
 
     // Step A: Tuck and lift inner free fingers (thumb = 1, index = 2) if they encroach on the opposite hand
     const sampleSurface = leftTargets[0]?.sampleSurfaceYAt ?? rightTargets[0]?.sampleSurfaceYAt;
+    const innerFingerSeparationX = 0.82;
     let innerFingerAdjusted = false;
     for (const sL of leftStations) {
       if (sL.finger < 1 || sL.finger > 2 || leftActive.has(sL.finger)) continue;
       for (const sR of rightStations) {
-        if (Math.abs(sL.point.z - sR.point.z) < 1.25 && Math.abs(sL.point.y - sR.point.y) < 0.55) {
-          const overlap = (sL.point.x + minHandSeparationX) - sR.point.x;
+        if (Math.abs(sL.point.z - sR.point.z) < 1.65 && Math.abs(sL.point.y - sR.point.y) < 0.85) {
+          const overlap = (sL.point.x + innerFingerSeparationX) - sR.point.x;
           if (overlap > 0.01) {
             const rootBone = sL.finger === 1
               ? leftHand.bone("thumb_segment0_cmc-to-mcp")
               : leftHand.bone("index_proximal");
-            leftHand.rotateBoneAroundWorldAxis(rootBone, leftHand.solverWorldY, THREE.MathUtils.clamp(overlap * 0.25, 0, 0.22));
+            leftHand.applyClampedRootYaw(sL.finger, rootBone, THREE.MathUtils.clamp(overlap * 0.36, 0, 0.30));
             leftHand.liftFreeFingerAboveKeyboardEnvelope(sL.finger, overlap * 0.35, sampleSurface, 2);
             innerFingerAdjusted = true;
             break;
@@ -1842,13 +2155,13 @@ export class RiggedExperimentalHand {
     for (const sR of rightStations) {
       if (sR.finger < 1 || sR.finger > 2 || rightActive.has(sR.finger)) continue;
       for (const sL of leftStations) {
-        if (Math.abs(sL.point.z - sR.point.z) < 1.25 && Math.abs(sL.point.y - sR.point.y) < 0.55) {
-          const overlap = (sL.point.x + minHandSeparationX) - sR.point.x;
+        if (Math.abs(sR.point.z - sL.point.z) < 1.65 && Math.abs(sR.point.y - sL.point.y) < 0.85) {
+          const overlap = (sL.point.x + innerFingerSeparationX) - sR.point.x;
           if (overlap > 0.01) {
             const rootBone = sR.finger === 1
               ? rightHand.bone("thumb_segment0_cmc-to-mcp")
               : rightHand.bone("index_proximal");
-            rightHand.rotateBoneAroundWorldAxis(rootBone, rightHand.solverWorldY, THREE.MathUtils.clamp(-overlap * 0.25, -0.22, 0));
+            rightHand.applyClampedRootYaw(sR.finger, rootBone, THREE.MathUtils.clamp(-overlap * 0.36, -0.30, 0));
             rightHand.liftFreeFingerAboveKeyboardEnvelope(sR.finger, overlap * 0.35, sampleSurface, 2);
             innerFingerAdjusted = true;
             break;
@@ -1866,75 +2179,357 @@ export class RiggedExperimentalHand {
       rightStations = collectHandStations(rightHand);
     }
 
-    // Step B: Check remaining whole-hand / active-finger capsule overlap
-    let worstOverlapX = 0;
-    let worstVerticalGap = 0;
-    for (const sL of leftStations) {
-      for (const sR of rightStations) {
-        if (Math.abs(sL.point.z - sR.point.z) < 1.25 && Math.abs(sL.point.y - sR.point.y) < 0.52) {
-          const overlap = (sL.point.x + minHandSeparationX) - sR.point.x;
-          if (overlap > worstOverlapX) {
-            worstOverlapX = overlap;
-            worstVerticalGap = 0.55 - Math.abs(sL.point.y - sR.point.y);
+    // Step B: Evaluate both soft proximity (for natural outward V-rotation) and hard 3D capsule conflicts
+    const evaluatePairConflicts = (
+      lStations: readonly HandStation[],
+      rStations: readonly HandStation[],
+    ): { worstOverlapX: number; proximityOverlapX: number; hasPairConflict: boolean } => {
+      let worstX = 0;
+      let proxX = 0;
+      let conflict = false;
+      for (const sL of lStations) {
+        for (const sR of rStations) {
+          const pairSepX = sL.radius + sR.radius;
+          const pairSepY = sL.radius + sR.radius + 0.08;
+          const pairSepZ = (sL.radius + sR.radius) * 1.85;
+          const dz = Math.abs(sL.point.z - sR.point.z);
+          const dy = Math.abs(sL.point.y - sR.point.y);
+          if (dz < pairSepZ + 0.85 && dy < pairSepY + 0.55) {
+            const proxWz = THREE.MathUtils.clamp((pairSepZ + 0.85 - dz) / 0.85, 0, 1);
+            const proxWy = THREE.MathUtils.clamp((pairSepY + 0.55 - dy) / 0.55, 0, 1);
+            const proxOverlap = ((sL.point.x + pairSepX + 0.72) - sR.point.x) * proxWz * proxWy;
+            if (proxOverlap > proxX) {
+              proxX = proxOverlap;
+            }
+          }
+          if (dz < pairSepZ + 0.28 && dy < pairSepY + 0.22) {
+            const wz = THREE.MathUtils.clamp((pairSepZ + 0.28 - dz) / 0.28, 0, 1);
+            const wy = THREE.MathUtils.clamp((pairSepY + 0.22 - dy) / 0.22, 0, 1);
+            const overlapRightward = ((sL.point.x + pairSepX) - sR.point.x) * wz * wy;
+            if (overlapRightward > worstX) {
+              worstX = overlapRightward;
+            }
+            if (dz < pairSepZ && dy < pairSepY && Math.abs(sL.point.x - sR.point.x) < pairSepX) {
+              conflict = true;
+            }
           }
         }
       }
+      return { worstOverlapX: worstX, proximityOverlapX: proxX, hasPairConflict: conflict };
+    };
+
+    const initialConflict = evaluatePairConflicts(leftStations, rightStations);
+    const worstOverlapX = initialConflict.worstOverlapX;
+    const proximityOverlapX = initialConflict.proximityOverlapX;
+    if (proximityOverlapX <= 0.005 && worstOverlapX <= 0.005 && !initialConflict.hasPairConflict) {
+      leftHand.smoothedCollisionOffset.multiplyScalar(releaseDecay);
+      rightHand.smoothedCollisionOffset.multiplyScalar(releaseDecay);
+      leftHand.smoothedCollisionYawRad *= releaseDecay;
+      rightHand.smoothedCollisionYawRad *= releaseDecay;
+      return;
     }
-    if (worstOverlapX <= 0.005) return;
 
     const leftHasActive = leftActive.size > 0;
     const rightHasActive = rightActive.size > 0;
 
     if (!leftHasActive && rightHasActive) {
-      leftHand.group.position.x -= worstOverlapX;
-      leftHand.group.position.y += Math.max(0, worstVerticalGap * 0.6);
-      leftHand.smoothedPalmWorldPosition.x -= worstOverlapX;
-      leftHand.smoothedPalmWorldPosition.y += Math.max(0, worstVerticalGap * 0.6);
+      const effOverlap = Math.max(worstOverlapX, proximityOverlapX * 0.5);
+      const targetShiftX = -effOverlap;
+      const targetLiftY = THREE.MathUtils.clamp(worstOverlapX * 0.85, 0, 0.32);
+      leftHand.smoothedCollisionOffset.x = THREE.MathUtils.lerp(leftHand.smoothedCollisionOffset.x, targetShiftX, smoothAlpha);
+      leftHand.smoothedCollisionOffset.y = isContinuousPlayback
+        ? Math.max(targetLiftY, leftHand.smoothedCollisionOffset.y * releaseDecay)
+        : targetLiftY;
+      leftHand.smoothedCollisionOffset.z *= releaseDecay;
+      rightHand.smoothedCollisionOffset.multiplyScalar(releaseDecay);
+      leftHand.group.position.x += leftHand.smoothedCollisionOffset.x;
+      leftHand.group.position.y += leftHand.smoothedCollisionOffset.y;
       leftHand.group.updateMatrixWorld(true);
       leftHand.mesh.skeleton.update();
     } else if (leftHasActive && !rightHasActive) {
-      rightHand.group.position.x += worstOverlapX;
-      rightHand.group.position.y += Math.max(0, worstVerticalGap * 0.6);
-      rightHand.smoothedPalmWorldPosition.x += worstOverlapX;
-      rightHand.smoothedPalmWorldPosition.y += Math.max(0, worstVerticalGap * 0.6);
+      const effOverlap = Math.max(worstOverlapX, proximityOverlapX * 0.5);
+      const targetShiftX = effOverlap;
+      const targetLiftY = THREE.MathUtils.clamp(worstOverlapX * 0.85, 0, 0.32);
+      rightHand.smoothedCollisionOffset.x = THREE.MathUtils.lerp(rightHand.smoothedCollisionOffset.x, targetShiftX, smoothAlpha);
+      rightHand.smoothedCollisionOffset.y = isContinuousPlayback
+        ? Math.max(targetLiftY, rightHand.smoothedCollisionOffset.y * releaseDecay)
+        : targetLiftY;
+      rightHand.smoothedCollisionOffset.z *= releaseDecay;
+      leftHand.smoothedCollisionOffset.multiplyScalar(releaseDecay);
+      rightHand.group.position.x += rightHand.smoothedCollisionOffset.x;
+      rightHand.group.position.y += rightHand.smoothedCollisionOffset.y;
       rightHand.group.updateMatrixWorld(true);
       rightHand.mesh.skeleton.update();
     } else if (!leftHasActive && !rightHasActive) {
-      leftHand.group.position.x -= worstOverlapX * 0.5;
-      rightHand.group.position.x += worstOverlapX * 0.5;
-      leftHand.smoothedPalmWorldPosition.x -= worstOverlapX * 0.5;
-      rightHand.smoothedPalmWorldPosition.x += worstOverlapX * 0.5;
+      const effOverlap = Math.max(worstOverlapX, proximityOverlapX * 0.5);
+      leftHand.smoothedCollisionOffset.x = THREE.MathUtils.lerp(leftHand.smoothedCollisionOffset.x, -effOverlap * 0.5, smoothAlpha);
+      rightHand.smoothedCollisionOffset.x = THREE.MathUtils.lerp(rightHand.smoothedCollisionOffset.x, effOverlap * 0.5, smoothAlpha);
+      leftHand.group.position.x += leftHand.smoothedCollisionOffset.x;
+      rightHand.group.position.x += rightHand.smoothedCollisionOffset.x;
       leftHand.group.updateMatrixWorld(true);
       leftHand.mesh.skeleton.update();
       rightHand.group.updateMatrixWorld(true);
       rightHand.mesh.skeleton.update();
-    } else if (worstVerticalGap > 0.01) {
-      // Both hands are actively playing in the same register: bridge the higher-wrist hand
-      // vertically above the lower-wrist hand while flexing its active fingers down to stay on their keys.
-      const leftPalmY = leftHand.bone("palm").getWorldPosition(new THREE.Vector3()).y;
-      const rightPalmY = rightHand.bone("palm").getWorldPosition(new THREE.Vector3()).y;
-      const upperHand = leftPalmY >= rightPalmY ? leftHand : rightHand;
-      const upperTargets = leftPalmY >= rightPalmY ? leftTargets : rightTargets;
-      const liftY = Math.min(0.65, worstVerticalGap + 0.08);
-      upperHand.group.position.y += liftY;
-      upperHand.smoothedPalmWorldPosition.y += liftY;
+    } else {
+      // Both hands are actively playing in the same register: 3-Priority Real-World Pianist Evasion
+      // Priority 1: Lateral shift within key bounds + Outward wrist/forearm V-fanning (yaw around fingertips)
+      // Priority 2: Depth echeloning (lower hand +Z, upper hand -Z)
+      // Priority 3: Wrist/forearm arch pitch + Reach-bounded vertical lift + Dorsal free-finger clearance
+      const leftTipCentroid = computeActiveTipCentroid(leftHand, leftActive);
+      const rightTipCentroid = computeActiveTipCentroid(rightHand, rightActive);
+      const isUncrossed = leftTipCentroid.x <= rightTipCentroid.x - 0.10;
+      const uncrossedBlend = THREE.MathUtils.clamp((rightTipCentroid.x - leftTipCentroid.x) / 0.22, 0, 1);
+
+      const computeActiveSpanX = (targets: readonly ImprovedHandContactTarget[]): number => {
+        let minX = Infinity;
+        let maxX = -Infinity;
+        for (const t of targets) {
+          if (t.pitch !== null && Number.isFinite(t.contactCenterX)) {
+            if (t.contactCenterX! < minX) minX = t.contactCenterX!;
+            if (t.contactCenterX! > maxX) maxX = t.contactCenterX!;
+          }
+        }
+        return maxX > minX ? maxX - minX : 0;
+      };
+
+      // Priority 1: When hands are uncrossed (left active tips to the left of right active tips),
+      // fan both wrists/palms/forearms outward laterally so palms, thumbs, and forearms clear each other horizontally
+      // even before hard capsule contact.
+      if (uncrossedBlend > 1e-3) {
+        const leftXRange = computeSafeXDeltaRange(leftHand, leftTargets);
+        const rightXRange = computeSafeXDeltaRange(rightHand, rightTargets);
+        const fanDriveX = Math.max(worstOverlapX, proximityOverlapX * 0.85);
+        const targetLeftShiftX = THREE.MathUtils.clamp(-fanDriveX * 0.35 * uncrossedBlend, leftXRange.minDeltaX, 0);
+        const targetRightShiftX = THREE.MathUtils.clamp(fanDriveX * 0.35 * uncrossedBlend, 0, rightXRange.maxDeltaX);
+        leftHand.smoothedCollisionOffset.x = THREE.MathUtils.clamp(
+          THREE.MathUtils.lerp(leftHand.smoothedCollisionOffset.x, targetLeftShiftX, smoothAlpha),
+          leftXRange.minDeltaX,
+          0,
+        );
+        rightHand.smoothedCollisionOffset.x = THREE.MathUtils.clamp(
+          THREE.MathUtils.lerp(rightHand.smoothedCollisionOffset.x, targetRightShiftX, smoothAlpha),
+          0,
+          rightXRange.maxDeltaX,
+        );
+        if (Math.abs(leftHand.smoothedCollisionOffset.x) > 1e-4) {
+          leftHand.group.position.x += leftHand.smoothedCollisionOffset.x;
+          leftTipCentroid.x += leftHand.smoothedCollisionOffset.x;
+        }
+        if (Math.abs(rightHand.smoothedCollisionOffset.x) > 1e-4) {
+          rightHand.group.position.x += rightHand.smoothedCollisionOffset.x;
+          rightTipCentroid.x += rightHand.smoothedCollisionOffset.x;
+        }
+        const leftSpanScale = THREE.MathUtils.clamp(1 / (1 + computeActiveSpanX(leftTargets) * 0.18), 0.52, 1.0);
+        const rightSpanScale = THREE.MathUtils.clamp(1 / (1 + computeActiveSpanX(rightTargets) * 0.18), 0.52, 1.0);
+        const baseFanYawRad = THREE.MathUtils.clamp(fanDriveX * 0.42 * uncrossedBlend, 0, 0.38);
+        const targetLeftYawRad = baseFanYawRad * leftSpanScale;
+        const targetRightYawRad = baseFanYawRad * rightSpanScale;
+        leftHand.smoothedCollisionYawRad = THREE.MathUtils.lerp(leftHand.smoothedCollisionYawRad, -targetLeftYawRad, smoothAlpha);
+        rightHand.smoothedCollisionYawRad = THREE.MathUtils.lerp(rightHand.smoothedCollisionYawRad, targetRightYawRad, smoothAlpha);
+        leftHand.rotateGroupAroundWorldPoint(leftTipCentroid, leftHand.solverWorldY, leftHand.smoothedCollisionYawRad);
+        rightHand.rotateGroupAroundWorldPoint(rightTipCentroid, rightHand.solverWorldY, rightHand.smoothedCollisionYawRad);
+      } else {
+        leftHand.smoothedCollisionOffset.x *= releaseDecay;
+        rightHand.smoothedCollisionOffset.x *= releaseDecay;
+        leftHand.smoothedCollisionYawRad *= releaseDecay;
+        rightHand.smoothedCollisionYawRad *= releaseDecay;
+      }
+
+      // Re-evaluate hard capsule conflicts after Priority 1 outward V-fanning so Priority 2/3
+      // only shift in Z or lift vertically if outward rotation alone did not fully clear the hands.
+      const postFanLeftStations = collectHandStations(leftHand);
+      const postFanRightStations = collectHandStations(rightHand);
+      const postFanConflict = evaluatePairConflicts(postFanLeftStations, postFanRightStations);
+      const residualOverlapX = postFanConflict.worstOverlapX;
+
+      const leftPalmPt = leftHand.bone("palm").getWorldPosition(new THREE.Vector3());
+      const rightPalmPt = rightHand.bone("palm").getWorldPosition(new THREE.Vector3());
+      let leftBlackCount = 0;
+      for (const t of leftTargets) {
+        if (t.pitch !== null && Number.isFinite(t.contactMaxZ) && Number.isFinite(t.contactMinZ) && (t.contactMaxZ! - t.contactMinZ!) < 4.5) {
+          leftBlackCount++;
+        }
+      }
+      let rightBlackCount = 0;
+      for (const t of rightTargets) {
+        if (t.pitch !== null && Number.isFinite(t.contactMaxZ) && Number.isFinite(t.contactMinZ) && (t.contactMaxZ! - t.contactMinZ!) < 4.5) {
+          rightBlackCount++;
+        }
+      }
+
+      const currentTime = leftHand.smoothedTransportTimeSeconds ?? rightHand.smoothedTransportTimeSeconds;
+      const prevTime = leftHand.preferredUpperBridgeTimeSeconds;
+      const prevUpperSide = leftHand.preferredUpperBridgeSide;
+      const hysteresisValid =
+        prevUpperSide !== null &&
+        currentTime !== null &&
+        prevTime !== null &&
+        Math.abs(currentTime - prevTime) <= 0.25;
+
+      const leftUpperScore =
+        (leftPalmPt.y - rightPalmPt.y) +
+        (leftBlackCount - rightBlackCount) * 0.18 +
+        (hysteresisValid && prevUpperSide === "left" ? 0.14 : 0) -
+        (hysteresisValid && prevUpperSide === "right" ? 0.14 : 0);
+
+      const upperSide: Side = leftUpperScore >= 0 ? "left" : "right";
+      leftHand.preferredUpperBridgeSide = upperSide;
+      rightHand.preferredUpperBridgeSide = upperSide;
+      leftHand.preferredUpperBridgeTimeSeconds = currentTime;
+      rightHand.preferredUpperBridgeTimeSeconds = currentTime;
+
+      const upperHand = upperSide === "left" ? leftHand : rightHand;
+      const lowerHand = upperSide === "left" ? rightHand : leftHand;
+      const upperTargets = upperSide === "left" ? leftTargets : rightTargets;
+      const lowerTargets = upperSide === "left" ? rightTargets : leftTargets;
+      const upperActive = upperSide === "left" ? leftActive : rightActive;
+      const lowerActive = upperSide === "left" ? rightActive : leftActive;
+
+      // Priority 2: Depth echeloning (Z): nudge lower hand slightly forward (+Z, closer to white-key front)
+      // and upper hand slightly deeper (-Z, closer to fallboard) within each hand's safe playable key bounds.
+      const lowerZRange = computeSafeZDeltaRange(lowerHand, lowerTargets);
+      const upperZRange = computeSafeZDeltaRange(upperHand, upperTargets);
+      const desiredZ = THREE.MathUtils.clamp(residualOverlapX * 0.45, 0, 0.22);
+      const targetLowerShiftZ = THREE.MathUtils.clamp(desiredZ, Math.min(0, lowerZRange.minDeltaZ), Math.max(0, lowerZRange.maxDeltaZ));
+      const targetUpperShiftZ = THREE.MathUtils.clamp(-desiredZ, Math.min(0, upperZRange.minDeltaZ), Math.max(0, upperZRange.maxDeltaZ));
+      lowerHand.smoothedCollisionOffset.z = THREE.MathUtils.clamp(
+        THREE.MathUtils.lerp(lowerHand.smoothedCollisionOffset.z, targetLowerShiftZ, smoothAlpha),
+        Math.min(0, lowerZRange.minDeltaZ),
+        Math.max(0, lowerZRange.maxDeltaZ),
+      );
+      upperHand.smoothedCollisionOffset.z = THREE.MathUtils.clamp(
+        THREE.MathUtils.lerp(upperHand.smoothedCollisionOffset.z, targetUpperShiftZ, smoothAlpha),
+        Math.min(0, upperZRange.minDeltaZ),
+        Math.max(0, upperZRange.maxDeltaZ),
+      );
+      if (Math.abs(lowerHand.smoothedCollisionOffset.z) > 1e-4) {
+        lowerHand.group.position.z += lowerHand.smoothedCollisionOffset.z;
+      }
+      if (Math.abs(upperHand.smoothedCollisionOffset.z) > 1e-4) {
+        upperHand.group.position.z += upperHand.smoothedCollisionOffset.z;
+      }
+      lowerHand.group.updateMatrixWorld(true);
+      lowerHand.mesh.skeleton.update();
       upperHand.group.updateMatrixWorld(true);
       upperHand.mesh.skeleton.update();
+
+      const computeRequiredBridgeLift = (
+        uStations: readonly HandStation[],
+        lStations: readonly HandStation[],
+      ): number => {
+        let reqY = 0;
+        for (const sU of uStations) {
+          for (const sL of lStations) {
+            if (sU.kind === "forearm" && sL.kind === "forearm") continue;
+            const pairSepX = sU.radius + sL.radius + 0.06;
+            const pairSepZ = (sU.radius + sL.radius) * 1.95;
+            const dx = Math.abs(sU.point.x - sL.point.x);
+            const dz = Math.abs(sU.point.z - sL.point.z);
+            if (dx < pairSepX + 0.20 && dz < pairSepZ + 0.28) {
+              const wx = THREE.MathUtils.clamp((pairSepX + 0.20 - dx) / 0.20, 0, 1);
+              const wz = THREE.MathUtils.clamp((pairSepZ + 0.28 - dz) / 0.28, 0, 1);
+              const neededY = ((sL.point.y + sL.radius + sU.radius + 0.14) - sU.point.y) * wx * wz;
+              if (neededY > reqY) {
+                reqY = neededY;
+              }
+            }
+          }
+        }
+        return reqY;
+      };
+
+      const lowerStations = collectHandStations(lowerHand);
+      const upperStationsBefore = collectHandStations(upperHand);
+      const requiredBridgeLiftY = computeRequiredBridgeLift(upperStationsBefore, lowerStations);
+
+      // Priority 3: Reach-bounded vertical arch lift for remaining hand/palm/finger clearance
+      const targetLiftY = THREE.MathUtils.clamp(requiredBridgeLiftY, 0, isUncrossed ? 0.85 : 1.72);
+      const liftY = isContinuousPlayback
+        ? Math.max(targetLiftY, upperHand.smoothedCollisionOffset.y * releaseDecay)
+        : targetLiftY;
+      upperHand.smoothedCollisionOffset.y = liftY;
+      lowerHand.smoothedCollisionOffset.y *= releaseDecay;
+      if (liftY > 0.005) {
+        upperHand.group.position.y += liftY;
+        upperHand.group.updateMatrixWorld(true);
+        upperHand.mesh.skeleton.update();
+      }
+
+      // 4. Re-seat active fingers of both hands onto their assigned key surfaces
+      for (const target of lowerTargets) {
+        if (target.pitch === null || target.finger < 1 || target.finger > 5) continue;
+        const w = computeEngagementForTarget(lowerHand, target);
+        lowerHand.levelAndSeatActiveFingerDistalHull(target.finger, target, w, resolveCenterXForTarget, sampleSurface, 2);
+      }
       for (const target of upperTargets) {
         if (target.pitch === null || target.finger < 1 || target.finger > 5) continue;
-        upperHand.levelAndSeatActiveFingerDistalHull(
-          target.finger,
-          target,
-          1,
-          (t) => t.contactCenterX!,
-          sampleSurface,
-          2,
-        );
+        const w = computeEngagementForTarget(upperHand, target);
+        upperHand.levelAndSeatActiveFingerDistalHull(target.finger, target, w, resolveCenterXForTarget, sampleSurface, 4);
       }
+
+      // 4b. Fan aside any free finger on the lower hand that sits directly in the vertical strike path
+      // of an active pressed finger on the upper hand.
+      upperHand.group.updateMatrixWorld(true);
+      upperHand.mesh.skeleton.update();
+      lowerHand.group.updateMatrixWorld(true);
+      lowerHand.mesh.skeleton.update();
+      const upperActiveStations = collectHandStations(upperHand).filter(
+        (s) => s.finger >= 1 && upperActive.has(s.finger),
+      );
+      for (let fLow = 1; fLow <= 5; fLow++) {
+        if (lowerActive.has(fLow)) continue;
+        const digitName = DIGITS.find((d) => d.number === fLow)?.name ?? "index";
+        const rootBone = fLow === 1
+          ? lowerHand.bone("thumb_segment0_cmc-to-mcp")
+          : lowerHand.bone(`${digitName}_proximal`);
+        const pipBone = fLow === 1
+          ? lowerHand.bone("thumb_segment1_mcp-to-ip")
+          : lowerHand.bone(`${digitName}_intermediate`);
+        const pipPt = pipBone.getWorldPosition(new THREE.Vector3());
+        for (const sU of upperActiveStations) {
+          if (Math.abs(pipPt.z - sU.point.z) < 0.75 && Math.abs(pipPt.x - sU.point.x) < 0.45) {
+            const awayDir = pipPt.x >= sU.point.x ? 1 : -1;
+            const neededShiftX = awayDir * (0.46 - Math.abs(pipPt.x - sU.point.x));
+            rootBone.getWorldPosition(lowerHand.solverPivotWorld);
+            const rH = Math.max(0.25, Math.hypot(pipPt.x - lowerHand.solverPivotWorld.x, pipPt.z - lowerHand.solverPivotWorld.z));
+            lowerHand.applyClampedRootYaw(fLow, rootBone, THREE.MathUtils.clamp(-neededShiftX / rH, -0.24, 0.24));
+            break;
+          }
+        }
+      }
+
+      // 5. Refresh lower hand stations after re-seating and build a 3D dorsal obstacle envelope
+      // so the upper hand's free fingers lift cleanly above BOTH the keyboard AND the lower hand's back/fingers.
+      lowerHand.group.updateMatrixWorld(true);
+      lowerHand.mesh.skeleton.update();
+      const finalLowerStations = collectHandStations(lowerHand);
+      const lowerHandObstacleFloorYAt = (worldX: number, worldZ: number): number => {
+        let floorY = -Infinity;
+        for (const sL of finalLowerStations) {
+          const dx = Math.abs(worldX - sL.point.x);
+          const dz = Math.abs(worldZ - sL.point.z);
+          const rx = sL.radius + 0.28;
+          const rz = sL.radius + 0.42;
+          if (dx < rx && dz < rz) {
+            const tx = 1 - dx / rx;
+            const tz = 1 - dz / rz;
+            const dome = Math.sqrt(Math.max(0, tx * tz));
+            const topY = sL.point.y + sL.radius + 0.14 + 0.10 * dome;
+            if (topY > floorY) floorY = topY;
+          }
+        }
+        return floorY;
+      };
+
       for (let finger = 1; finger <= 5; finger++) {
-        if (!leftActive.has(finger)) leftHand.liftFreeFingerAboveKeyboardEnvelope(finger, 0, sampleSurface, 2);
-        if (!rightActive.has(finger)) rightHand.liftFreeFingerAboveKeyboardEnvelope(finger, 0, sampleSurface, 2);
+        if (!lowerActive.has(finger)) {
+          lowerHand.liftFreeFingerAboveKeyboardEnvelope(finger, 0, sampleSurface, 2);
+        }
+        if (!upperActive.has(finger)) {
+          upperHand.liftFreeFingerAboveKeyboardEnvelope(finger, 0.06, sampleSurface, 4, lowerHandObstacleFloorYAt);
+        }
       }
+
       leftHand.group.updateMatrixWorld(true);
       leftHand.mesh.skeleton.update();
       rightHand.group.updateMatrixWorld(true);
@@ -1951,11 +2546,15 @@ export class RiggedExperimentalHand {
   ): void {
     if (displayedTransportTimeSeconds === undefined || !Number.isFinite(displayedTransportTimeSeconds)) {
       this.smoothedTransportTimeSeconds = null;
+      this.lastPlaybackDtSeconds = Infinity;
+      this.smoothedCollisionOffset.set(0, 0, 0);
+      this.smoothedCollisionYawRad = 0;
       return;
     }
     const prevTime = this.smoothedTransportTimeSeconds;
     this.smoothedTransportTimeSeconds = displayedTransportTimeSeconds;
     const dt = prevTime === null ? Infinity : displayedTransportTimeSeconds - prevTime;
+    this.lastPlaybackDtSeconds = dt;
 
     const palm = this.bone("palm");
     this.group.updateMatrixWorld(true);
@@ -1963,6 +2562,8 @@ export class RiggedExperimentalHand {
 
     if (!(dt > 1e-4 && dt <= 0.09)) {
       this.smoothedPalmWorldPosition.copy(this.solverPivotWorld);
+      this.smoothedCollisionOffset.set(0, 0, 0);
+      this.smoothedCollisionYawRad = 0;
       for (const suffix of DIAGNOSTIC_FINGER_BONE_ORDER) {
         if (suffix === "forearm" || suffix === "palm") continue;
         const bone = this.bone(suffix);

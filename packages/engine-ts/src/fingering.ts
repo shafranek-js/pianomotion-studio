@@ -1440,6 +1440,11 @@ export function plan_fingering<T extends NoteLike = NoteLike>(
   if (figures) {
     suggest = detectFigures(groups, hand, context, vp);
   }
+  const otherHand = hand === "L" ? "R" : "L";
+  const otherHandNotes: readonly NoteLike[] =
+    context !== null
+      ? context.filter((n) => (n as { hand?: string | null }).hand === otherHand)
+      : [];
 
   type HeldEntry = [number, number, number]; // [end_time, vpitch, finger]
   interface BeamEntry {
@@ -1464,6 +1469,23 @@ export function plan_fingering<T extends NoteLike = NoteLike>(
     const sug: Array<FigureSuggestion | undefined> = ns.map((n) =>
       suggest ? suggest.get(n) : undefined,
     );
+    const groupEnd = Math.max(...ns.map((n) => n.end));
+    let maxInnerOtherVp: number | null = null;
+    if (otherHandNotes.length > 0 && ps.length > 0) {
+      const innerVp = ps[0]!;
+      for (const on of otherHandNotes) {
+        const overlapDur = Math.min(groupEnd, on.end) - Math.max(start, on.start);
+        if (overlapDur < 0.16) continue;
+        const vpOther = vp(on.pitch);
+        if (vpOther <= innerVp + 2 && (maxInnerOtherVp === null || vpOther > maxInnerOtherVp)) {
+          maxInnerOtherVp = vpOther;
+        }
+      }
+    }
+    const innerBoundaryGapWk =
+      maxInnerOtherVp !== null && ps.length > 0
+        ? key_pos(ps[0]!) - key_pos(maxInnerOtherVp)
+        : null;
 
     const chord_costs = (statesList: readonly number[][]): number[] => {
       const local: number[] = [];
@@ -1471,6 +1493,14 @@ export function plan_fingering<T extends NoteLike = NoteLike>(
         let c = 0.0;
         for (let i = 0; i < ps.length; i++) {
           c += unary_cost(ps[i]!, st[i]!);
+        }
+        if (innerBoundaryGapWk !== null && innerBoundaryGapWk >= -1.0 && innerBoundaryGapWk <= 4.8 && st.length > 0) {
+          const f0 = st[0]!;
+          const requiredRoomWk = (f0 - 1) * 1.15 + 1.65;
+          const encroachmentWk = requiredRoomWk - Math.max(0.0, innerBoundaryGapWk);
+          if (encroachmentWk > 0.0) {
+            c += encroachmentWk * encroachmentWk * 18.0;
+          }
         }
         for (let i = 0; i < st.length; i++) {
           const s_ = sug[i];

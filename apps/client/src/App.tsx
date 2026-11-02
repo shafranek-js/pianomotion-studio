@@ -22,10 +22,11 @@ import {
   loadSessionSnapshot,
   projectPackageToSavedProject,
   registerAutosaveFlush,
-  validateMidiFile,
+  SCORE_FILE_INPUT_ACCEPT,
   type SavedProject,
   type SessionSnapshot,
 } from "./storage";
+import { importScoreFileToMidi } from "./import";
 import { getSettings } from "./settings";
 import { ProjectDeletionRegistry } from "./storage/projectDeletionRegistry";
 import { skipWaiting, releaseAssetUrl, getCurrentServiceWorkerRegistration } from "./pwa";
@@ -514,10 +515,10 @@ export default function App() {
 
   const openMidiFile = useCallback(async (file: File) => {
     await runCandidate(file.name, async (signal, progress, runtimeEngineVersion) => {
-      const validated = validateMidiFile(file);
-      if (!validated.valid) throw new Error(validated.error);
-      progress(`Reading ${file.name}…`);
-      const midiBytes = await file.arrayBuffer();
+      const imported = await importScoreFileToMidi(file, file.name, {
+        onProgress: (msg) => progress(msg),
+      });
+      const midiBytes = imported.midiBytes;
       if (signal.aborted) throw new DOMException("Open canceled", "AbortError");
       const sourceContext: ProjectSourceContext = { fixtureId: "imported-midi", keyStyle: getSettings().keyStyle };
       const {result, analysisWorker} = await prepareSourceCandidate({
@@ -534,7 +535,7 @@ export default function App() {
         rawMidiBytes: midiBytes,
         sourceContext,
         session: null,
-        projectName: file.name,
+        projectName: imported.title || file.name,
         unsaved: true,
         analysisWorker,
       };
@@ -889,7 +890,7 @@ export default function App() {
   );
 
   return <>
-    <input ref={midiInputRef} id="midi-file" type="file" accept=".mid,.midi,audio/midi,audio/x-midi" hidden onChange={onMidiInput} />
+    <input ref={midiInputRef} id="midi-file" type="file" accept={SCORE_FILE_INPUT_ACCEPT} hidden onChange={onMidiInput} />
     <input ref={projectInputRef} id="project-file" type="file" accept=".json,application/json" hidden onChange={onPackageInput} />
     {active ? <PianoPlayer
       key={active.result.requestId}
