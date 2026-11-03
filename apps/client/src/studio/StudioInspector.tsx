@@ -14,6 +14,7 @@ import styles from "./StudioInspector.module.css";
 import { DiagnosticLogControls } from "../diagnostics/DiagnosticLogControls";
 import { formatDisplaySourceName } from "../melodies/catalog";
 import { RiggedPoseEditorPanel, type RiggedPoseEditorPanelProps } from "./RiggedPoseEditorPanel";
+import { STAFF_QUANTIZATION_OPTIONS, type StaffQuantizationMode } from "../notation/staffNotationBuilder";
 
 export interface StudioInspectorProps {
   tab: InspectorTab;
@@ -43,6 +44,12 @@ export interface StudioInspectorProps {
   onAudioFileChange(event: ChangeEvent<HTMLInputElement>): void;
   onClearAudio(): void;
   onAudioOffsetChange(offset: number): void;
+  staffQuantization?: StaffQuantizationMode;
+  onStaffQuantizationChange?(mode: StaffQuantizationMode): void;
+  staffShowFingers?: boolean;
+  onStaffShowFingersChange?(show: boolean): void;
+  staffShowNoteNames?: boolean;
+  onStaffShowNoteNamesChange?(show: boolean): void;
 }
 
 export function StudioInspector(props: StudioInspectorProps) {
@@ -151,6 +158,44 @@ export function StudioInspector(props: StudioInspectorProps) {
           <option value="skeleton">{dict.inspector.skeleton}</option>
         </select>
       </label>
+      {props.staffQuantization !== undefined && (
+        <div className={styles.stageAppearance}>
+          <h3 className={styles.subheading}>Staff Notation</h3>
+          <label className={styles.field} htmlFor="studio-staff-quantization">
+            <span>Rhythmic quantization</span>
+            <select
+              id="studio-staff-quantization"
+              value={props.staffQuantization}
+              disabled={!props.onStaffQuantizationChange}
+              onChange={(event) => props.onStaffQuantizationChange?.(event.currentTarget.value as StaffQuantizationMode)}
+            >
+              {STAFF_QUANTIZATION_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className={styles.checkboxRow} htmlFor="studio-staff-fingers">
+            <span>Show finger numbers (1–5)</span>
+            <input
+              id="studio-staff-fingers"
+              type="checkbox"
+              checked={props.staffShowFingers ?? true}
+              onChange={(event) => props.onStaffShowFingersChange?.(event.currentTarget.checked)}
+            />
+          </label>
+          <label className={styles.checkboxRow} htmlFor="studio-staff-note-names">
+            <span>Show note names (ABC)</span>
+            <input
+              id="studio-staff-note-names"
+              type="checkbox"
+              checked={props.staffShowNoteNames ?? false}
+              onChange={(event) => props.onStaffShowNoteNamesChange?.(event.currentTarget.checked)}
+            />
+          </label>
+        </div>
+      )}
       <p className={styles.hint}>{dict.inspector.sceneHint}</p>
       {props.poseEditor && <RiggedPoseEditorPanel {...props.poseEditor} />}
     </section>

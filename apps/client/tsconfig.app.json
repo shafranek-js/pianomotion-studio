@@ -18,7 +18,8 @@
     "strict": true,
     "types": ["vite/client"],
     "paths": {
-      "@handthesia/engine-ts": ["../../packages/engine-ts/src/index.ts"]
+      "@handthesia/engine-ts": ["../../packages/engine-ts/src/index.ts"],
+      "opensheetmusicdisplay": ["./src/notation/opensheetmusicdisplay.d.ts"]
     }
   },
   "include": ["src", "../../packages/engine-ts/src"]

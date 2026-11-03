@@ -106,6 +106,8 @@ import { ExportOperationScope, runScopedExport } from "./exportScope";
 import { playbackBlocker, type PlaybackBlocker } from "./playbackReadiness";
 import { analyzePieceHarmony } from "../harmony/harmonyAnalyzer";
 import { ChordRibbon } from "../harmony/ChordRibbon";
+import { buildStaffNotation, type StaffQuantizationMode } from "../notation/staffNotationBuilder";
+import { StaffRibbon } from "../notation/StaffRibbon";
 import { playMetronomeClick } from "../audio/metronomeAudio";
 
 export interface PianoPlayerProps {
@@ -678,6 +680,19 @@ export function PianoPlayer({
     }
     commitPracticeLoop(parsed.data);
   }, [commitPracticeLoop, dict.practice.invalidLoopRange, dict.practice.loopPointOutsideDuration, onStatusChange, practiceDuration]);
+
+  const handleTransportLoopChange = useCallback((startSeconds: number, endSeconds: number, enabled: boolean) => {
+    const clampedStart = Math.max(0, Math.min(practiceDuration, startSeconds));
+    const clampedEnd = Math.max(clampedStart, Math.min(practiceDuration, endSeconds));
+    const parsed = PracticeLoopSchema.safeParse({
+      startSeconds: clampedStart,
+      endSeconds: clampedEnd,
+      enabled,
+    });
+    if (!parsed.success) return;
+    commitPracticeLoop(parsed.data);
+  }, [commitPracticeLoop, practiceDuration]);
+
   const handleAddBookmark = useCallback((requestedName: string, requestedTime: number) => {
     const current = practiceStateRef.current;
     const name = requestedName.trim().slice(0, 120) || t("practice.defaultBookmarkName", { number: current.bookmarks.length + 1 });
@@ -1705,6 +1720,7 @@ export function PianoPlayer({
       const isPlayAlong = viewModeRef.current === "play_along";
       const transport = transportRef.current;
       const time = isPlayAlong ? playAlongTimeRef.current : (transport?.getCurrentTime() ?? settings.leadInSeconds);
+      currentTimeRef.current = time;
       sceneRef.current?.update(time);
 
       const snapshot = window.__playerSnapshot;
@@ -2880,6 +2896,12 @@ export function PianoPlayer({
     handlePoseEditReset, handlePoseEditPresetSave, handlePoseEditPresetApply, handlePoseEditPresetExport, handlePoseEditPresetImportFile,
     handlePoseEditPresetRename, handlePoseEditPresetReplace, handlePoseEditPresetDelete]);
 
+  const [chordsEnabled, setChordsEnabled] = useState(false);
+  const [staffEnabled, setStaffEnabled] = useState(false);
+  const [staffQuantization, setStaffQuantization] = useState<StaffQuantizationMode>("auto");
+  const [staffShowFingers, setStaffShowFingers] = useState(true);
+  const [staffShowNoteNames, setStaffShowNoteNames] = useState(false);
+
   const inspector = useCallback((tab: InspectorTab) => (
     <StudioInspector
       tab={tab}
@@ -2917,10 +2939,17 @@ export function PianoPlayer({
       onAudioFileChange={event => void handleAudioFileChange(event)}
       onClearAudio={handleClearAudio}
       onAudioOffsetChange={handleAudioOffsetChange}
+      staffQuantization={staffQuantization}
+      onStaffQuantizationChange={setStaffQuantization}
+      staffShowFingers={staffShowFingers}
+      onStaffShowFingersChange={setStaffShowFingers}
+      staffShowNoteNames={staffShowNoteNames}
+      onStaffShowNoteNamesChange={setStaffShowNoteNames}
     />
   ), [analysis, activeProfile, settings, keyStyle, audioRecording, audioOffset, poseEditModelMatches, poseEditorPanelProps, projectName, needsReplan, developerTools,
     editorReport, handleDiagnosticNote, handleKeyStyleChange, onOpenPianist, handleAudioFileChange, handleClearAudio,
-    handleAudioOffsetChange, handleRetryCalculation, handleStageAppearanceChange, onStatusChange, status, preparingOutput, preparingSamples, activeOutputId, activeSoundfontAssetId, activeCalculationEngine, playbackError]);
+    handleAudioOffsetChange, handleRetryCalculation, handleStageAppearanceChange, onStatusChange, status, preparingOutput, preparingSamples, activeOutputId, activeSoundfontAssetId, activeCalculationEngine, playbackError,
+    staffQuantization, staffShowFingers, staffShowNoteNames]);
 
   const editorState = <FingeringEditor
     document={document ?? result.document!}
@@ -2973,7 +3002,6 @@ export function PianoPlayer({
     sceneRef.current?.setCamera3DPreset(preset);
   }, []);
 
-  const [chordsEnabled, setChordsEnabled] = useState(true);
   const [countInEnabled, setCountInEnabled] = useState(false);
   const [metronomeEnabled, setMetronomeEnabled] = useState(false);
   const [countInBeat, setCountInBeat] = useState<number | null>(null);
@@ -2986,6 +3014,17 @@ export function PianoPlayer({
   const pieceHarmony = useMemo(
     () => analyzePieceHarmony(document?.notes ?? [], { bpm: pieceBpm, beatsPerBar: pieceBeatsPerBar }),
     [document?.notes, pieceBpm, pieceBeatsPerBar],
+  );
+  const staffNotationModel = useMemo(
+    () =>
+      buildStaffNotation(document?.notes ?? [], {
+        bpm: pieceBpm,
+        beatsPerBar: pieceBeatsPerBar,
+        key: pieceHarmony.key ? { tonic: pieceHarmony.key.tonic, mode: pieceHarmony.key.mode } : null,
+        quantizationMode: staffQuantization,
+        fingeringAssignments: draftPlan.assignments,
+      }),
+    [document?.notes, pieceBpm, pieceBeatsPerBar, pieceHarmony.key, staffQuantization, draftPlan.assignments],
   );
   const firstNoteSeconds = useMemo(() => {
     if (!document?.notes.length) return 0;
@@ -3061,6 +3100,30 @@ export function PianoPlayer({
     handleSeek((targetBar - 1) * barDurationSeconds);
   }, [cancelCountIn, pieceHarmony.totalBars, currentBarNumber, barDurationSeconds, handleSeek]);
 
+  const handleToggleQuickLoop = useCallback(() => {
+    const current = practiceStateRef.current.loop;
+    if (current) {
+      handleLoopEnabledChange(!current.enabled);
+      return;
+    }
+    const twoBars = Math.max(2, barDurationSeconds * 2);
+    const barStart = Math.max(0, Math.min(Math.max(0, practiceDuration - twoBars), (currentBarNumber - 1) * barDurationSeconds));
+    const barEnd = Math.min(practiceDuration, barStart + twoBars);
+    const candidate = {
+      startSeconds: Math.round(barStart * 100) / 100,
+      endSeconds: Math.round(barEnd * 100) / 100,
+      enabled: true,
+    };
+    const parsed = PracticeLoopSchema.safeParse(candidate);
+    if (parsed.success) {
+      commitPracticeLoop(parsed.data);
+    } else {
+      handleLoopEnabledChange(true);
+    }
+  }, [barDurationSeconds, commitPracticeLoop, currentBarNumber, handleLoopEnabledChange, practiceDuration]);
+
+  const getLiveStaffTime = useCallback(() => currentTimeRef.current, []);
+
   const scene = <div id="piano-canvas-container" ref={containerRef} className="piano-canvas-container" data-testid="piano-canvas" />;
   const workspace = ({ effectiveView }: { effectiveView: StudioView; focusMode: boolean }) => (
     <StudioWorkspace
@@ -3070,6 +3133,16 @@ export function PianoPlayer({
         <ChordRibbon
           harmony={pieceHarmony}
           currentTime={currentTime}
+          onSeek={handleSeek}
+        />
+      ) : undefined}
+      staffRibbon={staffEnabled ? (
+        <StaffRibbon
+          model={staffNotationModel}
+          showFingers={staffShowFingers}
+          showNoteNames={staffShowNoteNames}
+          currentTime={currentTime}
+          getLiveTime={getLiveStaffTime}
           onSeek={handleSeek}
         />
       ) : undefined}
@@ -3116,6 +3189,22 @@ export function PianoPlayer({
       onConnectMidi={() => { void getSharedWebMidiInputManager().requestPermissionFromUserGesture(); }}
       autoPlayOtherHand={autoPlayOtherHand}
       onAutoPlayOtherHandChange={setAutoPlayOtherHand}
+      currentTime={currentTime}
+      duration={document?.durationSeconds ?? 0}
+      bpm={pieceBpm}
+      beatsPerBar={pieceBeatsPerBar}
+      onSeekTime={(timeSeconds) => {
+        if (!libraryOpenRef.current) playAlongEngineRef.current?.seekToTime(timeSeconds);
+      }}
+      practiceLoop={practiceState.loop}
+      practiceBookmarks={practiceState.bookmarks}
+      onLoopChange={handleTransportLoopChange}
+      onToggleLoop={handleToggleQuickLoop}
+      onJumpToBookmark={handleJumpToBookmark}
+      chordsEnabled={chordsEnabled}
+      onToggleChords={() => setChordsEnabled((v) => !v)}
+      staffEnabled={staffEnabled}
+      onToggleStaff={() => setStaffEnabled((v) => !v)}
     />
   ) : (
     <StudioTransport
@@ -3138,12 +3227,21 @@ export function PianoPlayer({
       onNextBar={handleNextBar}
       currentBar={currentBarNumber}
       totalBars={pieceHarmony.totalBars}
+      bpm={pieceBpm}
+      beatsPerBar={pieceBeatsPerBar}
       countInEnabled={countInEnabled}
       onToggleCountIn={() => setCountInEnabled((v) => !v)}
       metronomeEnabled={metronomeEnabled}
       onToggleMetronome={() => setMetronomeEnabled((v) => !v)}
       chordsEnabled={chordsEnabled}
       onToggleChords={() => setChordsEnabled((v) => !v)}
+      staffEnabled={staffEnabled}
+      onToggleStaff={() => setStaffEnabled((v) => !v)}
+      practiceLoop={practiceState.loop}
+      practiceBookmarks={practiceState.bookmarks}
+      onLoopChange={handleTransportLoopChange}
+      onToggleLoop={handleToggleQuickLoop}
+      onJumpToBookmark={handleJumpToBookmark}
     />
   );
 

@@ -561,10 +561,10 @@ export function StudioShell(props: StudioShellProps) {
         <div className="studio-view-switch" role="group" aria-label="Workspace view">
           <button
             type="button"
-            aria-pressed={effectiveView === "performance" && !is3DView}
-            className={effectiveView === "performance" && !is3DView ? "is-active" : ""}
+            aria-pressed={effectiveView === "performance"}
+            className={effectiveView === "performance" ? "is-active" : ""}
             onClick={() => {
-              onToggle3DView?.(false);
+              if (effectiveView === "editor") onToggle3DView?.(false);
               onViewModeChange("performance");
             }}
             title={dict.views.performance}
@@ -598,7 +598,7 @@ export function StudioShell(props: StudioShellProps) {
             aria-pressed={effectiveView === "editor"}
             className={effectiveView === "editor" ? "is-active" : ""}
             onClick={() => {
-              onToggle3DView?.(false);
+              if (effectiveView === "editor") onToggle3DView?.(false);
               onViewModeChange("editor");
             }}
             title={dict.views.fingering}

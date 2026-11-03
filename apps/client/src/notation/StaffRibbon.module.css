@@ -1,0 +1,83 @@
+.ribbon {
+  display: flex;
+  align-items: stretch;
+  background: rgba(8, 11, 18, 0.97);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+  min-height: 120px;
+  transition: height 160ms ease-out;
+  user-select: none;
+  overflow: hidden;
+  z-index: 12;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+
+.scrollTrack {
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  position: relative;
+  background: #080b12;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  cursor: pointer;
+}
+
+.scrollTrack::-webkit-scrollbar {
+  display: none;
+}
+
+.sheetStage {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-width: max-content;
+  height: 100%;
+  padding: 0 16px;
+}
+
+/* Dark-mode OSMD filter ported directly from MelodicaTrainer styles.css */
+.osmdDark {
+  display: flex;
+  align-items: center;
+  min-width: max-content;
+  height: 100%;
+  filter: invert(90%) hue-rotate(180deg) brightness(1.2);
+}
+
+.osmdDark :global(svg path[fill="none"]:not(.vf-note *):not(.vf-stavenote *):not(.vf-stem *):not(.vf-notehead *):not(.vf-flag *)) {
+  stroke: #9ca3af !important;
+  stroke-width: 1px !important;
+}
+
+.osmdDark :global(svg rect[width="1"]:not(.vf-note *):not(.vf-stavenote *):not(.vf-stem *):not(.vf-notehead *):not(.vf-flag *)) {
+  fill: #9ca3af !important;
+  width: 1px !important;
+  stroke: none !important;
+  stroke-width: 0px !important;
+}
+
+.osmdDark :global(svg rect:not([width="1"]):not(.vf-note *):not(.vf-stavenote *):not(.vf-stem *):not(.vf-notehead *):not(.vf-flag *)) {
+  fill: #9ca3af !important;
+  stroke: none !important;
+  stroke-width: 0px !important;
+}
+
+/* Smooth GPU-composited continuous playhead cursor */
+.playhead {
+  position: absolute;
+  top: 8px;
+  bottom: 8px;
+  left: 16px;
+  width: 3px;
+  border-radius: 999px;
+  background: rgba(16, 185, 129, 0.88);
+  box-shadow:
+    0 0 0 1px rgba(6, 95, 70, 0.55),
+    0 0 12px rgba(16, 185, 129, 0.65);
+  pointer-events: none;
+  will-change: transform;
+  z-index: 5;
+}

@@ -77,6 +77,24 @@
   cursor: default;
 }
 
+.checkboxRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  color: var(--studio-muted, #b2bbb7);
+  font-size: 0.78rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.checkboxRow input[type="checkbox"] {
+  width: 1.05rem;
+  height: 1.05rem;
+  accent-color: var(--studio-accent, #2cd682);
+  cursor: pointer;
+}
+
 .hint {
   margin: 0;
   color: var(--studio-muted, #9da9a3);

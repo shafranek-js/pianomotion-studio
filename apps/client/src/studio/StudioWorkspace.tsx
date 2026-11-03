@@ -10,6 +10,8 @@ export interface StudioWorkspaceProps {
   scene: ReactNode;
   /** Optional chord timeline ribbon rendered above the scene. */
   chordRibbon?: ReactNode;
+  /** Optional grand-staff notation ribbon rendered above the scene. */
+  staffRibbon?: ReactNode;
   /** Persistent editor state host, kept mounted without adding a visible row. */
   editorState?: ReactNode;
   editorViewTime?: number | null;
@@ -34,6 +36,7 @@ export function StudioWorkspace({
   viewMode,
   scene,
   chordRibbon,
+  staffRibbon,
   editorState,
   editorViewTime = null,
   transportTime = 0,
@@ -53,7 +56,6 @@ export function StudioWorkspace({
       data-testid="studio-workspace"
       data-view={viewMode}
     >
-      {chordRibbon}
       {editorState && (
         <div
           className="studio-workspace-layout__editor-state"
@@ -69,6 +71,12 @@ export function StudioWorkspace({
         data-testid="studio-scene-pane"
         aria-label={viewMode === "editor" ? dict.views.fingering : dict.views.performance}
       >
+        {viewMode !== "editor" && (chordRibbon || staffRibbon) && (
+          <div className="studio-workspace-layout__top-ribbons" data-testid="studio-top-ribbons">
+            {chordRibbon}
+            {staffRibbon}
+          </div>
+        )}
         {viewMode === "editor" && (
           <div className="studio-workspace-layout__time-anchor" data-testid="studio-time-anchor">
             <span>{editorViewTime === null ? dict.views.followingPlayhead : `View ${formatAnchorTime(editorViewTime)}`}</span>
