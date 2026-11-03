@@ -1,0 +1,147 @@
+.ribbon {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-height: 2.35rem;
+  padding: 0.25rem 0.75rem;
+  background: rgba(16, 18, 22, 0.92);
+  border-bottom: 1px solid var(--studio-border, #2a303a);
+  color: var(--studio-text, #e7ecf2);
+  font-size: 0.75rem;
+  user-select: none;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.metaGroup {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex: 0 0 auto;
+}
+
+.keyBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.18rem 0.5rem;
+  border-radius: 0.38rem;
+  background: rgba(115, 212, 188, 0.12);
+  border: 1px solid rgba(115, 212, 188, 0.3);
+  color: var(--studio-mint, #73d4bc);
+  font-weight: 650;
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
+.smoothToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  padding: 0.18rem 0.5rem;
+  border-radius: 0.38rem;
+  border: 1px solid var(--studio-border, #303640);
+  background: var(--studio-panel, #181b20);
+  color: var(--studio-muted, #a1aab8);
+  font: inherit;
+  font-size: 0.7rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.smoothToggle:hover {
+  border-color: rgba(115, 212, 188, 0.45);
+  color: var(--studio-text, #e7ecf2);
+}
+
+.smoothToggleActive {
+  border-color: var(--studio-mint, #73d4bc);
+  background: rgba(115, 212, 188, 0.14);
+  color: var(--studio-mint, #73d4bc);
+}
+
+.activeReadout {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.16rem 0.55rem;
+  border-radius: 0.38rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
+.activeSymbol {
+  font-weight: 700;
+  color: #f8fafc;
+}
+
+.activeNumeral {
+  color: var(--studio-mint, #73d4bc);
+  font-weight: 600;
+}
+
+.activeTones {
+  color: var(--studio-muted, #94a3b8);
+  font-size: 0.68rem;
+}
+
+.track {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 0.1rem 0;
+}
+
+.track::-webkit-scrollbar {
+  display: none;
+}
+
+.cell {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.3rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 0.38rem;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(24, 27, 32, 0.85);
+  color: var(--studio-muted, #a1aab8);
+  font: inherit;
+  font-size: 0.72rem;
+  cursor: pointer;
+  flex: 0 0 auto;
+  white-space: nowrap;
+  transition: border-color 0.12s ease, background-color 0.12s ease, color 0.12s ease;
+}
+
+.cell:hover {
+  border-color: rgba(115, 212, 188, 0.4);
+  color: var(--studio-text, #e7ecf2);
+}
+
+.cellActive {
+  border-color: var(--studio-mint, #73d4bc);
+  background: rgba(115, 212, 188, 0.18);
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.cellBar {
+  font-size: 0.63rem;
+  opacity: 0.65;
+}
+
+.cellSymbol {
+  font-weight: 650;
+}
+
+.cellNumeral {
+  font-size: 0.66rem;
+  color: var(--studio-mint, #73d4bc);
+}

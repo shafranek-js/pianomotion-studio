@@ -43,3 +43,30 @@ export * as glissando from "./glissando.ts";
 export * as pianist from "./pianist.ts";
 export * as geometry from "./geometry.ts";
 export * as identity from "./identity.ts";
+export * as pedalHold from "./pedalHold.ts";
+export * as playability from "./playability.ts";
+export {
+  buildPedalSpans,
+  pedalCarries,
+  inferBassPedalGap,
+  computePhysicalReleaseTimes,
+  type PedalSpan,
+  type PedalHoldNoteLike,
+  type ComputeReleaseOptions,
+} from "./pedalHold.ts";
+export {
+  checkPianoPlayability,
+  repairPianoHandSplit,
+  PIANO_MAX_NOTES,
+  PIANO_REACH,
+  PIANO_WIDE_REACH,
+  JUMP_SEMITONES,
+  JUMP_SECONDS,
+  CROSS_SECONDS,
+  type PlayabilityIssueKind,
+  type PlayabilityIssue,
+  type PlayabilitySummary,
+  type PlayabilityNoteInput,
+  type PianoPlayabilityOptions,
+  type PianoRepairResult,
+} from "./playability.ts";

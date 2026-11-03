@@ -24,7 +24,7 @@ test("shows empty workspace when requested via ?empty", async ({ page }) => {
 
   await expect(page).toHaveTitle("PianoMotion Studio");
   await expect(page.getByTestId("studio-shell")).toBeVisible();
-  await expect(page.getByRole("button", {name: "Open MIDI", exact: true})).toBeVisible();
+  await expect(page.getByRole("button", {name: "Open melody file", exact: true})).toBeVisible();
   await expect(page.getByRole("button", {name: "Open Project", exact: true})).toBeVisible();
   await expect(page.getByTestId("piano-canvas").locator("canvas")).toHaveCount(0);
   expect(pageErrors).toEqual([]);

@@ -37,6 +37,22 @@ import {
   type BuiltinMelodiesPreferences,
   type SortOption,
 } from "./libraryPreferences";
+import {
+  KEY_NAMES,
+  SCALE_FAMILIES,
+  HAND_VARIANTS,
+  PROGRESSION_PATTERNS,
+  generateScaleExercise,
+  generateProgressionExercise,
+  type HandVariantSlug,
+  type TonalExercise,
+} from "./tonalScalesAndProgressions";
+import { buildTonalExerciseMidi } from "./tonalMidiBuilder";
+import {
+  searchPublicDomainMidi,
+  downloadPublicMidiBytes,
+  type PublicMidiSearchResult,
+} from "./publicMidiSearch";
 import styles from "./BuiltinMelodiesDialog.module.css";
 
 type CatalogResult =
@@ -71,6 +87,7 @@ interface BuiltinMelodiesDialogProps {
   /** Existing built-in callback remains valid for current callers. */
   onChoose(entry: BuiltinMelodyEntry): void | boolean | Promise<void | boolean>;
   onChooseLocal?(entry: LocalFolderEntry, midiBytes: ArrayBuffer): void | Promise<void>;
+  onChooseGenerated?(info: { id: string; title: string; sourceKind: "scales" | "online" }, midiBytes: ArrayBuffer): void | Promise<void>;
   busy?: boolean;
 }
 
@@ -227,12 +244,13 @@ function getFilePicker(): (() => Promise<FileSystemDirectoryHandle>) | null {
   return () => picker.call(window, { mode: "read" });
 }
 
-export function BuiltinMelodiesDialog({ open, onClose, onChoose, onChooseLocal, busy = false }: BuiltinMelodiesDialogProps) {
+export function BuiltinMelodiesDialog({ open, onClose, onChoose, onChooseLocal, onChooseGenerated, busy = false }: BuiltinMelodiesDialogProps) {
   const { dict, language } = useI18n();
   const strings = useMemo(() => getLibraryStrings(language), [language]);
   const searchId = useId();
   const sortId = useId();
   const sourceIdInput = useId();
+  const onlineSearchId = useId();
   const folderInputRef = useRef<HTMLInputElement>(null);
   const fileIntentRef = useRef<"add" | "rescan">("add");
   const scanControllerRef = useRef<AbortController | null>(null);
@@ -244,6 +262,14 @@ export function BuiltinMelodiesDialog({ open, onClose, onChoose, onChooseLocal, 
 
   const [preferences, setPreferences] = useState<BuiltinMelodiesPreferences>(() => loadBuiltinMelodiesPreferences());
   const { query, activeFilter, sortBy, libraryView, categoryId, recentOnly } = preferences;
+  const [scalesSubMode, setScalesSubMode] = useState<"scales" | "progressions">("scales");
+  const [selectedTonic, setSelectedTonic] = useState<number>(0);
+  const [selectedHandMode, setSelectedHandMode] = useState<HandVariantSlug>("hands-together");
+  const [selectedProgMode, setSelectedProgMode] = useState<"all" | "major" | "minor">("all");
+  const [onlineQuery, setOnlineQuery] = useState<string>("Bach prelude");
+  const [onlineResults, setOnlineResults] = useState<PublicMidiSearchResult[]>([]);
+  const [onlineSearching, setOnlineSearching] = useState<boolean>(false);
+  const [onlineSearchedOnce, setOnlineSearchedOnce] = useState<boolean>(false);
   const [favouriteIds, setFavouriteIds] = useState<ReadonlySet<string>>(() => getFavouriteMelodyIds());
   const [recentIds, setRecentIds] = useState<ReadonlySet<string>>(() => getRecentMelodyIds());
   const [loadAttempt, setLoadAttempt] = useState(0);
@@ -732,6 +758,199 @@ export function BuiltinMelodiesDialog({ open, onClose, onChoose, onChooseLocal, 
     onClose();
   }, [onClose, stopPreview]);
 
+  const generatedDrills = useMemo<TonalExercise[]>(() => {
+    if (libraryView !== "scales") return [];
+    const needle = query.trim().toLocaleLowerCase();
+    if (scalesSubMode === "scales") {
+      return SCALE_FAMILIES
+        .map((family) => generateScaleExercise(selectedTonic, family.id, selectedHandMode))
+        .filter((drill) => !needle || `${drill.title} ${drill.subtitle} ${drill.description}`.toLocaleLowerCase().includes(needle));
+    }
+    const items: TonalExercise[] = [];
+    if (selectedProgMode === "all" || selectedProgMode === "major") {
+      for (const spec of PROGRESSION_PATTERNS.major) {
+        items.push(generateProgressionExercise(selectedTonic, "major", spec.slug));
+      }
+    }
+    if (selectedProgMode === "all" || selectedProgMode === "minor") {
+      for (const spec of PROGRESSION_PATTERNS.minor) {
+        items.push(generateProgressionExercise(selectedTonic, "minor", spec.slug));
+      }
+    }
+    return items.filter((drill) => !needle || `${drill.title} ${drill.subtitle} ${drill.description}`.toLocaleLowerCase().includes(needle));
+  }, [libraryView, query, scalesSubMode, selectedTonic, selectedHandMode, selectedProgMode]);
+
+  const openGeneratedBytes = useCallback(async (
+    info: { id: string; title: string; sourceKind: "scales" | "online" },
+    midiBytes: ArrayBuffer,
+  ) => {
+    if (onChooseGenerated) {
+      await onChooseGenerated(info, midiBytes);
+      return;
+    }
+    if (onChooseLocal) {
+      const syntheticEntry: LocalFolderEntry = {
+        id: info.id,
+        sourceId: info.sourceKind,
+        name: `${info.title}.mid`,
+        relativePath: `${info.title}.mid`,
+        firstLevelFolder: null,
+        firstLevelFolderId: null,
+        title: info.title,
+        sourceFormat: "midi",
+        size: midiBytes.byteLength,
+        lastModified: Date.now(),
+        addedAt: Date.now(),
+        originalSha256: info.id,
+        canonicalMidiSha256: info.id,
+        durationSeconds: 10,
+        noteCount: 16,
+        difficultyScore: 2,
+        difficultyTier: "Beginner",
+      };
+      await onChooseLocal(syntheticEntry, midiBytes);
+    }
+  }, [onChooseGenerated, onChooseLocal]);
+
+  const handleChooseDrill = useCallback(async (drill: TonalExercise) => {
+    const generation = openActionGenerationRef.current;
+    setActionError("");
+    setOpeningKey(`scales:${drill.id}`);
+    try {
+      await stopPreview();
+      if (!open || generation !== openActionGenerationRef.current) return;
+      const midiBytes = buildTonalExerciseMidi(drill);
+      await openGeneratedBytes({ id: drill.id, title: drill.title, sourceKind: "scales" }, midiBytes);
+    } catch (error) {
+      setActionError(asErrorMessage(error));
+    } finally {
+      setOpeningKey("");
+    }
+  }, [open, openGeneratedBytes, stopPreview]);
+
+  const togglePreviewDrill = useCallback(async (drill: TonalExercise) => {
+    const key = `scales:${drill.id}`;
+    if (activePreviewKey === key) {
+      await stopPreview();
+      return;
+    }
+    const generation = ++previewGenerationRef.current;
+    previewLoadControllerRef.current?.abort();
+    previewHandleRef.current?.stop();
+    previewHandleRef.current = null;
+    setActionError("");
+    setActivePreviewKey(key);
+    let reservation: ReturnType<typeof prepareLibraryPreview> | null = null;
+    try {
+      reservation = prepareLibraryPreview();
+      const beatSec = 60 / Math.max(20, drill.bpm || 100);
+      const previewNotes = drill.notes.map((n, index) => ({
+        noteId: `drill-note-${index}`,
+        pitch: n.midi,
+        velocity: n.velocity,
+        startSeconds: n.startBeat * beatSec,
+        endSeconds: (n.startBeat + n.beats) * beatSec,
+      }));
+      const handle = await reservation.play(previewNotes, { seconds: 12 });
+      if (generation !== previewGenerationRef.current) {
+        handle.stop();
+        return;
+      }
+      previewHandleRef.current = handle;
+      void handle.done.finally(() => {
+        if (generation === previewGenerationRef.current) {
+          previewHandleRef.current = null;
+          setActivePreviewKey("");
+        }
+      });
+    } catch (error) {
+      if (reservation) await reservation.stop();
+      if (!isAbortError(error)) setActionError(`${strings.previewError} ${asErrorMessage(error)}`);
+      if (generation === previewGenerationRef.current) setActivePreviewKey("");
+    }
+  }, [activePreviewKey, stopPreview, strings.previewError]);
+
+  const runOnlineSearch = useCallback(async (searchQuery: string) => {
+    const trimmed = searchQuery.trim();
+    if (!trimmed) return;
+    setOnlineSearching(true);
+    setActionError("");
+    try {
+      const results = await searchPublicDomainMidi(trimmed);
+      setOnlineResults(results);
+      setOnlineSearchedOnce(true);
+    } catch (error) {
+      if (!isAbortError(error)) setActionError(asErrorMessage(error));
+    } finally {
+      setOnlineSearching(false);
+    }
+  }, []);
+
+  const handleChooseOnline = useCallback(async (item: PublicMidiSearchResult) => {
+    const generation = openActionGenerationRef.current;
+    setActionError("");
+    setOpeningKey(`online:${item.id}`);
+    try {
+      await stopPreview();
+      if (!open || generation !== openActionGenerationRef.current) return;
+      const midiBytes = await downloadPublicMidiBytes(item);
+      if (!open || generation !== openActionGenerationRef.current) return;
+      await openGeneratedBytes({ id: item.id, title: item.title, sourceKind: "online" }, midiBytes);
+    } catch (error) {
+      setActionError(asErrorMessage(error));
+    } finally {
+      setOpeningKey("");
+    }
+  }, [open, openGeneratedBytes, stopPreview]);
+
+  const togglePreviewOnline = useCallback(async (item: PublicMidiSearchResult) => {
+    const key = `online:${item.id}`;
+    if (activePreviewKey === key) {
+      await stopPreview();
+      return;
+    }
+    const generation = ++previewGenerationRef.current;
+    previewLoadControllerRef.current?.abort();
+    previewHandleRef.current?.stop();
+    previewHandleRef.current = null;
+    const controller = new AbortController();
+    previewLoadControllerRef.current = controller;
+    setActionError("");
+    setActivePreviewKey(key);
+    let reservation: ReturnType<typeof prepareLibraryPreview> | null = null;
+    try {
+      reservation = prepareLibraryPreview();
+      const rawBuffer = await downloadPublicMidiBytes(item, controller.signal);
+      const analyzed = await analyzeLibraryBytes(
+        { name: `${item.title}.mid`, bytes: new Uint8Array(rawBuffer), signal: controller.signal },
+        { signal: controller.signal },
+      );
+      if (controller.signal.aborted || generation !== previewGenerationRef.current) {
+        await reservation.stop();
+        return;
+      }
+      if (!analyzed.previewNotes.length) throw new Error(strings.previewUnavailable);
+      const handle = await reservation.play(analyzed.previewNotes, { seconds: 12 });
+      if (controller.signal.aborted || generation !== previewGenerationRef.current) {
+        handle.stop();
+        return;
+      }
+      previewHandleRef.current = handle;
+      void handle.done.finally(() => {
+        if (generation === previewGenerationRef.current) {
+          previewHandleRef.current = null;
+          setActivePreviewKey("");
+        }
+      });
+    } catch (error) {
+      if (reservation) await reservation.stop();
+      if (!controller.signal.aborted && !isAbortError(error)) setActionError(`${strings.previewError} ${asErrorMessage(error)}`);
+      if (generation === previewGenerationRef.current) setActivePreviewKey("");
+    } finally {
+      if (previewLoadControllerRef.current === controller) previewLoadControllerRef.current = null;
+    }
+  }, [activePreviewKey, stopPreview, strings.previewError, strings.previewUnavailable]);
+
   const visibleBuiltins = currentCatalog?.state === "ready" ? currentCatalog.entries.length : 0;
   const visibleLocal = localView?.entries.filter((entry) => libraryView === "all" || !localView.selectedSourceId || entry.sourceId === localView.selectedSourceId).length ?? 0;
   const totalVisible = allCardEntries.length;
@@ -788,8 +1007,14 @@ export function BuiltinMelodiesDialog({ open, onClose, onChoose, onChooseLocal, 
           <button className={`${styles.sourceTab} ${libraryView === "all" ? styles.sourceTabActive : ""}`} type="button" aria-pressed={libraryView === "all"} onClick={() => selectLibraryView("all")}>
             {strings.allSources} <span className={styles.chipCount}>({visibleBuiltins + visibleLocal})</span>
           </button>
+          <button className={`${styles.sourceTab} ${libraryView === "scales" ? styles.sourceTabActive : ""}`} type="button" aria-pressed={libraryView === "scales"} onClick={() => selectLibraryView("scales")}>
+            {strings.scalesTab}
+          </button>
+          <button className={`${styles.sourceTab} ${libraryView === "online" ? styles.sourceTabActive : ""}`} type="button" aria-pressed={libraryView === "online"} onClick={() => selectLibraryView("online")}>
+            {strings.onlineTab}
+          </button>
           <div className={styles.sourceActions}>
-            {libraryView !== "builtin" && localView?.sources.length ? (
+            {(libraryView === "folder" || libraryView === "all") && localView?.sources.length ? (
               <div className={styles.sourceSelectBox}>
                 <label className={styles.visuallyHidden} htmlFor={sourceIdInput}>{strings.source}</label>
                 <select id={sourceIdInput} className={styles.sourceSelect} value={localView.selectedSourceId ?? ""} onChange={(event) => void selectSource(event.currentTarget.value)}>
@@ -798,7 +1023,7 @@ export function BuiltinMelodiesDialog({ open, onClose, onChoose, onChooseLocal, 
                 </select>
               </div>
             ) : null}
-            {libraryView !== "builtin" && (
+            {(libraryView === "folder" || libraryView === "all") && (
               <>
                 <button className={styles.actionButton} type="button" onClick={openFolderPicker} disabled={isScanning}>
                   <FolderPlus size={16} aria-hidden="true" /> {selectedSource ? strings.changeFolder : strings.connectFolder}
@@ -814,7 +1039,7 @@ export function BuiltinMelodiesDialog({ open, onClose, onChoose, onChooseLocal, 
           </div>
         </div>
 
-        {libraryView !== "builtin" && selectedSource && (
+        {(libraryView === "folder" || libraryView === "all") && selectedSource && (
           <div className={styles.sourceStatus}>
             <span className={styles.statusText}>
               {selectedSource.kind === "files" || !selectedSource.directoryHandle ? (
@@ -831,134 +1056,377 @@ export function BuiltinMelodiesDialog({ open, onClose, onChoose, onChooseLocal, 
           </div>
         )}
 
-        <div className={styles.controls}>
-          <div className={styles.searchRow}>
-            <div className={styles.searchBox}>
-              <label className={styles.visuallyHidden} htmlFor={searchId}>Search melodies</label>
-              <Search className={styles.searchIcon} size={17} aria-hidden="true" />
-              <input id={searchId} className={styles.search} type="search" value={query} onChange={(event) => updatePreferences({ query: event.currentTarget.value })} placeholder={dict.melodies.searchPlaceholder} autoComplete="off" />
-            </div>
-            <div className={styles.sortBox}>
-              <ArrowUpDown className={styles.sortIcon} size={15} aria-hidden="true" />
-              <label className={styles.visuallyHidden} htmlFor={sortId}>{dict.melodies.difficulty}</label>
-              <select id={sortId} className={styles.sortSelect} value={sortBy} onChange={(event) => updatePreferences({ sortBy: event.currentTarget.value as SortOption })} aria-label="Sort melodies">
-                <option value="title">{strings.sortTitle}</option>
-                <option value="difficulty-asc">{dict.melodies.difficulty}: {strings.sortEasiest}</option>
-                <option value="difficulty-desc">{dict.melodies.difficulty}: {strings.sortHardest}</option>
-                <option value="duration-asc">{strings.sortDurationAsc}</option>
-                <option value="duration-desc">{strings.sortDurationDesc}</option>
-                <option value="date-added-desc">{strings.sortAdded}</option>
-                <option value="date-added-asc">{strings.sortDateAddedAsc}</option>
-              </select>
-            </div>
-          </div>
-
-          <div className={styles.filterBar} role="group" aria-label={dict.melodies.filterByTag}>
-            <button className={`${styles.filterChip} ${activeFilter === "all" ? styles.filterChipActive : ""}`} type="button" aria-pressed={activeFilter === "all"} onClick={() => updatePreferences({ activeFilter: "all" })}>
-              {dict.melodies.allTags} <span className={styles.chipCount}>({filterCounts.all})</span>
-            </button>
-            <button className={`${styles.filterChip} ${styles.chipFavourites} ${activeFilter === "favourites" ? styles.filterChipActive : ""}`} type="button" aria-pressed={activeFilter === "favourites"} onClick={() => updatePreferences({ activeFilter: activeFilter === "favourites" ? "all" : "favourites" })}>
-              <Star className={styles.chipFavouritesIcon} size={13} fill="currentColor" aria-hidden="true" /> {dict.melodies.favourites} <span className={styles.chipCount}>({filterCounts.favourites})</span>
-            </button>
-            <button className={`${styles.filterChip} ${recentOnly ? styles.filterChipActive : ""}`} type="button" aria-pressed={recentOnly} onClick={() => updatePreferences({ recentOnly: !recentOnly })}>
-              {strings.recent} <span className={styles.chipCount}>({filterCounts.recent})</span>
-            </button>
-            {showDifficultyFilters && (["Beginner", "Intermediate", "Advanced", "Virtuoso"] as const).map((tier) => (
-              <button key={tier} className={`${styles.filterChip} ${styles[`chip${tier}`]} ${activeFilter === tier ? styles.filterChipActive : ""}`} type="button" aria-pressed={activeFilter === tier} onClick={() => updatePreferences({ activeFilter: activeFilter === tier ? "all" : tier })}>
-                {tier} <span className={styles.chipCount}>({filterCounts.tiers[tier] ?? 0})</span>
+        {libraryView === "scales" && (
+          <div className={styles.generatorControls} data-testid="scales-generator-controls">
+            <div className={styles.generatorRow}>
+              <button
+                type="button"
+                className={`${styles.filterChip} ${scalesSubMode === "scales" ? styles.filterChipActive : ""}`}
+                aria-pressed={scalesSubMode === "scales"}
+                onClick={() => setScalesSubMode("scales")}
+              >
+                {strings.scalesSubMode} <span className={styles.chipCount}>({SCALE_FAMILIES.length})</span>
               </button>
-            ))}
-          </div>
-
-          {categoryChoices.length > 0 && libraryView !== "builtin" && (
-            <div className={styles.categoryBar} role="group" aria-label={strings.category}>
-              <button className={`${styles.filterChip} ${categoryId === "all" ? styles.filterChipActive : ""}`} type="button" aria-pressed={categoryId === "all"} onClick={() => updatePreferences({ categoryId: "all" })}>
-                {strings.allCategories} <span className={styles.chipCount}>({allCardEntries.filter((entry) => entry.categoryId !== null).length})</span>
+              <button
+                type="button"
+                className={`${styles.filterChip} ${scalesSubMode === "progressions" ? styles.filterChipActive : ""}`}
+                aria-pressed={scalesSubMode === "progressions"}
+                onClick={() => setScalesSubMode("progressions")}
+              >
+                {strings.progressionsSubMode} <span className={styles.chipCount}>({PROGRESSION_PATTERNS.major.length + PROGRESSION_PATTERNS.minor.length})</span>
               </button>
-              {categoryChoices.map((category) => (
-                <button key={category.id} className={`${styles.filterChip} ${categoryId === category.id ? styles.filterChipActive : ""}`} type="button" aria-pressed={categoryId === category.id} onClick={() => updatePreferences({ categoryId: categoryId === category.id ? "all" : category.id })}>
-                  {category.label} <span className={styles.chipCount}>({category.count})</span>
+            </div>
+            <div className={styles.generatorRow}>
+              <span className={styles.generatorLabel}>{strings.tonicLabel}</span>
+              <div className={styles.tonicBar} role="group" aria-label={strings.tonicLabel}>
+                {KEY_NAMES.major.map((tonicName, index) => (
+                  <button
+                    key={tonicName}
+                    type="button"
+                    className={`${styles.tonicButton} ${selectedTonic === index ? styles.tonicButtonActive : ""}`}
+                    aria-pressed={selectedTonic === index}
+                    onClick={() => setSelectedTonic(index)}
+                  >
+                    {tonicName}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {scalesSubMode === "scales" ? (
+              <div className={styles.generatorRow}>
+                <span className={styles.generatorLabel}>{strings.handModeLabel}</span>
+                <div className={styles.tonicBar} role="group" aria-label={strings.handModeLabel}>
+                  {HAND_VARIANTS.map((hand) => (
+                    <button
+                      key={hand.slug}
+                      type="button"
+                      className={`${styles.filterChip} ${selectedHandMode === hand.slug ? styles.filterChipActive : ""}`}
+                      aria-pressed={selectedHandMode === hand.slug}
+                      onClick={() => setSelectedHandMode(hand.slug)}
+                    >
+                      {hand.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className={styles.generatorRow}>
+                <span className={styles.generatorLabel}>{strings.modeFilterLabel}</span>
+                <div className={styles.tonicBar} role="group" aria-label={strings.modeFilterLabel}>
+                  {(["all", "major", "minor"] as const).map((m) => (
+                    <button
+                      key={m}
+                      type="button"
+                      className={`${styles.filterChip} ${selectedProgMode === m ? styles.filterChipActive : ""}`}
+                      aria-pressed={selectedProgMode === m}
+                      onClick={() => setSelectedProgMode(m)}
+                    >
+                      {m === "all" ? strings.modeAll : m === "major" ? strings.modeMajor : strings.modeMinor}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {libraryView === "online" && (
+          <div className={styles.generatorControls} data-testid="online-search-controls">
+            <form
+              className={styles.searchRow}
+              onSubmit={(event) => {
+                event.preventDefault();
+                void runOnlineSearch(onlineQuery);
+              }}
+            >
+              <div className={styles.searchBox}>
+                <label className={styles.visuallyHidden} htmlFor={onlineSearchId}>{strings.onlineSearchPlaceholder}</label>
+                <Search className={styles.searchIcon} size={17} aria-hidden="true" />
+                <input
+                  id={onlineSearchId}
+                  className={styles.search}
+                  type="search"
+                  value={onlineQuery}
+                  onChange={(event) => setOnlineQuery(event.currentTarget.value)}
+                  placeholder={strings.onlineSearchPlaceholder}
+                  autoComplete="off"
+                />
+              </div>
+              <button className={styles.actionButton} type="submit" disabled={onlineSearching || !onlineQuery.trim()}>
+                <Search size={15} aria-hidden="true" /> {strings.onlineSearchButton}
+              </button>
+            </form>
+            <div className={styles.filterBar} role="group" aria-label="Suggested searches">
+              {["Bach prelude", "Chopin nocturne", "Debussy", "Scott Joplin", "Beethoven sonata", "Mozart"].map((preset) => (
+                <button
+                  key={preset}
+                  type="button"
+                  className={`${styles.filterChip} ${onlineQuery === preset ? styles.filterChipActive : ""}`}
+                  onClick={() => {
+                    setOnlineQuery(preset);
+                    void runOnlineSearch(preset);
+                  }}
+                >
+                  {preset}
                 </button>
               ))}
             </div>
-          )}
+            <p className={styles.onlineHint}>{strings.onlineSearchHint}</p>
+          </div>
+        )}
 
-          <p className={styles.count} role="status" aria-live="polite" aria-atomic="true">
-            {filteredEntries.length === totalVisible ? `${totalVisible} melodies` : `${filteredEntries.length} of ${totalVisible} melodies`}
-          </p>
-        </div>
+        {libraryView !== "scales" && libraryView !== "online" && (
+          <div className={styles.controls}>
+            <div className={styles.searchRow}>
+              <div className={styles.searchBox}>
+                <label className={styles.visuallyHidden} htmlFor={searchId}>Search melodies</label>
+                <Search className={styles.searchIcon} size={17} aria-hidden="true" />
+                <input id={searchId} className={styles.search} type="search" value={query} onChange={(event) => updatePreferences({ query: event.currentTarget.value })} placeholder={dict.melodies.searchPlaceholder} autoComplete="off" />
+              </div>
+              <div className={styles.sortBox}>
+                <ArrowUpDown className={styles.sortIcon} size={15} aria-hidden="true" />
+                <label className={styles.visuallyHidden} htmlFor={sortId}>{dict.melodies.difficulty}</label>
+                <select id={sortId} className={styles.sortSelect} value={sortBy} onChange={(event) => updatePreferences({ sortBy: event.currentTarget.value as SortOption })} aria-label="Sort melodies">
+                  <option value="title">{strings.sortTitle}</option>
+                  <option value="difficulty-asc">{dict.melodies.difficulty}: {strings.sortEasiest}</option>
+                  <option value="difficulty-desc">{dict.melodies.difficulty}: {strings.sortHardest}</option>
+                  <option value="duration-asc">{strings.sortDurationAsc}</option>
+                  <option value="duration-desc">{strings.sortDurationDesc}</option>
+                  <option value="date-added-desc">{strings.sortAdded}</option>
+                  <option value="date-added-asc">{strings.sortDateAddedAsc}</option>
+                </select>
+              </div>
+            </div>
 
-        {libraryView !== "builtin" && (
+            <div className={styles.filterBar} role="group" aria-label={dict.melodies.filterByTag}>
+              <button className={`${styles.filterChip} ${activeFilter === "all" ? styles.filterChipActive : ""}`} type="button" aria-pressed={activeFilter === "all"} onClick={() => updatePreferences({ activeFilter: "all" })}>
+                {dict.melodies.allTags} <span className={styles.chipCount}>({filterCounts.all})</span>
+              </button>
+              <button className={`${styles.filterChip} ${styles.chipFavourites} ${activeFilter === "favourites" ? styles.filterChipActive : ""}`} type="button" aria-pressed={activeFilter === "favourites"} onClick={() => updatePreferences({ activeFilter: activeFilter === "favourites" ? "all" : "favourites" })}>
+                <Star className={styles.chipFavouritesIcon} size={13} fill="currentColor" aria-hidden="true" /> {dict.melodies.favourites} <span className={styles.chipCount}>({filterCounts.favourites})</span>
+              </button>
+              <button className={`${styles.filterChip} ${recentOnly ? styles.filterChipActive : ""}`} type="button" aria-pressed={recentOnly} onClick={() => updatePreferences({ recentOnly: !recentOnly })}>
+                {strings.recent} <span className={styles.chipCount}>({filterCounts.recent})</span>
+              </button>
+              {showDifficultyFilters && (["Beginner", "Intermediate", "Advanced", "Virtuoso"] as const).map((tier) => (
+                <button key={tier} className={`${styles.filterChip} ${styles[`chip${tier}`]} ${activeFilter === tier ? styles.filterChipActive : ""}`} type="button" aria-pressed={activeFilter === tier} onClick={() => updatePreferences({ activeFilter: activeFilter === tier ? "all" : tier })}>
+                  {tier} <span className={styles.chipCount}>({filterCounts.tiers[tier] ?? 0})</span>
+                </button>
+              ))}
+            </div>
+
+            {categoryChoices.length > 0 && libraryView !== "builtin" && (
+              <div className={styles.categoryBar} role="group" aria-label={strings.category}>
+                <button className={`${styles.filterChip} ${categoryId === "all" ? styles.filterChipActive : ""}`} type="button" aria-pressed={categoryId === "all"} onClick={() => updatePreferences({ categoryId: "all" })}>
+                  {strings.allCategories} <span className={styles.chipCount}>({allCardEntries.filter((entry) => entry.categoryId !== null).length})</span>
+                </button>
+                {categoryChoices.map((category) => (
+                  <button key={category.id} className={`${styles.filterChip} ${categoryId === category.id ? styles.filterChipActive : ""}`} type="button" aria-pressed={categoryId === category.id} onClick={() => updatePreferences({ categoryId: categoryId === category.id ? "all" : category.id })}>
+                    {category.label} <span className={styles.chipCount}>({category.count})</span>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <p className={styles.count} role="status" aria-live="polite" aria-atomic="true">
+              {filteredEntries.length === totalVisible ? `${totalVisible} melodies` : `${filteredEntries.length} of ${totalVisible} melodies`}
+            </p>
+          </div>
+        )}
+
+        {(libraryView === "folder" || libraryView === "all") && (
           <div className={`${styles.dropZone} ${isDragging ? styles.dropZoneActive : ""}`} onDragEnter={(event) => { event.preventDefault(); dragDepthRef.current += 1; setIsDragging(true); }} onDragOver={(event) => event.preventDefault()} onDragLeave={(event) => { event.preventDefault(); dragDepthRef.current -= 1; if (dragDepthRef.current <= 0) { dragDepthRef.current = 0; setIsDragging(false); } }} onDrop={handleDrop}>
             <FolderOpen size={17} aria-hidden="true" /> {strings.dropFolder}
           </div>
         )}
 
         <div className={styles.results}>
-          {isScanning && (
-            <div className={styles.progress} role="status" aria-live="polite">
-              <span className={styles.spinner} aria-hidden="true" />
-              <span>{progressText || strings.indexing}</span>
-              <button className={styles.cancelButton} type="button" onClick={cancelScan}>{strings.cancelScan}</button>
-            </div>
-          )}
-          {currentCatalog?.state === "error" && libraryView !== "folder" && (
-            <div className={styles.error} role="alert"><p>{currentCatalog.message}</p><button className={styles.retry} type="button" onClick={() => setLoadAttempt((attempt) => attempt + 1)}><RefreshCw size={15} aria-hidden="true" /> {dict.common.retry}</button></div>
-          )}
-          {localError && libraryView !== "builtin" && <div className={styles.error} role="alert"><p>{localError || strings.localLoadError}</p><button className={styles.retry} type="button" onClick={() => void refreshLocalView()}><RefreshCw size={15} aria-hidden="true" /> {dict.common.retry}</button></div>}
           {actionError && <div className={styles.error} role="alert"><AlertCircle size={17} aria-hidden="true" /><p>{actionError}</p>{pickerFallbackAvailable && <button className={styles.retry} type="button" onClick={() => { fileIntentRef.current = "add"; folderInputRef.current?.click(); }}>{strings.unsupportedFolderPicker}</button>}</div>}
-          {scanSummary && (
-            <p className={styles.scanSummary} role="status" aria-live="polite">
-              {scanSummary.analyzedCount} indexed · {scanSummary.reusedCount} reused · {scanSummary.errorCount} errors
-            </p>
-          )}
-          {scanErrors.length > 0 && (
-            <details className={styles.scanErrors}>
-              <summary>{strings.scanErrors} ({scanErrors.length})</summary>
-              <ul>{scanErrors.map((error, index) => <li key={`${error.relativePath}:${index}`}><strong>{error.relativePath}</strong><span>{error.message}</span></li>)}</ul>
-            </details>
-          )}
-          {isLoadingSources && (
-            <p className={styles.message} role="status" aria-live="polite">{dict.common.loading}</p>
-          )}
-          {filteredEntries.length === 0 && sourcesReady && (
-            <p className={styles.message} role="status">{emptyMessage}</p>
-          )}
-          {filteredEntries.length > 0 && (
-            <ul className={styles.list} aria-label={dict.melodies.title}>
-              {filteredEntries.map((entry) => {
-                const isFavourite = favouriteIds.has(entry.id);
-                const isPreviewing = activePreviewKey === entry.key;
-                const isOpening = openingKey === entry.key || busy;
-                const duration = formatDuration(entry.durationSeconds);
+
+          {libraryView === "scales" && (
+            <ul className={styles.list} aria-label={strings.scalesTab}>
+              {generatedDrills.map((drill) => {
+                const key = `scales:${drill.id}`;
+                const isPreviewing = activePreviewKey === key;
+                const isOpening = openingKey === key || busy;
                 return (
-                  <li className={styles.row} key={entry.key}>
+                  <li className={styles.row} key={key}>
                     <div className={styles.itemCard}>
-                      <button className={styles.choice} type="button" aria-label={dict.melodies.openMelody === "Open melody" ? `Open ${entry.title}` : `${dict.melodies.openMelody} ${entry.title}`} title={dict.melodies.openMelody} disabled={isOpening || isScanning} onClick={() => entry.builtin ? void handleChooseBuiltin(entry.builtin) : entry.local ? void handleChooseLocal(entry.local) : undefined}>
+                      <button
+                        className={styles.choice}
+                        type="button"
+                        aria-label={`Open ${drill.title}`}
+                        title={dict.melodies.openMelody}
+                        disabled={isOpening}
+                        onClick={() => void handleChooseDrill(drill)}
+                      >
                         <span className={styles.choiceIcon} aria-hidden="true"><Music2 size={18} /></span>
                         <span className={styles.copy}>
-                          <span className={styles.name}>{entry.title}</span>
+                          <span className={styles.name}>{drill.title}</span>
                           <span className={styles.metaRow}>
-                            <span className={styles.meta}>{entry.location}</span>
+                            <span className={styles.meta}>{drill.subtitle}</span>
                             <span className={styles.metadata}>
-                              {duration ? <span>{duration}</span> : <span>{strings.unknownDuration}</span>}
-                              {entry.noteCount !== undefined && <span>{entry.noteCount} {strings.notes}</span>}
-                              <span className={`${styles.badge} ${tierBadgeClass(entry.difficultyTier)}`}>{entry.difficultyTier} · {dict.melodies.difficulty} {entry.difficultyScore.toFixed(1)}/10</span>
+                              <span>{drill.bpm} BPM</span>
+                              <span>{drill.notes.length} {strings.notes}</span>
+                              <span className={`${styles.badge} ${styles.badgeBeginner}`}>{drill.kind === "scale" ? (drill.handVariant ?? "scale") : `${drill.bars} bars`}</span>
                             </span>
                           </span>
                         </span>
                       </button>
-                      <button className={`${styles.previewButton} ${isPreviewing ? styles.previewButtonActive : ""}`} type="button" aria-label={`${isPreviewing ? strings.stopPreview : strings.preview}: ${entry.title}`} title={isPreviewing ? strings.stopPreview : strings.preview} aria-pressed={isPreviewing} onClick={() => void togglePreview(entry)} disabled={busy || isScanning}>
+                      <button
+                        className={`${styles.previewButton} ${isPreviewing ? styles.previewButtonActive : ""}`}
+                        type="button"
+                        aria-label={`${isPreviewing ? strings.stopPreview : strings.preview}: ${drill.title}`}
+                        title={isPreviewing ? strings.stopPreview : strings.preview}
+                        aria-pressed={isPreviewing}
+                        onClick={() => void togglePreviewDrill(drill)}
+                        disabled={busy}
+                      >
                         {isPreviewing ? <Square size={15} fill="currentColor" aria-hidden="true" /> : <Play size={16} fill="currentColor" aria-hidden="true" />}
-                      </button>
-                      <button className={`${styles.favouriteButton} ${isFavourite ? styles.favouriteButtonActive : ""}`} type="button" aria-label={isFavourite ? `${dict.melodies.removeFromFavourites}: ${entry.title}` : `${dict.melodies.addToFavourites}: ${entry.title}`} title={isFavourite ? dict.melodies.removeFromFavourites : dict.melodies.addToFavourites} aria-pressed={isFavourite} onClick={() => toggleFavouriteMelody(entry.id)}>
-                        <Star size={18} fill={isFavourite ? "currentColor" : "none"} strokeWidth={isFavourite ? 1.5 : 2} aria-hidden="true" />
                       </button>
                     </div>
                   </li>
                 );
               })}
             </ul>
+          )}
+
+          {libraryView === "online" && (
+            <>
+              {onlineSearching && (
+                <div className={styles.progress} role="status" aria-live="polite">
+                  <span className={styles.spinner} aria-hidden="true" />
+                  <span>{strings.onlineSearching}</span>
+                </div>
+              )}
+              {!onlineSearching && onlineSearchedOnce && onlineResults.length === 0 && (
+                <p className={styles.message} role="status">{strings.onlineNoResults}</p>
+              )}
+              {onlineResults.length > 0 && (
+                <ul className={styles.list} aria-label={strings.onlineTab}>
+                  {onlineResults.map((item) => {
+                    const key = `online:${item.id}`;
+                    const isPreviewing = activePreviewKey === key;
+                    const isOpening = openingKey === key || busy;
+                    return (
+                      <li className={styles.row} key={key}>
+                        <div className={styles.itemCard}>
+                          <button
+                            className={styles.choice}
+                            type="button"
+                            aria-label={`Open ${item.title}`}
+                            title={dict.melodies.openMelody}
+                            disabled={isOpening}
+                            onClick={() => void handleChooseOnline(item)}
+                          >
+                            <span className={styles.choiceIcon} aria-hidden="true"><Music2 size={18} /></span>
+                            <span className={styles.copy}>
+                              <span className={styles.name}>{item.title}</span>
+                              <span className={styles.metaRow}>
+                                <span className={styles.meta}>{item.artist ? `${item.artist} · ` : ""}{item.attribution}</span>
+                                <span className={styles.metadata}>
+                                  <span className={`${styles.badge} ${styles.badgeBeginner}`}>{item.license}</span>
+                                  <span className={`${styles.badge} ${styles.badgeNeutral}`}>{item.source}</span>
+                                </span>
+                              </span>
+                            </span>
+                          </button>
+                          <a
+                            className={styles.externalLink}
+                            href={item.sourceUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            title={strings.openSourcePage}
+                          >
+                            ↗
+                          </a>
+                          <button
+                            className={`${styles.previewButton} ${isPreviewing ? styles.previewButtonActive : ""}`}
+                            type="button"
+                            aria-label={`${isPreviewing ? strings.stopPreview : strings.preview}: ${item.title}`}
+                            title={isPreviewing ? strings.stopPreview : strings.preview}
+                            aria-pressed={isPreviewing}
+                            onClick={() => void togglePreviewOnline(item)}
+                            disabled={busy}
+                          >
+                            {isPreviewing ? <Square size={15} fill="currentColor" aria-hidden="true" /> : <Play size={16} fill="currentColor" aria-hidden="true" />}
+                          </button>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </>
+          )}
+
+          {libraryView !== "scales" && libraryView !== "online" && (
+            <>
+              {isScanning && (
+                <div className={styles.progress} role="status" aria-live="polite">
+                  <span className={styles.spinner} aria-hidden="true" />
+                  <span>{progressText || strings.indexing}</span>
+                  <button className={styles.cancelButton} type="button" onClick={cancelScan}>{strings.cancelScan}</button>
+                </div>
+              )}
+              {currentCatalog?.state === "error" && libraryView !== "folder" && (
+                <div className={styles.error} role="alert"><p>{currentCatalog.message}</p><button className={styles.retry} type="button" onClick={() => setLoadAttempt((attempt) => attempt + 1)}><RefreshCw size={15} aria-hidden="true" /> {dict.common.retry}</button></div>
+              )}
+              {localError && libraryView !== "builtin" && <div className={styles.error} role="alert"><p>{localError || strings.localLoadError}</p><button className={styles.retry} type="button" onClick={() => void refreshLocalView()}><RefreshCw size={15} aria-hidden="true" /> {dict.common.retry}</button></div>}
+              {scanSummary && (
+                <p className={styles.scanSummary} role="status" aria-live="polite">
+                  {scanSummary.analyzedCount} indexed · {scanSummary.reusedCount} reused · {scanSummary.errorCount} errors
+                </p>
+              )}
+              {scanErrors.length > 0 && (
+                <details className={styles.scanErrors}>
+                  <summary>{strings.scanErrors} ({scanErrors.length})</summary>
+                  <ul>{scanErrors.map((error, index) => <li key={`${error.relativePath}:${index}`}><strong>{error.relativePath}</strong><span>{error.message}</span></li>)}</ul>
+                </details>
+              )}
+              {isLoadingSources && (
+                <p className={styles.message} role="status" aria-live="polite">{dict.common.loading}</p>
+              )}
+              {filteredEntries.length === 0 && sourcesReady && (
+                <p className={styles.message} role="status">{emptyMessage}</p>
+              )}
+              {filteredEntries.length > 0 && (
+                <ul className={styles.list} aria-label={dict.melodies.title}>
+                  {filteredEntries.map((entry) => {
+                    const isFavourite = favouriteIds.has(entry.id);
+                    const isPreviewing = activePreviewKey === entry.key;
+                    const isOpening = openingKey === entry.key || busy;
+                    const duration = formatDuration(entry.durationSeconds);
+                    return (
+                      <li className={styles.row} key={entry.key}>
+                        <div className={styles.itemCard}>
+                          <button className={styles.choice} type="button" aria-label={dict.melodies.openMelody === "Open melody" ? `Open ${entry.title}` : `${dict.melodies.openMelody} ${entry.title}`} title={dict.melodies.openMelody} disabled={isOpening || isScanning} onClick={() => entry.builtin ? void handleChooseBuiltin(entry.builtin) : entry.local ? void handleChooseLocal(entry.local) : undefined}>
+                            <span className={styles.choiceIcon} aria-hidden="true"><Music2 size={18} /></span>
+                            <span className={styles.copy}>
+                              <span className={styles.name}>{entry.title}</span>
+                              <span className={styles.metaRow}>
+                                <span className={styles.meta}>{entry.location}</span>
+                                <span className={styles.metadata}>
+                                  {duration ? <span>{duration}</span> : <span>{strings.unknownDuration}</span>}
+                                  {entry.noteCount !== undefined && <span>{entry.noteCount} {strings.notes}</span>}
+                                  <span className={`${styles.badge} ${tierBadgeClass(entry.difficultyTier)}`}>{entry.difficultyTier} · {dict.melodies.difficulty} {entry.difficultyScore.toFixed(1)}/10</span>
+                                </span>
+                              </span>
+                            </span>
+                          </button>
+                          <button className={`${styles.previewButton} ${isPreviewing ? styles.previewButtonActive : ""}`} type="button" aria-label={`${isPreviewing ? strings.stopPreview : strings.preview}: ${entry.title}`} title={isPreviewing ? strings.stopPreview : strings.preview} aria-pressed={isPreviewing} onClick={() => void togglePreview(entry)} disabled={busy || isScanning}>
+                            {isPreviewing ? <Square size={15} fill="currentColor" aria-hidden="true" /> : <Play size={16} fill="currentColor" aria-hidden="true" />}
+                          </button>
+                          <button className={`${styles.favouriteButton} ${isFavourite ? styles.favouriteButtonActive : ""}`} type="button" aria-label={isFavourite ? `${dict.melodies.removeFromFavourites}: ${entry.title}` : `${dict.melodies.addToFavourites}: ${entry.title}`} title={isFavourite ? dict.melodies.removeFromFavourites : dict.melodies.addToFavourites} aria-pressed={isFavourite} onClick={() => toggleFavouriteMelody(entry.id)}>
+                            <Star size={18} fill={isFavourite ? "currentColor" : "none"} strokeWidth={isFavourite ? 1.5 : 2} aria-hidden="true" />
+                          </button>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </>
           )}
           {busy && <p className={styles.opening} role="status" aria-live="polite">{dict.melodies.openMelody}…</p>}
         </div>

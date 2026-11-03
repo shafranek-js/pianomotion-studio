@@ -104,6 +104,9 @@ import { buildRecoverySnapshot } from "./recoverySnapshot";
 import { fingeredMidiExportStatus } from "./exportStatus";
 import { ExportOperationScope, runScopedExport } from "./exportScope";
 import { playbackBlocker, type PlaybackBlocker } from "./playbackReadiness";
+import { analyzePieceHarmony } from "../harmony/harmonyAnalyzer";
+import { ChordRibbon } from "../harmony/ChordRibbon";
+import { playMetronomeClick } from "../audio/metronomeAudio";
 
 export interface PianoPlayerProps {
   result: M1AnalyzeMidiResult;
@@ -2970,11 +2973,106 @@ export function PianoPlayer({
     sceneRef.current?.setCamera3DPreset(preset);
   }, []);
 
+  const [chordsEnabled, setChordsEnabled] = useState(true);
+  const [countInEnabled, setCountInEnabled] = useState(false);
+  const [metronomeEnabled, setMetronomeEnabled] = useState(false);
+  const [countInBeat, setCountInBeat] = useState<number | null>(null);
+  const countInTimerRef = useRef<number | null>(null);
+  const lastMetronomeBeatRef = useRef<number | null>(null);
+
+  const firstTempoMpqn = document?.tempoMap?.[0]?.microsecondsPerQuarterNote;
+  const pieceBpm = firstTempoMpqn ? Math.max(20, Math.min(300, Math.round(60_000_000 / firstTempoMpqn))) : 120;
+  const pieceBeatsPerBar = 4;
+  const pieceHarmony = useMemo(
+    () => analyzePieceHarmony(document?.notes ?? [], { bpm: pieceBpm, beatsPerBar: pieceBeatsPerBar }),
+    [document?.notes, pieceBpm, pieceBeatsPerBar],
+  );
+  const firstNoteSeconds = useMemo(() => {
+    if (!document?.notes.length) return 0;
+    return Math.min(...document.notes.map((n) => n.startSeconds));
+  }, [document?.notes]);
+  const barDurationSeconds = (60 / pieceBpm) * pieceBeatsPerBar;
+  const currentBarNumber = Math.max(
+    1,
+    Math.min(pieceHarmony.totalBars || 1, Math.floor(Math.max(0, currentTime) / barDurationSeconds) + 1),
+  );
+
+  const cancelCountIn = useCallback(() => {
+    if (countInTimerRef.current !== null) {
+      window.clearInterval(countInTimerRef.current);
+      countInTimerRef.current = null;
+    }
+    setCountInBeat(null);
+  }, []);
+
+  useEffect(() => () => cancelCountIn(), [cancelCountIn]);
+
+  useEffect(() => {
+    if (!isPlaying || !metronomeEnabled || currentTime < 0) {
+      lastMetronomeBeatRef.current = null;
+      return;
+    }
+    const beatIndex = Math.floor(currentTime / (60 / pieceBpm));
+    if (beatIndex !== lastMetronomeBeatRef.current) {
+      lastMetronomeBeatRef.current = beatIndex;
+      playMetronomeClick({ accent: beatIndex % pieceBeatsPerBar === 0, volume: volume * 0.35 });
+    }
+  }, [isPlaying, metronomeEnabled, currentTime, pieceBpm, pieceBeatsPerBar, volume]);
+
+  const handleTogglePlayWithCountIn = useCallback(() => {
+    if (countInBeat !== null) {
+      cancelCountIn();
+      return;
+    }
+    if (!isPlaying && !isBuffering && countInEnabled) {
+      let beat = 1;
+      setCountInBeat(beat);
+      playMetronomeClick({ accent: true, volume: volume * 0.35 });
+      const beatIntervalMs = Math.max(120, Math.round((60000 / pieceBpm) / Math.max(0.25, speed)));
+      countInTimerRef.current = window.setInterval(() => {
+        beat += 1;
+        if (beat <= pieceBeatsPerBar) {
+          setCountInBeat(beat);
+          playMetronomeClick({ accent: false, volume: volume * 0.35 });
+        } else {
+          cancelCountIn();
+          void togglePlay();
+        }
+      }, beatIntervalMs);
+      return;
+    }
+    void togglePlay();
+  }, [countInBeat, cancelCountIn, isPlaying, isBuffering, countInEnabled, volume, pieceBpm, speed, pieceBeatsPerBar, togglePlay]);
+
+  const handleFirstNote = useCallback(() => {
+    cancelCountIn();
+    handleSeek(firstNoteSeconds);
+  }, [cancelCountIn, handleSeek, firstNoteSeconds]);
+
+  const handlePrevBar = useCallback(() => {
+    cancelCountIn();
+    const targetBar = Math.max(1, currentBarNumber - 1);
+    handleSeek((targetBar - 1) * barDurationSeconds);
+  }, [cancelCountIn, currentBarNumber, barDurationSeconds, handleSeek]);
+
+  const handleNextBar = useCallback(() => {
+    cancelCountIn();
+    const targetBar = Math.min(pieceHarmony.totalBars || 1, currentBarNumber + 1);
+    handleSeek((targetBar - 1) * barDurationSeconds);
+  }, [cancelCountIn, pieceHarmony.totalBars, currentBarNumber, barDurationSeconds, handleSeek]);
+
   const scene = <div id="piano-canvas-container" ref={containerRef} className="piano-canvas-container" data-testid="piano-canvas" />;
   const workspace = ({ effectiveView }: { effectiveView: StudioView; focusMode: boolean }) => (
     <StudioWorkspace
       viewMode={effectiveView}
       scene={scene}
+      chordRibbon={chordsEnabled ? (
+        <ChordRibbon
+          harmony={pieceHarmony}
+          currentTime={currentTime}
+          onSeek={handleSeek}
+        />
+      ) : undefined}
       editorState={editorState}
       editorViewTime={editorViewTime}
       transportTime={currentTime}
@@ -3027,13 +3125,25 @@ export function PianoPlayer({
       leadInSeconds={settings.leadInSeconds}
       speed={speed}
       volume={volume}
-      onTogglePlay={() => { void togglePlay(); }}
-      onStop={handleStop}
-      onSeek={handleSeek}
+      onTogglePlay={handleTogglePlayWithCountIn}
+      onStop={() => { cancelCountIn(); handleStop(); }}
+      onSeek={(t) => { cancelCountIn(); handleSeek(t); }}
       onSpeedChange={handleSpeedChange}
       onVolumeChange={handleVolumeChange}
       disabled={transportBlocker === "reading" || transportBlocker === "analysis" || poseEditActive}
       playDisabled={transportBlocker === "audio" || poseEditActive}
+      countInBeat={countInBeat}
+      onFirstNote={handleFirstNote}
+      onPrevBar={handlePrevBar}
+      onNextBar={handleNextBar}
+      currentBar={currentBarNumber}
+      totalBars={pieceHarmony.totalBars}
+      countInEnabled={countInEnabled}
+      onToggleCountIn={() => setCountInEnabled((v) => !v)}
+      metronomeEnabled={metronomeEnabled}
+      onToggleMetronome={() => setMetronomeEnabled((v) => !v)}
+      chordsEnabled={chordsEnabled}
+      onToggleChords={() => setChordsEnabled((v) => !v)}
     />
   );
 

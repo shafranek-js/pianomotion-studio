@@ -31,7 +31,7 @@ test("six responsive sizes preserve one scene, all keys, contextual tools and pa
   await page.goto("/?empty=true");
   for (const size of sizes) {
     await page.setViewportSize(size);
-    await expect(page.getByRole("button",{name:"Open MIDI",exact:true})).toBeInViewport();
+    await expect(page.getByRole("button",{name:"Open melody file",exact:true})).toBeInViewport();
     expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
     await page.screenshot({path:info.outputPath(`${size.width}x${size.height}-empty.png`)});
   }

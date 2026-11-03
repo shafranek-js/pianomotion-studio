@@ -8,6 +8,8 @@ export interface StudioWorkspaceProps {
   viewMode: StudioView;
   /** The single persistent Pixi/Three scene containing notes, piano, and hands. */
   scene: ReactNode;
+  /** Optional chord timeline ribbon rendered above the scene. */
+  chordRibbon?: ReactNode;
   /** Persistent editor state host, kept mounted without adding a visible row. */
   editorState?: ReactNode;
   editorViewTime?: number | null;
@@ -31,6 +33,7 @@ function formatAnchorTime(seconds: number): string {
 export function StudioWorkspace({
   viewMode,
   scene,
+  chordRibbon,
   editorState,
   editorViewTime = null,
   transportTime = 0,
@@ -50,6 +53,7 @@ export function StudioWorkspace({
       data-testid="studio-workspace"
       data-view={viewMode}
     >
+      {chordRibbon}
       {editorState && (
         <div
           className="studio-workspace-layout__editor-state"

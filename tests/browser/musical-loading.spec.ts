@@ -27,7 +27,7 @@ test("cold startup has an honest musical staff and an English-only pianist, then
   const progress = musical.getByRole("progressbar");
   await expect(progress).not.toHaveAttribute("aria-valuenow", /.+/);
   await page.screenshot({path: info.outputPath("musical-loading-startup.png")});
-  await expect(page.getByRole("button", {name: "Open MIDI", exact: true})).toBeVisible();
+  await expect(page.getByRole("button", {name: "Open melody file", exact: true})).toBeVisible();
   await expect(musical).toHaveCount(0, {timeout: 25000});
   expect(errors).toEqual([]);
 });

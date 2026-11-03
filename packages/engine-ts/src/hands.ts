@@ -810,7 +810,7 @@ export class HandAnimator {
     }
     so = Object.fromEntries(Array.from(pyIter(this.groups)).flatMap(([_0, ns]: any) => Array.from(pyIter(ns)).map((n: any) => [pyId(n), n.start])));
     this.start_of = so;
-    eo = Object.fromEntries(Array.from(pyIter(this.groups)).flatMap(([_0, ns]: any) => Array.from(pyIter(ns)).map((n: any) => [pyId(n), n.end])));
+    eo = Object.fromEntries(Array.from(pyIter(this.groups)).flatMap(([_0, ns]: any) => Array.from(pyIter(ns)).map((n: any) => [pyId(n), n.finger_end ?? n.end])));
     this.end_of = eo;
     this.rolled = 0;
     this._ref_kb = null;

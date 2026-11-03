@@ -1654,7 +1654,10 @@ export function plan_fingering<T extends NoteLike = NoteLike>(
       seen.add(key);
       const nh: HeldEntry[] = [
         ...held_now,
-        ...ns.map((n, idx) => [n.end, ps[idx]!, st[idx]!] as HeldEntry),
+        ...ns.map(
+          (n, idx) =>
+            [((n as { finger_end?: number }).finger_end ?? n.end), ps[idx]!, st[idx]!] as HeldEntry,
+        ),
       ];
       nextBeam.push({ cost: c, pf: st, held: nh, bi, si });
       if (nextBeam.length >= beam) {

@@ -9,7 +9,7 @@ export type SortOption =
   | "duration-desc"
   | "date-added-asc"
   | "date-added-desc";
-export type LibraryView = "builtin" | "folder" | "all";
+export type LibraryView = "builtin" | "folder" | "all" | "scales" | "online";
 
 export interface BuiltinMelodiesPreferences {
   query: string;
@@ -24,7 +24,7 @@ const MELODY_FILTERS: readonly MelodyFilter[] = ["all", "favourites", "Beginner"
 const SORT_OPTIONS: readonly SortOption[] = [
   "title", "difficulty-asc", "difficulty-desc", "duration-asc", "duration-desc", "date-added-asc", "date-added-desc",
 ];
-const LIBRARY_VIEWS: readonly LibraryView[] = ["builtin", "folder", "all"];
+const LIBRARY_VIEWS: readonly LibraryView[] = ["builtin", "folder", "all", "scales", "online"];
 
 function defaults(): BuiltinMelodiesPreferences {
   return { query: "", activeFilter: "all", sortBy: "title", libraryView: "builtin", categoryId: "all", recentOnly: false };

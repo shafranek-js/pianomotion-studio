@@ -1,4 +1,5 @@
-import type { ReactNode, ChangeEvent } from "react";
+import { useMemo, type ReactNode, type ChangeEvent } from "react";
+import { checkPianoPlayability } from "@handthesia/engine-ts";
 import type { M1AnalyzeMidiResult, M1KeyStyle } from "@handthesia/contracts";
 import type { PianistProfile } from "../profiles";
 import type { AppSettings, CalculationEngine, SkinStyleSetting } from "../settings";
@@ -48,6 +49,10 @@ export function StudioInspector(props: StudioInspectorProps) {
   const { tab, result, profile, settings, keyStyle, audioRecording, audioOffset, sourceName, busy } = props;
   const { t, dict } = useI18n();
   const stageAppearance = normalizeStageAppearance(settings.stageAppearance);
+  const playabilitySummary = useMemo(
+    () => (result?.document ? checkPianoPlayability(result.document) : null),
+    [result?.document],
+  );
 
   if (tab === "scene") return (
     <section className={styles.content} aria-label={dict.inspector.sceneSettings}>
@@ -264,6 +269,55 @@ export function StudioInspector(props: StudioInspectorProps) {
         diagnostics={props.planDiagnostics ?? []}
         onSelectNote={props.onSelectNote}
       />}
+      {playabilitySummary && (
+        <div className={styles.playabilityCard} data-testid="inspector-playability-card">
+          <div className={styles.playabilityHeader}>
+            <strong>Playability &amp; Hand Split</strong>
+            <span
+              className={styles.playabilityBadge}
+              data-status={
+                playabilitySummary.unplayable > 0
+                  ? "error"
+                  : playabilitySummary.warnings > 0 || playabilitySummary.moved > 0
+                    ? "warning"
+                    : "ok"
+              }
+            >
+              {playabilitySummary.unplayable > 0
+                ? `${playabilitySummary.unplayable} unplayable`
+                : playabilitySummary.moved > 0
+                  ? `${playabilitySummary.moved} repaired`
+                  : playabilitySummary.warnings > 0
+                    ? `${playabilitySummary.warnings} warning${playabilitySummary.warnings === 1 ? "" : "s"}`
+                    : "Playable"}
+            </span>
+          </div>
+          {playabilitySummary.issues.length > 0 && (
+            <ul className={styles.diagnostics}>
+              {playabilitySummary.issues.slice(0, 12).map((issue, idx) => (
+                <li
+                  key={`${issue.kind}-${issue.timeSeconds}-${idx}`}
+                  data-severity={issue.kind === "unplayable" ? "error" : "warning"}
+                >
+                  <strong>
+                    {issue.kind.toUpperCase()} · {formatTime(issue.timeSeconds)}
+                  </strong>
+                  <span>{issue.message}</span>
+                  {issue.noteIds && issue.noteIds.length > 0 && props.onSelectNote && (
+                    <button
+                      type="button"
+                      className={styles.secondaryButton}
+                      onClick={() => props.onSelectNote?.(issue.noteIds![0]!)}
+                    >
+                      Select note
+                    </button>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
       <DiagnosticLogControls appliedProfile={result?.profile ?? null} />
       <details className={styles.developer}>
         <summary>{dict.inspector.developerTools}</summary>

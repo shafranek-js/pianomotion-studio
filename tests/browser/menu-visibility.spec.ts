@@ -11,7 +11,7 @@ type MenuDefinition = {
 const fileMenu: MenuDefinition = {
   label: "File",
   items: [
-    { name: "Open MIDI...", enabled: true },
+    { name: "Open melody file...", enabled: true },
     { name: "Melody library…", enabled: true },
     { name: "Open project package…", enabled: true },
     { name: "Open saved project…", enabled: true },
@@ -216,11 +216,11 @@ test("empty File and Export menus stay fully painted and keep keyboard and outsi
   const fileTrigger = page.getByTestId("studio-header").getByRole("button", { name: "File", exact: true });
   await fileTrigger.click();
   const filePopover = page.getByRole("menu", { name: "File", exact: true });
-  await expect(filePopover.getByRole("menuitem", { name: "Open MIDI...", exact: true })).toBeFocused();
+  await expect(filePopover.getByRole("menuitem", { name: "Open melody file...", exact: true })).toBeFocused();
   await page.keyboard.press("End");
   await expect(filePopover.getByRole("menuitem", { name: "Open saved project…", exact: true })).toBeFocused();
   await page.keyboard.press("Home");
-  await expect(filePopover.getByRole("menuitem", { name: "Open MIDI...", exact: true })).toBeFocused();
+  await expect(filePopover.getByRole("menuitem", { name: "Open melody file...", exact: true })).toBeFocused();
   await page.keyboard.press("ArrowDown");
   await expect(filePopover.getByRole("menuitem", { name: "Melody library…", exact: true })).toBeFocused();
   await page.keyboard.press("Escape");

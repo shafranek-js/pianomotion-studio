@@ -65,7 +65,7 @@ test("workspace rail opens real tools and stays usable from empty desktop throug
   await expect(rail).toHaveAttribute("aria-label", "Workspace tools");
 
   await configureStudioTestOutput(page);
-  const importMidiButton = rail.getByRole("button", { name: "Open MIDI...", exact: true });
+  const importMidiButton = rail.getByRole("button", { name: "Open melody file...", exact: true });
   const chooserPromise = page.waitForEvent("filechooser");
   await importMidiButton.click();
   const chooser = await chooserPromise;
@@ -108,7 +108,7 @@ test("workspace rail opens real tools and stays usable from empty desktop throug
   const shortDesktopButtons = [
     rail.getByRole("button", { name: "Browse melody library", exact: true }),
     rail.getByRole("button", { name: "Projects", exact: true }),
-    rail.getByRole("button", { name: "Open MIDI...", exact: true }),
+    rail.getByRole("button", { name: "Open melody file...", exact: true }),
     rail.getByRole("button", { name: "Inspector", exact: true }),
     emptyAudioButton,
     rail.getByRole("button", { name: "Focus mode", exact: true }),
@@ -123,7 +123,7 @@ test("workspace rail opens real tools and stays usable from empty desktop throug
 
   const mobileLibrary = rail.getByRole("button", { name: "Browse melody library", exact: true });
   const projectsButton = rail.getByRole("button", { name: "Projects", exact: true });
-  const mobileImport = rail.getByRole("button", { name: "Open MIDI...", exact: true });
+  const mobileImport = rail.getByRole("button", { name: "Open melody file...", exact: true });
   const inspectorButton = rail.getByRole("button", { name: "Inspector", exact: true });
   const mobileAudio = rail.getByRole("button", { name: "Open audio recording settings", exact: true });
   const focusButton = rail.getByRole("button", { name: "Focus mode", exact: true });
