@@ -471,4 +471,57 @@ describe("PianoScene3D fixed viewport", () => {
     expect(isKeyPressed(scene, 60)).toBe(true);
     scene.destroy();
   });
+
+  it("releases the final key and returns hands to the starting pose when transport clamps at the final note end", () => {
+    const scene = makeScene("rigged-experimental");
+    try {
+      scene.setNotes([sourceNote({ startSeconds: 2, endSeconds: 3, hand: "left", finger: 1, pitch: 60 })]);
+      const plan = emptyPerformancePlan();
+      plan.events = [
+        { type: "press", noteId: "n1", pitch: 60, velocity: 90, timeSeconds: 2 },
+        { type: "release", noteId: "n1", timeSeconds: 3 },
+      ];
+      scene.setPerformancePlan(plan);
+      const startPose: MotionPose = {
+        hand: "left",
+        transportTimeSeconds: 0,
+        layerOrder: 0,
+        bones: [{ a: [10, 0, 0], b: [11, 0, 0], kind: "forearm" }],
+        joints: [{ point: [10, 0, 0], kind: "wrist" }],
+      };
+      const endPose: MotionPose = {
+        hand: "left",
+        transportTimeSeconds: 3,
+        layerOrder: 0,
+        bones: [{ a: [24, 0, 0], b: [25, 0, 0], kind: "forearm" }],
+        joints: [{ point: [24, 0, 0], kind: "wrist" }],
+      };
+      scene.setMotionPlan({
+        ...motionPlan(),
+        poses: [startPose, endPose],
+      });
+      const handUpdate = leftHandUpdate(scene);
+      const fallingNotes3D = (scene as unknown as { fallingNotes3D: FallingNotes3DView }).fallingNotes3D;
+
+      scene.update(2.5);
+      expect(isKeyPressed(scene, 60)).toBe(true);
+      expect(fallingNotes3D.instancedMesh.count).toBe(1);
+
+      scene.update(3.0);
+      expect(isKeyPressed(scene, 60)).toBe(false);
+      expect(fallingNotes3D.instancedMesh.count).toBe(0);
+      expect(handUpdate).toHaveBeenLastCalledWith(
+        startPose,
+        expect.anything(),
+        expect.anything(),
+        1,
+        expect.arrayContaining([expect.objectContaining({ finger: 1, pitch: null })]),
+        undefined,
+        3.0,
+        2,
+      );
+    } finally {
+      scene.destroy();
+    }
+  });
 });

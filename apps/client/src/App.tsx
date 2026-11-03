@@ -8,6 +8,8 @@ import { StudioDialog } from "./studio/StudioDialog";
 import { ProjectsPanel } from "./studio/ProjectsPanel";
 import { BuiltinMelodiesDialog } from "./melodies/BuiltinMelodiesDialog";
 import { loadBuiltinMelodies, loadBuiltinMelodyBytes, lookupBuiltinMelody, type BuiltinMelodyEntry } from "./melodies/catalog";
+import type { LocalFolderEntry } from "./melodies/localFolderLibrary";
+import { recordRecentMelody } from "./melodies/libraryRecents";
 import { normalizeStudioView, type StudioStatus, type StudioView } from "./studio/types";
 import { ProfileModal } from "./profiles";
 import { SettingsModal } from "./settings";
@@ -53,6 +55,7 @@ type ActiveSession = {
   savedProject?: SavedProject;
   unsaved: boolean;
   analysisWorker: Worker;
+  libraryMelodyId?: string;
 };
 type SaveHandler = SaveSession;
 
@@ -103,6 +106,7 @@ export default function App() {
     if (blocker === null) setHasPlayedReadySession(true);
   }, []);
   const [builtinMelodiesOpen, setBuiltinMelodiesOpen] = useState(false);
+  const [libraryTransitionPending, setLibraryTransitionPending] = useState(false);
   const openBuiltinMelodies = useCallback(() => setBuiltinMelodiesOpen(true), []);
   const [dirty, setDirty] = useState(false);
   const [pendingCandidate, setPendingCandidate] = useState<ActiveSession | null>(null);
@@ -420,6 +424,7 @@ export default function App() {
   }, []);
 
   const commitCandidate = useCallback((candidate: ActiveSession) => {
+    setLibraryTransitionPending(false);
     preparedRef.current = null;
     preparedGenerationRef.current = null;
     activeRef.current = candidate;
@@ -428,6 +433,7 @@ export default function App() {
     setFullScreenDialog(null);
     setViewMode(candidate.session ? normalizeStudioView(candidate.session.viewMode) : "performance");
     markDirty(candidate.unsaved);
+    if (candidate.libraryMelodyId) recordRecentMelody(candidate.libraryMelodyId);
     setPendingCandidate(null);
     setConfirmReplace(false);
     setStatus({ kind: candidate.unsaved ? "modified" : "saved", message: candidate.unsaved ? "Project opened. Save it to keep this version in your project list." : `Opened ${candidate.projectName}.` });
@@ -508,6 +514,7 @@ export default function App() {
       setStatus({ kind: "error", message: `${description} was not opened: ${message}` });
     } finally {
       if (lifecycle.isCurrent(operation)) {
+        if (!preparedRef.current) setLibraryTransitionPending(false);
         finishOpenOperation(operation);
       }
     }
@@ -543,6 +550,7 @@ export default function App() {
   }, [runCandidate]);
 
   const openBuiltinMelody = useCallback(async (entry: BuiltinMelodyEntry) => {
+    setLibraryTransitionPending(true);
     setBuiltinMelodiesOpen(false);
     await runCandidate(entry.title, async (signal, progress, runtimeEngineVersion) => {
       progress(`Loading ${entry.title}…`);
@@ -555,7 +563,23 @@ export default function App() {
         sourceContext, signal, onProgress: progress,
       });
       return { result, rawMidiBytes: midiBytes, sourceContext, session: null,
-        projectName: entry.title, unsaved: true, analysisWorker };
+        projectName: entry.title, unsaved: true, analysisWorker, libraryMelodyId: entry.id };
+    });
+  }, [runCandidate]);
+
+  const openLocalMelody = useCallback(async (entry: LocalFolderEntry, midiBytes: ArrayBuffer) => {
+    setLibraryTransitionPending(true);
+    setBuiltinMelodiesOpen(false);
+    await runCandidate(entry.title, async (signal, progress, runtimeEngineVersion) => {
+      const sourceContext: ProjectSourceContext = {
+        fixtureId: `local-${entry.id}`, keyStyle: getSettings().keyStyle,
+      };
+      const { result, analysisWorker } = await prepareSourceCandidate({
+        midiBytes, projectId: crypto.randomUUID(), revision: 0, engineVersion: runtimeEngineVersion,
+        sourceContext, signal, onProgress: progress,
+      });
+      return { result, rawMidiBytes: midiBytes, sourceContext, session: null,
+        projectName: entry.title, unsaved: true, analysisWorker, libraryMelodyId: entry.id };
     });
   }, [runCandidate]);
 
@@ -590,6 +614,7 @@ export default function App() {
   }, [engineVersion, fixtureManifest, runCandidate, beginOpenOperation, finishOpenOperation]);
 
   const cancelCandidate = useCallback(() => {
+    setLibraryTransitionPending(false);
     operationLifecycleRef.current.cancel();
     preparedRef.current?.analysisWorker.terminate();
     preparedRef.current = null;
@@ -641,6 +666,7 @@ export default function App() {
       await runSavedProject(project, undefined, operation);
     } catch (error) {
       if (operationLifecycleRef.current.isCurrent(operation)) {
+        setLibraryTransitionPending(false);
         setStatus({ kind: "error", message: "Saved project was not opened: " + errorMessage(error) });
         finishOpenOperation(operation);
       }
@@ -698,6 +724,7 @@ export default function App() {
       await runOpenPackageFile(file, undefined, operation);
     } catch (error) {
       if (operationLifecycleRef.current.isCurrent(operation)) {
+        setLibraryTransitionPending(false);
         setStatus({ kind: "error", message: "Project package was not opened: " + errorMessage(error) });
         finishOpenOperation(operation);
       }
@@ -720,6 +747,7 @@ export default function App() {
     const lifecycle = operationLifecycleRef.current;
     if (!candidate || candidateGeneration === null || candidateGeneration !== lifecycle.getGeneration() || preparedRef.current !== candidate) return;
     if (choice === "cancel") {
+      setLibraryTransitionPending(false);
       candidate.analysisWorker.terminate();
       preparedRef.current = null;
       preparedGenerationRef.current = null;
@@ -787,7 +815,7 @@ export default function App() {
 
   const dialogs = <>
     <BuiltinMelodiesDialog open={builtinMelodiesOpen} onClose={() => setBuiltinMelodiesOpen(false)}
-      onChoose={entry => { void openBuiltinMelody(entry); }} busy={busy || !engineVersion} />
+      onChoose={openBuiltinMelody} onChooseLocal={openLocalMelody} busy={busy || !engineVersion} />
     {confirmReplace && pendingCandidate && <StudioDialog
       title={dict.dialogs.unsavedTitle} titleId="replace-project-title"
       description={t("dialogs.unsavedDescription", { name: pendingCandidate.projectName })}
@@ -802,7 +830,7 @@ export default function App() {
     {legacyResolution && <StudioDialog
       title={dict.dialogs.legacyTitle} titleId="legacy-geometry-title"
       description={dict.dialogs.legacyDescription}
-      onClose={() => {setLegacyResolution(null); setLegacyKeyStyle(null);}}
+      onClose={() => {setLegacyResolution(null); setLegacyKeyStyle(null); setLibraryTransitionPending(false);}}
     >
         <fieldset>
           <legend>{dict.settings.keyStyle}</legend>
@@ -811,7 +839,7 @@ export default function App() {
         </fieldset>
         <div className="studio-confirm-actions">
           <button type="button" disabled={!legacyKeyStyle} onClick={continueLegacyOpen}>{dict.dialogs.verifyAndOpen}</button>
-          <button type="button" onClick={() => { setLegacyResolution(null); setLegacyKeyStyle(null); }}>{dict.common.cancel}</button>
+          <button type="button" onClick={() => { setLegacyResolution(null); setLegacyKeyStyle(null); setLibraryTransitionPending(false); }}>{dict.common.cancel}</button>
         </div>
     </StudioDialog>}
     {fullScreenDialog === "preferences" && <StudioDialog screen title={dict.header.preferences} description={dict.settings.title} onClose={() => setFullScreenDialog(null)}>
@@ -911,6 +939,7 @@ export default function App() {
       onPlaybackReadinessChange={handlePlaybackReadinessChange}
       onOpenMidi={() => midiInputRef.current?.click()}
       onOpenBuiltinMelodies={openBuiltinMelodies}
+      libraryOpen={builtinMelodiesOpen || libraryTransitionPending}
       onOpenPackage={() => projectInputRef.current?.click()}
       onOpenPreferences={() => setFullScreenDialog("preferences")}
       onOpenPianist={() => setFullScreenDialog("pianist")}

@@ -38,6 +38,9 @@ const DEFAULTS: BuiltinMelodiesPreferences = {
   query: "",
   activeFilter: "all",
   sortBy: "title",
+  libraryView: "builtin",
+  categoryId: "all",
+  recentOnly: false,
 };
 
 describe("built-in melody library preferences", () => {
@@ -45,8 +48,11 @@ describe("built-in melody library preferences", () => {
     const storage = new MemoryStorage();
     const preferences: BuiltinMelodiesPreferences = {
       query: "moonlight",
-      activeFilter: "Beginner",
-      sortBy: "difficulty-desc",
+      activeFilter: "Virtuoso",
+      sortBy: "duration-desc",
+      libraryView: "all",
+      categoryId: "Romantic",
+      recentOnly: true,
     };
 
     saveBuiltinMelodiesPreferences(preferences, storage);
@@ -83,6 +89,9 @@ describe("built-in melody library preferences", () => {
       query: "",
       activeFilter: "Beginner",
       sortBy: "title",
+      libraryView: "builtin",
+      categoryId: "all",
+      recentOnly: false,
     });
 
     storage.setItem(BUILTIN_MELODIES_PREFERENCES_STORAGE_KEY, JSON.stringify({
@@ -95,21 +104,43 @@ describe("built-in melody library preferences", () => {
       query: "",
       activeFilter: "all",
       sortBy: "difficulty-asc",
+      libraryView: "builtin",
+      categoryId: "all",
+      recentOnly: false,
     });
   });
 
   it("accepts every supported filter and sort enum, including saved defaults", () => {
     const storage = new MemoryStorage();
-    const filters = ["all", "favourites", "Beginner", "Intermediate", "Advanced"] as const;
-    const sorts = ["title", "difficulty-asc", "difficulty-desc"] as const;
+    const filters = ["all", "favourites", "Beginner", "Intermediate", "Advanced", "Virtuoso"] as const;
+    const sorts = ["title", "difficulty-asc", "difficulty-desc", "duration-asc", "duration-desc", "date-added-asc", "date-added-desc"] as const;
+    const views = ["builtin", "folder", "all"] as const;
 
     for (const activeFilter of filters) {
       for (const sortBy of sorts) {
-        const preferences = { query: "", activeFilter, sortBy };
-        saveBuiltinMelodiesPreferences(preferences, storage);
-        expect(loadBuiltinMelodiesPreferences(storage)).toEqual(preferences);
+        for (const libraryView of views) {
+          const preferences = { query: "", activeFilter, sortBy, libraryView, categoryId: "all", recentOnly: false };
+          saveBuiltinMelodiesPreferences(preferences, storage);
+          expect(loadBuiltinMelodiesPreferences(storage)).toEqual(preferences);
+        }
       }
     }
+  });
+
+  it("migrates the prior version-one object by filling the newly added library fields", () => {
+    const storage = new MemoryStorage();
+    storage.setItem(BUILTIN_MELODIES_PREFERENCES_STORAGE_KEY, JSON.stringify({
+      query: "old query",
+      activeFilter: "Advanced",
+      sortBy: "difficulty-asc",
+    }));
+
+    expect(loadBuiltinMelodiesPreferences(storage)).toEqual({
+      ...DEFAULTS,
+      query: "old query",
+      activeFilter: "Advanced",
+      sortBy: "difficulty-asc",
+    });
   });
 
   it("handles denied storage reads and writes without throwing", () => {
@@ -121,6 +152,9 @@ describe("built-in melody library preferences", () => {
       query: "",
       activeFilter: "all",
       sortBy: "title",
+      libraryView: "builtin",
+      categoryId: "all",
+      recentOnly: false,
     }, deniedWrites)).not.toThrow();
   });
 
@@ -129,7 +163,7 @@ describe("built-in melody library preferences", () => {
     const favouritesKey = "handthesia:favourite_melody_ids";
     storage.setItem(favouritesKey, '["melody-1"]');
 
-    saveBuiltinMelodiesPreferences({ query: "", activeFilter: "favourites", sortBy: "title" }, storage);
+    saveBuiltinMelodiesPreferences({ ...DEFAULTS, activeFilter: "favourites" }, storage);
 
     expect(BUILTIN_MELODIES_PREFERENCES_STORAGE_KEY).not.toBe(favouritesKey);
     expect(storage.getItem(favouritesKey)).toBe('["melody-1"]');

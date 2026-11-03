@@ -190,10 +190,15 @@ export async function prepareBuiltinMelodies({ sourceDir = DEFAULT_SOURCE_DIR, d
 
     let difficultyScore;
     let difficultyTier;
+    let durationSeconds;
+    let noteCount;
     const existing = existingByDigest.get(digest);
-    if (existing && typeof existing.difficultyScore === "number" && typeof existing.difficultyTier === "string") {
+    if (existing && typeof existing.difficultyScore === "number" && typeof existing.difficultyTier === "string" &&
+        Number.isFinite(existing.durationSeconds) && existing.durationSeconds >= 0 && Number.isSafeInteger(existing.noteCount) && existing.noteCount >= 0) {
       difficultyScore = existing.difficultyScore;
       difficultyTier = existing.difficultyTier;
+      durationSeconds = existing.durationSeconds;
+      noteCount = existing.noteCount;
     } else {
       const analysis = analyze_midi(new Uint8Array(bytes), {
         fixtureId: `builtin-${id}`,
@@ -207,6 +212,8 @@ export async function prepareBuiltinMelodies({ sourceDir = DEFAULT_SOURCE_DIR, d
       const diff = calculateDifficulty(analysis.document, analysis.fingeringPlan);
       difficultyScore = diff.overallScore;
       difficultyTier = diff.tier;
+      durationSeconds = analysis.document.durationSeconds;
+      noteCount = analysis.document.notes.length;
     }
 
     entries.push({
@@ -218,6 +225,8 @@ export async function prepareBuiltinMelodies({ sourceDir = DEFAULT_SOURCE_DIR, d
       byteLength: bytes.byteLength,
       difficultyScore,
       difficultyTier,
+      durationSeconds,
+      noteCount,
     });
     assets.set(assetPath, bytes);
     totalBytes += bytes.byteLength;

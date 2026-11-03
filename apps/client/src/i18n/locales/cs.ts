@@ -65,7 +65,7 @@ export const cs: TranslationDictionary = {
     documentation: "Dokumentace",
     openMidi: "Otevřít MIDI...",
     openPackage: "Otevřít balíček projektu...",
-    builtinMelodies: "Vestavěné skladby...",
+    builtinMelodies: "Knihovna skladeb...",
     projects: "Projekty",
     toggleProjects: "Přepnout panel projektů",
     toggleInspector: "Přepnout panel inspektora",

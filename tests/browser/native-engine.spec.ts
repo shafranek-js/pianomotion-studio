@@ -257,8 +257,8 @@ test("native TypeScript Worker loads, replans, streams real hand poses, and reta
   await preferences.getByRole("button", { name: "Done", exact: true }).click();
 
   await page.getByRole("button", { name: "File", exact: true }).click();
-  await page.getByRole("menuitem", { name: "Built-in melodies…", exact: true }).click();
-  const library = page.getByRole("dialog", { name: "Built-in melodies", exact: true });
+  await page.getByRole("menuitem", { name: "Melody library…", exact: true }).click();
+  const library = page.getByRole("dialog", { name: "Melody library", exact: true });
   await library.getByRole("searchbox", { name: "Search melodies" }).fill("Chopsticks");
   const nativeAnalyzeOffset = (await workerTrace(page)).length;
   await library.getByRole("button", { name: "Open Chopsticks", exact: true }).click();

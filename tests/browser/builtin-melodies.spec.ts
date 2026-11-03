@@ -3,8 +3,8 @@ import { configureStudioTestOutput, expectStudioCanvas, exportStudioPackage, loa
 
 async function openLibrary(page: Page) {
   await page.getByRole("button", { name: "File", exact: true }).click();
-  await page.getByRole("menuitem", { name: "Built-in melodies…", exact: true }).click();
-  const dialog = page.getByRole("dialog", { name: "Built-in melodies", exact: true });
+  await page.getByRole("menuitem", { name: "Melody library…", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Melody library", exact: true });
   await expect(dialog).toBeVisible();
   return dialog;
 }
@@ -23,8 +23,8 @@ test("built-in melody opens, plays, edits, saves and restores with exact source 
   await page.goto("/?empty=true");
   await expect(page.getByRole("button", { name: "Play demo song", exact: true })).toBeEnabled({ timeout: 30_000 });
   await configureStudioTestOutput(page);
-  await page.getByTestId("studio-tool-rail").getByRole("button", { name: "Browse built-in melodies", exact: true }).click();
-  const dialog = page.getByRole("dialog", { name: "Built-in melodies", exact: true });
+  await page.getByTestId("studio-tool-rail").getByRole("button", { name: "Browse melody library", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Melody library", exact: true });
   await expect(dialog.getByRole("list").getByRole("listitem")).toHaveCount(163);
   await dialog.getByRole("searchbox", { name: "Search melodies" }).fill("BRAHMS");
   await expect(dialog.getByRole("list").getByRole("listitem")).toHaveCount(1);
@@ -90,9 +90,9 @@ test("mobile catalog handles search, Escape, retry and damaged assets without re
     return manifestRequests === 1 ? route.fulfill({ status: 503, body: "Unavailable" }) : route.continue();
   });
   await page.getByRole("button", { name: "Projects", exact: true }).click();
-  const trigger = page.getByTestId("projects-panel").getByRole("button", { name: "Browse built-in melodies", exact: true });
+  const trigger = page.getByTestId("projects-panel").getByRole("button", { name: "Browse melody library", exact: true });
   await trigger.click();
-  const dialog = page.getByRole("dialog", { name: "Built-in melodies", exact: true });
+  const dialog = page.getByRole("dialog", { name: "Melody library", exact: true });
   await expect(dialog.getByRole("alert")).toContainText("Could not load built-in melodies");
   await dialog.getByRole("button", { name: "Retry", exact: true }).click();
   await expect(dialog.getByRole("list").getByRole("listitem")).toHaveCount(163);

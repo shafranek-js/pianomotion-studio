@@ -221,6 +221,7 @@ export class FallingNotes3DView {
     this.noteIndex.forEachOverlapping(currentTime, currentTime + maxTimeAhead, (note) => {
       if (instanceIdx >= MAX_VISIBLE_NOTES) return;
       const endSeconds = note.endSeconds;
+      if (endSeconds <= currentTime) return;
       const keyEntry = this.keyboard3D.keysByPitch.get(note.pitch);
       const laneBounds = this.laneBoundsByPitch.get(note.pitch);
       if (!keyEntry || !laneBounds) return;

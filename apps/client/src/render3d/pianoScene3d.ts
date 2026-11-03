@@ -342,6 +342,8 @@ export class PianoScene3D {
   private handUpdateSampleCount = 0;
   private handUpdateSampleCursor = 0;
   private handUpdateFramesTotal = 0;
+  private lastHandUpdateTimeSeconds: number | null = null;
+  private songEndReachedAtMs: number | null = null;
   private readonly diagnosticsCreatedAt = typeof performance !== "undefined" ? performance.now() : Date.now();
 
   public constructor(
@@ -1299,7 +1301,11 @@ export class PianoScene3D {
       const activeScoreNotes: Note[] = [];
       const rendered = this.fallingNotes3D.getRenderedNoteTimings();
       const noteSource = this.performancePlan ? rendered : this.notes;
+      let songEndSeconds = -1;
       for (const note of noteSource) {
+        if (note.endSeconds > songEndSeconds) {
+          songEndSeconds = note.endSeconds;
+        }
         if (
           note.startSeconds <= timeSeconds &&
           note.endSeconds > timeSeconds
@@ -1307,6 +1313,7 @@ export class PianoScene3D {
           activeScoreNotes.push(note);
         }
       }
+      const isSongEnded = songEndSeconds > 0 && timeSeconds >= songEndSeconds - 1e-4;
       const built = buildActiveKeysForFrame(activeScoreNotes, activeNotes);
       for (const [pitch, info] of built) {
         if (info) {
@@ -1351,36 +1358,38 @@ export class PianoScene3D {
         }
         activeMap.set(pitch, info);
       }
-      for (const candidate of noteSource) {
-        if (activeMap.has(candidate.pitch)) continue;
-        if (
-          candidate.endSeconds <= timeSeconds &&
-          timeSeconds < candidate.endSeconds + KEY_RELEASE_DURATION_SECONDS
-        ) {
-          let nextStart = Number.POSITIVE_INFINITY;
-          for (const other of noteSource) {
-            if (other.pitch !== candidate.pitch) continue;
-            if (
-              other.startSeconds > candidate.startSeconds + 1e-5 &&
-              other.startSeconds >= candidate.endSeconds - 1e-4 &&
-              other.startSeconds - candidate.endSeconds <= IMPROVED_HAND_CONTACT_RELEASE_SECONDS + 1e-4
-            ) {
-              if (other.startSeconds < nextStart) nextStart = other.startSeconds;
+      if (!isSongEnded) {
+        for (const candidate of noteSource) {
+          if (activeMap.has(candidate.pitch)) continue;
+          if (
+            candidate.endSeconds <= timeSeconds &&
+            timeSeconds < candidate.endSeconds + KEY_RELEASE_DURATION_SECONDS
+          ) {
+            let nextStart = Number.POSITIVE_INFINITY;
+            for (const other of noteSource) {
+              if (other.pitch !== candidate.pitch) continue;
+              if (
+                other.startSeconds > candidate.startSeconds + 1e-5 &&
+                other.startSeconds >= candidate.endSeconds - 1e-4 &&
+                other.startSeconds - candidate.endSeconds <= IMPROVED_HAND_CONTACT_RELEASE_SECONDS + 1e-4
+              ) {
+                if (other.startSeconds < nextStart) nextStart = other.startSeconds;
+              }
             }
-          }
-          const weight = computeKeyDepressionWeight(
-            timeSeconds,
-            candidate.startSeconds,
-            candidate.endSeconds,
-            undefined,
-            Number.isFinite(nextStart) ? nextStart : undefined,
-          );
-          if (weight > 0.01) {
-            activeMap.set(candidate.pitch, {
-              hand: candidate.hand ?? (candidate.pitch < 60 ? "left" : "right"),
-              ...(candidate.finger != null ? { finger: candidate.finger } : {}),
-              depressionWeight: weight,
-            });
+            const weight = computeKeyDepressionWeight(
+              timeSeconds,
+              candidate.startSeconds,
+              candidate.endSeconds,
+              undefined,
+              Number.isFinite(nextStart) ? nextStart : undefined,
+            );
+            if (weight > 0.01) {
+              activeMap.set(candidate.pitch, {
+                hand: candidate.hand ?? (candidate.pitch < 60 ? "left" : "right"),
+                ...(candidate.finger != null ? { finger: candidate.finger } : {}),
+                depressionWeight: weight,
+              });
+            }
           }
         }
       }
@@ -1400,6 +1409,32 @@ export class PianoScene3D {
 
   private updateHandsAtTime(timeSeconds: number): void {
     const startedAt = typeof performance !== "undefined" ? performance.now() : Date.now();
+    const rendered = this.fallingNotes3D.getRenderedNoteTimings();
+    const noteSource = this.performancePlan ? rendered : this.notes;
+    let songEndSeconds = -1;
+    for (const note of noteSource) {
+      if (note.endSeconds > songEndSeconds) {
+        songEndSeconds = note.endSeconds;
+      }
+    }
+    const isSongEnded = !this.poseEditSampling && songEndSeconds > 0 && timeSeconds >= songEndSeconds - 1e-4;
+    const prevTimeSeconds = this.lastHandUpdateTimeSeconds;
+    this.lastHandUpdateTimeSeconds = timeSeconds;
+    if (!isSongEnded) {
+      this.songEndReachedAtMs = null;
+    } else if (this.songEndReachedAtMs === null) {
+      const arrivedSmoothly =
+        !this.fixedViewport &&
+        prevTimeSeconds !== null &&
+        prevTimeSeconds < songEndSeconds - 1e-4 &&
+        timeSeconds - prevTimeSeconds <= 0.25;
+      this.songEndReachedAtMs = arrivedSmoothly ? startedAt : startedAt - 1000;
+    }
+    const returnProgress = isSongEnded && this.songEndReachedAtMs !== null
+      ? THREE.MathUtils.clamp((startedAt - this.songEndReachedAtMs) / 350, 0, 1)
+      : 1;
+    const returnSmooth = returnProgress * returnProgress * (3 - 2 * returnProgress);
+
     let leftPose: MotionPose | null = null;
     let rightPose: MotionPose | null = null;
     let leftSamplingSource: TestingHandDiagnosticContext["samplingSource"] = "motion-plan-array";
@@ -1430,12 +1465,25 @@ export class PianoScene3D {
       rightSamplingSource = "motion-plan-fallback";
     }
 
+    if (isSongEnded) {
+      const startLeftPose =
+        this.motionBuffer?.samplePoseClamped(0, "left") ??
+        (this.leftPoses.length > 0 ? this.interpolatePoseFromArray(this.leftPoses, 0) : null);
+      const startRightPose =
+        this.motionBuffer?.samplePoseClamped(0, "right") ??
+        (this.rightPoses.length > 0 ? this.interpolatePoseFromArray(this.rightPoses, 0) : null);
+      if (startLeftPose) {
+        leftPose = leftPose && returnSmooth < 1 ? lerpPose(leftPose, startLeftPose, returnSmooth) : startLeftPose;
+      }
+      if (startRightPose) {
+        rightPose = rightPose && returnSmooth < 1 ? lerpPose(rightPose, startRightPose, returnSmooth) : startRightPose;
+      }
+    }
+
     const captureModel = this.requestedHandModel === "testing" || this.requestedHandModel === "rigged-experimental"
       ? this.requestedHandModel
       : null;
     const captureHandDiagnostics = captureModel !== null && isHandFrameCaptureActiveFor(captureModel);
-    const rendered = this.fallingNotes3D.getRenderedNoteTimings();
-    const noteSource = this.performancePlan ? rendered : this.notes;
     const boundaryEvents = captureHandDiagnostics ? {
       left: observeHandFrameNoteBoundaries("left", noteSource, timeSeconds),
       right: observeHandFrameNoteBoundaries("right", noteSource, timeSeconds),
@@ -1491,13 +1539,16 @@ export class PianoScene3D {
       (this.requestedHandModel === "testing" && (this.testingKeyContact || captureHandDiagnostics));
     const capturesRiggedTargets = this.requestedHandModel === "rigged-experimental";
     const shouldProvideContactTargets = usesImprovedHand || capturesRiggedTargets;
+    const contactTargetTimeSeconds = isSongEnded
+      ? songEndSeconds + IMPROVED_HAND_CONTACT_RELEASE_SECONDS + 1
+      : timeSeconds;
 
     if (leftPose) {
       if (shouldProvideContactTargets) {
         const contactTargets = populateHandContactTargets(
           noteSource,
           "left",
-          timeSeconds,
+          contactTargetTimeSeconds,
           this.leftHandContactTargets,
           this.sampleKeySurfaceY,
         );
@@ -1524,7 +1575,7 @@ export class PianoScene3D {
         const contactTargets = populateHandContactTargets(
           noteSource,
           "right",
-          timeSeconds,
+          contactTargetTimeSeconds,
           this.rightHandContactTargets,
           this.sampleKeySurfaceY,
         );

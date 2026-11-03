@@ -91,6 +91,8 @@ describe("built-in melody assets", () => {
     expect(alias.sha256).toBe(sha256(sharedBytes));
     expect(alias.difficultyScore).toBe(1);
     expect(alias.difficultyTier).toBe("Beginner");
+    expect(alias.noteCount).toBe(0);
+    expect(alias.durationSeconds).toBe(0);
     expect(second.assetPath).toMatch(/^files\/[a-f0-9]{64}\.mid$/);
 
     for (const entry of firstRun.manifest.entries) {
@@ -143,5 +145,23 @@ describe("built-in melody assets", () => {
     await expect(loadBuiltinMelodyBytes(entry)).rejects.toThrow(/SHA-256 checksum does not match/i);
     const assetUrl = fetchMock.mock.calls[2][0];
     expect(String(assetUrl)).toMatch(new RegExp(`/builtin-melodies/${entry.assetPath.replaceAll("/", "\\/")}$`));
+  });
+
+  it("reads legacy metadata and rejects invalid optional duration and note count", async () => {
+    const fixture = await prepareFixture([["Metadata.mid", midiBytes()]]);
+    const { manifest } = await prepareBuiltinMelodies(fixture);
+    const legacy = structuredClone(manifest);
+    delete legacy.entries[0].durationSeconds;
+    delete legacy.entries[0].noteCount;
+    const fetchMock = vi.fn<typeof fetch>();
+    vi.stubGlobal("fetch", fetchMock);
+    fetchMock.mockResolvedValueOnce(new Response(JSON.stringify(legacy)));
+    expect((await loadBuiltinMelodies())[0].durationSeconds).toBeUndefined();
+    for (const patch of [{ durationSeconds: -1 }, { durationSeconds: "3" }, { noteCount: 1.5 }, { noteCount: -2 }]) {
+      const invalid = structuredClone(manifest);
+      Object.assign(invalid.entries[0], patch);
+      fetchMock.mockResolvedValueOnce(new Response(JSON.stringify(invalid)));
+      await expect(loadBuiltinMelodies()).rejects.toThrow(/invalid duration or note count/i);
+    }
   });
 });

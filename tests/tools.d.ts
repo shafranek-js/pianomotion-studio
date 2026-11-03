@@ -12,6 +12,8 @@ declare module "*prepare-builtin-melodies.mjs" {
       byteLength: number;
       difficultyScore: number;
       difficultyTier: string;
+      durationSeconds?: number;
+      noteCount?: number;
     }> };
     melodyCount: number;
     uniqueAssetCount: number;

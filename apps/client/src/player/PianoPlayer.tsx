@@ -124,6 +124,7 @@ export interface PianoPlayerProps {
   onDirtyChange(dirty: boolean): void;
   onOpenMidi(): void;
   onOpenBuiltinMelodies?(): void;
+  libraryOpen?: boolean;
   onOpenPackage(): void;
   onOpenPreferences(): void;
   onOpenPianist(): void;
@@ -318,6 +319,7 @@ export function PianoPlayer({
   analysisWorker,
   onOpenMidi,
   onOpenBuiltinMelodies,
+  libraryOpen = false,
   onOpenPackage,
   onOpenPreferences,
   onOpenPianist,
@@ -464,6 +466,14 @@ export function PianoPlayer({
   const [playAlongTotalSteps, setPlayAlongTotalSteps] = useState(0);
   const [playAlongStepTimes, setPlayAlongStepTimes] = useState<number[]>([]);
   const [playAlongState, setPlayAlongState] = useState<PlayAlongState>("idle");
+  const playAlongStepRef = useRef(playAlongStep);
+  const playAlongStateRef = useRef(playAlongState);
+  useLayoutEffect(() => {
+    playAlongStepRef.current = playAlongStep;
+    playAlongStateRef.current = playAlongState;
+  }, [playAlongStep, playAlongState]);
+  const playAlongLibrarySuspensionRef = useRef<{ stepIndex: number; state: PlayAlongState } | null>(null);
+  const skipNextPlayAlongViewStartRef = useRef(false);
   const [playAlongLoopAvailable, setPlayAlongLoopAvailable] = useState(true);
   const [playAlongHandMode, setPlayAlongHandMode] = useState<PlayAlongHandMode>("both");
   const [playAlongHeldPitches, setPlayAlongHeldPitches] = useState<ReadonlySet<number>>(new Set());
@@ -473,6 +483,8 @@ export function PianoPlayer({
   const [midiInputStatus, setMidiInputStatus] = useState<WebMidiInputStatus | null>(null);
   const viewModeRef = useRef<StudioView>(viewMode);
   useEffect(() => { viewModeRef.current = viewMode; }, [viewMode]);
+  const libraryOpenRef = useRef(libraryOpen);
+  useLayoutEffect(() => { libraryOpenRef.current = libraryOpen; }, [libraryOpen]);
   const currentTimeRef = useRef(currentTime);
   useEffect(() => { currentTimeRef.current = currentTime; }, [currentTime]);
   const playAlongTimeRef = useRef(0);
@@ -995,6 +1007,7 @@ export function PianoPlayer({
         });
         scene.setPianoKeyListeners(
           (pitch) => {
+            if (libraryOpenRef.current) return;
             sceneRef.current?.setLivePhysicalPitch(pitch, true);
             if (viewModeRef.current === "play_along") {
               playAlongEngineRef.current?.noteOn(pitch, 90);
@@ -1007,6 +1020,7 @@ export function PianoPlayer({
             }
           },
           (pitch) => {
+            if (libraryOpenRef.current) return;
             sceneRef.current?.setLivePhysicalPitch(pitch, false);
             if (viewModeRef.current === "play_along") {
               playAlongEngineRef.current?.noteOff(pitch);
@@ -1416,6 +1430,7 @@ export function PianoPlayer({
   }, [dict.practice.title, onStatusChange, persistPracticeRecovery, practiceState]);
 
   useEffect(() => {
+    if (libraryOpenRef.current) return;
     if (!document) return;
     const sameProject = playAlongProjectIdRef.current === analysis.projectId;
     const resumeTime = sameProject ? playAlongTimeRef.current : 0;
@@ -1486,6 +1501,7 @@ export function PianoPlayer({
         setCurrentTime(time);
       },
       onPlayNote: (pitch, velocity, voiceId) => {
+        if (libraryOpenRef.current) return;
         try {
           const output = transportRef.current?.getOutput();
           output?.noteOn(voiceId ?? `playalong-${pitch}`, pitch, velocity, 0);
@@ -1508,6 +1524,7 @@ export function PianoPlayer({
         sceneRef.current?.setPlayAlongState(targetMap, new Set(wrongPitchesRef.current));
         setTimeout(() => {
           wrongPitchesRef.current.delete(pitch);
+          if (libraryOpenRef.current) return;
           const currentEngine = playAlongEngineRef.current;
           const currentStep = currentEngine?.getCurrentStep() ?? null;
           const currentTargetMap = currentEngine ? buildStepTargetMap(currentStep, currentEngine) : new Map<number, KeyPressInfo>();
@@ -1528,10 +1545,17 @@ export function PianoPlayer({
     setPlayAlongStepTimes(engine.getSteps().map((step) => step.timeSeconds));
     setPlayAlongLoopAvailable(engine.hasEligibleLoopSteps());
     if (viewModeRef.current === "play_along") {
-      engine.start();
-      // A replan recreates the engine; keep the play-along position instead of
-      // snapping back to the first eligible step.
-      if (resumeTime > 0) engine.seekToTime(resumeTime);
+      const suspended = playAlongLibrarySuspensionRef.current;
+      if (suspended) {
+        engine.seekToStep(suspended.stepIndex);
+        if (suspended.state === "completed") engine.nextStep();
+        playAlongLibrarySuspensionRef.current = null;
+      } else {
+        engine.start();
+        // A replan recreates the engine; keep the play-along position instead of
+        // snapping back to the first eligible step.
+        if (resumeTime > 0) engine.seekToTime(resumeTime);
+      }
     }
     playAlongProjectIdRef.current = analysis.projectId;
     return () => {
@@ -1540,7 +1564,7 @@ export function PianoPlayer({
       setPlayAlongTotalSteps(0);
       setPlayAlongStepTimes([]);
     };
-  }, [document, draftPlan, analysis, playAlongHandMode, autoPlayOtherHand]);
+  }, [document, draftPlan, analysis, playAlongHandMode, autoPlayOtherHand, libraryOpen]);
 
   useEffect(() => {
     const engine = playAlongEngineRef.current;
@@ -1554,6 +1578,14 @@ export function PianoPlayer({
       if (transportRef.current?.getState() === "playing") {
         transportRef.current.pause();
       }
+      if (libraryOpenRef.current) {
+        playAlongEngineRef.current?.stop();
+        return;
+      }
+      if (skipNextPlayAlongViewStartRef.current) {
+        skipNextPlayAlongViewStartRef.current = false;
+        return;
+      }
       playAlongEngineRef.current?.start();
     } else {
       playAlongEngineRef.current?.stop();
@@ -1561,7 +1593,7 @@ export function PianoPlayer({
       sceneRef.current?.clearLivePhysicalPitches();
       sceneRef.current?.setPlayAlongState(null);
     }
-  }, [viewMode]);
+  }, [viewMode, libraryOpen]);
 
   useEffect(() => {
     const inputManager = getSharedWebMidiInputManager();
@@ -1569,6 +1601,7 @@ export function PianoPlayer({
     // again after a refusal. The explicit "Connect MIDI" action requests it.
     const unsubStatus = inputManager.subscribeStatus(setMidiInputStatus);
     const unsubInput = inputManager.subscribeInput((event) => {
+      if (libraryOpenRef.current) return;
       const isDown = event.type === "noteOn";
       sceneRef.current?.setLivePhysicalPitch(event.pitch, isDown);
 
@@ -1612,6 +1645,7 @@ export function PianoPlayer({
     ));
 
     const onKeyDown = (e: KeyboardEvent) => {
+      if (libraryOpenRef.current) return;
       if (e.defaultPrevented || isUiControl(e.target)) return;
       if (e.repeat) return;
 
@@ -1637,6 +1671,12 @@ export function PianoPlayer({
 
     const onKeyUp = (e: KeyboardEvent) => {
       const pitch = keyToPitch[e.key];
+      if (libraryOpenRef.current) {
+        if (pitch !== undefined && heldKeys.delete(e.key)) {
+          sceneRef.current?.setLivePhysicalPitch(pitch, false);
+        }
+        return;
+      }
       if (pitch !== undefined && heldKeys.has(e.key)) {
         heldKeys.delete(e.key);
         sceneRef.current?.setLivePhysicalPitch(pitch, false);
@@ -1821,6 +1861,55 @@ export function PianoPlayer({
       onStatusChange({ kind: "error", message: `Playback failed: ${errorMessage(error)}` });
     }
   }, [isPlaying, preparingOutput, onStatusChange, poseEditActive]);
+
+  const previousLibraryOpenRef = useRef(false);
+  useLayoutEffect(() => {
+    const wasOpen = previousLibraryOpenRef.current;
+    previousLibraryOpenRef.current = libraryOpen;
+    if (libraryOpen && !wasOpen) {
+      if (viewMode === "play_along") {
+        const engine = playAlongEngineRef.current;
+        playAlongLibrarySuspensionRef.current = {
+          stepIndex: engine?.getCurrentStepIndex() ?? playAlongStepRef.current?.index ?? 0,
+          state: engine?.getState() ?? playAlongStateRef.current,
+        };
+        engine?.stop();
+        wrongPitchesRef.current.clear();
+        sceneRef.current?.clearLivePhysicalPitches();
+        sceneRef.current?.setPlayAlongState(null);
+      }
+    } else if (!libraryOpen && wasOpen) {
+      if (viewMode === "play_along") {
+        // The engine effect rebuilds while closing the library; its saved step
+        // seek replaces the view-mode effect's usual first-step start.
+        skipNextPlayAlongViewStartRef.current = true;
+      } else {
+        playAlongLibrarySuspensionRef.current = null;
+        skipNextPlayAlongViewStartRef.current = false;
+      }
+    }
+  }, [libraryOpen, viewMode]);
+
+  const libraryResumeRef = useRef(false);
+  const togglePlayForLibraryRef = useRef(togglePlay);
+  useLayoutEffect(() => { togglePlayForLibraryRef.current = togglePlay; }, [togglePlay]);
+  useEffect(() => {
+    if (libraryOpen) {
+      libraryResumeRef.current = playIntentRef.current || isPlaying || bufferingPausedRef.current;
+      playIntentRef.current = false;
+      bufferingPausedRef.current = false;
+      // Reflect the external transport's suspension in its buffering indicator.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setIsBuffering(false);
+      transportRef.current?.pause();
+    } else if (libraryResumeRef.current) {
+      libraryResumeRef.current = false;
+      void togglePlayForLibraryRef.current();
+    }
+    // Only the library transition controls this effect; playback updates must
+    // not overwrite the intent captured when the library opened.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [libraryOpen]);
 
   const handleStop = useCallback(() => {
     if (poseEditActive) {
@@ -2920,9 +3009,9 @@ export function PianoPlayer({
       heldUserPitches={playAlongHeldPitches}
       completedPitchesInStep={playAlongCompletedPitches}
       onHandModeChange={(mode) => setPlayAlongHandMode(mode)}
-      onPreviousStep={() => playAlongEngineRef.current?.previousStep()}
-      onNextStep={() => playAlongEngineRef.current?.nextStep()}
-      onRestart={() => playAlongEngineRef.current?.seekToStep(0)}
+      onPreviousStep={() => { if (!libraryOpenRef.current) playAlongEngineRef.current?.previousStep(); }}
+      onNextStep={() => { if (!libraryOpenRef.current) playAlongEngineRef.current?.nextStep(); }}
+      onRestart={() => { if (!libraryOpenRef.current) playAlongEngineRef.current?.seekToStep(0); }}
       midiConnected={midiInputStatus?.permission === "granted" && (midiInputStatus.devices.length > 0)}
       midiDeviceName={midiInputStatus?.devices.find(d => d.state === "connected")?.name ?? midiInputStatus?.devices[0]?.name}
       midiPermission={midiInputStatus?.permission}

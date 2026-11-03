@@ -1,19 +1,33 @@
 export const BUILTIN_MELODIES_PREFERENCES_STORAGE_KEY = "handthesia:builtin_melodies_preferences:v1";
 
-export type MelodyFilter = "all" | "favourites" | "Beginner" | "Intermediate" | "Advanced";
-export type SortOption = "title" | "difficulty-asc" | "difficulty-desc";
+export type MelodyFilter = "all" | "favourites" | "Beginner" | "Intermediate" | "Advanced" | "Virtuoso";
+export type SortOption =
+  | "title"
+  | "difficulty-asc"
+  | "difficulty-desc"
+  | "duration-asc"
+  | "duration-desc"
+  | "date-added-asc"
+  | "date-added-desc";
+export type LibraryView = "builtin" | "folder" | "all";
 
 export interface BuiltinMelodiesPreferences {
   query: string;
   activeFilter: MelodyFilter;
   sortBy: SortOption;
+  libraryView: LibraryView;
+  categoryId: string;
+  recentOnly: boolean;
 }
 
-const MELODY_FILTERS: readonly MelodyFilter[] = ["all", "favourites", "Beginner", "Intermediate", "Advanced"];
-const SORT_OPTIONS: readonly SortOption[] = ["title", "difficulty-asc", "difficulty-desc"];
+const MELODY_FILTERS: readonly MelodyFilter[] = ["all", "favourites", "Beginner", "Intermediate", "Advanced", "Virtuoso"];
+const SORT_OPTIONS: readonly SortOption[] = [
+  "title", "difficulty-asc", "difficulty-desc", "duration-asc", "duration-desc", "date-added-asc", "date-added-desc",
+];
+const LIBRARY_VIEWS: readonly LibraryView[] = ["builtin", "folder", "all"];
 
 function defaults(): BuiltinMelodiesPreferences {
-  return { query: "", activeFilter: "all", sortBy: "title" };
+  return { query: "", activeFilter: "all", sortBy: "title", libraryView: "builtin", categoryId: "all", recentOnly: false };
 }
 
 function getStorage(): Storage | null {
@@ -40,6 +54,10 @@ function isSortOption(value: unknown): value is SortOption {
   return typeof value === "string" && (SORT_OPTIONS as readonly string[]).includes(value);
 }
 
+function isLibraryView(value: unknown): value is LibraryView {
+  return typeof value === "string" && (LIBRARY_VIEWS as readonly string[]).includes(value);
+}
+
 function decodePreferences(value: unknown): BuiltinMelodiesPreferences {
   const fallback = defaults();
   if (value === null || typeof value !== "object" || Array.isArray(value)) return fallback;
@@ -49,6 +67,9 @@ function decodePreferences(value: unknown): BuiltinMelodiesPreferences {
     query: typeof record.query === "string" ? record.query : fallback.query,
     activeFilter: isMelodyFilter(record.activeFilter) ? record.activeFilter : fallback.activeFilter,
     sortBy: isSortOption(record.sortBy) ? record.sortBy : fallback.sortBy,
+    libraryView: isLibraryView(record.libraryView) ? record.libraryView : fallback.libraryView,
+    categoryId: typeof record.categoryId === "string" ? record.categoryId : fallback.categoryId,
+    recentOnly: typeof record.recentOnly === "boolean" ? record.recentOnly : fallback.recentOnly,
   };
 }
 

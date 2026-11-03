@@ -11,6 +11,8 @@ export interface BuiltinMelodyEntry {
   byteLength: number;
   difficultyScore: number;
   difficultyTier: BuiltinMelodyTier;
+  durationSeconds?: number;
+  noteCount?: number;
 }
 
 interface BuiltinMelodyManifest {
@@ -105,7 +107,8 @@ function assertMinimalMidiHeader(bytes: ArrayBuffer): void {
 }
 
 async function validateEntry(value: unknown): Promise<BuiltinMelodyEntry> {
-  if (!isRecord(value) || !hasExactKeys(value, ["id", "title", "fileName", "assetPath", "sha256", "byteLength", "difficultyScore", "difficultyTier"])) {
+  const optionalKeys = ["durationSeconds", "noteCount"];
+  if (!isRecord(value) || !hasExactKeys(value, ["id", "title", "fileName", "assetPath", "sha256", "byteLength", "difficultyScore", "difficultyTier", ...optionalKeys.filter(key => key in value)])) {
     throw new Error("The built-in melody catalog contains an entry with an invalid shape.");
   }
   const { id, title, fileName, assetPath, sha256, byteLength, difficultyScore, difficultyTier } = value;
@@ -120,6 +123,10 @@ async function validateEntry(value: unknown): Promise<BuiltinMelodyEntry> {
   }
   const hashOfName = await expectedId(fileName);
   if (id !== hashOfName) throw new Error("The built-in melody catalog entry ID does not match its source filename.");
+  if ((value.durationSeconds !== undefined && (typeof value.durationSeconds !== "number" || !Number.isFinite(value.durationSeconds) || value.durationSeconds < 0)) ||
+      (value.noteCount !== undefined && (!Number.isSafeInteger(value.noteCount) || (value.noteCount as number) < 0))) {
+    throw new Error("The built-in melody catalog contains invalid duration or note count.");
+  }
   return {
     id,
     title,
@@ -129,6 +136,8 @@ async function validateEntry(value: unknown): Promise<BuiltinMelodyEntry> {
     byteLength: byteLength as number,
     difficultyScore: Math.round((difficultyScore as number) * 10) / 10,
     difficultyTier: difficultyTier as BuiltinMelodyTier,
+    ...(value.durationSeconds !== undefined ? { durationSeconds: value.durationSeconds as number } : {}),
+    ...(value.noteCount !== undefined ? { noteCount: value.noteCount as number } : {}),
   };
 }
 

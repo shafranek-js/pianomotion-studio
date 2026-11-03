@@ -6,8 +6,8 @@ test("an unvisited built-in melody opens offline from a coherent production rele
   await page.goto(previewBase.includes("?") ? `${previewBase}&empty=true` : `${previewBase}?empty=true`);
   await expect(page.getByRole("button", { name: "Play demo song", exact: true })).toBeEnabled({ timeout: 30_000 });
   await expect.poll(() => page.evaluate(() => Boolean(navigator.serviceWorker.controller)), { timeout: 45_000 }).toBe(true);
-  await page.getByTestId("studio-welcome").getByRole("button", { name: "Browse built-in melodies", exact: true }).click();
-  const dialog = page.getByRole("dialog", { name: "Built-in melodies", exact: true });
+  await page.getByTestId("studio-welcome").getByRole("button", { name: "Browse melody library", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Melody library", exact: true });
   await dialog.getByRole("searchbox", { name: "Search melodies" }).fill("Brahms");
   await dialog.getByRole("button", { name: "Open Brahms' Lullaby", exact: true }).click();
   await expectStudioCanvas(page, 90_000);
@@ -20,8 +20,8 @@ test("an unvisited built-in melody opens offline from a coherent production rele
     await reopened.goto(process.env.PIANOMOTION_PREVIEW_BASE ?? "/");
     await expectStudioCanvas(reopened, 90_000);
     await reopened.getByRole("button", { name: "File", exact: true }).click();
-    await reopened.getByRole("menuitem", { name: "Built-in melodies…", exact: true }).click();
-    const offlineDialog = reopened.getByRole("dialog", { name: "Built-in melodies", exact: true });
+    await reopened.getByRole("menuitem", { name: "Melody library…", exact: true }).click();
+    const offlineDialog = reopened.getByRole("dialog", { name: "Melody library", exact: true });
     // The previous search is persisted as a library preference, so clear it
     // before asserting that the whole offline catalogue is available.
     await offlineDialog.getByRole("searchbox", { name: "Search melodies" }).fill("");

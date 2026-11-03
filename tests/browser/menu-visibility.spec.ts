@@ -12,7 +12,7 @@ const fileMenu: MenuDefinition = {
   label: "File",
   items: [
     { name: "Open MIDI...", enabled: true },
-    { name: "Built-in melodies…", enabled: true },
+    { name: "Melody library…", enabled: true },
     { name: "Open project package…", enabled: true },
     { name: "Open saved project…", enabled: true },
     { name: "Save project", enabled: false },
@@ -222,7 +222,7 @@ test("empty File and Export menus stay fully painted and keep keyboard and outsi
   await page.keyboard.press("Home");
   await expect(filePopover.getByRole("menuitem", { name: "Open MIDI...", exact: true })).toBeFocused();
   await page.keyboard.press("ArrowDown");
-  await expect(filePopover.getByRole("menuitem", { name: "Built-in melodies…", exact: true })).toBeFocused();
+  await expect(filePopover.getByRole("menuitem", { name: "Melody library…", exact: true })).toBeFocused();
   await page.keyboard.press("Escape");
   await expect(filePopover).toHaveCount(0);
   await expect(fileTrigger).toBeFocused();

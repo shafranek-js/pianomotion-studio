@@ -32,9 +32,9 @@ test("workspace rail opens real tools and stays usable from empty desktop throug
 
   // Scope this entry point to the rail: the empty-state welcome page has a
   // second Browse button with the same accessible name.
-  const libraryButton = rail.getByRole("button", { name: "Browse built-in melodies", exact: true });
+  const libraryButton = rail.getByRole("button", { name: "Browse melody library", exact: true });
   await libraryButton.click();
-  const libraryDialog = page.getByRole("dialog", { name: "Built-in melodies", exact: true });
+  const libraryDialog = page.getByRole("dialog", { name: "Melody library", exact: true });
   await expect(libraryDialog).toBeVisible();
   await expect(libraryDialog.getByRole("list").getByRole("listitem").first()).toBeVisible();
   await page.keyboard.press("Escape");
@@ -106,7 +106,7 @@ test("workspace rail opens real tools and stays usable from empty desktop throug
   const workspace = page.getByTestId("studio-workspace");
   await workspace.evaluate((element) => { element.scrollTop = element.scrollHeight; });
   const shortDesktopButtons = [
-    rail.getByRole("button", { name: "Browse built-in melodies", exact: true }),
+    rail.getByRole("button", { name: "Browse melody library", exact: true }),
     rail.getByRole("button", { name: "Projects", exact: true }),
     rail.getByRole("button", { name: "Open MIDI...", exact: true }),
     rail.getByRole("button", { name: "Inspector", exact: true }),
@@ -121,7 +121,7 @@ test("workspace rail opens real tools and stays usable from empty desktop throug
   await page.setViewportSize({ width: 390, height: 520 });
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
 
-  const mobileLibrary = rail.getByRole("button", { name: "Browse built-in melodies", exact: true });
+  const mobileLibrary = rail.getByRole("button", { name: "Browse melody library", exact: true });
   const projectsButton = rail.getByRole("button", { name: "Projects", exact: true });
   const mobileImport = rail.getByRole("button", { name: "Open MIDI...", exact: true });
   const inspectorButton = rail.getByRole("button", { name: "Inspector", exact: true });

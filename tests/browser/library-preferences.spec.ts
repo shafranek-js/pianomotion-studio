@@ -2,9 +2,9 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 import { loadStudioSong } from "./studio-helpers";
 
 async function openLibrary(page: Page) {
-  const trigger = page.getByTestId("studio-tool-rail").getByRole("button", { name: "Browse built-in melodies", exact: true });
+  const trigger = page.getByTestId("studio-tool-rail").getByRole("button", { name: "Browse melody library", exact: true });
   await trigger.click();
-  const dialog = page.getByRole("dialog", { name: "Built-in melodies", exact: true });
+  const dialog = page.getByRole("dialog", { name: "Melody library", exact: true });
   await expect(dialog).toBeVisible();
   await expect(dialog.getByRole("list").getByRole("listitem").first()).toBeVisible();
   return dialog;
@@ -23,7 +23,7 @@ async function readRows(dialog: Locator) {
 }
 
 async function expectBeginnerPreferences(dialog: Locator) {
-  await expect(dialog.getByRole("tab", { name: /^Beginner/ })).toHaveAttribute("aria-selected", "true");
+  await expect(dialog.getByRole("button", { name: /^Beginner/ })).toHaveAttribute("aria-pressed", "true");
   await expect(dialog.getByRole("combobox", { name: "Sort melodies" })).toHaveValue("difficulty-desc");
   await expect(dialog.getByRole("searchbox", { name: "Search melodies" })).toHaveValue("Au Clair");
   await expect(dialog.getByRole("list").getByRole("listitem")).toHaveCount(1);
@@ -40,9 +40,9 @@ test("built-in melody preferences survive reopening, reload, and the welcome-to-
   const sort = dialog.getByRole("combobox", { name: "Sort melodies" });
   await expect(search).toHaveValue("");
   await expect(sort).toHaveValue("title");
-  await expect(dialog.getByRole("tab", { name: /^All tags/ })).toHaveAttribute("aria-selected", "true");
+  await expect(dialog.getByRole("button", { name: /^All tags/ })).toHaveAttribute("aria-pressed", "true");
 
-  await dialog.getByRole("tab", { name: /^Beginner/ }).click();
+  await dialog.getByRole("button", { name: /^Beginner/ }).click();
   await sort.selectOption("difficulty-desc");
   await search.fill("A");
   const broadBeginnerRows = await readRows(dialog);
@@ -74,13 +74,13 @@ test("built-in melody preferences survive reopening, reload, and the welcome-to-
   dialog = await openLibrary(page);
   await expectBeginnerPreferences(dialog);
 
-  await dialog.getByRole("tab", { name: /^All tags/ }).click();
+  await dialog.getByRole("button", { name: /^All tags/ }).click();
   await dialog.getByRole("combobox", { name: "Sort melodies" }).selectOption("title");
   await dialog.getByRole("searchbox", { name: "Search melodies" }).fill("");
   await page.keyboard.press("Escape");
   await page.reload();
   dialog = await openLibrary(page);
-  await expect(dialog.getByRole("tab", { name: /^All tags/ })).toHaveAttribute("aria-selected", "true");
+  await expect(dialog.getByRole("button", { name: /^All tags/ })).toHaveAttribute("aria-pressed", "true");
   await expect(dialog.getByRole("combobox", { name: "Sort melodies" })).toHaveValue("title");
   await expect(dialog.getByRole("searchbox", { name: "Search melodies" })).toHaveValue("");
 });
@@ -106,7 +106,7 @@ test("favourites filtering persists without changing the saved melody stars", as
   await tisketRow.getByRole("button", { name: "Add to favorites: A Tisket, A Tasket", exact: true }).click();
   await expect(tisketRow.getByRole("button", { name: "Remove from favorites: A Tisket, A Tasket", exact: true })).toHaveAttribute("aria-pressed", "true");
 
-  await dialog.getByRole("tab", { name: /^Favorites/ }).click();
+  await dialog.getByRole("button", { name: /^Favorites/ }).click();
   await sort.selectOption("difficulty-asc");
   await search.fill("A");
   const favourites = await readRows(dialog);
@@ -118,7 +118,7 @@ test("favourites filtering persists without changing the saved melody stars", as
   await page.reload();
   await expect(page.getByRole("button", { name: "Play demo song", exact: true })).toBeEnabled({ timeout: 30_000 });
   dialog = await openLibrary(page);
-  await expect(dialog.getByRole("tab", { name: /^Favorites/ })).toHaveAttribute("aria-selected", "true");
+  await expect(dialog.getByRole("button", { name: /^Favorites/ })).toHaveAttribute("aria-pressed", "true");
   await expect(dialog.getByRole("combobox", { name: "Sort melodies" })).toHaveValue("difficulty-asc");
   await expect(dialog.getByRole("searchbox", { name: "Search melodies" })).toHaveValue("A");
   expect(await readRows(dialog)).toEqual(favourites);

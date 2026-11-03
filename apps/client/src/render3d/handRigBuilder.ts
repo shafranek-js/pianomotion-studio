@@ -3275,7 +3275,10 @@ export class Hand3DMeshGroup {
       for (const sprite of this.badgeSprites.values()) sprite.visible = false;
       const captureRiggedFrame = diagnosticContext !== undefined &&
         shouldRecordHandFrameSample("rigged-experimental", pose.hand, Boolean(diagnosticContext.noteBoundaryEvents?.length));
-      const leadInLiveAlpha = riggedHandStartPoseLiveAlpha(this.lastDisplayedTransportTimeSeconds, this.lastLeadInDurationSeconds);
+      const hasActiveContact = contactTargets.some((target) => target.pitch !== null);
+      const leadInLiveAlpha = hoverLift >= 1 && !hasActiveContact
+        ? 0
+        : riggedHandStartPoseLiveAlpha(this.lastDisplayedTransportTimeSeconds, this.lastLeadInDurationSeconds);
       const leadInBlend: RiggedExperimentalHandPoseBlend | undefined = this.leadInStartPose && leadInLiveAlpha < 1 &&
         !this.experimentalRig.isPoseEditMode
         ? { pose: this.leadInStartPose, liveAlpha: leadInLiveAlpha }

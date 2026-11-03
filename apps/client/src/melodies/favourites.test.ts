@@ -3,6 +3,7 @@ import {
   FAVOURITES_STORAGE_KEY,
   getFavouriteMelodyIds,
   isFavouriteMelody,
+  makeSourceMelodyId,
   saveFavouriteMelodyIds,
   setFavouritesStorage,
   subscribeFavourites,
@@ -88,5 +89,25 @@ describe("favourites storage", () => {
   it("saves multiple melody IDs cleanly", () => {
     saveFavouriteMelodyIds(["a", "b", "c", ""]);
     expect(getFavouriteMelodyIds()).toEqual(new Set(["a", "b", "c"]));
+  });
+
+  it("creates stable source-scoped IDs without collisions", () => {
+    const first = makeSourceMelodyId("folder/a", "same entry");
+    const second = makeSourceMelodyId("folder", "a/same entry");
+
+    expect(first).toBe("source:folder%2Fa:same%20entry");
+    expect(first).toBe(makeSourceMelodyId("folder/a", "same entry"));
+    expect(first).not.toBe(second);
+  });
+
+  it("keeps favourite changes available in memory when storage access or quota fails", () => {
+    setFavouritesStorage({
+      getItem: () => { throw new Error("denied"); },
+      setItem: () => { throw new Error("quota"); },
+    } as unknown as Storage);
+
+    expect(toggleFavouriteMelody("source:folder:item")).toBe(true);
+    expect(getFavouriteMelodyIds()).toEqual(new Set(["source:folder:item"]));
+    expect(isFavouriteMelody("source:folder:item")).toBe(true);
   });
 });

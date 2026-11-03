@@ -2,27 +2,39 @@ export const FAVOURITES_STORAGE_KEY = "handthesia:favourite_melody_ids";
 
 let memoryStorage = new Set<string>();
 let customStorage: Storage | null = null;
+let memoryFallbackActive = false;
 const listeners = new Set<(ids: ReadonlySet<string>) => void>();
 
 export function setFavouritesStorage(storage: Storage | null): void {
   customStorage = storage;
+  memoryFallbackActive = false;
+  memoryStorage = new Set();
 }
 
 function getStorage(): Storage | null {
   if (customStorage !== null) {
     return customStorage;
   }
-  if (typeof window !== "undefined" && window.localStorage) {
-    return window.localStorage;
+  try {
+    if (typeof window !== "undefined") return window.localStorage;
+  } catch {
+    // Browser storage can be blocked by the current privacy context.
   }
-  if (typeof localStorage !== "undefined") {
-    return localStorage;
+  try {
+    if (typeof localStorage !== "undefined") return localStorage;
+  } catch {
+    // Accessing the global storage getter can also throw.
   }
   return null;
 }
 
+/** Stable namespace for a melody whose identity is only unique within a source. */
+export function makeSourceMelodyId(sourceId: string, entryId: string): string {
+  return `source:${encodeURIComponent(sourceId)}:${encodeURIComponent(entryId)}`;
+}
+
 function notify(): void {
-  const current = getFavouriteMelodyIds();
+  const current = new Set(memoryStorage);
   for (const listener of listeners) {
     try {
       listener(current);
@@ -34,17 +46,31 @@ function notify(): void {
 
 export function getFavouriteMelodyIds(): Set<string> {
   const storage = getStorage();
-  if (!storage) {
+  if (!storage || memoryFallbackActive) {
     return new Set(memoryStorage);
   }
   try {
     const raw = storage.getItem(FAVOURITES_STORAGE_KEY);
-    if (!raw) return new Set();
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return new Set();
-    return new Set(parsed.filter((id): id is string => typeof id === "string" && id.trim().length > 0));
+    if (!raw) {
+      memoryStorage = new Set();
+      return new Set();
+    }
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      memoryStorage = new Set();
+      return new Set();
+    }
+    if (!Array.isArray(parsed)) {
+      memoryStorage = new Set();
+      return new Set();
+    }
+    const ids = new Set(parsed.filter((id): id is string => typeof id === "string" && id.trim().length > 0));
+    memoryStorage = ids;
+    return new Set(ids);
   } catch {
-    return new Set();
+    return new Set(memoryStorage);
   }
 }
 
@@ -62,9 +88,12 @@ export function saveFavouriteMelodyIds(ids: Iterable<string>): void {
   if (storage) {
     try {
       storage.setItem(FAVOURITES_STORAGE_KEY, JSON.stringify([...set]));
-    } catch (err) {
-      console.warn("Failed to persist favourite melody IDs:", err);
+      memoryFallbackActive = false;
+    } catch {
+      memoryFallbackActive = true;
     }
+  } else {
+    memoryFallbackActive = true;
   }
   notify();
 }
