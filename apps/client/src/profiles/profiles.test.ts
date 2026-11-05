@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import {
   PianistProfileSchema,
-  type PianistProfile,
   DEFAULT_PROFILE,
   SMALL_HANDS_PROFILE,
   VIRTUOSO_PROFILE,
@@ -442,10 +441,10 @@ describe("Profile Store", () => {
     resetProfileStore();
   });
 
-  it("initializes with built-in default profiles and active profile 'virtuoso'", () => {
+  it("initializes with the measured baseline active without changing the calibration default", () => {
     const active = getActiveProfile();
-    expect(active.profileId).toBe("virtuoso");
-    expect(active.name).toBe("Virtuoso / Large Reach");
+    expect(active).toEqual(RIGGED_HAND_MEASURED_BASELINE_PROFILE);
+    expect(getDefaultProfile()).toEqual(DEFAULT_PROFILE);
 
     const all = listProfiles();
     expect(all).toHaveLength(5);
@@ -454,6 +453,41 @@ describe("Profile Store", () => {
     expect(all.map((p) => p.profileId)).toContain("virtuoso");
     expect(all.map((p) => p.profileId)).toContain("left-dominant");
     expect(all.map((p) => p.profileId)).toContain(RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID);
+  });
+
+  it.each(["virtuoso", "small-hands", "default"])("preserves the legacy saved selection %s", (profileId) => {
+    mockStorage.setItem(ACTIVE_PROFILE_STORAGE_KEY, profileId);
+    setProfileStorage(mockStorage);
+
+    expect(getActiveProfile().profileId).toBe(profileId);
+    expect(mockStorage.getItem(ACTIVE_PROFILE_STORAGE_KEY)).toBe(profileId);
+  });
+
+  it("falls back to the measured baseline for a missing legacy selected profile", () => {
+    mockStorage.setItem(ACTIVE_PROFILE_STORAGE_KEY, "missing-profile");
+    setProfileStorage(mockStorage);
+
+    expect(getActiveProfile()).toEqual(RIGGED_HAND_MEASURED_BASELINE_PROFILE);
+    expect(mockStorage.getItem(ACTIVE_PROFILE_STORAGE_KEY)).toBe("missing-profile");
+  });
+
+  it("avoids implicitly activating a measured-ID collision on fallback and active custom deletion", async () => {
+    const collision = { ...structuredClone(RIGGED_HAND_MEASURED_BASELINE_PROFILE), name: "Saved collision" };
+    const originalJson = JSON.stringify([collision]);
+    mockStorage.setItem(PROFILES_STORAGE_KEY, originalJson);
+    mockStorage.setItem(ACTIVE_PROFILE_STORAGE_KEY, "missing-profile");
+    setProfileStorage(mockStorage);
+
+    expect(getActiveProfile().profileId).toBe("default");
+    expect(isBuiltinProfileAvailable(RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID)).toBe(false);
+    expect(mockStorage.getItem(PROFILES_STORAGE_KEY)).toBe(originalJson);
+    const custom = await cloneProfile("default", "Temporary with collision");
+    await setActiveProfile(custom.profileId);
+    await deleteProfile(custom.profileId);
+
+    expect(getActiveProfile().profileId).toBe("default");
+    expect(mockStorage.getItem(ACTIVE_PROFILE_STORAGE_KEY)).toBe("default");
+    expect(listProfiles().find((profile) => profile.profileId === collision.profileId)).toEqual(collision);
   });
 
   it("switches active profile with setActiveProfile and throws for non-existent id", async () => {
@@ -507,7 +541,7 @@ describe("Profile Store", () => {
     expect(await deleteProfile(RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID)).toBe(false);
 
     const active = getActiveProfile();
-    expect(active.profileId).toBe("virtuoso");
+    expect(active.profileId).toBe(RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID);
     expect(listProfiles().some((p) => p.profileId === "default")).toBe(true);
   });
 
@@ -526,7 +560,7 @@ describe("Profile Store", () => {
     expect(listProfiles().some((p) => p.profileId === custom.profileId)).toBe(
       false
     );
-    expect(getActiveProfile().profileId).toBe("virtuoso");
+    expect(getActiveProfile().profileId).toBe(RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID);
 
     // Deleting non-existent profile returns false
     expect(await deleteProfile("non-existent")).toBe(false);
@@ -663,7 +697,7 @@ describe("Profile Store", () => {
     const events: { type: string; profile: { profileId: string } }[] = [];
     const unsubscribe = subscribeProfileEvents((event) => events.push(event));
 
-    await setActiveProfile("virtuoso"); // Explicit selection still emits when already active.
+    await setActiveProfile(RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID); // Explicit selection still emits when already active.
     const copy = await cloneProfile("default", "Event Copy");
     await setActiveProfile("small-hands");
     await setActiveProfile("small-hands");
@@ -676,13 +710,13 @@ describe("Profile Store", () => {
 
     unsubscribe();
     expect(events).toEqual([
-      { type: "active-selection", profile: expect.objectContaining({ profileId: "virtuoso" }) },
+      { type: "active-selection", profile: expect.objectContaining({ profileId: RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID }) },
       { type: "profile-updated", profile: expect.objectContaining({ profileId: copy.profileId }) },
       { type: "active-selection", profile: expect.objectContaining({ profileId: "small-hands" }) },
       { type: "active-selection", profile: expect.objectContaining({ profileId: "small-hands" }) },
       { type: "profile-updated", profile: expect.objectContaining({ profileId: copy.profileId, name: "Event Copy Updated" }) },
       { type: "active-selection", profile: expect.objectContaining({ profileId: savedCopy.profileId }) },
-      { type: "active-selection", profile: expect.objectContaining({ profileId: "virtuoso" }) },
+      { type: "active-selection", profile: expect.objectContaining({ profileId: RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID }) },
       { type: "profile-updated", profile: expect.objectContaining({ profileId: inactiveCopy.profileId }) },
     ]);
     expect(events).toHaveLength(afterActiveDelete + 1);

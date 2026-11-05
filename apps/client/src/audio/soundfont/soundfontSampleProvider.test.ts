@@ -72,6 +72,22 @@ function compressedSoundFont(frames: number, bytes = new Uint8Array([79, 103, 10
   };
 }
 
+function vorbisIdentification(blocks = 0xb8): Uint8Array<ArrayBuffer> {
+  const bytes = new Uint8Array(58);
+  bytes.set(new TextEncoder().encode("OggS"));
+  bytes[5] = 2; bytes[26] = 1; bytes[27] = 30;
+  bytes[28] = 1; bytes.set(new TextEncoder().encode("vorbis"), 29);
+  bytes[39] = 1;
+  new DataView(bytes.buffer).setUint32(40, 44_100, true);
+  bytes[56] = blocks; bytes[57] = 1;
+  return bytes;
+}
+
+function decoded(frames: number, sampleRate = 44_100, channels = 1): AudioBuffer {
+  return { length: frames, sampleRate, numberOfChannels: channels, duration: frames / sampleRate,
+    getChannelData: () => new Float32Array(frames) } as unknown as AudioBuffer;
+}
+
 describe("shared lazy SoundFont sample provider", () => {
   it("reads only the requested PCM range and pins decoded audio until release", async () => {
     const provider = new SoundFontSampleProvider(1024, 1024);
@@ -87,7 +103,7 @@ describe("shared lazy SoundFont sample provider", () => {
   });
 
   it("decodes only the requested SF3 stream at its source rate and pins the frame-bounded buffer", async () => {
-    const provider = new SoundFontSampleProvider(1024, 1024);
+    const provider = new SoundFontSampleProvider(20_000, 20_000);
     const sf = compressedSoundFont(5);
     const output = new Float32Array([0.1, 0.2, 0.3, 0.4, 0.5]);
     const decodeAudioData = vi.fn(async (bytes: ArrayBuffer) => {
@@ -115,7 +131,7 @@ describe("shared lazy SoundFont sample provider", () => {
   });
 
   it("rejects a browser decode whose output disagrees with the validated Ogg granule", async () => {
-    const provider = new SoundFontSampleProvider(1024, 1024);
+    const provider = new SoundFontSampleProvider(20_000, 20_000);
     const decodeAudioData = vi.fn(async () => ({
       duration: 4 / 44_100,
       sampleRate: 44_100,
@@ -125,6 +141,37 @@ describe("shared lazy SoundFont sample provider", () => {
     } as unknown as AudioBuffer));
     await expect(provider.prepareSamples(compressedSoundFont(5), [0], context(44_100, decodeAudioData))).rejects.toThrow(/expected 1 channel, 5 frames/);
     expect(provider.getStats()).toMatchObject({ reads: 1, decodes: 0, preparingBytes: 0, cachedSamples: 0 });
+  });
+
+  it.each([5248, 5376])("retains actual Vorbis boundary PCM (%i vs granule 5353), with actual byte accounting", async (frames) => {
+    const provider = new SoundFontSampleProvider(65_536, 65_536);
+    const sf = compressedSoundFont(5353, vorbisIdentification());
+    const output = decoded(frames);
+    const leases = await provider.prepareSamples(sf, [0], context(44_100, async () => output));
+    expect(leases.get(0)!.buffer).toBe(output);
+    expect(provider.getStats()).toMatchObject({ decodedBytes: frames * 4, pinnedBytes: frames * 4, preparingBytes: 0 });
+    expect(sf.samples[0]!.end).toBe(5353);
+    leases.get(0)!.release();
+  });
+
+  it("reserves decoder boundary overhead before reading compressed bytes", async () => {
+    const provider = new SoundFontSampleProvider(5353 * 4 + 58, 65_536);
+    const decoder = vi.fn(async () => decoded(5376));
+    await expect(provider.prepareSamples(compressedSoundFont(5353, vorbisIdentification()), [0], context(44_100, decoder))).rejects.toThrow(/shared cache budget/);
+    expect(decoder).not.toHaveBeenCalled();
+    expect(provider.getStats()).toMatchObject({ reads: 0, decodedBytes: 0, preparingBytes: 0 });
+  });
+
+  it.each([
+    { name: "more than declared half-block", frames: 5353 + 1025, rate: 44_100, channels: 1, blocks: 0xb8 },
+    { name: "shorter than declared half-block", frames: 5353 - 1025, rate: 44_100, channels: 1, blocks: 0xb8 },
+    { name: "invalid transform sizes", frames: 5354, rate: 44_100, channels: 1, blocks: 0xe8 },
+    { name: "wrong rate", frames: 5353, rate: 48_000, channels: 1, blocks: 0xb8 },
+    { name: "stereo", frames: 5353, rate: 44_100, channels: 2, blocks: 0xb8 },
+  ])("rejects $name rather than accepting arbitrary decoder mismatches", async ({ frames, rate, channels, blocks }) => {
+    const provider = new SoundFontSampleProvider(65_536, 65_536);
+    await expect(provider.prepareSamples(compressedSoundFont(5353, vorbisIdentification(blocks)), [0], context(44_100, async () => decoded(frames, rate, channels)))).rejects.toThrow(/expected 1 channel, 5353 frames/);
+    expect(provider.getStats()).toMatchObject({ cachedSamples: 0, preparingBytes: 0 });
   });
 
   it("deduplicates concurrent range reads and counts each caller's pin", async () => {

@@ -1,10 +1,12 @@
 import { TRANSPORT_LEAD_IN_SECONDS, type PerformancePlan } from "@handthesia/contracts";
 import {
   getAudioContext,
+  getMasterGain,
   getMasterVolume,
   setMasterVolume,
 } from "./audioContext.ts";
 import { PianoSampler } from "./sampler.ts";
+import { AccompanimentSampler, type AccompanimentBackend, type AccompanimentPlan, type AccompanimentWindow } from "./accompaniment.ts";
 import { derivePerformanceStateAt } from "./performancePlan.ts";
 import type { SyncedAudioSource } from "./recording/syncedAudioSource.ts";
 import type { PerformanceOutput, PerformanceOutputId, PerformanceOutputWindow } from "./output/index.ts";
@@ -51,6 +53,8 @@ function normalizeOutputWindows(windows: readonly PerformanceOutputWindow[]): Pe
 export class Transport {
   private readonly audioContext: AudioContext;
   private readonly sampler: PianoSampler;
+  private accompanimentSampler: AccompanimentBackend;
+  private readonly defaultAccompanimentSampler: AccompanimentSampler;
   private readonly ownsSampler: boolean;
   private readonly defaultSynthOutput: SynthPerformanceOutput;
   private output: PerformanceOutput;
@@ -62,6 +66,8 @@ export class Transport {
 
   private state: TransportState = "idle";
   private plan: PerformancePlan | null = null;
+  private accompanimentPlan: AccompanimentPlan | null = null;
+  private performanceDurationSeconds = 0;
   private durationSeconds = 0;
 
   private speed = 1.0;
@@ -73,6 +79,7 @@ export class Transport {
   private loopCycleIteration = 0;
   private loopScheduledIteration = 0;
   private loopNextEventIndex = 0;
+  private loopNextAccompanimentEventIndex = 0;
   private loopLastObservedIteration = 0;
   private loopVoiceEpoch = 0;
   private readonly loopAliases = new Map<string, { noteId: string; pitch: number }>();
@@ -83,6 +90,7 @@ export class Transport {
   private songStartTime: number;
 
   private nextEventIndex = 0;
+  private nextAccompanimentEventIndex = 0;
   private schedulerTimer: ReturnType<typeof setInterval> | null = null;
   private playRequestGeneration = 0;
   private disposed = false;
@@ -91,7 +99,7 @@ export class Transport {
   private unsubscribeOutputUnavailable: (() => void) | null = null;
   private fatalOutputError: Error | null = null;
   private samplePreparation: {
-    output: PerformanceOutput; plan: PerformancePlan; windows: Array<{ startSeconds: number; endSeconds: number }>;
+    output: PerformanceOutput; plan: PerformancePlan; accompaniment: AccompanimentBackend; accompanimentPlan: AccompanimentPlan | null; windows: Array<{ startSeconds: number; endSeconds: number }>;
     controller: AbortController; promise: Promise<void>;
   } | null = null;
   private preparingOutput = false;
@@ -117,6 +125,11 @@ export class Transport {
     }
     this.defaultSynthOutput = new SynthPerformanceOutput(this.sampler);
     this.output = this.defaultSynthOutput;
+    this.defaultAccompanimentSampler = new AccompanimentSampler({
+      audioContext: this.audioContext,
+      destinationNode: options.audioContext ? options.audioContext.destination : getMasterGain(),
+    });
+    this.accompanimentSampler = this.defaultAccompanimentSampler;
 
     this.leadInSeconds = options.leadInSeconds ?? TRANSPORT_LEAD_IN_SECONDS;
     this.tailSeconds = Math.max(0, options.tailSeconds ?? DEFAULT_TRANSPORT_TAIL_SECONDS);
@@ -131,19 +144,26 @@ export class Transport {
    * Sets the active playback output engine (synth, soundfont, or webmidi).
    * Seamlessly transfers sounding voices and pedal state during active playback.
    */
-  public setOutput(output: PerformanceOutput | null): void {
+  public setOutput(output: PerformanceOutput | null, accompanimentBackend?: AccompanimentBackend): void {
     const nextOutput = output ?? this.defaultSynthOutput;
-    if (this.output === nextOutput) return;
+    const nextAccompaniment = accompanimentBackend ?? this.defaultAccompanimentSampler;
+    if (this.output === nextOutput && this.accompanimentSampler === nextAccompaniment) return;
     recordDiagnostic("transport.output", { fromOutput: this.output.id, toOutput: nextOutput.id, timeSeconds: this.getCurrentTime() });
     const resumePreparation = this.preparingOutput;
     this.playRequestGeneration += 1;
     this.cancelSamplePreparation();
 
     const prevOutput = this.output;
+    const previousAccompaniment = this.accompanimentSampler;
+    nextAccompaniment.setVolume(previousAccompaniment.getVolume());
+    nextAccompaniment.setEnabled(previousAccompaniment.isEnabled());
+    previousAccompaniment.allNotesOff();
+    if (previousAccompaniment !== nextAccompaniment && previousAccompaniment !== this.defaultAccompanimentSampler) previousAccompaniment.dispose();
+    this.accompanimentSampler = nextAccompaniment;
     this.unsubscribeOutputUnavailable?.();
     this.unsubscribeOutputUnavailable = null;
     prevOutput.panic();
-    if (prevOutput !== this.defaultSynthOutput) prevOutput.dispose();
+    if (prevOutput !== nextOutput && prevOutput !== this.defaultSynthOutput) prevOutput.dispose();
 
     this.output = nextOutput;
     this.loopAliases.clear();
@@ -169,6 +189,11 @@ export class Transport {
         if (this.loopRange) {
           const now = this.audioContext.currentTime;
           this.anchorLoopScheduler(time, now, this.currentLoopIteration(now), false);
+          this.tickScheduler();
+        } else {
+          // Panic removed the old output's lookahead queue. Requeue events
+          // after the restored playhead on the newly adopted pair.
+          this.updateNextEventIndex(time);
           this.tickScheduler();
         }
       } else {
@@ -207,19 +232,110 @@ export class Transport {
   public loadPlan(plan: PerformancePlan, explicitDurationSeconds?: number): void {
     this.pause();
     this.output.panic();
+    this.accompanimentSampler.allNotesOff();
 
     this.plan = plan;
-
-    this.durationSeconds = this.resolveDuration(plan, explicitDurationSeconds);
+    this.accompanimentPlan = null;
+    this.performanceDurationSeconds = this.resolveDuration(plan, explicitDurationSeconds);
+    this.recomputeDuration();
     if (this.loopRange && !this.isLoopRangeValid(this.loopRange)) this.loopRange = null;
 
     this.currentTime = -this.leadInSeconds;
     this.songStartTime = -this.leadInSeconds;
     this.nextEventIndex = 0;
+    this.nextAccompanimentEventIndex = 0;
     this.state = "idle";
 
     this.emitState();
     this.emitTime();
+  }
+
+  /**
+   * Loads or clears the multi-instrument accompaniment plan.
+   */
+  public loadAccompanimentPlan(plan: AccompanimentPlan | null): void {
+    this.cancelSamplePreparation();
+    this.accompanimentSampler.allNotesOff();
+    this.accompanimentPlan = plan;
+    this.recomputeDuration();
+    if (this.loopRange && !this.isLoopRangeValid(this.loopRange)) this.setLoop(null);
+    const position = this.state === "playing" ? this.getCurrentTime() : this.currentTime;
+    this.updateNextAccompanimentEventIndex(position);
+    if (this.loopRange) {
+      this.loopNextAccompanimentEventIndex = this.firstAccompanimentEventAfter(
+        this.wrapLoopTime(position, this.loopRange),
+      );
+    }
+    if (this.state === "playing") {
+      this.refreshAccompanimentPlayback(position);
+    }
+  }
+
+  public getAccompanimentPlan(): AccompanimentPlan | null {
+    return this.accompanimentPlan;
+  }
+
+  /** Prepares a candidate against the current bounded playhead and loop head. */
+  public async prepareAccompanimentBackend(backend: AccompanimentBackend, signal?: AbortSignal): Promise<void> {
+    const plan = this.accompanimentPlan;
+    if (signal?.aborted || this.disposed) throw new DOMException("Accompaniment preparation was cancelled.", "AbortError");
+    if (!plan || !backend.prepareWindows) return;
+    do {
+      const start = Math.max(0, Math.min(this.durationSeconds, this.getCurrentTime()));
+      const windows = this.loopRange ? this.loopPreparationWindows(start) : [
+        { startSeconds: start, endSeconds: Math.min(this.durationSeconds, start + 4) },
+      ];
+      await backend.prepareWindows(plan, windows, signal);
+      if (signal?.aborted || this.disposed || plan !== this.accompanimentPlan) throw new DOMException("Accompaniment preparation was cancelled.", "AbortError");
+      const current = Math.max(0, Math.min(this.durationSeconds, this.getCurrentTime()));
+      const lookahead = this.scheduleAheadSeconds * this.speed;
+      const required = this.loopRange ? normalizeOutputWindows([
+        { startSeconds: this.loopRange.startSeconds, endSeconds: Math.min(this.loopRange.endSeconds, this.loopRange.startSeconds + lookahead) },
+        { startSeconds: current, endSeconds: Math.min(this.loopRange.endSeconds, current + lookahead) },
+      ]) : [{ startSeconds: current, endSeconds: Math.min(this.durationSeconds, current + lookahead) }];
+      if (!backend.isWindowsPrepared || backend.isWindowsPrepared(plan, required)) return;
+    } while (!signal?.aborted && !this.disposed && plan === this.accompanimentPlan);
+    throw new DOMException("Accompaniment preparation was cancelled.", "AbortError");
+  }
+
+  public async prepareActiveAccompanimentBackend(signal?: AbortSignal): Promise<void> {
+    const backend = this.accompanimentSampler;
+    await this.prepareAccompanimentBackend(backend, signal);
+    if (backend !== this.accompanimentSampler) throw new DOMException("Accompaniment backend changed.", "AbortError");
+  }
+
+  public getAccompanimentFallbackPrograms(): number[] {
+    return this.accompanimentPlan ? this.accompanimentSampler.getFallbackPrograms?.(this.accompanimentPlan) ?? [] : [];
+  }
+
+  public getAccompanimentBuiltinFallbackPrograms(): number[] {
+    return this.accompanimentPlan ? this.accompanimentSampler.getBuiltinFallbackPrograms?.(this.accompanimentPlan) ?? [] : [];
+  }
+
+  public setAccompanimentEnabled(enabled: boolean): void {
+    const wasEnabled = this.accompanimentSampler.isEnabled();
+    this.accompanimentSampler.setEnabled(enabled);
+    if (!wasEnabled && enabled && this.state === "playing") {
+      const position = this.getCurrentTime();
+      this.refreshAccompanimentPlayback(position);
+    }
+  }
+
+  public isAccompanimentEnabled(): boolean {
+    return this.accompanimentSampler.isEnabled();
+  }
+
+  public setAccompanimentVolume(volume: number): void {
+    const wasSilent = this.accompanimentSampler.getVolume() <= 0;
+    this.accompanimentSampler.setVolume(volume);
+    if (wasSilent && this.accompanimentSampler.getVolume() > 0 && this.state === "playing") {
+      const position = this.getCurrentTime();
+      this.refreshAccompanimentPlayback(position);
+    }
+  }
+
+  public getAccompanimentVolume(): number {
+    return this.accompanimentSampler.getVolume();
   }
 
   /**
@@ -236,7 +352,8 @@ export class Transport {
     this.stopScheduler();
     if (!wasPlaying) this.output.panic();
     this.plan = plan;
-    this.durationSeconds = this.resolveDuration(plan, explicitDurationSeconds);
+    this.performanceDurationSeconds = this.resolveDuration(plan, explicitDurationSeconds);
+    this.recomputeDuration();
     this.currentTime = this.clampSongTime(position);
     if (this.loopRange && !this.isLoopRangeValid(this.loopRange)) this.loopRange = null;
     this.songStartTime = this.currentTime;
@@ -270,7 +387,8 @@ export class Transport {
    */
   public setDuration(durationSeconds: number): void {
     if (Number.isFinite(durationSeconds)) {
-      this.durationSeconds = Math.max(0, durationSeconds);
+      this.performanceDurationSeconds = Math.max(0, durationSeconds);
+      this.recomputeDuration();
       if (this.loopRange && !this.isLoopRangeValid(this.loopRange)) this.setLoop(null);
     }
   }
@@ -370,6 +488,7 @@ export class Transport {
       this.audioStartTime = now;
       this.updateNextEventIndex(position);
       if (wasPlaying) {
+        this.restoreAccompanimentStateAt(position);
         this.syncedAudio?.seek(position, this.speed);
         this.startScheduler();
       }
@@ -505,6 +624,7 @@ export class Transport {
 
     this.stopScheduler();
     this.output.panic();
+    this.accompanimentSampler.allNotesOff();
     this.syncedAudio?.pause();
     this.loopAliases.clear();
 
@@ -521,6 +641,7 @@ export class Transport {
     this.cancelSamplePreparation();
     this.stopScheduler();
     this.output.panic();
+    this.accompanimentSampler.allNotesOff();
     this.syncedAudio?.pause();
     this.loopAliases.clear();
 
@@ -528,6 +649,7 @@ export class Transport {
     this.songStartTime = -this.leadInSeconds;
     this.state = "idle";
     this.nextEventIndex = 0;
+    this.nextAccompanimentEventIndex = 0;
 
     this.emitState();
     this.emitTime();
@@ -565,6 +687,7 @@ export class Transport {
       this.tickScheduler();
     } else {
       this.output.panic();
+      this.accompanimentSampler.allNotesOff();
       this.currentTime = clampedTime;
       this.loopAliases.clear();
       this.updateNextEventIndex(clampedTime);
@@ -600,6 +723,10 @@ export class Transport {
       if (this.loopRange) this.anchorLoopScheduler(currentSongTime, now, currentIteration, false);
       else this.updateNextEventIndex(currentSongTime);
       this.output.cancelScheduledFutureEvents(now);
+      // The accompaniment synth cannot revoke individual queued oscillator
+      // events. Rebuild currently sounding notes at the new clock anchor.
+      this.accompanimentSampler.allNotesOff();
+      this.restoreAccompanimentStateAt(currentSongTime);
       this.syncedAudio?.setSpeed(clampedSpeed, currentSongTime);
       this.tickScheduler();
     } else {
@@ -743,22 +870,33 @@ export class Transport {
   }
 
   private outputWindowReady(start: number, end: number): boolean {
-    return !this.plan || !this.output.isWindowPrepared ||
-      this.output.isWindowPrepared(this.plan, start, Math.min(this.durationSeconds, end));
+    const boundedEnd = Math.min(this.durationSeconds, end);
+    return (!this.plan || !this.output.isWindowPrepared || this.output.isWindowPrepared(this.plan, start, boundedEnd)) &&
+      this.accompanimentWindowsReady([{ startSeconds: Math.max(0, start), endSeconds: Math.max(0, boundedEnd) }]);
+  }
+
+  private accompanimentWindowsReady(windows: readonly AccompanimentWindow[]): boolean {
+    return !this.accompanimentPlan || !this.accompanimentSampler.isWindowsPrepared ||
+      this.accompanimentSampler.isWindowsPrepared(this.accompanimentPlan, windows);
+  }
+
+  private hasSamplePreparation(): boolean {
+    return Boolean(this.output.prepareWindow || this.output.prepareWindows || this.accompanimentSampler.prepareWindows);
   }
 
   private loopOutputWindowReady(position = this.getCurrentTime()): boolean {
     const range = this.loopRange;
-    if (!range || !this.plan || (!this.output.isWindowPrepared && !this.output.isWindowsPrepared)) return true;
+    if (!range || !this.plan) return true;
     const lookaheadSongSeconds = this.scheduleAheadSeconds * this.speed;
     const current = Math.max(range.startSeconds, Math.min(range.endSeconds, position));
     const windows = normalizeOutputWindows([
       { startSeconds: current, endSeconds: Math.min(range.endSeconds, current + lookaheadSongSeconds) },
       { startSeconds: range.startSeconds, endSeconds: Math.min(range.endSeconds, range.startSeconds + lookaheadSongSeconds) },
     ]);
-    return this.output.isWindowsPrepared
+    return (this.output.isWindowsPrepared
       ? this.output.isWindowsPrepared(this.plan, windows)
-      : windows.every((window) => this.outputWindowReady(window.startSeconds, window.endSeconds));
+      : windows.every((window) => !this.output.isWindowPrepared || this.output.isWindowPrepared(this.plan!, window.startSeconds, window.endSeconds))) &&
+      this.accompanimentWindowsReady(windows);
   }
 
   private loopPreparationWindows(position: number): Array<{ startSeconds: number; endSeconds: number }> {
@@ -808,6 +946,7 @@ export class Transport {
     this.loopScheduledIteration = iteration;
     this.loopLastObservedIteration = iteration;
     this.loopNextEventIndex = this.firstEventAfter(position);
+    this.loopNextAccompanimentEventIndex = this.firstAccompanimentEventAfter(position);
   }
 
   private currentLoopIteration(audioTime: number): number {
@@ -836,7 +975,7 @@ export class Transport {
 
   /** Prefetches output samples (e.g. SoundFont) around a target time for interactive modes like Play Along. */
   public prefetchWindowAt(timeSeconds: number, horizonSeconds = 6): void {
-    if (this.disposed || !this.plan || (!this.output.prepareWindow && !this.output.prepareWindows)) return;
+    if (this.disposed || !this.plan || !this.hasSamplePreparation()) return;
     if (this.audioContext.state === "suspended") {
       void this.audioContext.resume().catch(() => {});
     }
@@ -869,52 +1008,49 @@ export class Transport {
   }
 
   private prepareOutputWindow(start: number, end: number): Promise<void> {
-    const output = this.output;
-    const plan = this.plan;
-    if (!plan || !output.prepareWindow) return Promise.resolve();
-    end = Math.min(this.durationSeconds, end);
-    const windows = [{ startSeconds: start, endSeconds: end }];
-    const current = this.samplePreparation;
-    if (current && current.output === output && current.plan === plan && this.windowsCoveredBy(windows, current.windows)) {
-      return current.promise;
-    }
-    current?.controller.abort();
-    const controller = new AbortController();
-    const promise = Promise.resolve().then(() => output.prepareWindow!(plan, start, end, controller.signal));
-    const pending = { output, plan, windows, controller, promise };
-    this.samplePreparation = pending;
-    void promise.finally(() => {
-      if (this.samplePreparation === pending) this.samplePreparation = null;
-    }).catch(() => { /* The awaiting playback or prefetch owns error reporting. */ });
-    return promise;
+    const window = { startSeconds: start, endSeconds: Math.min(this.durationSeconds, end) };
+    return this.prepareOutputWindows([window], window);
   }
 
-  private prepareOutputWindows(windows: Array<{ startSeconds: number; endSeconds: number }>): Promise<void> {
+  private prepareOutputWindows(windows: Array<{ startSeconds: number; endSeconds: number }>, linearWindow?: AccompanimentWindow): Promise<void> {
     const output = this.output;
     const plan = this.plan;
-    if (!plan || (!output.prepareWindows && !output.prepareWindow)) return Promise.resolve();
+    const accompaniment = this.accompanimentSampler;
+    const accompanimentPlan = this.accompanimentPlan;
+    if (!plan || !this.hasSamplePreparation()) return Promise.resolve();
     const bounded = windows.map((window) => ({
       startSeconds: Math.max(0, window.startSeconds),
       endSeconds: Math.min(this.durationSeconds, window.endSeconds),
     })).filter((window) => window.endSeconds > window.startSeconds)
       .sort((left, right) => left.startSeconds - right.startSeconds || left.endSeconds - right.endSeconds);
     if (bounded.length === 0) return Promise.resolve();
-    if (output.isWindowsPrepared?.(plan, bounded) ||
-        (!output.isWindowsPrepared && bounded.every((window) => this.outputWindowReady(window.startSeconds, window.endSeconds)))) {
+    if ((output.isWindowsPrepared?.(plan, bounded) ||
+        (!output.isWindowsPrepared && bounded.every((window) => !output.isWindowPrepared || output.isWindowPrepared(plan, window.startSeconds, window.endSeconds)))) &&
+        this.accompanimentWindowsReady(bounded)) {
       return Promise.resolve();
     }
     const current = this.samplePreparation;
-    if (current && current.output === output && current.plan === plan && this.windowsCoveredBy(bounded, current.windows)) {
+    if (current && current.output === output && current.plan === plan && current.accompaniment === accompaniment &&
+        current.accompanimentPlan === accompanimentPlan && this.windowsCoveredBy(bounded, current.windows)) {
       return current.promise;
     }
     current?.controller.abort();
     const controller = new AbortController();
     const promise = Promise.resolve().then(() => {
-      if (output.prepareWindows) return output.prepareWindows(plan, bounded, controller.signal);
-      return bounded.reduce<Promise<void>>((pending, window) => pending.then(() =>
-        output.prepareWindow!(plan, window.startSeconds, window.endSeconds, controller.signal)), Promise.resolve());
+      // Preserve the legacy linear API's lead-in and direct call timing. Only
+      // atomic windows/backing preparation requires non-negative song bounds.
+      const pianoPreparation = linearWindow && output.prepareWindow
+        ? output.prepareWindow(plan, linearWindow.startSeconds, linearWindow.endSeconds, controller.signal)
+        : output.prepareWindows ? output.prepareWindows(plan, bounded, controller.signal) :
+        bounded.reduce<Promise<void>>((pending, window) => pending.then(() =>
+          output.prepareWindow?.(plan, window.startSeconds, window.endSeconds, controller.signal)), Promise.resolve());
+      if (!accompanimentPlan || !accompaniment.prepareWindows) return pianoPreparation;
+      return Promise.allSettled([pianoPreparation, accompaniment.prepareWindows(accompanimentPlan, bounded, controller.signal)]).then((results) => {
+        const failure = results.find((result): result is PromiseRejectedResult => result.status === "rejected");
+        if (failure) throw failure.reason;
+      });
     });
-    const pending = { output, plan, windows: bounded, controller, promise };
+    const pending = { output, plan, accompaniment, accompanimentPlan, windows: bounded, controller, promise };
     this.samplePreparation = pending;
     void promise.finally(() => {
       if (this.samplePreparation === pending) this.samplePreparation = null;
@@ -958,6 +1094,7 @@ export class Transport {
       this.cancelSamplePreparation();
       this.stopScheduler();
       this.output.panic();
+      this.accompanimentSampler.allNotesOff();
       this.syncedAudio?.pause();
       this.currentTime = this.durationSeconds;
       this.state = "idle";
@@ -982,7 +1119,7 @@ export class Transport {
       void this.play().catch(() => { /* play reports the preparation failure. */ });
       return;
     }
-    if (this.output.prepareWindow && !this.samplePreparation && currentSong >= this.nextSamplePrefetchTime) {
+    if (this.hasSamplePreparation() && !this.samplePreparation && currentSong >= this.nextSamplePrefetchTime) {
       const expectedOutput = this.output;
       const expectedPlan = this.plan;
       const generation = this.playRequestGeneration;
@@ -1022,6 +1159,29 @@ export class Transport {
       }
 
       this.nextEventIndex += 1;
+    }
+    if (this.accompanimentPlan) {
+      const accEvents = this.accompanimentPlan.events;
+      while (this.nextAccompanimentEventIndex < accEvents.length) {
+        const accEvent = accEvents[this.nextAccompanimentEventIndex]!;
+        if (accEvent.timeSeconds > songHorizon) {
+          break;
+        }
+        const audioTime = this.audioStartTime + (accEvent.timeSeconds - this.songStartTime) / this.speed;
+        const clampedAudioTime = Math.max(now, audioTime);
+        if (accEvent.type === "press") {
+          this.accompanimentSampler.noteOn(
+            accEvent.noteId,
+            accEvent.pitch,
+            accEvent.velocity,
+            accEvent.program,
+            clampedAudioTime,
+          );
+        } else {
+          this.accompanimentSampler.noteOff(accEvent.noteId, clampedAudioTime);
+        }
+        this.nextAccompanimentEventIndex += 1;
+      }
     } } catch (error) {
       this.handlePlaybackError(error instanceof Error ? error : new Error(String(error)));
       return;
@@ -1068,7 +1228,7 @@ export class Transport {
       return;
     }
 
-    if ((this.output.prepareWindows || this.output.prepareWindow) && !this.samplePreparation &&
+    if (this.hasSamplePreparation() && !this.samplePreparation &&
         this.getCurrentTime() >= this.nextSamplePrefetchTime) {
       const expectedOutput = this.output;
       const expectedPlan = this.plan;
@@ -1114,11 +1274,36 @@ export class Transport {
           this.loopNextEventIndex += 1;
         }
 
+        if (this.accompanimentPlan) {
+          const accEvents = this.accompanimentPlan.events;
+          while (this.loopNextAccompanimentEventIndex < accEvents.length) {
+            const accEvent = accEvents[this.loopNextAccompanimentEventIndex]!;
+            if (accEvent.timeSeconds >= range.endSeconds) break;
+            const eventAudio = cycleStartAudio + (accEvent.timeSeconds - range.startSeconds) / this.speed;
+            if (eventAudio > horizon) break;
+            const scheduledTime = Math.max(now, eventAudio);
+            const loopNoteId = this.loopVoiceId(accEvent.noteId, iteration);
+            if (accEvent.type === "press") {
+              this.accompanimentSampler.noteOn(
+                loopNoteId,
+                accEvent.pitch,
+                accEvent.velocity,
+                accEvent.program,
+                scheduledTime,
+              );
+            } else {
+              this.accompanimentSampler.noteOff(loopNoteId, scheduledTime);
+            }
+            this.loopNextAccompanimentEventIndex += 1;
+          }
+        }
+
         if (boundaryAudio > horizon) break;
         const boundaryTime = Math.max(now, boundaryAudio);
         this.scheduleLoopBoundary(iteration, boundaryTime);
         this.loopScheduledIteration += 1;
         this.loopNextEventIndex = this.firstEventAfter(range.startSeconds);
+        this.loopNextAccompanimentEventIndex = this.firstAccompanimentEventAfter(range.startSeconds);
       }
     } catch (error) {
       this.handlePlaybackError(error instanceof Error ? error : new Error(String(error)));
@@ -1178,6 +1363,24 @@ export class Transport {
       }
     }
     setSoft(startState.pedals.soft);
+    if (this.accompanimentPlan && this.accompanimentSampler.isEnabled()) {
+      for (const note of this.accompanimentPlan.notes) {
+        if (note.startSeconds < range.endSeconds && note.endSeconds >= range.endSeconds) {
+          this.accompanimentSampler.noteOff(this.loopVoiceId(note.noteId, iteration), audioTime);
+        }
+      }
+      for (const note of this.accompanimentPlan.notes) {
+        if (note.startSeconds <= range.startSeconds && note.endSeconds > range.startSeconds) {
+          const noteId = this.loopVoiceId(note.noteId, nextIteration);
+          this.accompanimentSampler.noteOn(noteId, note.pitch, note.velocity, note.program, audioTime);
+          const releaseTime = Math.min(note.endSeconds, range.endSeconds);
+          this.accompanimentSampler.noteOff(
+            noteId,
+            audioTime + Math.max(0, releaseTime - range.startSeconds) / this.speed,
+          );
+        }
+      }
+    }
     void this.syncedAudio?.seekAt(range.startSeconds, this.speed, audioTime).catch((error: unknown) => {
       this.handlePlaybackError(error instanceof Error ? error : new Error(String(error)));
     });
@@ -1188,6 +1391,7 @@ export class Transport {
    * at the restored boundary have already been replayed as part of the state.
    */
   private updateNextEventIndex(songTime: number): void {
+    this.updateNextAccompanimentEventIndex(songTime);
     if (!this.plan || this.plan.events.length === 0) {
       this.nextEventIndex = 0;
       return;
@@ -1209,6 +1413,65 @@ export class Transport {
     this.nextEventIndex = low;
   }
 
+  private firstAccompanimentEventAfter(songTime: number): number {
+    if (!this.accompanimentPlan || this.accompanimentPlan.events.length === 0) return 0;
+    const events = this.accompanimentPlan.events;
+    let low = 0;
+    let high = events.length;
+    while (low < high) {
+      const middle = (low + high) >> 1;
+      if (events[middle]!.timeSeconds <= songTime) low = middle + 1;
+      else high = middle;
+    }
+    return low;
+  }
+
+  private updateNextAccompanimentEventIndex(songTime: number): void {
+    this.nextAccompanimentEventIndex = this.firstAccompanimentEventAfter(songTime);
+  }
+
+  private restoreAccompanimentStateAt(songTime: number): void {
+    this.accompanimentSampler.allNotesOff();
+    if (!this.accompanimentPlan || !this.accompanimentSampler.isEnabled()) return;
+    const now = this.audioContext.currentTime;
+    const iteration = this.loopRange ? this.currentLoopIteration(now) : 0;
+    if (this.loopRange) {
+      const position = this.wrapLoopTime(songTime, this.loopRange);
+      this.loopNextAccompanimentEventIndex = this.firstAccompanimentEventAfter(position);
+    } else {
+      this.updateNextAccompanimentEventIndex(songTime);
+    }
+    for (const note of this.accompanimentPlan.notes) {
+      if (note.startSeconds > songTime) break;
+      if (note.endSeconds > songTime) {
+        const noteId = this.loopRange ? this.loopVoiceId(note.noteId, iteration) : note.noteId;
+        this.accompanimentSampler.noteOn(noteId, note.pitch, note.velocity, note.program, now);
+      }
+    }
+  }
+
+  private refreshAccompanimentPlayback(songTime: number): void {
+    if (!(this.loopRange ? this.loopOutputWindowReady(songTime) : this.outputWindowReady(songTime, songTime + this.scheduleAheadSeconds * this.speed))) {
+      this.pause();
+      void this.play().catch(() => { /* play reports preparation errors. */ });
+      return;
+    }
+    const now = this.audioContext.currentTime;
+    if (this.loopRange) {
+      const iteration = this.currentLoopIteration(now);
+      this.output.cancelScheduledFutureEvents(now);
+      this.songStartTime = songTime;
+      this.audioStartTime = now;
+      this.anchorLoopScheduler(songTime, now, iteration, false);
+      // Rebuilding from one loop anchor clears every scheduled cycle, including
+      // short-loop iterations already inside the lookahead horizon.
+      this.restorePlaybackStateAt(songTime);
+    } else {
+      this.restoreAccompanimentStateAt(songTime);
+    }
+    this.tickScheduler();
+  }
+
   /**
    * Replays the ordered event prefix through songTime to recreate pressed keys
    * and sustain, sostenuto, and soft pedal state. Replaying at one audio instant
@@ -1221,6 +1484,7 @@ export class Transport {
       for (const voice of state.voices) voice.noteId = this.loopVoiceId(voice.noteId, iteration);
     }
     this.output.restoreState(state);
+    this.restoreAccompanimentStateAt(songTime);
   }
 
   private restorePedalStateAt(songTime: number): void {
@@ -1247,6 +1511,14 @@ export class Transport {
     }
     const lastEvent = plan.events[plan.events.length - 1];
     return lastEvent?.timeSeconds ?? 0;
+  }
+
+  private recomputeDuration(): void {
+    const accompanimentEnd = this.accompanimentPlan?.notes.reduce(
+      (latest, note) => Math.max(latest, note.endSeconds),
+      0,
+    ) ?? 0;
+    this.durationSeconds = Math.max(this.performanceDurationSeconds, accompanimentEnd);
   }
 
   private clampSongTime(timeSeconds: number): number {
@@ -1290,6 +1562,7 @@ export class Transport {
       this.state = "paused";
       this.stopScheduler();
       this.output.panic();
+      this.accompanimentSampler.allNotesOff();
       this.emitState();
       this.emitTime();
     }
@@ -1303,6 +1576,7 @@ export class Transport {
     this.disposed = true;
     this.playRequestGeneration += 1;
     this.pause();
+    this.accompanimentSampler.allNotesOff();
     this.timeListeners.clear();
     this.stateListeners.clear();
     this.speedListeners.clear();
@@ -1322,6 +1596,8 @@ export class Transport {
       this.output.dispose();
     }
     this.defaultSynthOutput.dispose();
+    this.accompanimentSampler.dispose();
+    if (this.accompanimentSampler !== this.defaultAccompanimentSampler) this.defaultAccompanimentSampler.dispose();
     this.outputErrorListeners.clear();
   }
 }

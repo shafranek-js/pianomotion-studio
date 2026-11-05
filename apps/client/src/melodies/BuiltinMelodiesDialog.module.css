@@ -718,6 +718,67 @@
   font-size: 0.76rem;
 }
 
+.externalPortalsDetails {
+  border: 1px solid rgba(115, 212, 188, 0.22);
+  border-radius: 0.65rem;
+  background: rgba(115, 212, 188, 0.04);
+  padding: 0.45rem 0.75rem;
+}
+
+.externalPortalsSummary {
+  cursor: pointer;
+  color: var(--studio-mint, #73d4bc);
+  font-size: 0.76rem;
+  font-weight: 600;
+  user-select: none;
+}
+
+.externalPortalsGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.55rem;
+}
+
+.externalPortalChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.65rem;
+  border: 1px solid var(--studio-border, #303640);
+  border-radius: 0.5rem;
+  background: var(--studio-panel, #181b20);
+  color: var(--studio-text, #e7ecf2);
+  font-size: 0.74rem;
+  text-decoration: none;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.externalPortalChip:hover {
+  border-color: var(--studio-mint, #73d4bc);
+  background: var(--studio-hover, #212a30);
+}
+
+.externalPortalLabel {
+  font-weight: 600;
+}
+
+.externalPortalBadge {
+  padding: 0.1rem 0.35rem;
+  border-radius: 0.3rem;
+  background: rgba(115, 212, 188, 0.14);
+  color: var(--studio-mint, #73d4bc);
+  font-size: 0.65rem;
+  font-weight: 600;
+}
+
+.externalPortalsTip {
+  margin: 0.55rem 0 0.15rem;
+  color: var(--studio-muted, #a1aab8);
+  font-size: 0.72rem;
+  line-height: 1.45;
+}
+
 .externalLink {
   display: inline-flex;
   align-items: center;

@@ -16,6 +16,7 @@ test("Play along mode activates, provides step-by-step chord practice, and handl
   await configureStudioTestOutput(page);
   await waitForLoadingToClear(page);
   await page.getByRole("button", { name: "Performance", exact: true }).click();
+  await page.getByRole("button", { name: "2D", exact: true }).click();
 
   // 1. Switch to "Play along" mode
   const playAlongButton = page.getByRole("button", { name: "Play along", exact: true });

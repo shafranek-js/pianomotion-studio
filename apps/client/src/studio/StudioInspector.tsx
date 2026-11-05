@@ -15,6 +15,8 @@ import { DiagnosticLogControls } from "../diagnostics/DiagnosticLogControls";
 import { formatDisplaySourceName } from "../melodies/catalog";
 import { RiggedPoseEditorPanel, type RiggedPoseEditorPanelProps } from "./RiggedPoseEditorPanel";
 import { STAFF_QUANTIZATION_OPTIONS, type StaffQuantizationMode } from "../notation/staffNotationBuilder";
+import type { AccompanimentTrackInfo } from "../audio/accompaniment";
+import type { WebMidiInputStatus } from "../midi";
 
 export interface StudioInspectorProps {
   tab: InspectorTab;
@@ -25,6 +27,9 @@ export interface StudioInspectorProps {
   audioRecording: DecodedAudioRecording | null;
   audioOffset: number;
   audioOutputLabel?: string;
+  midiInputStatus?: WebMidiInputStatus | null;
+  onConnectMidi?(): void;
+  onMidiInputDeviceChange?(deviceId: string | null): void;
   poseEditor?: RiggedPoseEditorPanelProps;
   sourceName: string;
   busy: boolean;
@@ -44,6 +49,11 @@ export interface StudioInspectorProps {
   onAudioFileChange(event: ChangeEvent<HTMLInputElement>): void;
   onClearAudio(): void;
   onAudioOffsetChange(offset: number): void;
+  accompanimentTracks?: readonly AccompanimentTrackInfo[];
+  accompanimentEnabled?: boolean;
+  accompanimentVolume?: number;
+  onToggleAccompaniment?(): void;
+  onAccompanimentVolumeChange?(volume: number): void;
   staffQuantization?: StaffQuantizationMode;
   onStaffQuantizationChange?(mode: StaffQuantizationMode): void;
   staffShowFingers?: boolean;
@@ -234,6 +244,69 @@ export function StudioInspector(props: StudioInspectorProps) {
     <section className={styles.content} aria-label={dict.inspector.audioSettings}>
       <h2 className={styles.heading}>{dict.inspector.audioTitle}</h2>
       {props.audioOutputLabel && <p role="status" className={styles.hint}>{props.audioOutputLabel}</p>}
+      {props.onConnectMidi && (
+        <section className={styles.stageAppearance} aria-label="MIDI input">
+          <h3 className={styles.subheading}>MIDI input</h3>
+          <p className={styles.hint}>In Performance, press any piano key to start or resume playback, including in Focus. Space or Enter starts and pauses playback.</p>
+          <button type="button" className={styles.primaryButton} onClick={props.onConnectMidi}
+            disabled={props.midiInputStatus?.permission === "unsupported"}>
+            {props.midiInputStatus?.permission === "granted" ? "Rescan MIDI" : "Connect MIDI"}
+          </button>
+          {props.midiInputStatus?.permission === "unsupported" && <p className={styles.hint}>Web MIDI is unavailable in this browser.</p>}
+          {props.midiInputStatus?.permission === "granted" && !props.midiInputStatus.devices.some(device => device.state === "connected") &&
+            <p className={styles.hint}>No MIDI inputs connected. Connect your piano, then rescan.</p>}
+          {props.midiInputStatus?.errorMessage && <p role="status" className={styles.hint}>{props.midiInputStatus.errorMessage}</p>}
+          {props.midiInputStatus?.permission === "granted" && (
+            <label className={styles.field} htmlFor="studio-midi-input">
+              <span>MIDI input device</span>
+              <select id="studio-midi-input" value={props.midiInputStatus.activeDeviceId ?? ""}
+                onChange={event => props.onMidiInputDeviceChange?.(event.currentTarget.value || null)}>
+                <option value="">All MIDI inputs</option>
+                {props.midiInputStatus.devices.filter(device => device.state === "connected").map(device => (
+                  <option key={device.id} value={device.id}>{device.name}</option>
+                ))}
+              </select>
+            </label>
+          )}
+        </section>
+      )}
+      {(props.accompanimentTracks?.length ?? 0) > 0 && (
+        <section className={styles.stageAppearance} aria-label="Multi-Instrument Accompaniment">
+          <h3 className={styles.subheading}>Multi-Instrument Accompaniment</h3>
+          <ul className={styles.hint}>
+            {props.accompanimentTracks!.map(track => (
+              <li key={track.id}>{track.name} · {track.noteCount} notes</li>
+            ))}
+          </ul>
+          <label className={styles.checkboxRow} htmlFor="studio-accompaniment-enabled">
+            <span>Accompaniment</span>
+            <input
+              id="studio-accompaniment-enabled"
+              type="checkbox"
+              checked={props.accompanimentEnabled ?? true}
+              onChange={props.onToggleAccompaniment}
+            />
+          </label>
+          <label className={styles.field} htmlFor="studio-accompaniment-volume">
+            <span className={styles.rangeHeading}>
+              <span>Accompaniment volume</span>
+              <output>{Math.round((props.accompanimentVolume ?? 0.65) * 100)}%</output>
+            </span>
+            <input
+              id="studio-accompaniment-volume"
+              className={styles.rangeInput}
+              type="range"
+              min={0}
+              max={100}
+              step={1}
+              value={Math.round((props.accompanimentVolume ?? 0.65) * 100)}
+              aria-valuetext={`${Math.round((props.accompanimentVolume ?? 0.65) * 100)} percent`}
+              disabled={props.accompanimentEnabled === false}
+              onChange={event => props.onAccompanimentVolumeChange?.(event.currentTarget.valueAsNumber / 100)}
+            />
+          </label>
+        </section>
+      )}
       <label id="audio-track-upload-label" className={styles.upload}>
         <span>{audioRecording ? dict.inspector.replaceRecording : dict.inspector.importRecording}</span>
         <span className={styles.hint}>{dict.inspector.audioFormats}</span>

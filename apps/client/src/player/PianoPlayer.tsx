@@ -29,8 +29,13 @@ import {
   computeSha256Hex,
   WebMidiPerformanceOutput,
   type DecodedAudioRecording,
+  extractAccompanimentPlan,
 } from "../audio";
-import { BUILTIN_SOUNDFONT_ID, BUILTIN_SOUNDFONT_NAME, loadBuiltinSoundFont } from "../audio/soundfont/builtinSoundfont.ts";
+import { BUILTIN_SOUNDFONT_ID, BUILTIN_SOUNDFONT_NAME } from "../audio/soundfont/builtinSoundfont.ts";
+import { loadParsedBuiltinSoundFont } from "../audio/soundfont/parsedBuiltinSoundfont.ts";
+import { createBackingPreparationWithBuiltinFallback } from "../audio/soundfont/backingPreparation.ts";
+import { SoundFontAccompanimentSampler } from "../audio/soundfont/soundfontAccompaniment.ts";
+import type { Sf2SoundFont } from "../audio/soundfont/types.ts";
 import { WebMidiOutputManager, getSharedWebMidiOutputManager } from "../midi/webMidiOutput";
 import {
   FingeringEditor,
@@ -109,6 +114,7 @@ import { ChordRibbon } from "../harmony/ChordRibbon";
 import { buildStaffNotation, type StaffQuantizationMode } from "../notation/staffNotationBuilder";
 import { StaffRibbon } from "../notation/StaffRibbon";
 import { playMetronomeClick } from "../audio/metronomeAudio";
+import { canUsePlaybackInput, isPlaybackToggleKey, PLAYBACK_CONTROL_SELECTOR, PLAYBACK_DIALOG_SELECTOR, shouldStartFromMidi } from "./playbackInput";
 
 export interface PianoPlayerProps {
   result: M1AnalyzeMidiResult;
@@ -362,6 +368,7 @@ export function PianoPlayer({
   const motionLastPauseRef = useRef<MotionBufferPauseSnapshot | null>(null);
   const motionRequestCountRef = useRef(0);
   const playIntentRef = useRef(false);
+  const requestMidiPlaybackRef = useRef<() => void>(() => {});
   const exportScopeRef = useRef(new ExportOperationScope());
   const [initialPractice] = useState(() => restorePracticeState(initialSession, result));
   const [practiceState, setPracticeState] = useState<PracticeState>(initialPractice.practiceState);
@@ -408,6 +415,9 @@ export function PianoPlayer({
   const [playbackError, setPlaybackError] = useState<string | null>(null);
   const [activeOutputId, setActiveOutputId] = useState<"synth" | "soundfont" | "webmidi">("synth");
   const [activeSoundfontAssetId, setActiveSoundfontAssetId] = useState<string | null>(null);
+  const [soundfontFallbackPrograms, setSoundfontFallbackPrograms] = useState<number[]>([]);
+  const [soundfontBuiltinPrograms, setSoundfontBuiltinPrograms] = useState<number[]>([]);
+  const [soundfontBuiltinFailure, setSoundfontBuiltinFailure] = useState<string | null>(null);
   const [activeSoundfontAssetBlob, setActiveSoundfontAssetBlob] = useState<Blob | null>(null);
   const [preparingOutput, setPreparingOutput] = useState(true);
   const [preparingSamples, setPreparingSamples] = useState(false);
@@ -432,6 +442,14 @@ export function PianoPlayer({
   const [poseEditPresetBusy, setPoseEditPresetBusy] = useState(false);
   const [speed, setSpeed] = useState(settingsAtStart.playbackSpeed);
   const [volume, setVolume] = useState(settingsAtStart.masterVolume);
+  const [accompanimentEnabled, setAccompanimentEnabled] = useState(true);
+  const [accompanimentVolume, setAccompanimentVolume] = useState(0.65);
+  const accompanimentPlan = useMemo(() => extractAccompanimentPlan(rawMidiBytes), [rawMidiBytes]);
+  const performanceDuration = result.document?.durationSeconds ?? 0;
+  const transportDuration = useMemo(
+    () => accompanimentPlan.notes.reduce((duration, note) => Math.max(duration, note.endSeconds), performanceDuration),
+    [performanceDuration, accompanimentPlan.notes],
+  );
   const [audioRecording, setAudioRecording] = useState<DecodedAudioRecording | null>(null);
   const [audioOffset, setAudioOffset] = useState(0);
   const [editorBridge, setEditorBridge] = useState<FingeringEditorSceneBridge | null>(null);
@@ -945,6 +963,9 @@ export function PianoPlayer({
     const transport = new Transport({ leadInSeconds: Math.abs(settings.leadInSeconds) });
     transportRef.current = transport;
     transport.loadPlan(result.performancePlan!, result.document!.durationSeconds);
+    transport.loadAccompanimentPlan(accompanimentPlan);
+    transport.setAccompanimentEnabled(accompanimentEnabled);
+    transport.setAccompanimentVolume(accompanimentVolume);
     transport.setSpeed(speed);
     transport.setVolume(volume);
     transport.getSampler().setTimbre(settings.soundTimbre);
@@ -1102,6 +1123,36 @@ export function PianoPlayer({
   }, []);
 
   useEffect(() => {
+    const transport = transportRef.current;
+    if (!transport) return;
+    // Source-scoped plan replacement also clears notes from the previous file.
+    transport.loadAccompanimentPlan(accompanimentPlan);
+    setSoundfontFallbackPrograms(transport.getAccompanimentFallbackPrograms());
+    setSoundfontBuiltinPrograms(transport.getAccompanimentBuiltinFallbackPrograms());
+
+    if (transport.getOutputId() !== "soundfont") return;
+    const preparation = new AbortController();
+    void transport.prepareActiveAccompanimentBackend(preparation.signal).then(() => {
+      if (!preparation.signal.aborted && transportRef.current === transport) {
+        setSoundfontFallbackPrograms(transport.getAccompanimentFallbackPrograms());
+        setSoundfontBuiltinPrograms(transport.getAccompanimentBuiltinFallbackPrograms());
+      }
+    }).catch(() => {
+      // The active output remains in place; cancellation or preparation errors
+      // are surfaced by transport playback readiness and output status.
+    });
+    return () => preparation.abort();
+  }, [accompanimentPlan]);
+
+  useEffect(() => {
+    transportRef.current?.setAccompanimentEnabled(accompanimentEnabled);
+  }, [accompanimentEnabled]);
+
+  useEffect(() => {
+    transportRef.current?.setAccompanimentVolume(accompanimentVolume);
+  }, [accompanimentVolume]);
+
+  useEffect(() => {
     const scene = sceneRef.current;
     if (!scene) return;
     scene.setPerformancePlan(analysis.performancePlan ?? null, document ? sceneDocument(document, analysis.fingeringPlan!) : undefined);
@@ -1204,18 +1255,35 @@ export function PianoPlayer({
           if (!settings.soundfontAssetId) {
             throw new Error("No SoundFont selected. Please choose the included bank or an SF2/SF3 file in Settings.");
           }
-          const asset = settings.soundfontAssetId === BUILTIN_SOUNDFONT_ID
-            ? await loadBuiltinSoundFont({ signal: outputPreparation.signal })
-            : await loadSoundFontAsset(settings.soundfontAssetId);
+          const included = settings.soundfontAssetId === BUILTIN_SOUNDFONT_ID
+            ? await loadParsedBuiltinSoundFont(outputPreparation.signal)
+            : null;
+          const asset = included?.asset ?? await loadSoundFontAsset(settings.soundfontAssetId);
           if (!asset) {
             throw new Error("Selected SoundFont was not found in local storage.");
           }
           if (!live || !transportRef.current) return;
 
-          const digest = await computeSha256Hex(asset.data, { signal: outputPreparation.signal });
-          if (digest !== asset.id) throw new Error("Stored SoundFont content does not match its asset identity.");
-          const sf = await parseSf2Async(asset.data, { signal: outputPreparation.signal });
+          if (!included) {
+            const digest = await computeSha256Hex(asset.data, { signal: outputPreparation.signal });
+            if (digest !== asset.id) throw new Error("Stored SoundFont content does not match its asset identity.");
+          }
+          const sf = included?.soundFont ?? await parseSf2Async(asset.data, { signal: outputPreparation.signal });
           if (sf.sampleSource) sf.sampleSource.assetId = asset.id;
+          if (!live) return;
+          let fallbackSoundFont: Sf2SoundFont | undefined;
+          let builtinFailure: string | null = null;
+          const needsIncludedFallback = !included && accompanimentPlan.notes.some(note => !sf.presets.some(preset =>
+            preset.bankNumber === 0 && preset.presetNumber === note.program &&
+            preset.zones.some(zone => sf.samples[zone.sampleIndex] !== undefined)));
+          if (needsIncludedFallback) {
+            try {
+              fallbackSoundFont = (await loadParsedBuiltinSoundFont(outputPreparation.signal)).soundFont;
+            } catch (error) {
+              if (!live || outputPreparation.signal.aborted) return;
+              builtinFailure = errorMessage(error);
+            }
+          }
           if (!live) return;
           const sfOutput = await prepareSoundFontPerformanceOutput(sf, {
             audioContext: getAudioContext(), destinationNode: getMasterGain(),
@@ -1223,21 +1291,63 @@ export function PianoPlayer({
             startSeconds: activeTransport.getCurrentTime(),
             signal: outputPreparation.signal,
           });
+          let sfAccompaniment: SoundFontAccompanimentSampler | null = null;
+          let activated = false;
           try {
+            let candidateAccompaniment = new SoundFontAccompanimentSampler({
+              soundFont: sf,
+              fallbackSoundFont,
+              audioContext: getAudioContext(),
+              destinationNode: getMasterGain(),
+            });
+            sfAccompaniment = candidateAccompaniment;
+            const prepareBacking = createBackingPreparationWithBuiltinFallback({
+              prepare: () => activeTransport.prepareAccompanimentBackend(candidateAccompaniment, outputPreparation.signal),
+              canRetry: () => Boolean(fallbackSoundFont) && live && transportRef.current === activeTransport,
+              signal: outputPreparation.signal,
+              dropBuiltinFallback: error => {
+                candidateAccompaniment.dispose();
+                candidateAccompaniment = new SoundFontAccompanimentSampler({
+                  soundFont: sf,
+                  audioContext: getAudioContext(),
+                  destinationNode: getMasterGain(),
+                });
+                sfAccompaniment = candidateAccompaniment;
+                builtinFailure = `Sample preparation failed: ${errorMessage(error)}`;
+              },
+            });
+            await prepareBacking();
             // Playback/replan may advance while a candidate is decoded. Keep the
-            // current output until the candidate covers the actual handover.
+            // current output until both candidates cover the actual handover.
             while (live && transportRef.current) {
               const plan = latestStateRef.current.analysis.performancePlan;
               if (!plan) throw new Error("No performance plan is available for this SoundFont.");
               const position = transportRef.current.getCurrentTime();
-              if (sfOutput.isWindowPrepared(plan, position, position + 0.2)) break;
+              const accompanimentPlanAtPreparation = activeTransport.getAccompanimentPlan();
+              const duration = activeTransport.getDuration();
+              const accompanimentStart = Math.min(duration, Math.max(0, position));
+              const accompanimentReady = !accompanimentPlanAtPreparation ||
+                candidateAccompaniment.isWindowsPrepared(accompanimentPlanAtPreparation, [{
+                  startSeconds: accompanimentStart,
+                  endSeconds: Math.min(duration, accompanimentStart + 0.2),
+                }]);
+              if (sfOutput.isWindowPrepared(plan, position, position + 0.2) && accompanimentReady) break;
+              if (!accompanimentReady) {
+                await prepareBacking();
+              }
               await sfOutput.prepareWindow(plan, position, position + 4, outputPreparation.signal);
             }
-            if (!live || !transportRef.current) { sfOutput.dispose(); return; }
-            transportRef.current.setOutput(sfOutput);
-          } catch (error) {
-            sfOutput.dispose();
-            throw error;
+            if (!live || !transportRef.current) return;
+            transportRef.current.setOutput(sfOutput, candidateAccompaniment);
+            activated = true;
+            setSoundfontFallbackPrograms(transportRef.current.getAccompanimentFallbackPrograms());
+            setSoundfontBuiltinPrograms(transportRef.current.getAccompanimentBuiltinFallbackPrograms());
+            setSoundfontBuiltinFailure(builtinFailure);
+          } finally {
+            if (!activated) {
+              sfOutput.dispose();
+              sfAccompaniment?.dispose();
+            }
           }
           setActiveOutputId(transportRef.current.getOutputId());
           setActiveSoundfontAssetId(settings.soundfontAssetId);
@@ -1275,6 +1385,9 @@ export function PianoPlayer({
           }
           const midiOutput = new WebMidiPerformanceOutput(manager, getAudioContext(), settings.webMidiChannel ?? 0);
           transportRef.current?.setOutput(midiOutput);
+          setSoundfontFallbackPrograms([]);
+          setSoundfontBuiltinPrograms([]);
+          setSoundfontBuiltinFailure(null);
           setActiveOutputId(transportRef.current!.getOutputId());
           setActiveSoundfontAssetId(null);
           setActiveSoundfontAssetBlob(null);
@@ -1287,6 +1400,9 @@ export function PianoPlayer({
         }
       } else {
         transportRef.current?.setOutput(null);
+        setSoundfontFallbackPrograms([]);
+        setSoundfontBuiltinPrograms([]);
+        setSoundfontBuiltinFailure(null);
         transportRef.current?.getSampler().setTimbre(settings.soundTimbre);
         setActiveOutputId("synth");
         setActiveSoundfontAssetId(null);
@@ -1301,7 +1417,7 @@ export function PianoPlayer({
       live = false;
       outputPreparation.abort();
     };
-  }, [settings.soundOutput, settings.soundfontAssetId, settings.webMidiDeviceId, settings.webMidiChannel, settings.soundTimbre, outputEpoch, onStatusChange]);
+  }, [settings.soundOutput, settings.soundfontAssetId, settings.webMidiDeviceId, settings.webMidiChannel, settings.soundTimbre, accompanimentPlan, outputEpoch, onStatusChange]);
 
   useEffect(() => {
     const scene = sceneRef.current;
@@ -1618,9 +1734,15 @@ export function PianoPlayer({
     // Do not request MIDI access on mount: browsers may prompt immediately and
     // again after a refusal. The explicit "Connect MIDI" action requests it.
     const unsubStatus = inputManager.subscribeStatus(setMidiInputStatus);
+    // Settings can grant access via the output manager after the player mounted.
+    // subscribe also delivers its current status immediately, initializing once.
+    const unsubOutput = getSharedWebMidiOutputManager().subscribe(() => { void inputManager.init(); });
     const unsubInput = inputManager.subscribeInput((event) => {
       if (libraryOpenRef.current) return;
-      const isDown = event.type === "noteOn";
+      const isDown = event.type === "noteOn" && event.velocity > 0;
+      if (shouldStartFromMidi(event, playIntentRef.current || bufferingPausedRef.current || transportRef.current?.getState() === "playing")) {
+        requestMidiPlaybackRef.current();
+      }
       sceneRef.current?.setLivePhysicalPitch(event.pitch, isDown);
 
       if (viewModeRef.current === "play_along") {
@@ -1645,6 +1767,7 @@ export function PianoPlayer({
 
     return () => {
       unsubStatus();
+      unsubOutput();
       unsubInput();
     };
   }, []);
@@ -1829,6 +1952,11 @@ export function PianoPlayer({
     // Header actions can change the workspace and dimension in the same event.
     // Keep the imperative scene in sync before React's effects run.
     viewModeRef.current = normalized;
+    if (normalized === "play_along") {
+      // Play Along has its own clock and does not schedule accompaniment.
+      // Stop regular transport audio before switching clocks.
+      transportRef.current?.pause();
+    }
     setViewMode(normalized);
     if (normalized === "editor") {
       sceneRef.current?.set3DMode(false);
@@ -2902,6 +3030,27 @@ export function PianoPlayer({
   const [staffShowFingers, setStaffShowFingers] = useState(true);
   const [staffShowNoteNames, setStaffShowNoteNames] = useState(false);
 
+  const accompanimentTrackNames = (programs: number[]) => [...new Set(accompanimentPlan.tracks
+    .filter(track => programs.includes(track.program)).map(track => track.name))].join(", ") ||
+    `GM programs ${programs.map(program => program + 1).join(", ")}`;
+  const accompanimentFallbackLabel = activeOutputId === "soundfont" && viewMode !== "play_along"
+    ? `${soundfontBuiltinPrograms.length > 0 ? `; built-in GM: ${accompanimentTrackNames(soundfontBuiltinPrograms)} (${BUILTIN_SOUNDFONT_NAME})` : ""}${soundfontFallbackPrograms.length > 0 ? `; synth fallback: ${accompanimentTrackNames(soundfontFallbackPrograms)}` : ""}${soundfontBuiltinFailure ? `; built-in GM unavailable: ${soundfontBuiltinFailure}` : ""}`
+    : "";
+  const primaryAccompanimentTracks = [...new Set(accompanimentPlan.tracks
+    .filter(track => !soundfontFallbackPrograms.includes(track.program) && !soundfontBuiltinPrograms.includes(track.program))
+    .map(track => track.name))];
+  const soundfontBackingSources = [
+    ...(primaryAccompanimentTracks.length > 0
+      ? [`${activeSoundfontAssetId === BUILTIN_SOUNDFONT_ID ? BUILTIN_SOUNDFONT_NAME : "Local SoundFont"} (${primaryAccompanimentTracks.join(", ")})`] : []),
+    ...(soundfontBuiltinPrograms.length > 0 ? [BUILTIN_SOUNDFONT_NAME] : []),
+    ...(soundfontFallbackPrograms.length > 0 ? ["built-in synth"] : []),
+  ].join(" + ");
+  const accompanimentOutputLabel = viewMode !== "play_along" && accompanimentPlan.tracks.length > 0
+    ? `; backing: ${activeOutputId === "soundfont"
+      ? soundfontBackingSources
+      : "built-in synth"}`
+    : "";
+
   const inspector = useCallback((tab: InspectorTab) => (
     <StudioInspector
       tab={tab}
@@ -2912,7 +3061,10 @@ export function PianoPlayer({
       audioRecording={audioRecording}
       audioOffset={audioOffset}
       poseEditor={poseEditModelMatches ? poseEditorPanelProps : undefined}
-      audioOutputLabel={playbackError ? `Playback unavailable: ${playbackError}` : `${preparingSamples ? "Preparing SoundFont samples; currently active: " : preparingOutput ? "Preparing selected output; currently active: " : "Active output: "}${activeOutputId === "synth" ? "Built-in synthesizer" : activeOutputId === "soundfont" ? (activeSoundfontAssetId === BUILTIN_SOUNDFONT_ID ? BUILTIN_SOUNDFONT_NAME : "Local SoundFont") : "External MIDI device"}`}
+      audioOutputLabel={playbackError ? `Playback unavailable: ${playbackError}` : `${preparingSamples ? "Preparing SoundFont samples; currently active: " : preparingOutput ? "Preparing selected output; currently active: " : "Active output: "}${activeOutputId === "synth" ? "Built-in synthesizer" : activeOutputId === "soundfont" ? (activeSoundfontAssetId === BUILTIN_SOUNDFONT_ID ? BUILTIN_SOUNDFONT_NAME : "Local SoundFont") : "External MIDI device"}${accompanimentOutputLabel}${accompanimentFallbackLabel}`}
+      midiInputStatus={midiInputStatus}
+      onConnectMidi={() => { void getSharedWebMidiInputManager().requestPermissionFromUserGesture(); }}
+      onMidiInputDeviceChange={deviceId => { getSharedWebMidiInputManager().selectDevice(deviceId); }}
       sourceName={projectName}
       busy={needsReplan}
       developerTools={developerTools}
@@ -2945,11 +3097,17 @@ export function PianoPlayer({
       onStaffShowFingersChange={setStaffShowFingers}
       staffShowNoteNames={staffShowNoteNames}
       onStaffShowNoteNamesChange={setStaffShowNoteNames}
+      accompanimentTracks={viewMode === "play_along" ? [] : accompanimentPlan.tracks}
+      accompanimentEnabled={accompanimentEnabled}
+      accompanimentVolume={accompanimentVolume}
+      onToggleAccompaniment={() => setAccompanimentEnabled(value => !value)}
+      onAccompanimentVolumeChange={setAccompanimentVolume}
     />
   ), [analysis, activeProfile, settings, keyStyle, audioRecording, audioOffset, poseEditModelMatches, poseEditorPanelProps, projectName, needsReplan, developerTools,
     editorReport, handleDiagnosticNote, handleKeyStyleChange, onOpenPianist, handleAudioFileChange, handleClearAudio,
     handleAudioOffsetChange, handleRetryCalculation, handleStageAppearanceChange, onStatusChange, status, preparingOutput, preparingSamples, activeOutputId, activeSoundfontAssetId, activeCalculationEngine, playbackError,
-    staffQuantization, staffShowFingers, staffShowNoteNames]);
+    staffQuantization, staffShowFingers, staffShowNoteNames, accompanimentPlan.tracks, accompanimentEnabled, accompanimentVolume, viewMode,
+    accompanimentFallbackLabel, accompanimentOutputLabel, midiInputStatus]);
 
   const editorState = <FingeringEditor
     document={document ?? result.document!}
@@ -3059,11 +3217,11 @@ export function PianoPlayer({
   }, [isPlaying, metronomeEnabled, currentTime, pieceBpm, pieceBeatsPerBar, volume]);
 
   const handleTogglePlayWithCountIn = useCallback(() => {
-    if (countInBeat !== null) {
+    if (countInTimerRef.current !== null) {
       cancelCountIn();
       return;
     }
-    if (!isPlaying && !isBuffering && countInEnabled) {
+    if (!isPlaying && !isBuffering && !playIntentRef.current && !bufferingPausedRef.current && countInEnabled) {
       let beat = 1;
       setCountInBeat(beat);
       playMetronomeClick({ accent: true, volume: volume * 0.35 });
@@ -3081,7 +3239,30 @@ export function PianoPlayer({
       return;
     }
     void togglePlay();
-  }, [countInBeat, cancelCountIn, isPlaying, isBuffering, countInEnabled, volume, pieceBpm, speed, pieceBeatsPerBar, togglePlay]);
+  }, [cancelCountIn, isPlaying, isBuffering, countInEnabled, volume, pieceBpm, speed, pieceBeatsPerBar, togglePlay]);
+
+  const playbackInputBlocked = useCallback(() => !canUsePlaybackInput(viewModeRef.current,
+    libraryOpenRef.current || busy || needsReplan || poseEditActive || transportBlocker !== null ||
+    Boolean(window.document.querySelector(PLAYBACK_DIALOG_SELECTOR))), [busy, needsReplan, poseEditActive, transportBlocker]);
+
+  useLayoutEffect(() => {
+    requestMidiPlaybackRef.current = () => {
+      if (playbackInputBlocked() || countInTimerRef.current !== null || playIntentRef.current ||
+        bufferingPausedRef.current || transportRef.current?.getState() === "playing") return;
+      handleTogglePlayWithCountIn();
+    };
+  }, [playbackInputBlocked, handleTogglePlayWithCountIn]);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!isPlaybackToggleKey(event) || playbackInputBlocked()) return;
+      if (event.target instanceof Element && event.target.closest(PLAYBACK_CONTROL_SELECTOR)) return;
+      event.preventDefault();
+      handleTogglePlayWithCountIn();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [playbackInputBlocked, handleTogglePlayWithCountIn]);
 
   const handleFirstNote = useCallback(() => {
     cancelCountIn();
@@ -3125,18 +3306,18 @@ export function PianoPlayer({
   const getLiveStaffTime = useCallback(() => currentTimeRef.current, []);
 
   const scene = <div id="piano-canvas-container" ref={containerRef} className="piano-canvas-container" data-testid="piano-canvas" />;
-  const workspace = ({ effectiveView }: { effectiveView: StudioView; focusMode: boolean }) => (
+  const workspace = ({ effectiveView, focusMode }: { effectiveView: StudioView; focusMode: boolean }) => (
     <StudioWorkspace
       viewMode={effectiveView}
       scene={scene}
-      chordRibbon={chordsEnabled ? (
+      chordRibbon={!focusMode && chordsEnabled ? (
         <ChordRibbon
           harmony={pieceHarmony}
           currentTime={currentTime}
           onSeek={handleSeek}
         />
       ) : undefined}
-      staffRibbon={staffEnabled ? (
+      staffRibbon={!focusMode && staffEnabled ? (
         <StaffRibbon
           model={staffNotationModel}
           showFingers={staffShowFingers}
@@ -3155,7 +3336,7 @@ export function PianoPlayer({
       camera3DPreset={camera3DPreset}
       onCamera3DPresetChange={handleCamera3DPresetChange}
       showCameraHud={false}
-      waveform={audioRecording ? <div id="audio-waveform-container">
+      waveform={!focusMode && audioRecording ? <div id="audio-waveform-container">
         <WaveformCanvas
           recording={audioRecording}
           offsetSeconds={audioOffset}
@@ -3210,7 +3391,7 @@ export function PianoPlayer({
     <StudioTransport
       playing={isPlaying || isBuffering}
       currentTime={currentTime}
-      duration={document?.durationSeconds ?? 0}
+      duration={transportDuration}
       leadInSeconds={settings.leadInSeconds}
       speed={speed}
       volume={volume}
@@ -3242,6 +3423,11 @@ export function PianoPlayer({
       onLoopChange={handleTransportLoopChange}
       onToggleLoop={handleToggleQuickLoop}
       onJumpToBookmark={handleJumpToBookmark}
+      accompanimentTracks={accompanimentPlan.tracks}
+      accompanimentEnabled={accompanimentEnabled}
+      accompanimentVolume={accompanimentVolume}
+      onToggleAccompaniment={() => setAccompanimentEnabled(value => !value)}
+      onAccompanimentVolumeChange={setAccompanimentVolume}
     />
   );
 
@@ -3299,6 +3485,10 @@ export function PianoPlayer({
     projectName={projectName}
     hasProject
     viewMode={viewMode}
+    focusModeDisabled={poseEditActive || viewMode === "editor"}
+    focusModeDisabledReason={poseEditActive
+      ? "Finish hand pose editing before entering Focus mode."
+      : viewMode === "editor" ? "Switch to Performance or Play Along before entering Focus mode." : undefined}
     onViewModeChange={handleViewModeChange}
     is3DView={is3DView}
     onToggle3DView={handleToggle3DView}

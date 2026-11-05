@@ -1,7 +1,7 @@
 import { zipSync, strToU8 } from "fflate";
 import { describe, expect, it } from "vitest";
 import type { M1AnalyzeMidiResult } from "@handthesia/contracts";
-import { analyze_midi, _engine_version } from "@handthesia/engine-ts";
+import { analyze_midi, midiLoader, _engine_version } from "@handthesia/engine-ts";
 import {
   ALLOWED_SCORE_EXTENSIONS,
   hasScoreExtension,
@@ -243,6 +243,53 @@ describe("Multi-format Score Import Pipeline", () => {
 
       expect(lhNotes.map((n) => n.pitch).sort((a, b) => a - b)).toEqual([48, 55]);
       expect(analyzed.document!.pedalControls.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it("keeps a multilingual voice part separate from the piano hand notes", async () => {
+      const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<score-partwise version="4.0">
+  <part-list>
+    <score-part id="P1"><part-name>Piano</part-name></score-part>
+    <score-part id="P2"><part-name>Singstimme</part-name></score-part>
+    <score-part id="P3"><part-name>Organ</part-name><midi-instrument id="P3-I1"><midi-program>20</midi-program></midi-instrument></score-part>
+  </part-list>
+  <part id="P1">
+    <measure number="1">
+      <attributes><divisions>1</divisions><staves>2</staves></attributes>
+      <note><pitch><step>C</step><octave>5</octave></pitch><duration>1</duration><staff>1</staff></note>
+      <note><pitch><step>C</step><octave>3</octave></pitch><duration>1</duration><staff>2</staff></note>
+    </measure>
+  </part>
+  <part id="P2">
+    <measure number="1">
+      <attributes><divisions>1</divisions></attributes>
+      <note><pitch><step>G</step><octave>4</octave></pitch><duration>1</duration></note>
+    </measure>
+  </part>
+  <part id="P3">
+    <measure number="1">
+      <attributes><divisions>1</divisions><staves>2</staves></attributes>
+      <note><pitch><step>E</step><octave>4</octave></pitch><duration>1</duration><staff>1</staff></note>
+      <note><pitch><step>G</step><octave>2</octave></pitch><duration>1</duration><staff>2</staff></note>
+    </measure>
+  </part>
+</score-partwise>`;
+
+      const imported = await importScoreBytesToMidi("lied.musicxml", strToU8(xml));
+      const midi = new midiLoader.PrettyMIDI(new Uint8Array(imported.midiBytes));
+      const voiceTrack = midi.instruments.find((instrument) => instrument.name === "Singstimme");
+      const organTrack = midi.instruments.find((instrument) => instrument.name === "Organ");
+
+      expect(voiceTrack).toBeDefined();
+      expect(voiceTrack!.program).toBe(0);
+      expect(midiLoader.is_piano_track(voiceTrack!)).toBe(false);
+      expect(organTrack).toBeDefined();
+      expect(organTrack!.program).toBe(19);
+      expect(midiLoader.is_piano_track(organTrack!)).toBe(false);
+
+      const analyzed = runEngineAnalysis(imported.midiBytes, "req-mxml-voice-1");
+      expect(analyzed.status).toBe("loaded");
+      expect(analyzed.document!.notes.map((note) => note.pitch).sort((a, b) => a - b)).toEqual([48, 72]);
     });
 
     it("unpacks compressed .mxl and .mlx archives via META-INF/container.xml", async () => {

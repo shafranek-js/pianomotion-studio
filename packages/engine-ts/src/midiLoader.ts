@@ -746,7 +746,7 @@ export function save_fingered_midi_bytes(
 
 const PIANO_PROGRAMS = new Set([0, 1, 2, 3, 4, 5, 6, 7]);
 const _PIANO_WORDS = [
-  "piano", "klavier", "pianoforte", "solo", "keyboard", "clavier", "cembalo",
+  "piano", "klavier", "pianoforte", "keyboard", "clavier", "cembalo",
   "harpsichord", "right hand", "left hand", "rh", "lh", "pf", "pno",
 ];
 const _OTHER_WORDS = [
@@ -755,6 +755,8 @@ const _OTHER_WORDS = [
   "horn", "corni", "corno", "trumpet", "tromba", "trombe", "trombone", "tuba", "timpani",
   "timp", "drum", "percussion", "strings", "string", "choir", "voice", "vocal", "soprano",
   "alto", "tenor", "guitar", "harp", "organ", "orchestra", "tutti", "ensemble",
+  "singstimme", "gesang", "chant", "voce", "voix", "canto", "cantante", "bariton", "mezzo",
+  "contralto", "sax", "brass", "synth", "pad", "accompaniment", "backing",
 ];
 export const SAME_ONSET_T = 0.005;
 
@@ -770,7 +772,10 @@ export function is_piano_track(inst: { name: string; program: number }): boolean
     o.includes(" ") ? text.includes(o) : words.some((word) => word.startsWith(o))
   );
   if (named_piano) return true;
-  return PIANO_PROGRAMS.has(inst.program) && !named_other;
+  if (named_other) return false;
+  // Generic labels such as "Solo", "Lead", or "Melody" are not enough to
+  // override a piano program. They remain ambiguous and follow the program.
+  return PIANO_PROGRAMS.has(inst.program);
 }
 
 export function _vlq_read(data: Uint8Array, i: number): [number, number] {

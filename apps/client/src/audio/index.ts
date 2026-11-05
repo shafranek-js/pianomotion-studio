@@ -54,5 +54,6 @@ export {
 export * from "./output/index.ts";
 export * from "./soundfont/index.ts";
 export * from "./performancePlan.ts";
+export * from "./accompaniment.ts";
 export * from "./signalsmithStretch.ts";
 export * from "./recording/timeStretch.ts";

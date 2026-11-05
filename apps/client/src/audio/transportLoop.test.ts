@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { PerformancePlan } from "@handthesia/contracts";
+import type { AccompanimentPlan } from "./accompaniment.ts";
 import { Transport, MIN_LOOP_SPAN_SECONDS } from "./transport.ts";
 import type { PianoSampler } from "./sampler.ts";
 import type { PerformanceOutput, PerformanceOutputWindow, PlaybackState } from "./output/performanceOutput.ts";
@@ -95,16 +96,61 @@ function makePlan(events: PerformancePlan["events"]): PerformancePlan {
   };
 }
 
-function createClock() {
+function makeAccompanimentPlan(notes: AccompanimentPlan["notes"]): AccompanimentPlan {
+  const events: AccompanimentPlan["events"][number][] = [];
+  for (const note of notes) {
+    events.push({
+      type: "press", noteId: note.noteId, trackId: note.trackId,
+      program: note.program, pitch: note.pitch, velocity: note.velocity,
+      timeSeconds: note.startSeconds,
+    });
+    events.push({ type: "release", noteId: note.noteId, pitch: note.pitch, timeSeconds: note.endSeconds });
+  }
+  events.sort((left, right) => left.timeSeconds - right.timeSeconds ||
+    (left.type === right.type ? left.pitch - right.pitch : left.type === "release" ? -1 : 1));
   return {
+    tracks: [{ id: "backing", trackIndex: 1, name: "Strings", program: 48, noteCount: notes.length }],
+    notes,
+    events,
+  };
+}
+
+function createClock() {
+  const oscillators: Array<{ startTime: number; stopTime: number; stopped: boolean }> = [];
+  const makeParam = () => ({
+    value: 0,
+    setValueAtTime(value: number) { this.value = value; },
+    exponentialRampToValueAtTime(value: number) { this.value = value; },
+    setTargetAtTime(value: number) { this.value = value; },
+    cancelScheduledValues() {},
+  });
+  const destination = { connect() {}, disconnect() {} };
+  const clock = {
     currentTime: 0,
     state: "running" as AudioContextState,
     resume: vi.fn().mockResolvedValue(undefined),
+    destination,
+    createGain() { return { gain: makeParam(), connect: () => destination, disconnect() {} }; },
+    createBiquadFilter() { return { type: "lowpass", frequency: makeParam(), Q: makeParam(), connect: () => destination, disconnect() {} }; },
+    createOscillator() {
+      const oscillator = { startTime: 0, stopTime: 0, stopped: false };
+      oscillators.push(oscillator);
+      return {
+        type: "sine",
+        frequency: makeParam(),
+        detune: makeParam(),
+        connect: () => destination,
+        disconnect() {},
+        start(time = 0) { oscillator.startTime = time; },
+        stop(time = 0) { oscillator.stopped = true; oscillator.stopTime = time; },
+      };
+    },
   } as unknown as MutableAudioClock;
+  return { clock, oscillators };
 }
 
 function createTransport(options: { plan: PerformancePlan; duration: number; scheduleAhead?: number; leadIn?: number }) {
-  const clock = createClock();
+  const { clock, oscillators } = createClock();
   const sampler = { silenceAll: vi.fn(), dispose: vi.fn() } as unknown as PianoSampler;
   const transport = new Transport({
     audioContext: clock,
@@ -116,7 +162,7 @@ function createTransport(options: { plan: PerformancePlan; duration: number; sch
   const output = new RecordingOutput();
   transport.setOutput(output);
   transport.loadPlan(options.plan, options.duration);
-  return { transport, output, clock };
+  return { transport, output, clock, oscillators };
 }
 
 function tick(transport: Transport): void {
@@ -183,6 +229,66 @@ describe("Transport A–B loop", () => {
     tick(transport);
     expect(wraps).toEqual([1, 1, 1, 1]);
     expect(output.calls.some((call) => call.type === "cancel" && call.time === 0.41)).toBe(true);
+    transport.dispose();
+  });
+
+  it("cancels queued accompaniment oscillators and requeues future presses after mute toggles", async () => {
+    const { transport, clock, oscillators } = createTransport({ plan: makePlan([]), duration: 1 });
+    transport.loadAccompanimentPlan(makeAccompanimentPlan([
+      { noteId: "held", trackId: "backing", program: 48, pitch: 52, velocity: 90, startSeconds: 0, endSeconds: 0.08 },
+      { noteId: "upcoming", trackId: "backing", program: 48, pitch: 55, velocity: 90, startSeconds: 0.07, endSeconds: 0.18 },
+    ]));
+    await transport.play();
+    expect(oscillators.some((oscillator) => Math.abs(oscillator.startTime - 0.07) < 1e-8)).toBe(true);
+
+    clock.currentTime = 0.02;
+    transport.setAccompanimentEnabled(false);
+    expect(oscillators.filter((oscillator) => oscillator.startTime >= 0.07).every((oscillator) =>
+      oscillator.stopped && oscillator.stopTime <= 0.02)).toBe(true);
+
+    transport.setAccompanimentEnabled(true);
+    expect(oscillators.some((oscillator) => Math.abs(oscillator.startTime - 0.07) < 1e-8 &&
+      !oscillator.stopped)).toBe(true);
+    transport.dispose();
+  });
+
+  it("rebuilds accompaniment in the current loop cycle around a queued boundary", async () => {
+    const { transport, clock, oscillators } = createTransport({ plan: makePlan([]), duration: 1 });
+    transport.loadAccompanimentPlan(makeAccompanimentPlan([
+      { noteId: "near-boundary", trackId: "backing", program: 48, pitch: 52, velocity: 90, startSeconds: 0.15, endSeconds: 0.25 },
+    ]));
+    transport.setLoop({ startSeconds: 0, endSeconds: 0.2 });
+    await transport.play();
+    clock.currentTime = 0.11;
+    tick(transport);
+
+    transport.setAccompanimentEnabled(false);
+    transport.setAccompanimentEnabled(true);
+
+    const requeued = oscillators.filter((oscillator) => Math.abs(oscillator.startTime - 0.15) < 1e-8);
+    expect(requeued.length).toBeGreaterThanOrEqual(2);
+    expect(requeued.some((oscillator) => oscillator.stopped && oscillator.stopTime > 0.2)).toBe(true);
+    transport.dispose();
+  });
+
+  it("rebuilds every already-prefetched cycle when a fast short loop is unmuted", async () => {
+    const { transport, oscillators } = createTransport({ plan: makePlan([]), duration: 1 });
+    transport.loadAccompanimentPlan(makeAccompanimentPlan([
+      { noteId: "short-loop", trackId: "backing", program: 48, pitch: 52, velocity: 90, startSeconds: 0.03, endSeconds: 0.08 },
+    ]));
+    transport.setSpeed(2);
+    transport.setLoop({ startSeconds: 0, endSeconds: 0.1 });
+    await transport.play();
+    expect(oscillators.some((oscillator) => Math.abs(oscillator.startTime - 0.015) < 1e-8)).toBe(true);
+    expect(oscillators.some((oscillator) => Math.abs(oscillator.startTime - 0.065) < 1e-8)).toBe(true);
+
+    transport.setAccompanimentEnabled(false);
+    transport.setAccompanimentEnabled(true);
+
+    expect(oscillators.filter((oscillator) => Math.abs(oscillator.startTime - 0.015) < 1e-8 && oscillator.stopTime > 0).length)
+      .toBeGreaterThanOrEqual(2);
+    expect(oscillators.filter((oscillator) => Math.abs(oscillator.startTime - 0.065) < 1e-8 && oscillator.stopTime > 0).length)
+      .toBeGreaterThanOrEqual(2);
     transport.dispose();
   });
 

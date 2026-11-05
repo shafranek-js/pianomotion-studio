@@ -51,8 +51,11 @@ import { buildTonalExerciseMidi } from "./tonalMidiBuilder";
 import {
   searchPublicDomainMidi,
   downloadPublicMidiBytes,
+  getFeaturedPublicMelodies,
+  type PublicMidiProvider,
   type PublicMidiSearchResult,
 } from "./publicMidiSearch";
+import { buildExternalMusicXmlLinks } from "./musicXmlCatalogs";
 import styles from "./BuiltinMelodiesDialog.module.css";
 
 type CatalogResult =
@@ -267,7 +270,8 @@ export function BuiltinMelodiesDialog({ open, onClose, onChoose, onChooseLocal, 
   const [selectedHandMode, setSelectedHandMode] = useState<HandVariantSlug>("hands-together");
   const [selectedProgMode, setSelectedProgMode] = useState<"all" | "major" | "minor">("all");
   const [onlineQuery, setOnlineQuery] = useState<string>("Bach prelude");
-  const [onlineResults, setOnlineResults] = useState<PublicMidiSearchResult[]>([]);
+  const [onlineResults, setOnlineResults] = useState<PublicMidiSearchResult[]>(() => getFeaturedPublicMelodies(16));
+  const [onlineProviderFilter, setOnlineProviderFilter] = useState<"all" | PublicMidiProvider>("all");
   const [onlineSearching, setOnlineSearching] = useState<boolean>(false);
   const [onlineSearchedOnce, setOnlineSearchedOnce] = useState<boolean>(false);
   const [favouriteIds, setFavouriteIds] = useState<ReadonlySet<string>>(() => getFavouriteMelodyIds());
@@ -878,6 +882,7 @@ export function BuiltinMelodiesDialog({ open, onClose, onChoose, onChooseLocal, 
     try {
       const results = await searchPublicDomainMidi(trimmed);
       setOnlineResults(results);
+      setOnlineProviderFilter("all");
       setOnlineSearchedOnce(true);
     } catch (error) {
       if (!isAbortError(error)) setActionError(asErrorMessage(error));
@@ -950,6 +955,16 @@ export function BuiltinMelodiesDialog({ open, onClose, onChoose, onChooseLocal, 
       if (previewLoadControllerRef.current === controller) previewLoadControllerRef.current = null;
     }
   }, [activePreviewKey, stopPreview, strings.previewError, strings.previewUnavailable]);
+
+  const filteredOnlineResults = useMemo(() => {
+    if (onlineProviderFilter === "all") return onlineResults;
+    return onlineResults.filter((item) => item.provider === onlineProviderFilter);
+  }, [onlineResults, onlineProviderFilter]);
+
+  const externalMusicXmlLinks = useMemo(
+    () => buildExternalMusicXmlLinks(onlineQuery),
+    [onlineQuery],
+  );
 
   const visibleBuiltins = currentCatalog?.state === "ready" ? currentCatalog.entries.length : 0;
   const visibleLocal = localView?.entries.filter((entry) => libraryView === "all" || !localView.selectedSourceId || entry.sourceId === localView.selectedSourceId).length ?? 0;
@@ -1157,7 +1172,7 @@ export function BuiltinMelodiesDialog({ open, onClose, onChoose, onChooseLocal, 
               </button>
             </form>
             <div className={styles.filterBar} role="group" aria-label="Suggested searches">
-              {["Bach prelude", "Chopin nocturne", "Debussy", "Scott Joplin", "Beethoven sonata", "Mozart"].map((preset) => (
+              {["Bach prelude", "Chopin nocturne", "Clair de Lune", "Für Elise", "Schubert", "Scott Joplin", "Mozart"].map((preset) => (
                 <button
                   key={preset}
                   type="button"
@@ -1171,6 +1186,50 @@ export function BuiltinMelodiesDialog({ open, onClose, onChoose, onChooseLocal, 
                 </button>
               ))}
             </div>
+            <div className={styles.filterBar} role="group" aria-label="Filter online sources">
+              {(
+                [
+                  { id: "all", label: `All (${onlineResults.length})` },
+                  { id: "musetrainer", label: `MuseTrainer MXL (${onlineResults.filter((r) => r.provider === "musetrainer").length})` },
+                  { id: "openscore", label: `OpenScore Lieder MXL (${onlineResults.filter((r) => r.provider === "openscore").length})` },
+                  { id: "commons", label: `Wikimedia Commons (${onlineResults.filter((r) => r.provider === "commons").length})` },
+                  { id: "archive", label: `Internet Archive (${onlineResults.filter((r) => r.provider === "archive").length})` },
+                ] as const
+              ).map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  className={`${styles.filterChip} ${onlineProviderFilter === tab.id ? styles.filterChipActive : ""}`}
+                  aria-pressed={onlineProviderFilter === tab.id}
+                  onClick={() => setOnlineProviderFilter(tab.id)}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+            <details className={styles.externalPortalsDetails} data-testid="external-musicxml-portals">
+              <summary className={styles.externalPortalsSummary}>
+                More MusicXML libraries & web search (MuseScore, PianoML, GitHub, Google)
+              </summary>
+              <div className={styles.externalPortalsGrid}>
+                {externalMusicXmlLinks.map((portal) => (
+                  <a
+                    key={portal.id}
+                    className={styles.externalPortalChip}
+                    href={portal.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    title={portal.description}
+                  >
+                    <span className={styles.externalPortalLabel}>{portal.label} ↗</span>
+                    <span className={styles.externalPortalBadge}>{portal.badge}</span>
+                  </a>
+                ))}
+              </div>
+              <p className={styles.externalPortalsTip}>
+                <strong>MuseScore tip:</strong> Use a free account, filter by <em>Public Domain &amp; Piano Solo</em>, decline PRO trial pop-ups, and choose <strong>Download → MXL / MusicXML</strong> on community scores. Drop downloaded <code>.mxl</code> / <code>.musicxml</code> files into <strong>My folder</strong> or use <strong>Import MIDI / MusicXML</strong> in the studio header.
+              </p>
+            </details>
             <p className={styles.onlineHint}>{strings.onlineSearchHint}</p>
           </div>
         )}
@@ -1299,15 +1358,16 @@ export function BuiltinMelodiesDialog({ open, onClose, onChoose, onChooseLocal, 
                   <span>{strings.onlineSearching}</span>
                 </div>
               )}
-              {!onlineSearching && onlineSearchedOnce && onlineResults.length === 0 && (
+              {!onlineSearching && onlineSearchedOnce && filteredOnlineResults.length === 0 && (
                 <p className={styles.message} role="status">{strings.onlineNoResults}</p>
               )}
-              {onlineResults.length > 0 && (
+              {filteredOnlineResults.length > 0 && (
                 <ul className={styles.list} aria-label={strings.onlineTab}>
-                  {onlineResults.map((item) => {
+                  {filteredOnlineResults.map((item) => {
                     const key = `online:${item.id}`;
                     const isPreviewing = activePreviewKey === key;
                     const isOpening = openingKey === key || busy;
+                    const formatLabel = item.format === "mxl" || item.format === "musicxml" ? "MXL" : "MIDI";
                     return (
                       <li className={styles.row} key={key}>
                         <div className={styles.itemCard}>
@@ -1325,6 +1385,7 @@ export function BuiltinMelodiesDialog({ open, onClose, onChoose, onChooseLocal, 
                               <span className={styles.metaRow}>
                                 <span className={styles.meta}>{item.artist ? `${item.artist} · ` : ""}{item.attribution}</span>
                                 <span className={styles.metadata}>
+                                  <span className={`${styles.badge} ${formatLabel === "MXL" ? styles.badgeIntermediate : styles.badgeNeutral}`}>{formatLabel}</span>
                                   <span className={`${styles.badge} ${styles.badgeBeginner}`}>{item.license}</span>
                                   <span className={`${styles.badge} ${styles.badgeNeutral}`}>{item.source}</span>
                                 </span>

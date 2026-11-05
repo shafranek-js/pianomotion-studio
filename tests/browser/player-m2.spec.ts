@@ -9,10 +9,10 @@ test("studio playback, geometry replan and committed project persistence",async(
   const play=page.locator("#player-play-button");
   const seek=page.locator("#player-seek-slider");
   await play.click();
-  await expect(play).toContainText("Pause");
+  await expect(play).toHaveAccessibleName("Pause");
   await expect.poll(async()=>Number(await seek.inputValue())).toBeGreaterThan(-1.5);
   await play.click();
-  await expect(play).toContainText("Play");
+  await expect(play).toHaveAccessibleName("Play");
   await page.locator("#player-stop-button").click();
   expect(Number(await seek.inputValue())).toBeLessThanOrEqual(-1.9);
   await page.locator("#player-speed-select").selectOption("1.25");

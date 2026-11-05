@@ -2,8 +2,45 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 describe("WebMidiInputManager", () => {
   beforeEach(async () => {
+    vi.unstubAllGlobals();
     vi.restoreAllMocks();
     vi.resetModules();
+  });
+
+  it.each(["prompt", "denied"])("does not prompt automatically when permission is %s", async state => {
+    const request = vi.fn();
+    vi.stubGlobal("navigator", {
+      requestMIDIAccess: request,
+      permissions: { query: vi.fn().mockResolvedValue({ state }) },
+    });
+    const { WebMidiInputManager } = await import("./webMidiInput");
+    const status = await new WebMidiInputManager().init();
+    expect(status.permission).toBe("prompt");
+    expect(request).not.toHaveBeenCalled();
+  });
+
+  it("reconnects a persisted browser grant and preserves other statechange listeners", async () => {
+    const events = new EventTarget();
+    const access = {
+      inputs: new Map(), outputs: new Map(),
+      addEventListener: events.addEventListener.bind(events),
+      removeEventListener: events.removeEventListener.bind(events),
+    };
+    const otherManager = vi.fn();
+    events.addEventListener("statechange", otherManager);
+    const request = vi.fn().mockResolvedValue(access);
+    vi.stubGlobal("navigator", {
+      requestMIDIAccess: request,
+      permissions: { query: vi.fn().mockResolvedValue({ state: "granted" }) },
+    });
+    const { WebMidiInputManager } = await import("./webMidiInput");
+    const manager = new WebMidiInputManager();
+    expect((await manager.init()).permission).toBe("granted");
+    expect(request).toHaveBeenCalledOnce();
+    events.dispatchEvent(new Event("statechange"));
+    manager.detachAccess();
+    events.dispatchEvent(new Event("statechange"));
+    expect(otherManager).toHaveBeenCalledTimes(2);
   });
 
   it("handles environment without Web MIDI API gracefully", async () => {
@@ -55,7 +92,8 @@ describe("WebMidiInputManager", () => {
     const mockMidiAccess = {
       inputs: mockInputs,
       outputs: new Map(),
-      onstatechange: null as (() => void) | null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
     };
 
     Object.defineProperty(navigator, "requestMIDIAccess", {
@@ -117,6 +155,8 @@ describe("WebMidiInputManager", () => {
       velocity: 0,
       deviceId: "input-1",
     });
+    mockInput.onmidimessage?.({ data: new Uint8Array([0xb0, 64, 127]), timeStamp: 1900 });
+    expect(events).toHaveLength(3);
   });
 
   it("filters events when a specific device is selected", async () => {
@@ -138,7 +178,8 @@ describe("WebMidiInputManager", () => {
     const mockMidiAccess = {
       inputs: new Map([["dev-a", inputA], ["dev-b", inputB]]),
       outputs: new Map(),
-      onstatechange: null as (() => void) | null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
     };
 
     Object.defineProperty(navigator, "requestMIDIAccess", {
@@ -167,7 +208,7 @@ describe("WebMidiInputManager", () => {
     expect(received[0]).toMatchObject({ pitch: 72, deviceId: "dev-a" });
   });
 
-  it("automatically detects and connects hardware on init without user gesture", async () => {
+  it("reuses a shared access grant on init without requesting permission", async () => {
     const inputAuto = {
       id: "auto-piano",
       name: "Roland FP-30X",
@@ -178,7 +219,8 @@ describe("WebMidiInputManager", () => {
     const mockMidiAccess = {
       inputs: new Map([["auto-piano", inputAuto]]),
       outputs: new Map(),
-      onstatechange: null as (() => void) | null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
     };
 
     Object.defineProperty(navigator, "requestMIDIAccess", {
@@ -189,8 +231,11 @@ describe("WebMidiInputManager", () => {
 
     const { WebMidiInputManager } = await import("./webMidiInput");
     const manager = new WebMidiInputManager();
+    const { setSharedMidiAccess } = await import("./webMidiOutput");
+    setSharedMidiAccess(mockMidiAccess as unknown as MIDIAccess);
     const status = await manager.init();
 
+    expect(navigator.requestMIDIAccess).not.toHaveBeenCalled();
     expect(status.permission).toBe("granted");
     expect(status.devices).toHaveLength(1);
     expect(status.devices[0]?.name).toBe("Roland FP-30X");
@@ -202,7 +247,8 @@ describe("WebMidiInputManager", () => {
     const mockMidiAccess = {
       inputs: inputsMap,
       outputs: new Map(),
-      onstatechange: null as (() => void) | null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
     };
 
     Object.defineProperty(navigator, "requestMIDIAccess", {
@@ -213,7 +259,7 @@ describe("WebMidiInputManager", () => {
 
     const { WebMidiInputManager } = await import("./webMidiInput");
     const manager = new WebMidiInputManager();
-    await manager.init();
+    await manager.requestPermissionFromUserGesture();
 
     expect(manager.getStatus().devices).toHaveLength(0);
 
@@ -227,8 +273,9 @@ describe("WebMidiInputManager", () => {
     };
     inputsMap.set("hotplug-kbd", newKeyboard);
 
-    // Trigger access.onstatechange
-    mockMidiAccess.onstatechange?.();
+    // Trigger the access statechange listener.
+    const listener = mockMidiAccess.addEventListener.mock.calls[0]?.[1] as () => void;
+    listener();
 
     const statusAfter = manager.getStatus();
     expect(statusAfter.devices).toHaveLength(1);
