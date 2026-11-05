@@ -1,18 +1,31 @@
 /**
  * publicMidiSearch.ts - Browser-side search & download for Public Domain / Creative Commons
- * MIDI files from Wikimedia Commons and Internet Archive.
+ * MIDI and MusicXML (.mxl / .musicxml) files from MuseTrainer, OpenScore Lieder,
+ * Wikimedia Commons, and Internet Archive.
  *
  * Adapted from Mizan (MIT License, host/mizan/midi_search.py).
  */
 
+import { convertMusicXmlBytesToMidi } from "../import/musicXmlImporter";
+import {
+  MUSETRAINER_SCORES,
+  OPENSCORE_CURATED_PATHS,
+  parseOpenScorePath,
+  searchMuseTrainerCatalog,
+  searchOpenScoreLieder,
+  toMuseTrainerSearchResult,
+} from "./musicXmlCatalogs";
+
 export type PublicMidiLicense = "Public Domain" | "CC0" | "CC BY" | "CC BY-SA";
-export type PublicMidiProvider = "commons" | "archive";
+export type PublicMidiProvider = "commons" | "archive" | "musetrainer" | "openscore";
+export type PublicScoreFormat = "midi" | "mxl" | "musicxml";
 
 export interface PublicMidiSearchResult {
   readonly id: string;
   readonly dedupeKey: string;
   readonly provider: PublicMidiProvider;
-  readonly source: "Wikimedia Commons" | "Internet Archive";
+  readonly source: "Wikimedia Commons" | "Internet Archive" | "MuseTrainer" | "OpenScore Lieder";
+  readonly format?: PublicScoreFormat;
   readonly title: string;
   readonly artist: string | null;
   readonly license: PublicMidiLicense;
@@ -30,6 +43,8 @@ const ARCHIVE_CC0_URL = "http://creativecommons.org/publicdomain/zero/1.0/";
 
 const COMMONS_HOSTS = new Set(["commons.wikimedia.org", "upload.wikimedia.org"]);
 const ARCHIVE_HOSTS = new Set(["archive.org", "*.archive.org"]);
+const MUSETRAINER_HOSTS = new Set(["musetrainer.github.io", "raw.githubusercontent.com"]);
+const OPENSCORE_HOSTS = new Set(["raw.githubusercontent.com", "fourscoreandmore.org"]);
 
 export function validateSearchQuery(query: string): string {
   if (typeof query !== "string") {
@@ -204,6 +219,7 @@ export function parseCommonsResponse(payload: unknown): PublicMidiSearchResult[]
       dedupeKey: normalizeUrlDedupeKey(fileUrl),
       provider: "commons",
       source: "Wikimedia Commons",
+      format: "midi",
       title: title.slice(0, 300) || "Untitled MIDI",
       artist,
       license: licenseName,
@@ -252,7 +268,7 @@ export function parseArchiveItem(
         .slice(0, 300) || null
     : cleanHtmlText(rawCreator).slice(0, 300) || null;
 
-  const midiFiles: Array<{ name: string; size: number; fileUrl: string }> = [];
+  const scoreFiles: Array<{ name: string; size: number; fileUrl: string; scoreFormat: PublicScoreFormat }> = [];
   for (const rawFile of files) {
     if (!rawFile || typeof rawFile !== "object") continue;
     const file = rawFile as Record<string, unknown>;
@@ -261,24 +277,29 @@ export function parseArchiveItem(
     if (!name || name.includes("..")) continue;
     const format = typeof file.format === "string" ? file.format.toLowerCase() : "";
     const lowerName = name.toLowerCase();
-    if (format !== "midi" && !lowerName.endsWith(".mid") && !lowerName.endsWith(".midi")) {
+    const isMidi = format === "midi" || lowerName.endsWith(".mid") || lowerName.endsWith(".midi");
+    const isMxl = lowerName.endsWith(".mxl");
+    const isMusicXml = format === "musicxml" || lowerName.endsWith(".musicxml");
+    if (!isMidi && !isMxl && !isMusicXml) {
       continue;
     }
     const size = Number(file.size);
     if (!Number.isFinite(size) || size <= 0 || size > MAX_MIDI_BYTES) continue;
     const fileUrl = `https://archive.org/download/${identifier}/${encodeURIComponent(name)}`;
     if (!isApprovedHttpsUrl(fileUrl, ARCHIVE_HOSTS)) continue;
-    midiFiles.push({ name, size, fileUrl });
+    const scoreFormat: PublicScoreFormat = isMxl ? "mxl" : isMusicXml ? "musicxml" : "midi";
+    scoreFiles.push({ name, size, fileUrl, scoreFormat });
   }
 
-  return midiFiles.map(({ name, size, fileUrl }) => {
-    const leaf = name.slice(name.lastIndexOf("/") + 1).replace(/\.(?:mid|midi)$/i, "");
-    const displayTitle = midiFiles.length === 1 ? title : `${title} — ${leaf}`.slice(0, 300);
+  return scoreFiles.map(({ name, size, fileUrl, scoreFormat }) => {
+    const leaf = name.slice(name.lastIndexOf("/") + 1).replace(/\.(?:mid|midi|mxl|musicxml)$/i, "");
+    const displayTitle = scoreFiles.length === 1 ? title : `${title} — ${leaf}`.slice(0, 300);
     return {
       id: `archive:${identifier}:${name}`,
       dedupeKey: normalizeUrlDedupeKey(fileUrl),
       provider: "archive",
       source: "Internet Archive",
+      format: scoreFormat,
       title: displayTitle,
       artist,
       license: "CC0",
@@ -328,7 +349,7 @@ function buildArchiveSearchQuery(query: string): string {
   const escaped = terms.map(
     (term) => `"${term.replace(/([+\-&|!(){}[\]^"~*?:\\/])/g, "\\$1")}"`,
   );
-  const base = `format:"MIDI" AND licenseurl:"${ARCHIVE_CC0_URL}"`;
+  const base = `(format:"MIDI" OR format:"MusicXML") AND licenseurl:"${ARCHIVE_CC0_URL}"`;
   return escaped.length > 0 ? `${base} AND ${escaped.join(" AND ")}` : base;
 }
 
@@ -381,7 +402,22 @@ export async function searchInternetArchiveMidi(
 }
 
 /**
- * Search both Wikimedia Commons and Internet Archive in parallel and deduplicate results.
+ * Returns a curated initial set of playable Public Domain / CC0 MusicXML scores
+ * from MuseTrainer and OpenScore Lieder for browsing before a search is run.
+ */
+export function getFeaturedPublicMelodies(limit = 16): PublicMidiSearchResult[] {
+  const museTrainerFeatured = MUSETRAINER_SCORES.slice(0, Math.min(10, limit)).map(
+    toMuseTrainerSearchResult,
+  );
+  const openScoreFeatured = OPENSCORE_CURATED_PATHS.map(parseOpenScorePath)
+    .filter((item): item is PublicMidiSearchResult => item !== null)
+    .slice(0, Math.max(0, limit - museTrainerFeatured.length));
+  return [...museTrainerFeatured, ...openScoreFeatured].slice(0, limit);
+}
+
+/**
+ * Search MuseTrainer Library, OpenScore Lieder Corpus, Wikimedia Commons, and
+ * Internet Archive in parallel and deduplicate results.
  */
 export async function searchPublicDomainMidi(
   query: string,
@@ -391,14 +427,25 @@ export async function searchPublicDomainMidi(
   const text = validateSearchQuery(query);
   if (!text) return [];
 
+  const localMuseTrainer = searchMuseTrainerCatalog(text, 10);
+
   const settled = await Promise.allSettled([
+    searchOpenScoreLieder(text, signal, fetchImpl, 8),
     searchWikimediaCommonsMidi(text, signal, fetchImpl),
     searchInternetArchiveMidi(text, signal, fetchImpl),
   ]);
 
   const combined: PublicMidiSearchResult[] = [];
   const seen = new Set<string>();
-  let anyFulfilled = false;
+
+  for (const res of localMuseTrainer) {
+    if (!seen.has(res.dedupeKey)) {
+      seen.add(res.dedupeKey);
+      combined.push(res);
+    }
+  }
+
+  let anyFulfilled = localMuseTrainer.length > 0;
   let firstError: unknown = null;
 
   for (const item of settled) {
@@ -424,26 +471,58 @@ export async function searchPublicDomainMidi(
   return combined;
 }
 
+function getAllowedHostsForProvider(provider: PublicMidiProvider): ReadonlySet<string> {
+  switch (provider) {
+    case "commons":
+      return COMMONS_HOSTS;
+    case "archive":
+      return ARCHIVE_HOSTS;
+    case "musetrainer":
+      return MUSETRAINER_HOSTS;
+    case "openscore":
+      return OPENSCORE_HOSTS;
+  }
+}
+
+function isMusicXmlResult(result: PublicMidiSearchResult): boolean {
+  if (result.format === "mxl" || result.format === "musicxml") {
+    return true;
+  }
+  try {
+    const pathname = new URL(result.url).pathname.toLowerCase();
+    return pathname.endsWith(".mxl") || pathname.endsWith(".musicxml") || pathname.endsWith(".xml");
+  } catch {
+    return false;
+  }
+}
+
 /**
- * Download and verify a Public Domain / CC MIDI file (`MThd` header + 2 MB size limit).
+ * Download and verify a Public Domain / CC MIDI or MusicXML (.mxl / .musicxml) file.
+ * MusicXML buffers are automatically converted to canonical Standard MIDI File bytes.
  */
 export async function downloadPublicMidiBytes(
   result: PublicMidiSearchResult,
   signal?: AbortSignal,
   fetchImpl: typeof fetch = fetch,
 ): Promise<ArrayBuffer> {
-  const allowedHosts = result.provider === "commons" ? COMMONS_HOSTS : ARCHIVE_HOSTS;
+  const allowedHosts = getAllowedHostsForProvider(result.provider);
   if (!isApprovedHttpsUrl(result.url, allowedHosts)) {
-    throw new Error("The MIDI URL is not on an approved HTTPS host.");
+    throw new Error("The score URL is not on an approved HTTPS host.");
   }
   const response = await fetchImpl(result.url, { signal });
   if (!response.ok) {
-    throw new Error(`Failed to download MIDI (${response.status}).`);
+    throw new Error(`Failed to download score (${response.status}).`);
   }
   const buffer = await response.arrayBuffer();
   if (buffer.byteLength > MAX_MIDI_BYTES) {
-    throw new Error("The MIDI file is larger than 2 MB.");
+    throw new Error("The score file is larger than 2 MB.");
   }
+
+  if (isMusicXmlResult(result)) {
+    const { midiBytes } = convertMusicXmlBytesToMidi(buffer);
+    return midiBytes;
+  }
+
   const bytes = new Uint8Array(buffer);
   if (
     bytes.byteLength < 14 ||

@@ -92,6 +92,26 @@ function createStereoLoopSynth(leftMode: number, rightMode: number) {
 }
 
 describe("SoundFont 2 Parser & Synthesizer (W042, W043)", () => {
+  it.each([50, 35, 20, 1])("bounds compressed loops to actual decoded PCM without changing shared metadata (frames=%i)", (frames) => {
+    const { synth, audioContext, sources, soundFont } = createStereoLoopSynth(1, 1);
+    for (const sample of soundFont.samples) sample.compressed = true;
+    const originalSamples = structuredClone(soundFont.samples);
+    audioContext.createBuffer.mockImplementation((_channels: number, _requestedFrames: number, sampleRate: number) => ({
+      duration: frames / sampleRate, sampleRate,
+      getChannelData: vi.fn().mockReturnValue(new Float32Array(frames)),
+    }));
+    synth.loadSoundFont(soundFont);
+    try {
+      synth.noteOn(60, 100, "trimmed-loop", 0.1);
+      // Playback layers emit the left linked sample first, then right.
+      expect(sources[0]!.loop).toBe(frames > 34);
+      expect(sources[1]!.loop).toBe(frames > 20);
+      if (frames > 34) { expect(sources[0]!.loopStart).toBeCloseTo(0.34); expect(sources[0]!.loopEnd).toBeCloseTo(frames / 100); }
+      if (frames > 20) { expect(sources[1]!.loopStart).toBeCloseTo(0.2); expect(sources[1]!.loopEnd).toBeCloseTo(frames / 100); }
+      expect(soundFont.samples).toEqual(originalSamples);
+    } finally { synth.dispose(); }
+  });
+
   it.each([false, true])("resumes suspended live contexts but leaves offline clock ownership to the renderer (offline=%s)", (offline) => {
     const { synth, audioContext } = createStereoLoopSynth(1, 1);
     const resume = vi.fn().mockResolvedValue(undefined);

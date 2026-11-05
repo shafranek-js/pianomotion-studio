@@ -621,8 +621,12 @@ export class SoundFontSynth {
             const rate = channelSample.sampleRate || 44_100;
             if (channelSample.loopStart >= channelSample.start && channelSample.loopEnd > channelSample.loopStart && channelSample.loopEnd <= channelSample.end) {
               const start = (channelSample.loopStart - channelSample.start) / rate;
-              const end = (channelSample.loopEnd - channelSample.start) / rate;
               const channelBuffer = buffers.get(channel.sampleIndex)!;
+              // Native Vorbis decoders can trim a boundary block differently
+              // from the final granule. Keep SF3 loops inside the actual PCM,
+              // preserving the immutable shared bank and strict SF2 behavior.
+              const rawEnd = (channelSample.loopEnd - channelSample.start) / rate;
+              const end = channelSample.compressed ? Math.min(rawEnd, channelBuffer.duration) : rawEnd;
               if (end > start && end <= channelBuffer.duration) {
                 channelLoopStart = start;
                 channelLoopEnd = end;

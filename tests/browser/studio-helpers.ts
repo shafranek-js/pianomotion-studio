@@ -70,7 +70,9 @@ export async function loadStudioSong(
   await page.locator("#midi-file").setInputFiles(studioMidiPath);
   await expectStudioCanvas(page);
   await waitForLoadingToClear(page);
-  if (options.dimension === "2d") {    await page.getByRole("button", { name: "Performance", exact: true }).click();
+  if (options.dimension === "2d") {
+    await page.getByRole("button", { name: "Performance", exact: true }).click();
+    await page.getByRole("button", { name: "2D", exact: true }).click();
     await expect(studioCanvas(page, "2d")).toBeVisible();
   }
   return settledStudio(page, 0);
@@ -116,8 +118,7 @@ export async function settledStudio(page: Page, minimumRevision: number) {
 
 export async function openStudioInspector(page: Page, tab: "Scene" | "Pianist" | "Audio" | "Diagnostics") {
   await expect(page.getByTestId("studio-shell")).toHaveAttribute("data-layout-ready", "true");
-  const focusMode = page.getByRole("button", { name: "Focus mode", exact: true });
-  if (await focusMode.getAttribute("aria-pressed") === "true") await focusMode.click();
+  if (await page.getByTestId("studio-shell").getAttribute("data-focus-mode") === "on") await page.keyboard.press("Escape");
   const trigger = page.getByRole("button", { name: "Inspector", exact: true });
   // Use the trigger's state, not a potentially transitioning sheet's visibility.
   await expect(trigger).toBeVisible();

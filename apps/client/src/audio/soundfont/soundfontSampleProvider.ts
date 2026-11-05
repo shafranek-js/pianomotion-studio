@@ -2,6 +2,9 @@ import type { Sf2SampleHeader, Sf2SoundFont } from "./types.ts";
 
 export const SOUNDFONT_SAMPLE_CACHE_BUDGET_BYTES = 256 * 1024 * 1024;
 export const SOUNDFONT_SAMPLE_INACTIVE_BUDGET_BYTES = 64 * 1024 * 1024;
+// Vorbis I permits transforms up to 8192 frames, with 50% overlap. Reserve
+// one half-block for decoder boundary/trim differences before any I/O.
+const MAX_VORBIS_BOUNDARY_FRAMES = 4096;
 
 export interface SoundFontSampleLease {
   readonly sampleIndex: number;
@@ -331,13 +334,18 @@ export class SoundFontSampleProvider {
       this.readCount++;
       const encodedBytes = await readBlobRange(descriptor.blob, start, end, signal);
       if (signal.aborted) throw abortError();
+      const boundaryFrames = vorbisBoundaryFrames(encodedBytes);
       const buffer = await decodeCompressedSample(encodedBytes, descriptor.sample.sampleRate, audioContext);
       if (signal.aborted) throw abortError();
-      if (buffer.numberOfChannels !== 1 || buffer.sampleRate !== descriptor.sample.sampleRate || buffer.length !== frames) {
+      if (buffer.numberOfChannels !== 1 || buffer.sampleRate !== descriptor.sample.sampleRate || buffer.length <= 0 ||
+          Math.abs(buffer.length - frames) > boundaryFrames) {
         throw new Error(`SoundFont sample ${descriptor.sampleIndex} decoded as ${buffer.numberOfChannels} channel(s), ${buffer.length} frames at ${buffer.sampleRate} Hz; expected 1 channel, ${frames} frames at ${descriptor.sample.sampleRate} Hz.`);
       }
       this.decodeCount++;
-      return { buffer, bytes: frames * Float32Array.BYTES_PER_ELEMENT, pins: 0, lastUse: ++this.clock };
+      // Use actual decoder output without padding or mutating the parsed bank.
+      // FluidSynth likewise sets SF3 sample end from the decoder's sample count:
+      // https://github.com/FluidSynth/fluidsynth/blob/master/src/sfloader/fluid_defsfont.c
+      return { buffer, bytes: buffer.length * Float32Array.BYTES_PER_ELEMENT, pins: 0, lastUse: ++this.clock };
     }
     const start = descriptor.sampleDataOffset + descriptor.sample.start * 2;
     const end = descriptor.sampleDataOffset + descriptor.sample.end * 2;
@@ -372,7 +380,7 @@ export class SoundFontSampleProvider {
       : frames * Int16Array.BYTES_PER_ELEMENT;
     // Compressed bytes and the decoded Float32 AudioBuffer coexist while
     // decodeAudioData runs. Keep the existing Int16 + Float32 PCM allowance.
-    return inputBytes + frames * Float32Array.BYTES_PER_ELEMENT;
+    return inputBytes + (frames + (descriptor.compressed ? MAX_VORBIS_BOUNDARY_FRAMES : 0)) * Float32Array.BYTES_PER_ELEMENT;
   }
 
   private makeLease(sampleIndex: number, cacheKey: string, entry: CachedSample): SoundFontSampleLease {
@@ -406,6 +414,24 @@ export class SoundFontSampleProvider {
       inactiveBytes -= victim[1].bytes;
     }
   }
+}
+
+/** Compatibility guard for native Vorbis trimming, not a sample-equality guarantee.
+ * https://www.xiph.org/vorbis/doc/Vorbis_I_spec.html sections 1.3.2 and 4.2.2.
+ * The validated identification packet bounds this to half its largest transform.
+ * Non-Vorbis/malformed data gets no allowance, even if a mock decoder accepts it.
+ */
+function vorbisBoundaryFrames(encoded: ArrayBuffer): number {
+  const bytes = new Uint8Array(encoded);
+  if (bytes.length < 58 || String.fromCharCode(...bytes.subarray(0, 4)) !== "OggS" || bytes[4] !== 0 ||
+      (bytes[5]! & 2) === 0 || bytes[26] !== 1 || bytes[27] !== 30) return 0;
+  const packet = bytes.subarray(28, 58);
+  if (packet[0] !== 1 || String.fromCharCode(...packet.subarray(1, 7)) !== "vorbis" ||
+      new DataView(encoded).getUint32(35, true) !== 0 || (packet[29]! & 1) === 0) return 0;
+  const smallExponent = packet[28]! & 15;
+  const largeExponent = packet[28]! >> 4;
+  if (smallExponent < 6 || largeExponent > 13 || smallExponent > largeExponent) return 0;
+  return Math.min(MAX_VORBIS_BOUNDARY_FRAMES, 2 ** largeExponent / 2);
 }
 
 let sharedProvider: SoundFontSampleProvider | null = null;

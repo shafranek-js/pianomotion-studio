@@ -530,6 +530,58 @@ describe("Milestone M5 Storage & Persistence", () => {
   });
 
   describe("Application persistence migration", () => {
+    it.each([null, "missing-profile", 123])("uses the measured baseline when the persisted selection is %s", async (storedActive) => {
+      vi.stubGlobal("localStorage", mockLocalStorage);
+      if (storedActive !== null) await saveDbSetting(ACTIVE_PROFILE_DB_KEY, storedActive);
+
+      await initializeProfiles();
+
+      expect(getActiveProfile()).toEqual(RIGGED_HAND_MEASURED_BASELINE_PROFILE);
+      expect(await getDbSetting(ACTIVE_PROFILE_DB_KEY)).toBe(RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID);
+      expect(await getProfile(RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID)).toBeNull();
+      closeProjectDb();
+      setProfileStorage(null);
+      await initializeProfiles();
+      expect(getActiveProfile()).toEqual(RIGGED_HAND_MEASURED_BASELINE_PROFILE);
+    });
+
+    it.each(["virtuoso", "saved-custom"])("preserves IndexedDB selection %s over the new default and legacy selection", async (profileId) => {
+      const custom = createValidProfile("saved-custom");
+      await saveProfile(custom);
+      await saveDbSetting(ACTIVE_PROFILE_DB_KEY, profileId);
+      vi.stubGlobal("localStorage", mockLocalStorage);
+      mockLocalStorage.setItem(ACTIVE_PROFILE_STORAGE_KEY, "small-hands");
+
+      await initializeProfiles();
+
+      expect(getActiveProfile().profileId).toBe(profileId);
+      expect(await getDbSetting(ACTIVE_PROFILE_DB_KEY)).toBe(profileId);
+      expect(await getProfile(custom.profileId)).toEqual(custom);
+      expect(mockLocalStorage.getItem(ACTIVE_PROFILE_STORAGE_KEY)).toBe("small-hands");
+    });
+
+    it("uses the safe fallback when a collision makes the default unavailable, including after active deletion", async () => {
+      const collision = { ...structuredClone(RIGGED_HAND_MEASURED_BASELINE_PROFILE), name: "User collision" };
+      await saveProfile(collision);
+      await saveDbSetting(ACTIVE_PROFILE_DB_KEY, "missing-profile");
+      vi.stubGlobal("localStorage", mockLocalStorage);
+
+      await initializeProfiles();
+
+      expect(getActiveProfile().profileId).toBe("default");
+      expect(await getDbSetting(ACTIVE_PROFILE_DB_KEY)).toBe("default");
+      expect(isBuiltinProfileAvailable(RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID)).toBe(false);
+      const custom = createValidProfile("temporary-active");
+      await saveProfileThroughStore(custom);
+      await setActiveProfile(custom.profileId);
+      await deleteProfileThroughStore(custom.profileId);
+
+      expect(getActiveProfile().profileId).toBe("default");
+      expect(await getDbSetting(ACTIVE_PROFILE_DB_KEY)).toBe("default");
+      expect(await getProfile(collision.profileId)).toEqual(collision);
+      expect(await getProfile(custom.profileId)).toBeNull();
+    });
+
     it("migrates legacy profiles and active ID to IndexedDB while retaining localStorage data", async () => {
       const legacyProfile = createValidProfile("legacy-pianist");
       const legacyRiggedCopy = {
@@ -718,7 +770,7 @@ describe("Milestone M5 Storage & Persistence", () => {
       mockFactory.databases.get(DB_NAME)!.stores.get(PROFILES_STORE)!.simulateQuotaError = false;
       mockFactory.databases.get(DB_NAME)!.stores.get(SETTINGS_STORE)!.simulateQuotaError = true;
       await expect(setActiveProfile("small-hands")).rejects.toBeInstanceOf(StorageQuotaExceededError);
-      expect(getActiveProfile().profileId).toBe("virtuoso");
+      expect(getActiveProfile().profileId).toBe(RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID);
       expect(events).toEqual([]);
       unsubscribe();
     });

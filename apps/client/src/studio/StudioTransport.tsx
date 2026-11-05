@@ -1,7 +1,9 @@
 import { PRACTICE_MIN_LOOP_SECONDS, type PracticeLoop } from "@handthesia/contracts";
-import { ChevronLeft, ChevronRight, ListMusic, Music, Pause, Play, Repeat, SkipBack, Square, Timer, Volume2 } from "lucide-react";
-import { useRef, useState, type ChangeEvent, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from "react";
+import { AudioLines, ChevronLeft, ChevronRight, Gauge, ListMusic, Metronome, Music, Pause, Play, Repeat, SkipBack, Square, Timer, Volume2 } from "lucide-react";
+import { useLayoutEffect, useRef, useState, type ChangeEvent, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent, type RefObject } from "react";
+import { createPortal } from "react-dom";
 import { useI18n } from "../i18n";
+import type { AccompanimentTrackInfo } from "../audio/accompaniment";
 import "./workspace.css";
 
 export interface TransportBookmarkPin {
@@ -45,6 +47,11 @@ export interface StudioTransportProps {
   onLoopChange?(startSeconds: number, endSeconds: number, enabled: boolean): void;
   onToggleLoop?(): void;
   onJumpToBookmark?(bookmarkId: string): void;
+  accompanimentTracks?: readonly AccompanimentTrackInfo[];
+  accompanimentEnabled?: boolean;
+  accompanimentVolume?: number;
+  onToggleAccompaniment?(): void;
+  onAccompanimentVolumeChange?(volume: number): void;
 }
 
 export interface LoopOverlayMetrics {
@@ -129,6 +136,56 @@ function formatPreciseLoopTime(seconds: number, bpm?: number, beatsPerBar = 4): 
   return `${mins}:${secs}`;
 }
 
+// Render outside the scrolling transport and clipped studio shell. Coordinates stay
+// in the viewport coordinate system used by getBoundingClientRect().
+function LoopHandleTooltip({ anchorRef, label, positionPercent }: {
+  anchorRef: RefObject<HTMLButtonElement | null>;
+  label: string;
+  positionPercent: number;
+}) {
+  const tooltipRef = useRef<HTMLSpanElement | null>(null);
+
+  useLayoutEffect(() => {
+    const anchor = anchorRef.current;
+    const tooltip = tooltipRef.current;
+    if (!anchor || !tooltip) return;
+
+    const updatePosition = () => {
+      const rect = anchor.getBoundingClientRect();
+      const { width, height } = tooltip.getBoundingClientRect();
+      const margin = 8;
+      const gap = 6;
+      const viewportWidth = document.documentElement.clientWidth;
+      const viewportHeight = document.documentElement.clientHeight;
+      const left = Math.max(margin, Math.min(rect.left + rect.width / 2 - width / 2, viewportWidth - width - margin));
+      const above = rect.top - height - gap;
+      const top = Math.max(margin, Math.min(above >= margin ? above : rect.bottom + gap, viewportHeight - height - margin));
+      tooltip.style.left = `${left}px`;
+      tooltip.style.top = `${top}px`;
+      tooltip.style.visibility = "visible";
+    };
+
+    updatePosition();
+    window.addEventListener("scroll", updatePosition, true);
+    window.addEventListener("resize", updatePosition);
+    const observer = new ResizeObserver(updatePosition);
+    observer.observe(anchor);
+    observer.observe(tooltip);
+    // The timeline can resize while the handle itself keeps the same dimensions.
+    if (anchor.parentElement) observer.observe(anchor.parentElement);
+    return () => {
+      window.removeEventListener("scroll", updatePosition, true);
+      window.removeEventListener("resize", updatePosition);
+      observer.disconnect();
+    };
+  }, [anchorRef, label, positionPercent]);
+
+  return createPortal(
+    <span ref={tooltipRef} className="studio-transport-controls__loop-tooltip" aria-hidden="true">{label}</span>,
+    document.body,
+  );
+}
+
 export function StudioTransport({
   playing,
   currentTime,
@@ -164,11 +221,20 @@ export function StudioTransport({
   onLoopChange,
   onToggleLoop,
   onJumpToBookmark,
+  accompanimentTracks = [],
+  accompanimentEnabled = true,
+  accompanimentVolume = 0.65,
+  onToggleAccompaniment,
+  onAccompanimentVolumeChange,
 }: StudioTransportProps) {
   const { dict } = useI18n();
   const trackRef = useRef<HTMLDivElement | null>(null);
+  const startHandleRef = useRef<HTMLButtonElement | null>(null);
+  const endHandleRef = useRef<HTMLButtonElement | null>(null);
   const [draggingHandle, setDraggingHandle] = useState<"start" | "end" | null>(null);
   const [hoveredHandle, setHoveredHandle] = useState<"start" | "end" | null>(null);
+  const [focusedHandle, setFocusedHandle] = useState<"start" | "end" | null>(null);
+  const tooltipHandle = draggingHandle ?? hoveredHandle ?? focusedHandle;
 
   const safeDuration = Number.isFinite(duration) ? Math.max(0, duration) : 0;
   const seekMin = Number.isFinite(leadInSeconds) ? leadInSeconds : 0;
@@ -251,7 +317,15 @@ export function StudioTransport({
   };
 
   return (
-    <section className="studio-transport-controls" aria-label={dict.playback.controls}>
+    <section className={`studio-transport-controls studio-transport-controls--compact ${accompanimentTracks.length > 0 ? "has-accompaniment" : ""}`} aria-label={dict.playback.controls}>
+      {tooltipHandle && canEditLoop && (
+        <LoopHandleTooltip
+          key={tooltipHandle}
+          anchorRef={tooltipHandle === "start" ? startHandleRef : endHandleRef}
+          label={`${tooltipHandle === "start" ? "A" : "B"} · ${formatPreciseLoopTime(tooltipHandle === "start" ? loopMetrics.startSeconds : loopMetrics.endSeconds, bpm, beatsPerBar)}`}
+          positionPercent={tooltipHandle === "start" ? loopMetrics.startPercent : loopMetrics.endPercent}
+        />
+      )}
       <div className="studio-transport-controls__buttons">
         <button
           id="player-play-button"
@@ -263,7 +337,7 @@ export function StudioTransport({
           title={playing || isCountingIn ? dict.playback.pause : dict.playback.play}
         >
           {playing || isCountingIn ? <Pause aria-hidden="true" /> : <Play aria-hidden="true" />}
-          <span>{isCountingIn ? `${countInBeat}…` : playing ? dict.playback.pause : dict.playback.play}</span>
+          {isCountingIn && <span className="studio-transport-controls__count-in-beat" aria-live="polite">{countInBeat}</span>}
         </button>
         <button
           id="player-stop-button"
@@ -275,7 +349,6 @@ export function StudioTransport({
           title={dict.playback.stop}
         >
           <Square aria-hidden="true" />
-          <span>{dict.playback.stop}</span>
         </button>
         {onFirstNote && (
           <button
@@ -346,6 +419,7 @@ export function StudioTransport({
               <button
                 type="button"
                 role="slider"
+                ref={startHandleRef}
                 aria-label="Loop start (A)"
                 aria-valuemin={0}
                 aria-valuemax={roundLoopSeconds(Math.max(0, loopMetrics.endSeconds - PRACTICE_MIN_LOOP_SECONDS))}
@@ -363,19 +437,16 @@ export function StudioTransport({
                 onKeyDown={(e) => handleBracketKeyDown("start", e)}
                 onMouseEnter={() => setHoveredHandle("start")}
                 onMouseLeave={() => setHoveredHandle((prev) => (prev === "start" ? null : prev))}
-                title={`Drag [ to set Loop Start A (${formatPreciseLoopTime(loopMetrics.startSeconds, bpm, beatsPerBar)})`}
+                onFocus={() => setFocusedHandle("start")}
+                onBlur={() => setFocusedHandle((prev) => (prev === "start" ? null : prev))}
                 data-testid="transport-loop-handle-start"
               >
                 <span className="studio-transport-controls__loop-bracket" aria-hidden="true">[</span>
-                {(draggingHandle === "start" || hoveredHandle === "start") && (
-                  <span className="studio-transport-controls__loop-tooltip" aria-hidden="true">
-                    A · {formatPreciseLoopTime(loopMetrics.startSeconds, bpm, beatsPerBar)}
-                  </span>
-                )}
               </button>
               <button
                 type="button"
                 role="slider"
+                ref={endHandleRef}
                 aria-label="Loop end (B)"
                 aria-valuemin={roundLoopSeconds(Math.min(safeDuration, loopMetrics.startSeconds + PRACTICE_MIN_LOOP_SECONDS))}
                 aria-valuemax={roundLoopSeconds(safeDuration)}
@@ -393,15 +464,11 @@ export function StudioTransport({
                 onKeyDown={(e) => handleBracketKeyDown("end", e)}
                 onMouseEnter={() => setHoveredHandle("end")}
                 onMouseLeave={() => setHoveredHandle((prev) => (prev === "end" ? null : prev))}
-                title={`Drag ] to set Loop End B (${formatPreciseLoopTime(loopMetrics.endSeconds, bpm, beatsPerBar)})`}
+                onFocus={() => setFocusedHandle("end")}
+                onBlur={() => setFocusedHandle((prev) => (prev === "end" ? null : prev))}
                 data-testid="transport-loop-handle-end"
               >
                 <span className="studio-transport-controls__loop-bracket" aria-hidden="true">]</span>
-                {(draggingHandle === "end" || hoveredHandle === "end") && (
-                  <span className="studio-transport-controls__loop-tooltip" aria-hidden="true">
-                    B · {formatPreciseLoopTime(loopMetrics.endSeconds, bpm, beatsPerBar)}
-                  </span>
-                )}
               </button>
               {practiceBookmarks.map((bm) => {
                 const pct = Math.max(0, Math.min(100, ((bm.timeSeconds - seekMin) / seekSpan) * 100));
@@ -426,6 +493,7 @@ export function StudioTransport({
           )}
           <input
             id="player-seek-slider"
+            title={dict.playback.seekPosition}
             type="range"
             min={seekMin}
             max={seekMax}
@@ -445,6 +513,7 @@ export function StudioTransport({
         {onToggleLoop && (
           <button
             id="player-loop-toggle"
+            aria-label="Loop"
             type="button"
             className={`studio-transport-controls__toggle-btn ${loopMetrics.enabled ? "is-active" : ""}`}
             aria-pressed={loopMetrics.enabled}
@@ -453,12 +522,12 @@ export function StudioTransport({
             title="Toggle A–B practice loop (drag [ and ] on timeline to adjust)"
           >
             <Repeat size={14} aria-hidden="true" />
-            <span>Loop</span>
           </button>
         )}
         {onToggleCountIn && (
           <button
             id="player-countin-toggle"
+            aria-label="Count-in"
             type="button"
             className={`studio-transport-controls__toggle-btn ${countInEnabled ? "is-active" : ""}`}
             aria-pressed={countInEnabled}
@@ -467,12 +536,12 @@ export function StudioTransport({
             title="Count-in 1 bar before playback starts"
           >
             <Timer size={14} aria-hidden="true" />
-            <span>Count-in</span>
           </button>
         )}
         {onToggleMetronome && (
           <button
             id="player-metronome-toggle"
+            aria-label="Metronome"
             type="button"
             className={`studio-transport-controls__toggle-btn ${metronomeEnabled ? "is-active" : ""}`}
             aria-pressed={metronomeEnabled}
@@ -480,13 +549,13 @@ export function StudioTransport({
             disabled={disabled}
             title="Toggle metronome click during playback"
           >
-            <Volume2 size={14} aria-hidden="true" />
-            <span>Metronome</span>
+            <Metronome size={16} aria-hidden="true" />
           </button>
         )}
         {onToggleChords && (
           <button
             id="player-chords-toggle"
+            aria-label="Chords"
             type="button"
             className={`studio-transport-controls__toggle-btn ${chordsEnabled ? "is-active" : ""}`}
             aria-pressed={chordsEnabled}
@@ -495,12 +564,12 @@ export function StudioTransport({
             title="Show or hide the real-time chord timeline bar"
           >
             <Music size={14} aria-hidden="true" />
-            <span>Chords</span>
           </button>
         )}
         {onToggleStaff && (
           <button
             id="player-staff-toggle"
+            aria-label="Staff"
             type="button"
             className={`studio-transport-controls__toggle-btn ${staffEnabled ? "is-active" : ""}`}
             aria-pressed={staffEnabled}
@@ -509,13 +578,13 @@ export function StudioTransport({
             title="Show or hide the horizontal grand-staff notation bar"
           >
             <ListMusic size={14} aria-hidden="true" />
-            <span>Staff</span>
           </button>
         )}
-        <label className="studio-transport-controls__field">
-          <span>{dict.playback.speed}</span>
+        <label className="studio-transport-controls__field" title={dict.playback.speed}>
+          <Gauge size={16} aria-hidden="true" />
           <select
             id="player-speed-select"
+            title={dict.playback.speed}
             value={selectedSpeed}
             onChange={(event) => onSpeedChange(Number(event.currentTarget.value))}
             disabled={disabled}
@@ -526,10 +595,11 @@ export function StudioTransport({
             ))}
           </select>
         </label>
-        <label className="studio-transport-controls__volume">
-          <span>{dict.playback.volume}</span>
+        <label className="studio-transport-controls__volume" title={`${dict.playback.volume}: ${Math.round(selectedVolume * 100)}%`}>
+          <Volume2 size={16} aria-hidden="true" />
           <input
             id="player-volume-slider"
+            title={`${dict.playback.volume}: ${Math.round(selectedVolume * 100)}%`}
             type="range"
             min={0}
             max={1}
@@ -540,6 +610,45 @@ export function StudioTransport({
             aria-label={dict.playback.volume}
           />
         </label>
+        {accompanimentTracks.length > 0 && (
+          <div className="studio-transport-controls__accompaniment" data-testid="transport-accompaniment-controls">
+            {onToggleAccompaniment && (
+              <button
+                id="player-accompaniment-toggle"
+                type="button"
+                className={`studio-transport-controls__toggle-btn ${accompanimentEnabled ? "is-active" : ""}`}
+                aria-pressed={accompanimentEnabled}
+                onClick={onToggleAccompaniment}
+                disabled={disabled}
+                aria-label={`Accompaniment (${accompanimentTracks.map((t) => t.name).join(", ")})`}
+                title={`Accompaniment (${accompanimentTracks.map((t) => t.name).join(", ")})`}
+              >
+                <AudioLines size={16} aria-hidden="true" />
+              </button>
+            )}
+            {onAccompanimentVolumeChange && (
+              <label
+                className="studio-transport-controls__volume"
+                title={`Backing volume: ${Math.round(accompanimentVolume * 100)}% (${accompanimentTracks.map((t) => t.name).join(", ")})`}
+              >
+                <span className="studio-transport-controls__volume-readout" aria-hidden="true">{Math.round(accompanimentVolume * 100)}%</span>
+                <input
+                  id="player-accompaniment-volume-slider"
+                  title={`Backing volume: ${Math.round(accompanimentVolume * 100)}%`}
+                  type="range"
+                  min={0}
+                  max={100}
+                  step={1}
+                  value={Math.round(Math.max(0, Math.min(1, accompanimentVolume)) * 100)}
+                  onChange={(event) => onAccompanimentVolumeChange(Number(event.currentTarget.value) / 100)}
+                  disabled={disabled || !accompanimentEnabled}
+                  aria-label="Accompaniment volume"
+                  aria-valuetext={`${Math.round(accompanimentVolume * 100)} percent`}
+                />
+              </label>
+            )}
+          </div>
+        )}
       </div>
     </section>
   );

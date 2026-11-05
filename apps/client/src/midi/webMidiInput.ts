@@ -15,6 +15,11 @@ export class WebMidiInputManager {
   private readonly statusListeners = new Set<WebMidiInputStatusListener>();
   private readonly inputListeners = new Set<MidiInputEventListener>();
   private boundInputs = new Map<string, MIDIInput>();
+  private readonly handleStateChange = () => {
+    this.refreshDevices();
+    this.rebindInputs();
+    this.notifyStatus();
+  };
 
   private status: WebMidiInputStatus = {
     supported: false,
@@ -32,7 +37,7 @@ export class WebMidiInputManager {
 
   /**
    * Initializes Web MIDI input.
-   * Automatically attempts to connect using already granted access or requests access.
+   * Reuses shared or already granted access without opening a permission prompt.
    */
   public async init(): Promise<WebMidiInputStatus> {
     if (!this.status.supported || typeof navigator.requestMIDIAccess !== "function") {
@@ -49,6 +54,11 @@ export class WebMidiInputManager {
     }
 
     try {
+      // A persisted browser grant needs a fresh MIDIAccess after a page reload.
+      // Never request access while the permission is still prompt/denied.
+      if (!navigator.permissions?.query) return this.getStatus();
+      const permission = await navigator.permissions.query({ name: "midi", sysex: false } as unknown as PermissionDescriptor);
+      if (permission.state !== "granted") return this.getStatus();
       const access = await navigator.requestMIDIAccess({ sysex: false });
       setSharedMidiAccess(access);
       this.attachAccess(access);
@@ -74,7 +84,7 @@ export class WebMidiInputManager {
     }
 
     try {
-      const access = await navigator.requestMIDIAccess({ sysex: false });
+      const access = getSharedMidiAccess() ?? await navigator.requestMIDIAccess({ sysex: false });
       setSharedMidiAccess(access);
       this.attachAccess(access);
       this.refreshDevices();
@@ -138,11 +148,7 @@ export class WebMidiInputManager {
     this.status.permission = "granted";
     this.status.errorMessage = undefined;
 
-    access.onstatechange = () => {
-      this.refreshDevices();
-      this.rebindInputs();
-      this.notifyStatus();
-    };
+    access.addEventListener("statechange", this.handleStateChange);
 
     this.refreshDevices();
     this.rebindInputs();
@@ -165,7 +171,7 @@ export class WebMidiInputManager {
     }
     this.boundInputs.clear();
     if (this.midiAccess) {
-      this.midiAccess.onstatechange = null;
+      this.midiAccess.removeEventListener("statechange", this.handleStateChange);
       this.midiAccess = null;
     }
   }

@@ -1,4 +1,5 @@
 import { isZipBytes } from "./scoreFormat";
+import { midiLoader } from "@handthesia/engine-ts";
 import {
   DEFAULT_SCORE_PPQ,
   writeCanonicalMidiFile,
@@ -390,6 +391,7 @@ export function parseMusicXmlToCanonicalScore(xmlText: string): CanonicalScore {
       program: 0,
       isPercussion: false,
     };
+    const isPianoPart = midiLoader.is_piano_track(meta);
 
     let divisions = 1;
     let stavesCount = 1;
@@ -695,8 +697,9 @@ export function parseMusicXmlToCanonicalScore(xmlText: string): CanonicalScore {
             notations?.child("slide") !== undefined;
 
           // Hand assignment: explicit multi-staff grand staff (staff 1 = right, staff 2 = left) or part hand hint
-          const hand: CanonicalHandHint | undefined =
-            stavesCount >= 2
+          const hand: CanonicalHandHint | undefined = !isPianoPart
+            ? undefined
+            : stavesCount >= 2
               ? staff === 1
                 ? "right"
                 : "left"
@@ -760,12 +763,26 @@ export function parseMusicXmlToCanonicalScore(xmlText: string): CanonicalScore {
     });
   }
 
+  const hasDedicatedPianoPart = selectedPartIds.some((partId) => {
+    const meta = partMetaMap.get(partId);
+    return meta ? midiLoader.is_piano_track(meta) : false;
+  });
+  let nextAccompanimentChannel = 2;
+
   for (const [partId, notes] of unassignedPartTracks.entries()) {
     if (notes.length === 0) continue;
     const meta = partMetaMap.get(partId);
+    const name = (meta?.name || (hasDedicatedPianoPart ? `Accompaniment (${partId})` : "Piano")).trim();
+
+    if (nextAccompanimentChannel === 9) {
+      nextAccompanimentChannel = 10;
+    }
+    const channel = Math.min(15, nextAccompanimentChannel++);
+
     tracks.push({
-      name: meta?.name || "Piano",
-      program: 0,
+      name,
+      program: meta?.program ?? 0,
+      channel,
       notes,
     });
   }

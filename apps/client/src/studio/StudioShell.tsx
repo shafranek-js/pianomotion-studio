@@ -15,7 +15,6 @@ import {
   CircleDot,
   CircleHelp,
   Download,
-  FileAudio,
   FileUp,
   FolderOpen,
   Keyboard,
@@ -99,6 +98,8 @@ export function StudioShell(props: StudioShellProps) {
     onCamera3DPresetChange,
     status,
     busy = false,
+    focusModeDisabled = false,
+    focusModeDisabledReason,
     onOpenMidi,
     onOpenBuiltinMelodies,
     onOpenPackage,
@@ -129,6 +130,7 @@ export function StudioShell(props: StudioShellProps) {
   const [viewportWidth, setViewportWidth] = useState(() =>
     typeof window === "undefined" ? 1280 : window.innerWidth,
   );
+  const [focusPanelViewportWidth, setFocusPanelViewportWidth] = useState<number | null>(null);
   const [menu, setMenu] = useState<"file" | "export" | "help" | null>(null);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
@@ -141,6 +143,12 @@ export function StudioShell(props: StudioShellProps) {
   const exportMenuTriggerRef = useRef<HTMLButtonElement | null>(null);
   const helpMenuTriggerRef = useRef<HTMLButtonElement | null>(null);
   const panelReturnFocusRef = useRef<HTMLElement | null>(null);
+  const focusTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const focusWorkspaceRef = useRef<HTMLElement | null>(null);
+  const previousFocusModeRef = useRef(false);
+  const fullscreenGenerationRef = useRef(0);
+  const focusLayoutGenerationRef = useRef(0);
+  const ownedFullscreenRef = useRef<{ element: HTMLElement; generation: number; entered: boolean } | null>(null);
   const responsiveSheetTransitionRef = useRef(false);
   const mobileStateRef = useRef(viewportWidth < 900);
   const panelTriggersRef = useRef<Record<PanelKind, HTMLButtonElement | null>>({ projects: null, inspector: null, practice: null });
@@ -151,7 +159,11 @@ export function StudioShell(props: StudioShellProps) {
     return helpMenuTriggerRef;
   }, []);
 
-  const isMobileSheet = viewportWidth < 900;
+  // Fullscreen may cross responsive breakpoints. Keep hidden panel drafts in
+  // their original React slot until fullscreen has returned to its final size.
+  const panelViewportWidth = focusPanelViewportWidth ?? viewportWidth;
+  const isMobileSheet = panelViewportWidth < 900;
+  const focusMode = preferences.focusMode && !focusModeDisabled;
   const effectiveView: StudioView = normalizeStudioView(viewMode);
   // Keep a saved Practice selection across the welcome/bootstrap states, but do
   // not render an empty panel until the player supplies its content.
@@ -160,28 +172,111 @@ export function StudioShell(props: StudioShellProps) {
     : preferences.activePanel;
   const activePanelSide: ResizeSide = effectiveActivePanel === "projects" ? "left" : "right";
   const panelWidth = activePanelSide === "left" ? preferences.leftWidth : preferences.rightWidth;
-  const availableCenterWidth = viewportWidth - panelWidth - (viewportWidth >= 900 ? 88 : 24);
+  const availableCenterWidth = panelViewportWidth - panelWidth - (panelViewportWidth >= 900 ? 88 : 24);
   const canDock = Boolean(
-    effectiveActivePanel && preferences.pinnedSide && viewportWidth >= 1440 &&
-    availableCenterWidth >= 960 && !preferences.focusMode,
+    effectiveActivePanel && preferences.pinnedSide && panelViewportWidth >= 1440 &&
+    availableCenterWidth >= 960,
   );
   const shownDock = canDock ? effectiveActivePanel : null;
-  const overlayPanel = !isMobileSheet && !canDock && !preferences.focusMode ? effectiveActivePanel : null;
-  const mobilePanel = isMobileSheet && !preferences.focusMode ? effectiveActivePanel : null;
+  // Keep desktop panel contents mounted during Focus so editor drafts survive.
+  const overlayPanel = !isMobileSheet && !canDock ? effectiveActivePanel : null;
+  const mobilePanel = isMobileSheet && !focusMode ? effectiveActivePanel : null;
   const overlaySide = activePanelSide;
   const activeWidth = overlaySide === "left" ? preferences.leftWidth : preferences.rightWidth;
-  const desktopPanel = overlayPanel ?? shownDock;
+  const desktopPanel = focusMode ? null : overlayPanel ?? shownDock;
 
   const updatePreferences = useCallback((update: (current: StudioLayoutPreferences) => StudioLayoutPreferences) => {
     setHasInteracted(true);
     setPreferences((current) => sanitizeStudioLayoutPreferences(update(current)));
   }, []);
 
+  const exitFocusMode = useCallback(() => {
+    const owned = ownedFullscreenRef.current;
+    ownedFullscreenRef.current = null;
+    fullscreenGenerationRef.current += 1;
+    const layoutGeneration = ++focusLayoutGenerationRef.current;
+    const releasePanelLayout = () => {
+      // Let the fullscreen resize event and React width update settle first.
+      window.requestAnimationFrame(() => window.requestAnimationFrame(() => {
+        if (focusLayoutGenerationRef.current === layoutGeneration) setFocusPanelViewportWidth(null);
+      }));
+    };
+    if (owned && document.fullscreenElement === owned.element) {
+      void document.exitFullscreen().then(releasePanelLayout, releasePanelLayout);
+    } else releasePanelLayout();
+    updatePreferences((current) => ({ ...current, focusMode: false }));
+  }, [updatePreferences]);
+
+  useEffect(() => {
+    const onFullscreenChange = () => {
+      const owned = ownedFullscreenRef.current;
+      if (!owned) {
+        // Native Escape may leave a preexisting fullscreen session without
+        // delivering a key event. Restore Focus chrome without claiming ownership.
+        if (!document.fullscreenElement && previousFocusModeRef.current) exitFocusMode();
+        return;
+      }
+      if (document.fullscreenElement === owned.element) owned.entered = true;
+      else if (owned.entered) exitFocusMode();
+    };
+    document.addEventListener("fullscreenchange", onFullscreenChange);
+    return () => {
+      document.removeEventListener("fullscreenchange", onFullscreenChange);
+      const owned = ownedFullscreenRef.current;
+      ownedFullscreenRef.current = null;
+      fullscreenGenerationRef.current += 1;
+      focusLayoutGenerationRef.current += 1;
+      if (owned && document.fullscreenElement === owned.element) {
+        void document.exitFullscreen().catch(() => undefined);
+      }
+    };
+  }, [exitFocusMode]);
+
+  useEffect(() => {
+    if (!focusModeDisabled || !preferences.focusMode) return;
+    // Normalize a saved Focus layout when an editor or pose draft needs its tools.
+    const frame = window.requestAnimationFrame(exitFocusMode);
+    return () => window.cancelAnimationFrame(frame);
+  }, [focusModeDisabled, preferences.focusMode, exitFocusMode]);
+
+  useLayoutEffect(() => {
+    const wasFocused = previousFocusModeRef.current;
+    previousFocusModeRef.current = focusMode;
+    if (!focusMode && !wasFocused) return;
+    // A real dialog keeps its own focus and Escape handling, including unsaved drafts.
+    if (Array.from(document.querySelectorAll<HTMLElement>('[aria-modal="true"], dialog[open]'))
+      .some((dialog) => dialog.getClientRects().length > 0)) return;
+    if (focusMode) focusWorkspaceRef.current?.focus({ preventScroll: true });
+    else focusTriggerRef.current?.focus({ preventScroll: true });
+  }, [focusMode]);
+
+  useEffect(() => {
+    if (!focusMode) return;
+    const onFocusEscape = (event: globalThis.KeyboardEvent) => {
+      if (event.key !== "Escape" || event.defaultPrevented) return;
+      if (Array.from(document.querySelectorAll<HTMLElement>('[aria-modal="true"], dialog[open]'))
+        .some((dialog) => dialog.getClientRects().length > 0)) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      exitFocusMode();
+    };
+    // Capture before editor selection, release disclosures, and panel shortcuts.
+    window.addEventListener("keydown", onFocusEscape, true);
+    return () => window.removeEventListener("keydown", onFocusEscape, true);
+  }, [focusMode, exitFocusMode]);
+
   useEffect(() => {
     let live = true;
     void loadStudioLayoutPreferences().then((loaded) => {
       if (!live) return;
-      if (!hasInteracted) setPreferences(loaded);
+      if (!hasInteracted) {
+        if (loaded.focusMode) {
+          setMenu(null);
+          focusLayoutGenerationRef.current += 1;
+          setFocusPanelViewportWidth(window.innerWidth);
+        }
+        setPreferences(loaded);
+      }
     }).catch(() => {
       if (!live) return;
       setPreferences(DEFAULT_STUDIO_LAYOUT_PREFERENCES);
@@ -297,14 +392,15 @@ export function StudioShell(props: StudioShellProps) {
       const viewportHeight = window.innerHeight;
       const margin = 8;
       const gap = 7;
+      const isSideRail = Boolean(trigger.closest(".studio-tool-rail")) && viewportWidth >= 900;
       const availableBelow = Math.max(0, viewportHeight - margin - (anchor.bottom + gap));
       const availableAbove = Math.max(0, anchor.top - gap - margin);
       const placeBelow = naturalHeight <= availableBelow || availableBelow >= availableAbove;
-      const maxHeight = placeBelow ? availableBelow : availableAbove;
+      const maxHeight = isSideRail ? Math.max(0, viewportHeight - margin * 2) : placeBelow ? availableBelow : availableAbove;
       const height = Math.min(naturalHeight, maxHeight);
-      const rawTop = placeBelow ? anchor.bottom + gap : anchor.top - gap - height;
+      const rawTop = isSideRail ? anchor.top : placeBelow ? anchor.bottom + gap : anchor.top - gap - height;
       const top = Math.min(Math.max(margin, rawTop), Math.max(margin, viewportHeight - margin - height));
-      const rawLeft = popover.classList.contains("studio-menu-right") ? anchor.right - width : anchor.left;
+      const rawLeft = isSideRail ? anchor.right + gap : popover.classList.contains("studio-menu-right") ? anchor.right - width : anchor.left;
       const left = Math.min(Math.max(margin, rawLeft), Math.max(margin, viewportWidth - margin - width));
 
       setMenuPosition((current) => current.left === left && current.top === top && current.maxHeight === maxHeight && current.ready
@@ -341,24 +437,43 @@ export function StudioShell(props: StudioShellProps) {
         : current.pinnedSide,
     }));
   };
-  const openAudioRecording = (opener: HTMLButtonElement) => {
-    panelReturnFocusRef.current = opener;
-    setMenu(null);
-    updatePreferences((current) => ({
-      ...current,
-      activePanel: "inspector",
-      pinnedSide: current.pinnedSide ? "right" : null,
-      inspectorTab: "audio",
-      focusMode: false,
-    }));
-  };
   const closePanel = () => {
     updatePreferences((current) => ({ ...current, activePanel: null }));
     window.requestAnimationFrame(() => {
       if (panelReturnFocusRef.current?.isConnected) panelReturnFocusRef.current.focus();
     });
   };
-  const toggleFocusMode = () => updatePreferences((current) => ({ ...current, focusMode: !current.focusMode }));
+  const enterFocusMode = () => {
+    setMenu(null);
+    focusLayoutGenerationRef.current += 1;
+    setFocusPanelViewportWidth((current) => current ?? viewportWidth);
+    updatePreferences((current) => ({ ...current, focusMode: true }));
+    // Include body-level dialog portals in fullscreen so modal drafts remain usable.
+    const element = document.documentElement;
+    // Invoke from the click gesture only. Saved Focus stays inside the browser tab.
+    // An existing fullscreen session belongs to its original owner.
+    if (!element?.requestFullscreen || document.fullscreenElement) return;
+    const generation = ++fullscreenGenerationRef.current;
+    const owned = { element, generation, entered: false };
+    ownedFullscreenRef.current = owned;
+    try {
+      void element.requestFullscreen().then(() => {
+        if (fullscreenGenerationRef.current !== generation || ownedFullscreenRef.current !== owned) {
+          // Escape or unmount may happen before the browser resolves its request.
+          if (document.fullscreenElement === element && ownedFullscreenRef.current?.element !== element) {
+            void document.exitFullscreen().catch(() => undefined);
+          }
+          return;
+        }
+        owned.entered = document.fullscreenElement === element;
+        if (!owned.entered) ownedFullscreenRef.current = null;
+      }).catch(() => {
+        if (ownedFullscreenRef.current === owned) ownedFullscreenRef.current = null;
+      });
+    } catch {
+      if (ownedFullscreenRef.current === owned) ownedFullscreenRef.current = null;
+    }
+  };
   const openDiagnostics = (event: ReactMouseEvent<HTMLButtonElement>) => {
     panelReturnFocusRef.current = event.currentTarget;
     updatePreferences((current) => ({
@@ -463,7 +578,7 @@ export function StudioShell(props: StudioShellProps) {
     );
   };
 
-  const workspaceLayout = { effectiveView, focusMode: preferences.focusMode };
+  const workspaceLayout = { effectiveView, focusMode };
   // StudioShell intentionally calls this public render prop to supply current shell state.
   const workspaceContent = typeof workspace === "function" ? workspace(workspaceLayout) : workspace;
 
@@ -511,7 +626,7 @@ export function StudioShell(props: StudioShellProps) {
 
   const pinnedSide = preferences.pinnedSide;
   const pinnedPanelWidth = pinnedSide === "left" ? preferences.leftWidth : preferences.rightWidth;
-  const mainStyle = shownDock && pinnedSide
+  const mainStyle = !focusMode && shownDock && pinnedSide
     ? pinnedSide === "left"
       ? { gridTemplateColumns: `${pinnedPanelWidth}px minmax(0, 1fr)` }
       : { gridTemplateColumns: `minmax(0, 1fr) ${pinnedPanelWidth}px` }
@@ -522,8 +637,8 @@ export function StudioShell(props: StudioShellProps) {
   const isEn = dict.header.file === "File";
 
   return (
-    <div className="studio-shell" data-focus-mode={preferences.focusMode ? "on" : "off"} data-layout-ready={preferencesReady ? "true" : "false"} data-testid="studio-shell">
-      <header className="studio-header" data-testid="studio-header">
+    <div className="studio-shell" data-focus-mode={focusMode ? "on" : "off"} data-layout-ready={preferencesReady ? "true" : "false"} data-testid="studio-shell">
+      <header className="studio-header" data-testid="studio-header" hidden={focusMode} inert={focusMode}>
         <div className="studio-brand" aria-label="PianoMotion Studio">
           <span className="studio-brand-mark" aria-hidden="true"><Piano size={18} strokeWidth={1.8} /></span>
           <span className="studio-brand-name">PianoMotion</span>
@@ -540,7 +655,7 @@ export function StudioShell(props: StudioShellProps) {
             onClick={() => toggleMenu("file")}
           ><span className="studio-file-label">{dict.header.file}</span><ChevronDown size={14} />
           </button>
-          {menu === "file" && (
+          {!focusMode && menu === "file" && (
             renderMenuPopover("", dict.header.file, <>
               <span className="studio-menu-label">{isEn ? "Project" : "Projekt"}</span>
               <MenuItem icon={<FileUp />} onClick={() => chooseFromMenu(onOpenMidi)}>{dict.header.openMidi}</MenuItem>
@@ -681,36 +796,6 @@ export function StudioShell(props: StudioShellProps) {
           <span>{status.kind === "saved" ? (isEn ? "Saved" : "Uloženo") : status.kind === "modified" ? (isEn ? "Modified" : "Změněno") : status.kind === "saving" ? (isEn ? "Saving" : "Ukládání") : status.kind === "loading" ? (isEn ? "Loading" : "Načítání") : status.kind === "calculating" ? (isEn ? "Calculating" : "Počítání") : status.kind === "warning" ? (isEn ? "Warning" : "Varování") : status.kind === "error" ? (isEn ? "Error" : "Chyba") : (isEn ? "Ready" : "Připraveno")}</span>
         </div>
 
-        <div className="studio-menu-group studio-export-menu" ref={menu === "export" ? activeMenuRef : undefined}>
-          <button
-            type="button"
-            className={`studio-header-button studio-export-button ${menu === "export" ? "is-open" : ""}`}
-            aria-label={isEn ? "Export" : "Exportovat"}
-            aria-haspopup="menu"
-            aria-expanded={menu === "export"}
-            ref={exportMenuTriggerRef}
-            onClick={() => toggleMenu("export")}
-          ><Download size={15} /><span>{isEn ? "Export" : "Exportovat"}</span><ChevronDown size={14} />
-          </button>
-          {menu === "export" && (
-            renderMenuPopover("studio-menu-right", isEn ? "Export" : "Exportovat", <>
-              <span className="studio-menu-label">{isEn ? "Export project" : "Exportovat projekt"}</span>
-              <MenuItem icon={<Activity />} disabled={!canExportProject || !onExportMidi} onClick={() => onExportMidi && chooseFromMenu(onExportMidi)}>{isEn ? "Fingered MIDI (.mid)" : "MIDI s prstokladem (.mid)"}</MenuItem>
-              <MenuItem icon={<Download />} disabled={!canExportProject || !onExportPackage} onClick={() => onExportPackage && chooseFromMenu(onExportPackage)}>{isEn ? "Project package (.json)" : "Balíček projektu (.json)"}</MenuItem>
-              <span className="studio-menu-divider" />
-              <MenuItem
-                icon={<Activity />}
-                disabled={!canExportProject || !onExportVideo || Boolean(videoExportUnavailableReason)}
-                onClick={() => onExportVideo && chooseFromMenu(onExportVideo)}
-              >
-                {isEn ? "Performance video (.mp4 / .webm)" : "Video vystoupení (.mp4 / .webm)"}
-              </MenuItem>
-              {videoExportUnavailableReason && <span id="studio-video-export-reason" className="studio-menu-label">{videoExportUnavailableReason}</span>}
-            </>)
-          )}
-        </div>
-
-        {onOpenPianist && <button className="studio-icon-button studio-pianist-button" type="button" onClick={onOpenPianist} aria-label="Open pianist settings" title={dict.header.pianistProfile}><UserRound size={17} /></button>}
         <div className="studio-menu-group studio-help-menu" ref={menu === "help" ? activeMenuRef : undefined}>
           <button
             className={`studio-icon-button studio-help-button ${menu === "help" ? "is-open" : ""}`}
@@ -722,7 +807,7 @@ export function StudioShell(props: StudioShellProps) {
             ref={helpMenuTriggerRef}
             title={dict.header.help}
           ><CircleHelp size={18} aria-hidden="true" /></button>
-          {menu === "help" && (
+          {!focusMode && menu === "help" && (
             renderMenuPopover("studio-menu-right", dict.header.help, <>
               <span className="studio-menu-label">{dict.header.help}</span>
               <MenuItem icon={<Keyboard />} onClick={() => chooseFromMenu(() => setShortcutsOpen(true), false)}>
@@ -734,37 +819,70 @@ export function StudioShell(props: StudioShellProps) {
             </>)
           )}
         </div>
-        {onOpenPreferences && <button className="studio-icon-button studio-preferences-button" type="button" onClick={onOpenPreferences} aria-label="Open preferences" title={dict.header.preferences}><Settings2 size={17} /></button>}
       </header>
 
-      <div className="studio-tool-rail" role="group" aria-label={dict.rail.label} data-testid="studio-tool-rail">
+      <div className="studio-tool-rail" role="group" aria-label={dict.rail.label} data-testid="studio-tool-rail" hidden={focusMode} inert={focusMode}>
         <div className="studio-tool-rail-group">
           {onOpenBuiltinMelodies && <button type="button" disabled={busy} onClick={() => { setMenu(null); onOpenBuiltinMelodies(); }} title={dict.welcome.browseMelodies} aria-label={dict.welcome.browseMelodies}><BookOpen size={17} /><span>{dict.rail.library}</span></button>}
           <button ref={(node) => { panelTriggersRef.current.projects = node; }} type="button" className={effectiveActivePanel === "projects" ? "is-active" : ""} aria-pressed={effectiveActivePanel === "projects"} onClick={(event) => { setMenu(null); openPanel("projects", event.currentTarget); }} title={dict.header.projects} aria-label={dict.header.projects}><PanelLeft size={17} /><span>{dict.header.projects}</span></button>
-          <button type="button" disabled={busy} onClick={() => { setMenu(null); onOpenMidi(); }} title={dict.header.openMidi} aria-label={dict.header.openMidi}><FileUp size={17} /><span>{dict.rail.importMidi}</span></button>
         </div>
         <div className="studio-tool-rail-divider" aria-hidden="true" />
         <div className="studio-tool-rail-group">
           <button ref={(node) => { panelTriggersRef.current.inspector = node; }} type="button" className={effectiveActivePanel === "inspector" ? "is-active" : ""} aria-pressed={effectiveActivePanel === "inspector"} onClick={(event) => { setMenu(null); openPanel("inspector", event.currentTarget); }} title={dict.header.inspector} aria-label={dict.header.inspector}><PanelRight size={17} /><span>{dict.header.inspector}</span></button>
-          <button type="button" disabled={!hasProject || busy} className={effectiveActivePanel === "inspector" && preferences.inspectorTab === "audio" && !preferences.focusMode ? "is-active" : ""} aria-pressed={effectiveActivePanel === "inspector" && preferences.inspectorTab === "audio" && !preferences.focusMode} onClick={(event) => openAudioRecording(event.currentTarget)} title={!hasProject ? dict.rail.audioUnavailable : busy ? dict.common.loading : dict.rail.openAudioRecording} aria-label={dict.rail.openAudioRecording}><FileAudio size={17} /><span>{dict.rail.audioRecording}</span></button>
           <button ref={(node) => { panelTriggersRef.current.practice = node; }} type="button" disabled={!hasProject || !practicePanel || busy} className={effectiveActivePanel === "practice" ? "is-active" : ""} aria-pressed={effectiveActivePanel === "practice"} onClick={(event) => { setMenu(null); openPanel("practice", event.currentTarget); }} title={!hasProject ? dict.rail.practiceUnavailable : busy ? dict.common.loading : dict.rail.openPractice} aria-label={dict.rail.practice}><Bookmark size={17} /><span>{dict.rail.practice}</span></button>
         </div>
-        <button type="button" className={`studio-focus-toggle ${preferences.focusMode ? "is-active" : ""}`} aria-pressed={preferences.focusMode} onClick={() => { setMenu(null); toggleFocusMode(); }} title={dict.header.focusMode} aria-label={dict.header.focusMode}><Activity size={17} /><span>{dict.rail.focus}</span></button>
+        <div className="studio-tool-rail-divider" aria-hidden="true" />
+        <div className="studio-tool-rail-group" role="group" aria-label={isEn ? "Project and app settings" : "Nastavení projektu a aplikace"}>
+          <div className="studio-menu-group studio-export-menu" ref={menu === "export" ? activeMenuRef : undefined}>
+            <button
+              type="button"
+              className={`studio-rail-export-button ${menu === "export" ? "is-open" : ""}`}
+              aria-label={isEn ? "Export" : "Exportovat"}
+              title={isEn ? "Export" : "Exportovat"}
+              aria-haspopup="menu"
+              aria-expanded={menu === "export"}
+              ref={exportMenuTriggerRef}
+              onClick={() => toggleMenu("export")}
+            ><Download size={17} /><span>{isEn ? "Export" : "Exportovat"}</span>
+            </button>
+            {!focusMode && menu === "export" && (
+              renderMenuPopover("studio-menu-right", isEn ? "Export" : "Exportovat", <>
+                <span className="studio-menu-label">{isEn ? "Export project" : "Exportovat projekt"}</span>
+                <MenuItem icon={<Activity />} disabled={!canExportProject || !onExportMidi} onClick={() => onExportMidi && chooseFromMenu(onExportMidi)}>{isEn ? "Fingered MIDI (.mid)" : "MIDI s prstokladem (.mid)"}</MenuItem>
+                <MenuItem icon={<Download />} disabled={!canExportProject || !onExportPackage} onClick={() => onExportPackage && chooseFromMenu(onExportPackage)}>{isEn ? "Project package (.json)" : "Balíček projektu (.json)"}</MenuItem>
+                <span className="studio-menu-divider" />
+                <MenuItem
+                  icon={<Activity />}
+                  disabled={!canExportProject || !onExportVideo || Boolean(videoExportUnavailableReason)}
+                  onClick={() => onExportVideo && chooseFromMenu(onExportVideo)}
+                >
+                  {isEn ? "Performance video (.mp4 / .webm)" : "Video vystoupení (.mp4 / .webm)"}
+                </MenuItem>
+                {videoExportUnavailableReason && <span id="studio-video-export-reason" className="studio-menu-label">{videoExportUnavailableReason}</span>}
+              </>)
+            )}
+          </div>
+
+          {onOpenPianist && <button className="studio-rail-pianist-button" type="button" onClick={onOpenPianist} aria-label="Open pianist settings" title={dict.header.pianistProfile}><UserRound size={17} /><span>{isEn ? "Profile" : "Profil"}</span></button>}
+          {onOpenPreferences && <button className="studio-rail-preferences-button" type="button" onClick={onOpenPreferences} aria-label="Open preferences" title={dict.header.preferences}><Settings2 size={17} /><span>{dict.header.preferences}</span></button>}
+        </div>
+        <div className="studio-tool-rail-divider" aria-hidden="true" />
+        <button ref={focusTriggerRef} type="button" className="studio-focus-toggle" disabled={focusModeDisabled} aria-pressed={focusMode} onClick={enterFocusMode} title={focusModeDisabled && focusModeDisabledReason ? focusModeDisabledReason : dict.header.focusMode} aria-label={dict.header.focusMode}><Activity size={17} /><span>{dict.rail.focus}</span></button>
       </div>
 
       <main className="studio-main" data-testid="studio-main" style={mainStyle}>
         {shownDock && pinnedSide === "left" && (
-          <StudioPanel side="left" title={getPanelTitle(shownDock)} pinned panel={shownDock} onClose={closePanel} onPin={setPanelPinned} resizeHandle={resizeHandle("left")}>
+          <StudioPanel side="left" title={getPanelTitle(shownDock)} pinned panel={shownDock} hidden={focusMode} onClose={closePanel} onPin={setPanelPinned} resizeHandle={resizeHandle("left")}>
             {getPanelContent(shownDock)}
           </StudioPanel>
         )}
-        <section className="studio-workspace" aria-label="Studio workspace">
+        <section ref={focusWorkspaceRef} className="studio-workspace" aria-label="Studio workspace" tabIndex={-1} data-testid="studio-workspace-focus-target">
           <div className={`studio-workspace-content view-${effectiveView}`} data-testid="studio-workspace-content">
             {workspaceContent}
           </div>
         </section>
         {shownDock && pinnedSide === "right" && (
-          <StudioPanel side="right" title={getPanelTitle(shownDock)} pinned panel={shownDock} onClose={closePanel} onPin={setPanelPinned} resizeHandle={resizeHandle("right")}>
+          <StudioPanel side="right" title={getPanelTitle(shownDock)} pinned panel={shownDock} hidden={focusMode} onClose={closePanel} onPin={setPanelPinned} resizeHandle={resizeHandle("right")}>
             {getPanelContent(shownDock)}
           </StudioPanel>
         )}
@@ -774,6 +892,7 @@ export function StudioShell(props: StudioShellProps) {
             title={getPanelTitle(overlayPanel)}
             pinned={preferences.pinnedSide === overlaySide}
             panel={overlayPanel}
+            hidden={focusMode}
             onClose={closePanel}
             onPin={setPanelPinned}
             resizeHandle={resizeHandle(overlaySide)}
@@ -824,8 +943,12 @@ export function StudioShell(props: StudioShellProps) {
         </Dialog.Root>
       )}
 
-      {transport && <div className="studio-transport">{transport}</div>}
-      <footer className="studio-statusbar" data-testid="studio-status">
+      {focusMode && <>
+        <span className="studio-focus-hint" role="status" data-testid="studio-focus-hint">{isEn ? "Esc — exit focus" : "Esc — ukončit soustředění"}</span>
+        <button type="button" className="studio-focus-exit" aria-label={isEn ? "Exit focus" : "Ukončit soustředění"} title={isEn ? "Exit focus (Esc)" : "Ukončit soustředění (Esc)"} onClick={exitFocusMode}><X size={17} aria-hidden="true" /></button>
+      </>}
+      {transport && <div className="studio-transport" hidden={focusMode} inert={focusMode}>{transport}</div>}
+      <footer className="studio-statusbar" data-testid="studio-status" hidden={focusMode} inert={focusMode}>
         <StatusIcon kind={status.kind} />
         <button type="button" className="studio-status-message" title={status.message} aria-label={`Open diagnostics: ${status.message}`} onClick={openDiagnostics}>{status.message}</button>
         <span className="studio-sr-only" role="status" aria-live="polite" aria-atomic="true">{status.message}</span>
@@ -971,6 +1094,7 @@ function StudioPanel({
   side,
   title,
   pinned,
+  hidden = false,
   panel,
   onClose,
   onPin,
@@ -982,6 +1106,7 @@ function StudioPanel({
   side: ResizeSide;
   title: string;
   pinned: boolean;
+  hidden?: boolean;
   panel: PanelKind;
   onClose: () => void;
   onPin: (panel: PanelKind, side: ResizeSide) => void;
@@ -994,7 +1119,7 @@ function StudioPanel({
   const style = width ? { width: `${width}px` } : undefined;
   const pinAccessibleLabel = (pinned ? dict.header.unpinNamedPanel : dict.header.pinNamedPanel).replace("{panel}", title);
   return (
-    <aside className={`studio-panel ${side === "left" ? "side-left" : "side-right"} ${className}`} style={style} aria-label={title} data-testid={`${panel}-panel`}>
+    <aside className={`studio-panel ${side === "left" ? "side-left" : "side-right"} ${className}`} style={style} aria-label={title} data-testid={`${panel}-panel`} hidden={hidden} inert={hidden}>
       {side === "right" && resizeHandle}
       <div className="studio-panel-heading">
         <h2>{title}</h2>

@@ -64,6 +64,9 @@ export interface StudioShellProps {
   onCamera3DPresetChange?: (preset: Camera3DPreset) => void;
   status: StudioStatus;
   busy?: boolean;
+  /** Focus is unavailable while a workspace interaction needs visible editing controls. */
+  focusModeDisabled?: boolean;
+  focusModeDisabledReason?: string;
   onOpenMidi: () => void;
   onOpenBuiltinMelodies?: () => void;
   onOpenPackage: () => void;

@@ -147,7 +147,7 @@ test("six responsive sizes preserve one scene, all keys, contextual tools and pa
   await page.getByRole("button",{name:"Focus mode",exact:true}).click();
   await expect(page.getByTestId("projects-panel")).toBeHidden();
   await expect(canvas).toHaveAttribute("data-identity-probe","same-canvas");
-  await page.getByRole("button",{name:"Focus mode",exact:true}).click();
+  await page.keyboard.press("Escape");
   await expect(page.getByTestId("projects-panel")).toBeVisible();
   await page.setViewportSize({width:1024,height:768});
   await expect.poll(async()=>{

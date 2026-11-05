@@ -75,7 +75,7 @@ test("Auto-advance confirms fingers without fictitious edits and menus share the
   await page.keyboard.press("Control+z");await page.keyboard.press("Space");await page.keyboard.press("1");
   await expect(dialog).toBeVisible();
   await page.waitForTimeout(650);
-  await expect(page.locator("#player-play-button")).toContainText("Play");
+  await expect(page.locator("#player-play-button")).toHaveAttribute("title", "Play");
   expect((await settledStudio(page, redone.result.revision)).result.revision).toBe(redone.result.revision);
   await page.keyboard.press("Escape");await expect(help).toBeFocused();
   await expect(page.getByTestId("projects-panel")).toBeVisible(); // Escape closes only the top layer.

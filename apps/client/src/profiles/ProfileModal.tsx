@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { Check, UserRound, X } from "lucide-react";
 import type { PianistProfile } from "@handthesia/contracts";
 import {
@@ -8,8 +8,6 @@ import {
   DEFAULT_ANATOMY,
   type BoneId,
 } from "./types";
-import { createTesting2DefaultBaselineProfile } from "./testing2BaselineProfile";
-import { createRiggedHandProfile } from "./riggedHandProfile";
 import {
   RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID,
   RIGGED_HAND_MEASURED_BASELINE_PROFILE_NAME,
@@ -27,11 +25,6 @@ import {
 } from "./profileStore";
 import { importLegacyPianistJson, exportProfileToJson } from "./legacyImporter";
 import { useI18n, type TranslationDictionary } from "../i18n";
-import {
-  inspectTesting2Measurements,
-  type Testing2PairedCalibrationInspection,
-} from "../render3d/testing2CalibrationInspection";
-import { Testing2RigEditorHost } from "../render3d/Testing2RigEditorHost";
 
 export interface ProfileModalProps {
   presentation?: "dialog" | "workspace";
@@ -39,8 +32,6 @@ export interface ProfileModalProps {
   isOpen: boolean;
   onClose: () => void;
   onProfileChanged?: (profile: PianistProfile) => void;
-  testing2RigEditorOpen?: boolean;
-  onTesting2RigEditorOpenChange?: (open: boolean) => void;
 }
 
 function projectProfileChoices(profile?: PianistProfile): PianistProfile[] {
@@ -89,16 +80,7 @@ function getFingerName(finger: 1 | 2 | 3 | 4 | 5, dict: TranslationDictionary): 
   }
 }
 
-function formatMillimeters(value: number | undefined): string {
-  return typeof value === "number" && Number.isFinite(value) ? `${value.toFixed(2)} mm` : "Unavailable";
-}
-
-function formatMillimeterDelta(value: number | undefined): string {
-  if (typeof value !== "number" || !Number.isFinite(value)) return "—";
-  return `${value >= 0 ? "+" : ""}${value.toFixed(2)} mm`;
-}
-
-export function ProfileModal({ isOpen, onClose, onProfileChanged, presentation = "dialog", initialProfile, testing2RigEditorOpen: controlledTesting2RigEditorOpen, onTesting2RigEditorOpenChange }: ProfileModalProps) {
+export function ProfileModal({ isOpen, onClose, onProfileChanged, presentation = "dialog", initialProfile }: ProfileModalProps) {
   const { dict } = useI18n();
   const [profiles, setProfiles] = useState<PianistProfile[]>(() => projectProfileChoices(initialProfile));
   const [selectedProfileId, setSelectedProfileId] = useState<string>(
@@ -111,19 +93,7 @@ export function ProfileModal({ isOpen, onClose, onProfileChanged, presentation =
   const [operationError, setOperationError] = useState<string | null>(null);
   const [profileDiagnostics, setProfileDiagnostics] = useState(() => getProfileStoreDiagnostics());
   const [isSaving, setIsSaving] = useState(false);
-  const [isCreatingRiggedHandProfile, setIsCreatingRiggedHandProfile] = useState(false);
-  const riggedHandCreationInFlight = useRef(false);
   const [conflictProfile, setConflictProfile] = useState<PianistProfile | null>(null);
-  const [testing2Inspection, setTesting2Inspection] = useState<Testing2PairedCalibrationInspection | null>(null);
-  const [testing2InspectionError, setTesting2InspectionError] = useState<string | null>(null);
-  const [isInspectingTesting2, setIsInspectingTesting2] = useState(false);
-  const [localTesting2RigEditorOpen, setLocalTesting2RigEditorOpen] = useState(false);
-  const testing2RigEditorOpen = controlledTesting2RigEditorOpen ?? localTesting2RigEditorOpen;
-  const updateTesting2RigEditorOpen = (open: boolean) => {
-    if (onTesting2RigEditorOpenChange) onTesting2RigEditorOpenChange(open);
-    else setLocalTesting2RigEditorOpen(open);
-  };
-
   // Sync profiles on external changes
   useEffect(() => {
     const unsubscribe = subscribeProfiles(() => {
@@ -235,61 +205,6 @@ export function ProfileModal({ isOpen, onClose, onProfileChanged, presentation =
       setOperationError(error instanceof Error ? error.message : String(error));
     } finally {
       setIsSaving(false);
-    }
-  };
-
-  const handleCreateTesting2Baseline = async () => {
-    setIsSaving(true);
-    setOperationError(null);
-    setSaveFeedback(null);
-    try {
-      const created = await createTesting2DefaultBaselineProfile();
-      setSaveFeedback(`Created "${created.name}". Select it in the profile list to edit. This is a Default baseline copy; GLB anatomy is not calibrated.`);
-      setTimeout(() => setSaveFeedback(null), 4000);
-    } catch (error) {
-      setOperationError(error instanceof Error ? error.message : String(error));
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleCreateRiggedHandProfile = async () => {
-    if (isSaving || riggedHandCreationInFlight.current) return;
-    riggedHandCreationInFlight.current = true;
-    setIsCreatingRiggedHandProfile(true);
-    setIsSaving(true);
-    setOperationError(null);
-    setSaveFeedback(null);
-    try {
-      const created = await createRiggedHandProfile();
-      setProfiles((current) => current.some((profile) => profile.profileId === created.profileId)
-        ? current
-        : [...current, created]);
-      setSaveFeedback(`Created "${created.name}". Select it in the profile list to use it.`);
-      setTimeout(() => setSaveFeedback(null), 4000);
-    } catch (error) {
-      setOperationError(error instanceof Error ? error.message : String(error));
-    } finally {
-      riggedHandCreationInFlight.current = false;
-      setIsCreatingRiggedHandProfile(false);
-      setIsSaving(false);
-    }
-  };
-
-  const handleInspectTesting2Measurements = async () => {
-    setIsInspectingTesting2(true);
-    setTesting2Inspection(null);
-    setTesting2InspectionError(null);
-    try {
-      const inspection = await inspectTesting2Measurements();
-      setTesting2Inspection(inspection);
-    } catch (error) {
-      const detail = error instanceof Error ? error.message : String(error);
-      setTesting2InspectionError(
-        `Could not load Testing2 measurements. Check that the improved hand manifest and both hand LOD 0 assets are available, then try again. Details: ${detail}`,
-      );
-    } finally {
-      setIsInspectingTesting2(false);
     }
   };
 
@@ -495,70 +410,9 @@ export function ProfileModal({ isOpen, onClose, onProfileChanged, presentation =
           <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", flexWrap: "wrap" }}>
             <button
               type="button"
-              data-testid="open-testing2-rig-editor"
-              onClick={() => updateTesting2RigEditorOpen(true)}
-              title="Open a separate full-screen bind-rig editor. It saves independent rig presets without changing the active pianist profile or player."
-              style={{
-                padding: "0.3rem 0.6rem",
-                borderRadius: "0.35rem",
-                fontSize: "0.72rem",
-                background: "rgba(146, 215, 206, 0.12)",
-                border: "1px solid #92d7ce",
-                color: "#edf2ed",
-                cursor: "pointer",
-              }}
-            >
-              Testing2 rig editor
-            </button>
-            <button
-              type="button"
-              data-testid="create-testing2-default-baseline"
-              onClick={() => void handleCreateTesting2Baseline()}
-              disabled={isSaving}
-              title="Creates a copy of the Default profile for baseline edits; GLB anatomy remains uncalibrated."
-              style={{
-                padding: "0.3rem 0.6rem",
-                borderRadius: "0.35rem",
-                fontSize: "0.72rem",
-                background: "rgba(169, 211, 187, 0.12)",
-                border: "1px solid var(--mint, #a9d3bb)",
-                color: "#edf2ed",
-                cursor: "pointer",
-              }}
-            >
-              Create Testing2 profile
-            </button>
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.15rem" }}>
-              <button
-                type="button"
-                data-testid="create-rigged-hand-profile"
-                onClick={() => void handleCreateRiggedHandProfile()}
-                disabled={isSaving}
-                title="Creates a separate editable Rigged hands copy. It does not change the active profile."
-                style={{
-                  padding: "0.3rem 0.6rem",
-                  borderRadius: "0.35rem",
-                  fontSize: "0.72rem",
-                  background: "rgba(169, 211, 187, 0.12)",
-                  border: "1px solid var(--mint, #a9d3bb)",
-                  color: "#edf2ed",
-                  cursor: isCreatingRiggedHandProfile ? "wait" : "pointer",
-                }}
-                aria-busy={isCreatingRiggedHandProfile}
-              >
-                {isCreatingRiggedHandProfile ? "Creating editable copy…" : "Create editable Rigged hands copy"}
-              </button>
-              <span
-                data-testid="rigged-hand-profile-calibration-note"
-                style={{ maxWidth: "24rem", fontSize: "0.65rem", lineHeight: 1.3, color: "var(--muted, #9fac9f)" }}
-              >
-                Partially calibrated: four fingers use rig measurements; thumb, palm, wrist, and Motion use Default.
-              </span>
-            </div>
-            <button
-              type="button"
               onClick={handleClone}
               disabled={isSaving}
+              title="Create and apply an editable copy of the selected profile, including your current edits."
               style={{
                 padding: "0.3rem 0.6rem",
                 borderRadius: "0.35rem",
@@ -742,154 +596,26 @@ export function ProfileModal({ isOpen, onClose, onProfileChanged, presentation =
             </div>
           ))}
 
+          {isDefaultProfile && (
+            <p style={{ margin: "0 0 1rem", fontSize: "0.8rem", color: "var(--muted, #9fac9f)" }}>
+              Built-in presets are read-only. Use Duplicate to create an editable copy.
+            </p>
+          )}
+          {isMeasuredBaselineBuiltin && (
+            <p
+              data-testid="rigged-hand-profile-calibration-note"
+              style={{ margin: "0 0 1rem", fontSize: "0.8rem", lineHeight: 1.4, color: "var(--muted, #9fac9f)" }}
+            >
+              This preset uses measured lengths for four fingers. Thumb, palm, wrist, and motion settings use Default values.
+            </p>
+          )}
+
           {/* Anatomy Tab */}
           {activeTab === "anatomy" && (
             <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
               <p style={{ margin: 0, fontSize: "0.8rem", color: "var(--muted, #9fac9f)" }}>
                 {dict.pianist.subtitle}. Hand bone lengths in model units (1 unit ≈ 0.856 cm on the engine's standard piano key scale). Adjust to simulate smaller hands or virtuoso reach.
               </p>
-
-              <section
-                aria-labelledby="testing2-measurement-title"
-                data-testid="testing2-measurement-inspection"
-                style={{
-                  background: "rgba(169, 211, 187, 0.06)",
-                  border: "1px solid var(--border, #33423a)",
-                  borderRadius: "0.55rem",
-                  padding: "0.85rem",
-                }}
-              >
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "0.8rem", flexWrap: "wrap" }}>
-                  <div>
-                    <h3 id="testing2-measurement-title" style={{ margin: 0, fontSize: "0.9rem", color: "var(--mint, #a9d3bb)" }}>
-                      Testing2 source measurements
-                    </h3>
-                    <p style={{ margin: "0.3rem 0 0", fontSize: "0.75rem", color: "var(--muted, #9fac9f)" }}>
-                      Compare estimated hand joint distances with the Default profile. Measurements do not change your settings.
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    data-testid="inspect-testing2-measurements"
-                    onClick={() => void handleInspectTesting2Measurements()}
-                    disabled={isInspectingTesting2}
-                    aria-busy={isInspectingTesting2}
-                    style={{
-                      padding: "0.45rem 0.75rem",
-                      borderRadius: "0.4rem",
-                      fontSize: "0.78rem",
-                      background: "rgba(169, 211, 187, 0.12)",
-                      border: "1px solid var(--mint, #a9d3bb)",
-                      color: "#edf2ed",
-                      cursor: isInspectingTesting2 ? "wait" : "pointer",
-                    }}
-                  >
-                    {isInspectingTesting2 ? "Loading Testing2 measurements…" : "Inspect Testing2 measurements"}
-                  </button>
-                </div>
-
-                {isInspectingTesting2 && (
-                  <p role="status" style={{ margin: "0.7rem 0 0", fontSize: "0.78rem", color: "var(--muted, #9fac9f)" }}>
-                    Loading the manifest and left/right hand estimates…
-                  </p>
-                )}
-                {testing2InspectionError && (
-                  <p role="alert" style={{ margin: "0.7rem 0 0", fontSize: "0.78rem", color: "#f87171" }}>
-                    {testing2InspectionError}
-                  </p>
-                )}
-
-                {testing2Inspection && (() => {
-                  const leftHasErrors = testing2Inspection.left.diagnostics.some((diagnostic) => diagnostic.severity === "error");
-                  const rightHasErrors = testing2Inspection.right.diagnostics.some((diagnostic) => diagnostic.severity === "error");
-                  const millimetersPerProfileUnit = testing2Inspection.left.conversion.millimetersPerProfileModelUnit;
-                  return (
-                    <div style={{ marginTop: "0.8rem" }}>
-                      {(leftHasErrors || rightHasErrors) && (
-                        <p role="alert" style={{ margin: "0 0 0.6rem", fontSize: "0.77rem", color: "#fbbf24" }}>
-                          Some required landmarks are missing or invalid. Unavailable measurements are shown explicitly; review the source assets before using these estimates.
-                        </p>
-                      )}
-                      <p style={{ margin: "0 0 0.6rem", fontSize: "0.76rem", color: "#fbbf24" }}>
-                        Estimated joints only: the raw source mesh has no rig, and the joint positions in the improved GLB have not been verified as anatomical joint centers.
-                      </p>
-                      <div style={{ overflowX: "auto", border: "1px solid var(--border, #33423a)", borderRadius: "0.4rem" }}>
-                        <table
-                          data-testid="testing2-measurements-table"
-                          style={{ width: "100%", minWidth: "880px", borderCollapse: "collapse", fontSize: "0.72rem", textAlign: "left" }}
-                        >
-                          <caption style={{ textAlign: "left", padding: "0.5rem", color: "var(--muted, #9fac9f)" }}>
-                            Estimated segment lengths. Default is converted from HandGeometry units to millimeters.
-                          </caption>
-                          <thead>
-                            <tr>
-                              {["Profile key", "Left estimate", "Right estimate", "Default", "Left − Default", "Right − Default", "Left − Right"].map((heading) => (
-                                <th key={heading} scope="col" style={{ padding: "0.45rem", borderBottom: "1px solid var(--border, #33423a)", whiteSpace: "nowrap" }}>
-                                  {heading}
-                                </th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {ANATOMY_BONES.map((bone) => {
-                              const leftMeasurement = testing2Inspection.left.measurements.find((measurement) => measurement.profileKey === bone.id);
-                              const rightMeasurement = testing2Inspection.right.measurements.find((measurement) => measurement.profileKey === bone.id);
-                              const leftMm = leftMeasurement?.status === "measured" ? leftMeasurement.distanceMillimeters : undefined;
-                              const rightMm = rightMeasurement?.status === "measured" ? rightMeasurement.distanceMillimeters : undefined;
-                              const defaultMm = DEFAULT_ANATOMY[bone.id] * millimetersPerProfileUnit;
-                              const leftDefaultDelta = leftMm === undefined ? undefined : leftMm - defaultMm;
-                              const rightDefaultDelta = rightMm === undefined ? undefined : rightMm - defaultMm;
-                              const leftRightDelta = leftMm === undefined || rightMm === undefined ? undefined : leftMm - rightMm;
-                              const estimateLabel = bone.kind === "mc" ? "Estimate · root unregistered" : "Estimate · not applied";
-                              return (
-                                <tr key={bone.id}>
-                                  <th scope="row" style={{ padding: "0.45rem", borderBottom: "1px solid rgba(255,255,255,0.06)", whiteSpace: "nowrap" }}>
-                                    <code>{bone.id}</code> <span style={{ color: "var(--muted, #9fac9f)" }}>{bone.name}</span>
-                                  </th>
-                                  <td style={{ padding: "0.45rem", borderBottom: "1px solid rgba(255,255,255,0.06)", whiteSpace: "nowrap" }}>
-                                    {formatMillimeters(leftMm)}<br /><small style={{ color: "#fbbf24" }}>{leftMm === undefined ? "" : estimateLabel}</small>
-                                  </td>
-                                  <td style={{ padding: "0.45rem", borderBottom: "1px solid rgba(255,255,255,0.06)", whiteSpace: "nowrap" }}>
-                                    {formatMillimeters(rightMm)}<br /><small style={{ color: "#fbbf24" }}>{rightMm === undefined ? "" : estimateLabel}</small>
-                                  </td>
-                                  <td style={{ padding: "0.45rem", borderBottom: "1px solid rgba(255,255,255,0.06)", whiteSpace: "nowrap" }}>
-                                    {formatMillimeters(defaultMm)}
-                                  </td>
-                                  <td style={{ padding: "0.45rem", borderBottom: "1px solid rgba(255,255,255,0.06)", whiteSpace: "nowrap" }}>
-                                    {formatMillimeterDelta(leftDefaultDelta)}
-                                  </td>
-                                  <td style={{ padding: "0.45rem", borderBottom: "1px solid rgba(255,255,255,0.06)", whiteSpace: "nowrap" }}>
-                                    {formatMillimeterDelta(rightDefaultDelta)}
-                                  </td>
-                                  <td style={{ padding: "0.45rem", borderBottom: "1px solid rgba(255,255,255,0.06)", whiteSpace: "nowrap" }}>
-                                    {formatMillimeterDelta(leftRightDelta)}
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
-                      <div style={{ marginTop: "0.7rem", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))", gap: "0.45rem 1rem", fontSize: "0.76rem" }}>
-                        <p style={{ margin: 0 }}>
-                          <strong>Palm MCP span (index to little):</strong> L {formatMillimeters(testing2Inspection.left.geometry.palmMcpSpan?.millimeters)}, R {formatMillimeters(testing2Inspection.right.geometry.palmMcpSpan?.millimeters)}.
-                        </p>
-                        <p style={{ margin: 0 }}>
-                          <strong>Metacarpal base span:</strong> L {formatMillimeters(testing2Inspection.left.geometry.metacarpalBaseSpan?.millimeters)}, R {formatMillimeters(testing2Inspection.right.geometry.metacarpalBaseSpan?.millimeters)}.
-                        </p>
-                      </div>
-                      <ul style={{ margin: "0.65rem 0 0", paddingLeft: "1.2rem", fontSize: "0.76rem", color: "var(--muted, #9fac9f)" }}>
-                        <li>Palm width has no independent anatomy field. Wrist width cannot be measured from the single wrist landmark; the Default wrist scale is retained.</li>
-                        <li>Estimated metacarpal roots are not registered to HandGeometry's fixed roots, so metacarpal measurements are reference-only and Default is retained.</li>
-                        <li>Left/right and Default deltas are comparisons, not evidence that either estimate is anatomically correct. Motion &amp; Technique is not inferred from a static GLB.</li>
-                      </ul>
-                      <p style={{ margin: "0.65rem 0 0", fontSize: "0.75rem", color: "var(--muted, #9fac9f)" }}>
-                        All 19 estimates are report-only. No profile anatomy, behavior, or stored profile was changed.
-                      </p>
-                    </div>
-                  );
-                })()}
-              </section>
 
               {/* Palm Width & Wrist Height */}
               <div>
@@ -1403,7 +1129,6 @@ export function ProfileModal({ isOpen, onClose, onProfileChanged, presentation =
         )}
       </div>
       </div>
-      <Testing2RigEditorHost isOpen={testing2RigEditorOpen} onClose={() => updateTesting2RigEditorOpen(false)} />
     </>
   );
 }

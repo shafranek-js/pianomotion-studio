@@ -43,7 +43,7 @@ class MemoryStorage implements Storage {
   }
 }
 
-describe("Testing2 default baseline profile creation", () => {
+describe("Legacy Testing2 profile preservation", () => {
   beforeEach(() => {
     setProfileStorage(new MemoryStorage());
     resetProfileStore();
@@ -54,7 +54,7 @@ describe("Testing2 default baseline profile creation", () => {
     setProfileStorage(null);
   });
 
-  it("creates an editable Default copy without mutation, overwrite, or activation", async () => {
+  it("retains existing editable Default copies without exposing legacy creation or inspection controls", async () => {
     const originalDefault = structuredClone(DEFAULT_PROFILE);
     const existing = await saveProfile({
       ...structuredClone(DEFAULT_PROFILE),
@@ -102,11 +102,22 @@ describe("Testing2 default baseline profile creation", () => {
     const markup = renderToStaticMarkup(<ProfileModal isOpen onClose={() => {}} />);
     expect(markup).toContain('value="created-id"');
     expect(markup).toContain("Testing2 — Default baseline");
-    expect(markup).toContain('data-testid="create-testing2-default-baseline"');
-    expect(markup).toContain("Create Testing2 profile");
-    expect(markup).toContain("Default profile for baseline edits; GLB anatomy remains uncalibrated");
-    expect(markup).toContain('data-testid="inspect-testing2-measurements"');
+    expect(markup).not.toContain('data-testid="create-testing2-default-baseline"');
+    expect(markup).not.toContain("Create Testing2 profile");
+    expect(markup).not.toContain('data-testid="open-testing2-rig-editor"');
+    expect(markup).not.toContain("Testing2 rig editor");
+    expect(markup).not.toContain('data-testid="testing2-measurement-inspection"');
+    expect(markup).not.toContain('data-testid="inspect-testing2-measurements"');
     expect(markup).not.toContain('data-testid="testing2-measurements-table"');
+
+    await setActiveProfile(created.profileId);
+    const legacyMarkup = renderToStaticMarkup(<ProfileModal isOpen onClose={() => {}} />);
+    expect(legacyMarkup).toContain('value="created-id" selected=""');
+    expect(legacyMarkup).toContain("Testing2 — Default baseline");
+    expect(legacyMarkup).toContain('title="Create and apply an editable copy of the selected profile, including your current edits."');
+    expect(legacyMarkup).not.toContain('disabled="" title="Duplicate this preset before editing and saving it"');
+    expect(legacyMarkup).not.toContain("Built-in presets are read-only.");
+    expect(listProfiles().find((profile) => profile.profileId === created.profileId)).toEqual(created);
   });
 });
 
@@ -143,7 +154,11 @@ describe("Rigged hands built-in baseline profile", () => {
     expect(markup).toContain(`value="${RIGGED_HAND_MEASURED_BASELINE_PROFILE_ID}"`);
     expect(markup).toContain("Rigged hands — measured baseline (Built-in)");
     expect(markup).toContain("Rigged hands — measured baseline (Copy)");
-    expect(markup).toContain("Create editable Rigged hands copy");
+    expect(markup).not.toContain("Create editable Rigged hands copy");
+    expect(markup).not.toContain('data-testid="create-rigged-hand-profile"');
+    expect(markup).toContain("Built-in presets are read-only. Use Duplicate to create an editable copy.");
+    expect(markup).toContain('data-testid="rigged-hand-profile-calibration-note"');
+    expect(markup).toContain("This preset uses measured lengths for four fingers. Thumb, palm, wrist, and motion settings use Default values.");
     expect(markup).toContain('data-testid="apply-measured-baseline"');
     expect(markup).toContain('aria-label="Apply built-in Rigged hands measured baseline and close"');
     expect(markup).toContain("disabled=\"\" title=\"Duplicate this preset before editing and saving it\"");
@@ -177,7 +192,9 @@ describe("Rigged hands built-in baseline profile", () => {
     expect(markup).not.toContain("Rigged hands — measured baseline (Built-in)");
     expect(markup).toContain('data-testid="profile-store-diagnostic"');
     expect(markup).toContain("Its data and ID are preserved in read-only mode");
-    expect(markup).toContain('data-testid="create-rigged-hand-profile"');
+    expect(markup).not.toContain('data-testid="create-rigged-hand-profile"');
+    expect(markup).not.toContain('data-testid="rigged-hand-profile-calibration-note"');
+    expect(markup).toContain("Built-in presets are read-only. Use Duplicate to create an editable copy.");
     expect(markup).not.toContain('data-testid="apply-measured-baseline"');
     expect(markup).toContain('disabled="" title="Duplicate this preset before editing and saving it"');
     expect(markup).not.toContain("Delete profile");

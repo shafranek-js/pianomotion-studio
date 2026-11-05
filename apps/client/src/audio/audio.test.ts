@@ -12,6 +12,7 @@ import {
 } from "./audioContext.ts";
 import { PianoSampler } from "./sampler.ts";
 import { Transport } from "./transport.ts";
+import type { AccompanimentPlan } from "./accompaniment.ts";
 import type { PerformanceOutput } from "./output/performanceOutput.ts";
 
 /**
@@ -101,13 +102,16 @@ class MockAudioContext {
   public state: AudioContextState = "suspended";
   public destination = new MockGainNode();
   public periodicWaves: Array<{ real: number[]; imag: number[] }> = [];
+  public oscillators: MockOscillatorNode[] = [];
 
   createGain(): MockGainNode {
     return new MockGainNode();
   }
 
   createOscillator(): MockOscillatorNode {
-    return new MockOscillatorNode();
+    const oscillator = new MockOscillatorNode();
+    this.oscillators.push(oscillator);
+    return oscillator;
   }
 
   createBiquadFilter(): MockBiquadFilterNode {
@@ -659,6 +663,74 @@ describe("transport.ts", () => {
     expect(sampler.getActiveVoiceCount()).toBe(1);
     (mockCtx as unknown as MockAudioContext).currentTime = 0.5;
     expect(transport.getCurrentTime()).toBeCloseTo(1.125, 5);
+  });
+
+  it("restores long accompaniment notes across pause, seek, unmute, and re-enable, and extends duration", async () => {
+    const accompaniment: AccompanimentPlan = {
+      tracks: [{ id: "track-1", trackIndex: 1, name: "Strings", program: 48, noteCount: 1 }],
+      notes: [{
+        noteId: "track-1:note-0", trackId: "track-1", program: 48,
+        pitch: 52, velocity: 90, startSeconds: 0, endSeconds: 3,
+      }],
+      events: [
+        { type: "press", noteId: "track-1:note-0", trackId: "track-1", program: 48, pitch: 52, velocity: 90, timeSeconds: 0 },
+        { type: "release", noteId: "track-1:note-0", pitch: 52, timeSeconds: 3 },
+      ],
+    };
+    const activeAccompaniment = () => (transport as unknown as {
+      accompanimentSampler: { activeVoices: Map<string, unknown> };
+    }).accompanimentSampler.activeVoices.size;
+
+    transport.loadPlan(makeTestPerformancePlan([]), 1);
+    transport.loadAccompanimentPlan(accompaniment);
+    expect(transport.getDuration()).toBe(3);
+    transport.seek(0);
+    await transport.play();
+    expect(activeAccompaniment()).toBe(1);
+
+    transport.pause();
+    expect(activeAccompaniment()).toBe(0);
+    await transport.play();
+    expect(activeAccompaniment()).toBe(1);
+
+    transport.seek(1.5);
+    expect(activeAccompaniment()).toBe(1);
+    transport.setAccompanimentEnabled(false);
+    expect(activeAccompaniment()).toBe(0);
+    transport.setAccompanimentEnabled(true);
+    expect(activeAccompaniment()).toBe(1);
+
+    transport.setAccompanimentVolume(0);
+    transport.setAccompanimentVolume(0.65);
+    expect(activeAccompaniment()).toBe(1);
+    transport.seek(3);
+    expect(activeAccompaniment()).toBe(0);
+
+    transport.loadAccompanimentPlan(null);
+    expect(transport.getDuration()).toBe(1);
+  });
+
+  it("cancels and reschedules queued accompaniment releases at the new speed", async () => {
+    transport.loadPlan(makeTestPerformancePlan([]), 1);
+    transport.loadAccompanimentPlan({
+      tracks: [{ id: "track-1", trackIndex: 1, name: "Strings", program: 48, noteCount: 1 }],
+      notes: [{ noteId: "held", trackId: "track-1", program: 48, pitch: 52, velocity: 90, startSeconds: 0, endSeconds: 0.08 }],
+      events: [
+        { type: "press", noteId: "held", trackId: "track-1", program: 48, pitch: 52, velocity: 90, timeSeconds: 0 },
+        { type: "release", noteId: "held", pitch: 52, timeSeconds: 0.08 },
+      ],
+    });
+    transport.seek(0);
+    await transport.play();
+    const context = mockCtx as unknown as MockAudioContext;
+    const originalOscillators = [...context.oscillators];
+    context.currentTime = 0.02;
+
+    transport.setSpeed(2);
+
+    expect(originalOscillators.every((oscillator) => oscillator.stopped && oscillator.stopTime === 0.02)).toBe(true);
+    expect(context.oscillators.some((oscillator) => oscillator.startTime === 0.02 &&
+      oscillator.stopped && oscillator.stopTime > 0.02)).toBe(true);
   });
 
   it("preserves active voices and envelope decay during speed change without silenceAll or note re-attack (A15)", async () => {
