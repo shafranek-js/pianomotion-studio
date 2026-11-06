@@ -1,5 +1,23 @@
 # PianoMotion Studio: журнал оркестрации
 
+## SoundFont: ограниченная компенсация и защита выхода — 2026-11-06, реализация
+
+После проверки пользовательской Auto-Makeup Gain выявлены два случая: реальные десять нот MuseScore при velocity 127 превышали peak 1 на master 100%, а общий median-based boost перегружал неослабленную зону смешанного стороннего банка. Пользователь разрешил исправление. `makeup_fix` (sol high) ограничил политику точным SHA встроенного банка, сохранил его +18 dB и перенёс компенсацию в создаваемый voice, чтобы смена пресета не меняла предыдущие хвосты. Другие банки сохраняют unity gain. `output_limiter` (sol high) добавил после master gain синхронный native stereo compressor (threshold 0 dB, без автоматического подъёма тихого сигнала) и per-channel safety WaveShaper ceiling <0.98. Это защита sample peaks, а не true-peak/полностью связанный stereo limiter; при крайнем перегрузе защитное ограничение может менять стереобаланс. Native lookahead измерен: 264 frames / 5.986 ms при 44.1 kHz. Асинхронные worklet, зависимости и изменения offline-нормализатора не вводились.
+
+Проверки: SoundFont subtree 108/108 unit, graph/audio 46/46, scoped ESLint и полный typecheck прошли. `makeup_pcm` (sol medium) в изолированном Chromium проверил 19 PCM render cases и DSP-стимулы через factory и фактический singleton output graph: builtin C4/vel100/master1 peak 0.196371; десять нот/vel127/master0.8 peak 0.909716, master1 peak 0.979999900; 37 нот/master0.8 и 1 peak 0.979999900. Во всех защищённых рендерах ноль samples >1. Смешанный сторонний банк peak 2.302892→0.289917 при unity makeup. Quiet-noise RMS ratio 0.999985, aligned sample max error 8.28e-6. Offline export сохраняет необрезанные float peaks до normalize: 1.966478→0.889999986. Root проверил source, маршрутизацию/cleanup, идентичность банка и результаты PCM. Артефакты: Temp/pianomotion-makeup-fixed-pcm-{results.json,probe.mjs}. Публикация/commit не выполнялись; пользовательская слуховая приёмка открыта.
+
+Финальный build и dist verify: d0cf3169c87c02bf8c249975, 286 файлов / 101591495 байт; git diff --check прошёл. Build содержит обычное предупреждение о размере JS chunks.
+
+## Автокомпенсация громкости SoundFont (Auto-Makeup Gain) — 2026-11-05, первоначальная версия, заменена исправлением от 2026-11-06
+
+Итог: реализована функция computePresetMakeupGain и автоматическое адаптивное предусиление presetMakeupGain в SoundFontSynth. При загрузке банка или переключении пресета синтезатор вычисляет медианное затухание зон пресета (initialAttenuationDb). Если банк оркестровый и имеет глубокое затухание (как MuseScore General со средним затуханием 25 dB на рояле), синтезатор автоматически компенсирует разницу до целевого запаса 6 dB (до +18 dB / 7.94×), приводя громкость MuseScore General в полное соответствие с PianoSampler (~0.175–0.18 пиковой амплитуды при vel 100). Для сторонних соло-банков с ослаблением <= 6 dB сохраняется единичное усиление (1.0×), полностью предотвращая перегрузку и клиппинг.
+
+Проверки:
+- Unit-тесты: 220 тестов в 16 файлах (apps/client/src/audio/), включая новый тест "calculates auto-makeup gain for heavily attenuated presets like MuseScore General and keeps unity gain for normal banks" в soundfont.test.ts. Все пройдены (220/220).
+- Typecheck: полный npm run typecheck по всем пакетам и тестам прошёл чисто (код возврата 0).
+- ESLint: проверка изменённых файлов soundfontSynth.ts и soundfont.test.ts прошла без ошибок и предупреждений (0 errors, 0 warnings).
+- Коммит и публикация не выполнялись согласно правилам.
+
 ## Pianist settings: baseline по умолчанию и уборка Testing2 — 2026-11-05, реализация
 
 Итог: cold/fallback active profile — Rigged hands measured baseline; ранее сохранённый virtuoso/custom/project profile сохраняется. При конфликте сохранённого ID builtin не подменяет запись: неявный fallback использует canonical default, явный сохранённый выбор конфликта сохраняется. Удалены Testing2 UI/host/inspection из ProfileModal и соответствующее App состояние, а также отдельная кнопка создания Rigged copy; Duplicate копирует выбранный профиль/черновик и активирует отдельный editable record. Factory/calibration/editor modules и пользовательские данные сохранены. Краткие пояснения readonly/частичной калибровки оставлены.

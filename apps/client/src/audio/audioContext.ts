@@ -3,13 +3,36 @@
  * Automatically handles auto-resume on the first user interaction gesture.
  */
 
+import { createOutputLimiter, type OutputLimiter } from "./outputLimiter.ts";
+
 let globalAudioContext: AudioContext | null = null;
 let globalMasterGain: GainNode | null = null;
+let globalOutputLimiter: OutputLimiter | null = null;
+let managedMasterConnected = false;
 let masterVolume = 0.8;
 let autoResumeInitialized = false;
 
 type GestureEventName = "pointerdown" | "keydown" | "touchstart" | "click";
 const GESTURE_EVENTS: readonly GestureEventName[] = ["pointerdown", "keydown", "touchstart", "click"];
+
+function connectMasterGain(context: AudioContext, master: GainNode): void {
+  // Lightweight Node test contexts may omit native DSP nodes. Every supported
+  // browser AudioContext supplies both methods, so playback uses protection.
+  if (typeof context.createDynamicsCompressor === "function" && typeof context.createWaveShaper === "function") {
+    globalOutputLimiter = createOutputLimiter(context);
+    master.connect(globalOutputLimiter.input);
+  } else {
+    master.connect(context.destination);
+  }
+  managedMasterConnected = true;
+}
+
+function disconnectManagedOutput(): void {
+  if (managedMasterConnected) globalMasterGain?.disconnect();
+  managedMasterConnected = false;
+  globalOutputLimiter?.dispose();
+  globalOutputLimiter = null;
+}
 
 function handleUserGesture(): void {
   if (globalAudioContext && globalAudioContext.state === "suspended") {
@@ -61,7 +84,7 @@ export function getAudioContext(): AudioContext {
     globalAudioContext = new AudioContextConstructor();
     globalMasterGain = globalAudioContext.createGain();
     globalMasterGain.gain.setValueAtTime(masterVolume, globalAudioContext.currentTime);
-    globalMasterGain.connect(globalAudioContext.destination);
+    connectMasterGain(globalAudioContext, globalMasterGain);
 
     attachGestureListeners();
   }
@@ -70,7 +93,7 @@ export function getAudioContext(): AudioContext {
 }
 
 /**
- * Returns the master GainNode connected to the destination.
+ * Returns the master GainNode connected through final output protection.
  */
 export function getMasterGain(): GainNode {
   if (!globalMasterGain) {
@@ -120,14 +143,16 @@ export function isAudioContextRunning(): boolean {
  */
 export async function closeAudioContext(): Promise<void> {
   detachGestureListeners();
-  if (globalAudioContext) {
+  const context = globalAudioContext;
+  disconnectManagedOutput();
+  globalAudioContext = null;
+  globalMasterGain = null;
+  if (context) {
     try {
-      await globalAudioContext.close();
+      await context.close();
     } catch {
       // Ignore errors if context is already closed
     }
-    globalAudioContext = null;
-    globalMasterGain = null;
   }
 }
 
@@ -138,13 +163,14 @@ export function setAudioContextForTesting(
   context: AudioContext | null,
   masterGain?: GainNode | null,
 ): void {
+  disconnectManagedOutput();
   globalAudioContext = context;
   globalMasterGain = masterGain ?? null;
   if (context && !masterGain) {
     try {
       globalMasterGain = context.createGain();
       globalMasterGain.gain.setValueAtTime(masterVolume, context.currentTime);
-      globalMasterGain.connect(context.destination);
+      connectMasterGain(context, globalMasterGain);
     } catch {
       // Ignore if mock context doesn't implement destination
     }

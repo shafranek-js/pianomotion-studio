@@ -1,9 +1,10 @@
 import { describe, it, expect, vi } from "vitest";
 import { InvalidSoundFontError, Sf2Parser } from "./sf2Parser";
-import { SoundFontSynth } from "./soundfontSynth";
+import { SoundFontSynth, computePresetMakeupGain } from "./soundfontSynth";
+import { BUILTIN_SOUNDFONT_ID } from "./builtinSoundfont.ts";
 import { getSoundFontSampleProviderStats, resetSharedSoundFontSampleProviderForTests } from "./soundfontSampleProvider.ts";
 import { createSyntheticMonoSf2 } from "./testing/syntheticMonoSf2.ts";
-import type { Sf2SoundFont } from "./types";
+import type { Sf2Preset, Sf2SoundFont } from "./types";
 
 type StereoTestBuffer = { duration: number; sampleRate: number; getChannelData: (channel: number) => Float32Array };
 type StereoTestSource = {
@@ -1267,6 +1268,100 @@ describe("SoundFont 2 Parser & Synthesizer (W042, W043)", () => {
 
     synth.dispose();
     resetSharedSoundFontSampleProviderForTests();
+  });
+
+  it("limits attenuation makeup to the content-pinned built-in bank", () => {
+    const preset: Sf2Preset = {
+      name: "Grand Piano", presetNumber: 0, bankNumber: 0,
+      zones: [24, 26, 25].map((initialAttenuationDb, sampleIndex) => ({
+        keyRange: [21, 108], velRange: [1, 127], sampleIndex, initialAttenuationDb,
+      })),
+    };
+    const builtIn: Sf2SoundFont = {
+      header: { name: "Included bank", versionMajor: 3, versionMinor: 1 },
+      presets: [preset], samples: [],
+      sampleSource: { blob: new Blob(), assetId: BUILTIN_SOUNDFONT_ID, sampleDataOffset: 0, sampleCount: 0 },
+    };
+    expect(computePresetMakeupGain(null, builtIn)).toBe(1);
+    expect(computePresetMakeupGain({ ...preset, zones: [] }, builtIn)).toBe(1);
+    expect(computePresetMakeupGain(preset, builtIn)).toBeCloseTo(10 ** (18 / 20), 8);
+    expect(computePresetMakeupGain(preset)).toBe(1);
+    // Neither a matching display name nor attenuation metadata identifies the included bank.
+    expect(computePresetMakeupGain(preset, { ...builtIn, sampleSource: undefined })).toBe(1);
+    expect(computePresetMakeupGain(preset, {
+      ...builtIn, sampleSource: { ...builtIn.sampleSource!, assetId: "imported-content-sha" },
+    })).toBe(1);
+    for (const initialAttenuationDb of [0, 6, undefined, Number.NaN, Number.POSITIVE_INFINITY]) {
+      const normal = { ...preset, zones: [{ ...preset.zones[0]!, initialAttenuationDb }] };
+      expect(computePresetMakeupGain(normal, builtIn)).toBe(1);
+    }
+    const moderate = { ...preset, zones: [{ ...preset.zones[0]!, initialAttenuationDb: 12 }] };
+    expect(computePresetMakeupGain(moderate, builtIn)).toBeCloseTo(10 ** (6 / 20), 8);
+  });
+
+  it("leaves the loud zone of an imported mixed-attenuation bank at unity", () => {
+    const { synth, soundFont, gains } = createStereoLoopSynth(0, 0);
+    for (const sample of soundFont.samples) sample.sampleType = 1;
+    soundFont.header.name = "MuseScore General v0.2";
+    soundFont.presets[0]!.zones = [24, 24, 0].map((initialAttenuationDb, index) => ({
+      keyRange: [60 + index, 60 + index], velRange: [1, 127], sampleIndex: 0, initialAttenuationDb,
+    }));
+    synth.loadSoundFont(soundFont);
+    try {
+      synth.noteOn(62, 127, "unattenuated-import-zone");
+      expect(synth.getPresetMakeupGain()).toBe(1);
+      expect(gains.at(-1)!.gain.exponentialRampToValueAtTime).toHaveBeenCalledWith(0.5, 0.005);
+      expect(gains[0]!.gain.setValueAtTime).toHaveBeenCalledExactlyOnceWith(1, 0);
+    } finally { synth.dispose(); }
+  });
+
+  it("captures built-in makeup per voice and preserves velocity, zone balance, tails, and output volume ownership", async () => {
+    resetSharedSoundFontSampleProviderForTests();
+    const { synth, soundFont, gains } = createStereoLoopSynth(0, 0);
+    for (const sample of soundFont.samples) sample.sampleType = 1;
+    const zones: Sf2Preset["zones"] = [24, 30].map((initialAttenuationDb, index) => ({
+      keyRange: [60 + index, 60 + index], velRange: [1, 127], sampleIndex: 0, initialAttenuationDb,
+      releaseSeconds: 1,
+    }));
+    soundFont.presets = [
+      { name: "Included piano", presetNumber: 0, bankNumber: 0, zones },
+      { name: "Quiet program", presetNumber: 1, bankNumber: 0, zones: [{ ...zones[0]!, initialAttenuationDb: 0 }] },
+    ];
+    soundFont.sampleSource = {
+      blob: new Blob([soundFont.rawSampleData!.buffer as ArrayBuffer]), assetId: BUILTIN_SOUNDFONT_ID,
+      sampleDataOffset: 0, sampleCount: soundFont.rawSampleData!.length,
+    };
+    synth.loadSoundFont(soundFont);
+    try {
+      await synth.prepareNotes([{ pitch: 60, velocity: 127 }, { pitch: 61, velocity: 127 }]);
+      const makeup = 10 ** (18 / 20);
+      expect(synth.getPresetMakeupGain()).toBeCloseTo(makeup, 8);
+      synth.noteOn(60, 127, "loud");
+      synth.noteOn(60, 80, "soft");
+      synth.noteOn(61, 127, "attenuated-zone");
+      const loudPeak = gains[1]!.gain.exponentialRampToValueAtTime.mock.calls[0]![0] as number;
+      const softPeak = gains[2]!.gain.exponentialRampToValueAtTime.mock.calls[0]![0] as number;
+      const attenuatedPeak = gains[3]!.gain.exponentialRampToValueAtTime.mock.calls[0]![0] as number;
+      expect(loudPeak).toBeCloseTo(0.5 * 10 ** (-24 / 20) * makeup, 8);
+      expect(softPeak / loudPeak).toBeCloseTo((80 / 127) ** 1.5, 8);
+      expect(attenuatedPeak / loudPeak).toBeCloseTo(10 ** (-6 / 20), 8);
+      synth.noteOff("loud", 60, 0.1);
+      const tailAutomation = structuredClone(gains[1]!.gain.exponentialRampToValueAtTime.mock.calls);
+      expect(synth.selectPreset(1)).toBe(true);
+      expect(synth.getPresetMakeupGain()).toBe(1);
+      synth.setVolume(0);
+      synth.setVolume(1);
+      expect(gains[0]!.gain.setValueAtTime).toHaveBeenCalledExactlyOnceWith(1, 0);
+      expect(gains[1]!.gain.exponentialRampToValueAtTime.mock.calls).toEqual(tailAutomation);
+      await synth.prepareNotes([{ pitch: 60, velocity: 127 }]);
+      synth.noteOn(60, 127, "new-preset");
+      expect(gains[4]!.gain.exponentialRampToValueAtTime).toHaveBeenCalledWith(0.5, 0.005);
+      expect(synth.selectPreset(99)).toBe(false);
+      expect(synth.getPresetMakeupGain()).toBe(1);
+    } finally {
+      synth.dispose();
+      resetSharedSoundFontSampleProviderForTests();
+    }
   });
 
   it("clamps velocity below lowest zone range (e.g. velocity 1 with zone [3, 80]) and plays with audible acoustic floor", async () => {

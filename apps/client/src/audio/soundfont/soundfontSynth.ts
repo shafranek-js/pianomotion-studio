@@ -1,5 +1,6 @@
 import type { RestoredPianoVoice } from "../sampler.ts";
 import type { PedalState } from "../sampler.ts";
+import { BUILTIN_SOUNDFONT_ID } from "./builtinSoundfont.ts";
 import {
   getSharedSoundFontSampleProvider,
   type SoundFontSampleLease,
@@ -79,6 +80,38 @@ export interface SoundFontPedalState {
   soft: boolean;
 }
 
+/**
+ * Compensates the release-pinned built-in bank's orchestral headroom. Attenuation
+ * metadata alone cannot establish an imported bank's recording level, so imports
+ * keep unity gain. The built-in policy retains zone/velocity balance and relies
+ * on the shared output limiter for dense playback.
+ */
+export function computePresetMakeupGain(
+  preset: Sf2Preset | null | undefined,
+  soundFont?: Sf2SoundFont | null,
+): number {
+  if (soundFont?.sampleSource?.assetId !== BUILTIN_SOUNDFONT_ID) return 1;
+  if (!preset || !preset.zones || preset.zones.length === 0) return 1;
+  const attenuations: number[] = [];
+  for (const zone of preset.zones) {
+    if (zone.initialAttenuationDb !== undefined && Number.isFinite(zone.initialAttenuationDb)) {
+      attenuations.push(zone.initialAttenuationDb);
+    } else {
+      attenuations.push(0);
+    }
+  }
+  if (attenuations.length === 0) return 1;
+  attenuations.sort((a, b) => a - b);
+  const mid = Math.floor(attenuations.length / 2);
+  const medianAttenuation = attenuations.length % 2 === 0
+    ? (attenuations[mid - 1] + attenuations[mid]) / 2
+    : attenuations[mid];
+
+  if (medianAttenuation <= 6) return 1;
+  const compensationDb = Math.min(18, medianAttenuation - 6);
+  return Math.min(8, Math.pow(10, compensationDb / 20));
+}
+
 /** Polyphonic SF2/SF3 sample playback with scheduled notes, pedals, and a bounded decoded cache. */
 export class SoundFontSynth {
   private readonly audioContext: AudioContext | OfflineAudioContext;
@@ -94,6 +127,7 @@ export class SoundFontSynth {
   private pedalState: SoundFontPedalState = { sustain: false, sostenuto: false, soft: false };
   private pedalBaseline: SoundFontPedalState = { sustain: false, sostenuto: false, soft: false };
   private masterGain: GainNode;
+  private presetMakeupGain = 1;
   private preparedLeases = new Map<number, SoundFontSampleLease>();
   private preparedSampleIndices = new Set<number>();
   private preparationController: AbortController | null = null;
@@ -105,7 +139,7 @@ export class SoundFontSynth {
     this.audioContext = options.audioContext;
     this.maxPolyphony = options.maxPolyphony ?? 64;
     this.masterGain = this.audioContext.createGain();
-    // Output normalization is applied once by the shared master gain downstream.
+    // Preset compensation is captured by each voice; this bus stays at unity.
     this.masterGain.gain.setValueAtTime(1, this.audioContext.currentTime);
     this.masterGain.connect(options.destinationNode ?? this.audioContext.destination);
   }
@@ -123,6 +157,7 @@ export class SoundFontSynth {
         ?? sf.presets.find((item) => item.bankNumber === 0 && item.presetNumber <= 7)
         ?? sf.presets[0]
         ?? null);
+    this.updatePresetMakeupGain();
   }
 
   public selectPreset(presetNumber: number, bankNumber = 0): boolean {
@@ -132,6 +167,7 @@ export class SoundFontSynth {
     this.cancelPreparation();
     this.releasePreparedSamples();
     this.activePreset = preset;
+    this.updatePresetMakeupGain();
     return true;
   }
 
@@ -668,7 +704,9 @@ export class SoundFontSynth {
           // initialAttenuationDb is attenuation in decibels, so convert it to
           // amplitude using 20 dB per decade.
           const attenuation = Math.pow(10, -(channelZone.initialAttenuationDb ?? 0) / 20);
-          const peakGain = Math.max(0.0001, velScale * 0.5 * attenuation);
+          // Capture the selected preset's compensation so later preset changes
+          // cannot alter held notes or release tails from the previous preset.
+          const peakGain = Math.max(0.0001, velScale * 0.5 * attenuation) * this.presetMakeupGain;
           const attack = Math.max(0.003, channelZone.attackSeconds ?? 0.005);
           const hold = Math.max(0, channelZone.holdSeconds ?? 0);
           const decay = Math.max(0, channelZone.decaySeconds ?? 0);
@@ -821,10 +859,17 @@ export class SoundFontSynth {
     }
   }
 
+  public getPresetMakeupGain(): number {
+    return this.presetMakeupGain;
+  }
+
+  private updatePresetMakeupGain(): void {
+    this.presetMakeupGain = computePresetMakeupGain(this.activePreset, this.soundFont);
+  }
+
   public setVolume(volume: number): void {
     // Global master volume is owned by the shared audio output chain.
     void volume;
-    this.masterGain.gain.setValueAtTime(1, this.audioContext.currentTime);
   }
 
   public getActiveVoiceCount(): number { return this.activeVoices.size; }
