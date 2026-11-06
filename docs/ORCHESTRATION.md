@@ -1,5 +1,10 @@
 # PianoMotion Studio: журнал оркестрации
 
+## Аналитика посещаемости: Cloudflare Web Analytics — 2026-11-06, реализация
+
+Итог: подключён privacy-friendly beacon Cloudflare Web Analytics для домена shafranek-js.github.io (токен 6c01df5fc43c48e4bd0e1a8d6cf72394) без cookies и персональных данных. В apps/client/public/_headers обновлена Content-Security-Policy (разрешены script-src https://static.cloudflareinsights.com и connect-src https://cloudflareinsights.com), сниппет маячка добавлен в apps/client/index.html.
+Проверки: npm run build и npm run verify:release подтвердили сборку и валидность CSP meta тега.
+
 ## SoundFont: ограниченная компенсация и защита выхода — 2026-11-06, реализация
 
 После проверки пользовательской Auto-Makeup Gain выявлены два случая: реальные десять нот MuseScore при velocity 127 превышали peak 1 на master 100%, а общий median-based boost перегружал неослабленную зону смешанного стороннего банка. Пользователь разрешил исправление. `makeup_fix` (sol high) ограничил политику точным SHA встроенного банка, сохранил его +18 dB и перенёс компенсацию в создаваемый voice, чтобы смена пресета не меняла предыдущие хвосты. Другие банки сохраняют unity gain. `output_limiter` (sol high) добавил после master gain синхронный native stereo compressor (threshold 0 dB, без автоматического подъёма тихого сигнала) и per-channel safety WaveShaper ceiling <0.98. Это защита sample peaks, а не true-peak/полностью связанный stereo limiter; при крайнем перегрузе защитное ограничение может менять стереобаланс. Native lookahead измерен: 264 frames / 5.986 ms при 44.1 kHz. Асинхронные worklet, зависимости и изменения offline-нормализатора не вводились.
